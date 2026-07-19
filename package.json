@@ -6,7 +6,8 @@
     "dev": "bun --watch src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun",
     "start": "bun dist/index.js",
-    "test": "bun test"
+    "test": "bun test",
+    "seed": "bun src/db/seed.ts"
   },
   "dependencies": {
     "@elysiajs/jwt": "^1.4.2",
