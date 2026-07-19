@@ -1,19 +1,15 @@
 import { Elysia, status } from 'elysia'
-import { dbPlugin } from './db'
-import { authPlugin, type AuthUser } from './auth'
-import { UserIdentityService } from '../modules/user-identity/service'
+import { authPlugin } from './auth'
+import { userIdentityService } from '../modules/user-identity'
 import { Role } from '../modules/user-identity/model'
+import { ErrorCode, ErrorMessage } from '../common'
 
 export const roleGuardPlugin = new Elysia({ name: 'role-guard' })
-  .use(dbPlugin)
   .use(authPlugin)
-  .macro({
-    operatorOnly: {
-      resolve: async ({ db, ...ctx }) => {
-        const { user } = ctx as unknown as { user: AuthUser }
-        const service = new UserIdentityService(db)
-        const isOperator = await service.hasRole(user.userId, Role.Operator)
-        if (!isOperator) return status(403, 'Forbidden')
-      },
+  .macro('operatorOnly', {
+    auth: true,
+    resolve: async ({ user }) => {
+      const isOperator = await userIdentityService.hasRole(user.userId, Role.Operator)
+      if (!isOperator) return status(403, { error: { code: ErrorCode.FORBIDDEN, message: ErrorMessage.FORBIDDEN } })
     },
   })

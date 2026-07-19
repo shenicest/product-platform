@@ -11,7 +11,9 @@
   },
   "dependencies": {
     "@elysiajs/jwt": "^1.4.2",
+    "@elysiajs/openapi": "^1.4.15",
     "drizzle-orm": "^0.44.2",
+    "drizzle-typebox": "^0.3.3",
     "elysia": "^1.2.25",
     "mysql2": "^3.14.1"
   },

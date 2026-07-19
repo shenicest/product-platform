@@ -2,12 +2,15 @@
 
 ## Domain Documentation
 
-- [CONTEXT.md](./CONTEXT.md) — 领域术语表，定义项目核心概念（Project、ProjectRevision、Comment 等）
+- [CONTEXT.md](./CONTEXT.md) — 领域术语表，定义项目核心概念（Project、ProjectEditProposal、Comment 等）
 - [docs/spec-v1-backend-api.md](./docs/spec-v1-backend-api.md) — v1.0 后端 API 完整规格说明
 - [docs/adr/](./docs/adr/) — 架构决策记录，解释关键设计选择的原因
-  - [0001-project-revision-separation.md](./docs/adr/0001-project-revision-separation.md)
-  - [0002-no-project-status-field.md](./docs/adr/0002-no-project-status-field.md)
-  - [0003-denormalized-filter-fields.md](./docs/adr/0003-denormalized-filter-fields.md)
+  - [0001-project-revision-separation.md](./docs/adr/0001-project-revision-separation.md) — _Superseded by 0004_
+  - [0002-no-project-status-field.md](./docs/adr/0002-no-project-status-field.md) — _Superseded by 0005_
+  - [0003-denormalized-filter-fields.md](./docs/adr/0003-denormalized-filter-fields.md) — _Superseded by 0006_
+  - [0004-content-on-project-with-edit-proposals.md](./docs/adr/0004-content-on-project-with-edit-proposals.md) — 内容放回 projects，用 proposal 记录 diff
+  - [0005-single-status-field-on-project.md](./docs/adr/0005-single-status-field-on-project.md) — 单一 status 字段管理生命周期
+  - [0006-no-denormalized-filter-fields.md](./docs/adr/0006-no-denormalized-filter-fields.md) — 内容已在 projects，无需冗余字段
 
 修改领域模型前必须先阅读 CONTEXT.md。
 
@@ -51,6 +54,13 @@ test/                     # 测试文件，镜像 src/ 结构
 - **内联函数**：路由 handler 必须使用内联函数以确保类型推断正确
 - **显式依赖**：每个 Elysia 实例必须通过 `.use()` 显式声明所依赖的插件/状态，类型不会自动传递
 - **注册顺序**：lifecycle hooks 和中间件只影响其后注册的路由
+- **入口文件只做引导**：`src/index.ts` 只负责注册插件和模块、启动服务器，不定义业务路由
+
+### Macro
+
+- 使用命名形式 `.macro('name', { ... })` 而非对象形式 `.macro({ name: { ... } })`，以支持 macro 间依赖
+- 有依赖关系的 macro 必须在定义中声明依赖（如 `{ auth: true, resolve: ... }`），禁止用 `as unknown as` 类型断言绕过
+- 声明依赖后，使用方无需重复写被依赖的 macro（如 `operatorOnly: true` 已隐含 `auth: true`）
 
 ### Controller (index.ts)
 
@@ -61,7 +71,8 @@ test/                     # 测试文件，镜像 src/ 结构
 
 ### Service (service.ts)
 
-- 使用 `class` 或 `abstract class`
+- 使用 `class`，构造函数接收 `db` 等基础设施依赖
+- 在模块级别实例化一次（`const service = new XxxService(db)`），不要在每个请求 handler 中重复 `new`
 - 返回 `status()` 表示错误（`import { status } from 'elysia'`），优先 `return Error` 而非 `throw Error`
 - 与 Elysia 解耦，不直接依赖 HTTP context
 
@@ -73,8 +84,37 @@ test/                     # 测试文件，镜像 src/ 结构
 ### Validation
 
 - 使用 TypeBox (`import { t } from 'elysia'`) 做请求/响应校验
-- 必须定义 `body`、`params`、`query`、`response` 的 schema
+- 根据路由需要定义 `body`、`params`、`query`、`response` 的 schema
 - response 按状态码分别定义 schema
+
+#### drizzle-typebox 集成
+
+**原则：** DB schema 是唯一真相源，API schema 从它派生。
+
+- Schema 层（`src/db/schema/`）：用 `createInsertSchema` 定义字段级验证（minLength, format 等）
+- Model 层（`src/modules/*/model.ts`）：用 `t.Pick` / `t.Omit` 派生 API schema
+
+**决策：**
+- API 验证 = DB 约束 → 用 `t.Pick` 直接选取
+- API 验证 > DB 约束 → 用 `t.Intersect` 追加更严格的规则
+- API 验证 < DB 约束 → 不可能，DB 约束是最小值
+
+**示例：**
+```ts
+// schema 层
+export const InsertProject = createInsertSchema(projects, {
+  description: (schema) => t.String({ ...schema, minLength: 10 }),
+})
+
+// model 层：API = DB 约束
+export const EditBody = t.Pick(InsertProject, ['name', 'description'])
+
+// model 层：API > DB 约束
+export const SubmitBody = t.Intersect([
+  t.Pick(InsertProject, ['name', 'description']),
+  t.Object({ description: t.String({ minLength: 20 }) }),
+])
+```
 
 ### Auth (JWT 解析)
 
@@ -87,6 +127,7 @@ test/                     # 测试文件，镜像 src/ 结构
 - 无类型添加的插件（cors 等）可用 `as: 'global'`
 - 添加类型的插件（db、auth）必须显式 `.use()`
 - 需要去重的插件加 `{ name: 'xxx' }`
+- 环境变量在模块顶部校验（`if (!X) throw new Error(...)`），禁止裸用 `process.env.X!` 非空断言
 
 ## Drizzle ORM
 
