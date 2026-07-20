@@ -1,2 +1,5 @@
 export * from './placeholder'
 export * from './user-identity'
+export * from './project'
+export * from './project-edit-proposal'
+export * from './audit-record'
