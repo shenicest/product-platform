@@ -1,8 +1,11 @@
 import { Elysia, status } from 'elysia'
 import { authPlugin } from './auth'
-import { userIdentityService } from '../modules/user-identity'
+import { db } from '../db'
+import { UserIdentityService } from '../modules/user-identity/service'
 import { Role } from '../modules/user-identity/model'
 import { ErrorCode, ErrorMessage } from '../common'
+
+const userIdentityService = new UserIdentityService(db)
 
 export const roleGuardPlugin = new Elysia({ name: 'role-guard' })
   .use(authPlugin)
