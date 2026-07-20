@@ -10,6 +10,8 @@ import {
   MissingRequiredFieldError,
   ProjectDraftBody,
   ProjectIdParams,
+  ProjectListQuery,
+  ProjectListResponse,
   ProjectNotFoundError,
   ProjectResponse,
   ProposalListResponse,
@@ -37,6 +39,8 @@ export const projectModule = new Elysia()
     ProjectDraftBody,
     FieldErrorResponse,
     ProposalListResponse,
+    ProjectListQuery,
+    ProjectListResponse,
   })
   .prefix('model', 'Project.')
   .post('/projects', async ({ user, body }) => {
@@ -52,6 +56,19 @@ export const projectModule = new Elysia()
     response: {
       200: 'Project.ProjectResponse',
       401: ErrorResponse,
+    },
+  })
+  .get('/projects', async ({ query }) => {
+    return projectService.listLiveProjects(query)
+  }, {
+    detail: {
+      summary: 'List live projects',
+      description: 'Paginated list of Live (status=3) projects. Supports filtering by category, stage, and keyword search. Public — no authentication required.',
+      tags: ['Project'],
+    },
+    query: 'Project.ProjectListQuery',
+    response: {
+      200: 'Project.ProjectListResponse',
     },
   })
   .put('/projects/:id/draft', async ({ user, params, body }) => {

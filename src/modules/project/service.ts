@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray } from 'drizzle-orm'
+import { and, count, desc, eq, inArray, like, or, sql } from 'drizzle-orm'
 import { auditRecords, projectEditProposals, projects } from '../../db/schema'
 import type { Database } from '../../db'
 import { UserIdentityService } from '../user-identity/service'
@@ -16,12 +16,21 @@ import {
   ProposalStatus,
   SUBMISSION_REQUIRED_FIELDS,
   ValidationError,
+  type ProjectListQuery,
   type SubmissionRequiredField,
 } from './model'
 
 type ProjectRow = typeof projects.$inferSelect
 type ProposalRow = typeof projectEditProposals.$inferSelect
 type ProjectUpdate = Partial<typeof projects.$inferInsert>
+
+const DEFAULT_LIMIT = 20
+const MAX_LIMIT = 100
+
+function clampLimit(raw: number | undefined): number {
+  const value = raw ?? DEFAULT_LIMIT
+  return Math.max(1, Math.min(value, MAX_LIMIT))
+}
 
 function validateChanges(changes: Record<string, unknown>): ValidationError | null {
   const keys = Object.keys(changes)
@@ -78,6 +87,29 @@ export class ProjectService {
       .from(projectEditProposals)
       .where(eq(projectEditProposals.projectId, projectId))
       .orderBy(desc(projectEditProposals.createdAt))
+  }
+
+  async listLiveProjects(query: ProjectListQuery) {
+    const conditions = [eq(projects.status, ProjectStatus.Live)]
+    if (query.stage !== undefined) conditions.push(eq(projects.stage, query.stage))
+    if (query.category) {
+      conditions.push(sql`JSON_CONTAINS(${projects.categories}, ${JSON.stringify(query.category)})`)
+    }
+    if (query.q) {
+      const pattern = `%${query.q}%`
+      conditions.push(or(like(projects.name, pattern), like(projects.contactName, pattern), like(projects.teamName, pattern))!)
+    }
+    const where = and(...conditions)
+
+    const sortColumn = query.sort === 'recently_updated' ? projects.updatedAt : projects.createdAt
+    const limit = clampLimit(query.limit)
+    const offset = query.offset ?? 0
+
+    const [data, totalRows] = await Promise.all([
+      this.db.select().from(projects).where(where).orderBy(desc(sortColumn)).limit(limit).offset(offset),
+      this.db.select({ value: count() }).from(projects).where(where),
+    ])
+    return { data, total: totalRows[0]?.value ?? 0 }
   }
 
   async getVisibleProject(userId: string | null, projectId: number): Promise<ProjectRow | ProjectNotFoundError> {

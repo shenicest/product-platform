@@ -380,4 +380,182 @@ describe('Project routes', () => {
       expect(res.status).toBe(404)
     })
   })
+
+  describe('GET /projects', () => {
+    async function createLiveProject(userId: string, overrides: Record<string, unknown> = {}) {
+      const body = { ...VALID_BODY, ...overrides }
+      const created = await (await createProjectAs(userId, body)).json()
+      projectIds.push(created.id)
+      await submitAs(userId, created.id)
+      await projectService.approveProject(OPERATOR, created.id)
+      return created
+    }
+
+    it('is public — works without authentication', async () => {
+      const res = await app.handle(new Request('http://localhost/projects'))
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.data).toBeArray()
+      expect(body.total).toBeNumber()
+    })
+
+    it('returns only Live projects', async () => {
+      const draft = await (await createProjectAs(FOUNDER, { name: 'Draft Only' })).json()
+      projectIds.push(draft.id)
+      const live = await createLiveProject(FOUNDER, { name: 'Live Project' })
+
+      const res = await app.handle(new Request('http://localhost/projects'))
+      const body = await res.json()
+      const ids = body.data.map((p: { id: number }) => p.id)
+      expect(ids).toContain(live.id)
+      expect(ids).not.toContain(draft.id)
+      for (const p of body.data) {
+        expect(p.status).toBe(ProjectStatus.Live)
+      }
+    })
+
+    it('filters by category', async () => {
+      const unique = `cat-${crypto.randomUUID().slice(0, 8)}`
+      await createLiveProject(FOUNDER, { name: 'Cat Filter', categories: [unique] })
+      await createLiveProject(FOUNDER, { name: 'No Cat', categories: ['其他'] })
+
+      const res = await app.handle(new Request(`http://localhost/projects?category=${unique}`))
+      const body = await res.json()
+      expect(body.data.length).toBeGreaterThanOrEqual(1)
+      for (const p of body.data) {
+        expect(p.categories).toContain(unique)
+      }
+    })
+
+    it('filters by stage', async () => {
+      await createLiveProject(FOUNDER, { name: 'Stage MVP', stage: 0 })
+      await createLiveProject(FOUNDER, { name: 'Stage Growth', stage: 1 })
+
+      const res = await app.handle(new Request('http://localhost/projects?stage=1'))
+      const body = await res.json()
+      expect(body.data.length).toBeGreaterThanOrEqual(1)
+      for (const p of body.data) {
+        expect(p.stage).toBe(1)
+      }
+    })
+
+    it('searches by project name', async () => {
+      const unique = `findme-${crypto.randomUUID().slice(0, 8)}`
+      await createLiveProject(FOUNDER, { name: `Findable ${unique}` })
+
+      const res = await app.handle(new Request(`http://localhost/projects?q=${unique}`))
+      const body = await res.json()
+      expect(body.data.length).toBeGreaterThanOrEqual(1)
+      expect(body.data[0].name).toContain(unique)
+    })
+
+    it('searches by contact name', async () => {
+      const unique = `contact-${crypto.randomUUID().slice(0, 8)}`
+      await createLiveProject(FOUNDER, { name: 'Contact Search', contactName: unique })
+
+      const res = await app.handle(new Request(`http://localhost/projects?q=${unique}`))
+      const body = await res.json()
+      expect(body.data.length).toBeGreaterThanOrEqual(1)
+      expect(body.data[0].contactName).toContain(unique)
+    })
+
+    it('searches by team name', async () => {
+      const unique = `team-${crypto.randomUUID().slice(0, 8)}`
+      await createLiveProject(FOUNDER, { name: 'Team Search', teamName: unique })
+
+      const res = await app.handle(new Request(`http://localhost/projects?q=${unique}`))
+      const body = await res.json()
+      expect(body.data.length).toBeGreaterThanOrEqual(1)
+      expect(body.data[0].teamName).toContain(unique)
+    })
+
+    it('combines filters with AND logic', async () => {
+      const unique = `combo-${crypto.randomUUID().slice(0, 8)}`
+      await createLiveProject(FOUNDER, { name: `Combo ${unique}`, stage: 1, categories: [unique] })
+      await createLiveProject(FOUNDER, { name: `Combo Other ${unique}`, stage: 0, categories: [unique] })
+
+      const res = await app.handle(new Request(`http://localhost/projects?q=${unique}&stage=1`))
+      const body = await res.json()
+      expect(body.data.length).toBe(1)
+      expect(body.data[0].stage).toBe(1)
+      expect(body.data[0].name).toContain(unique)
+    })
+
+    it('sorts by latest (created_at desc) by default', async () => {
+      await createLiveProject(FOUNDER, { name: 'Sort First' })
+      await createLiveProject(FOUNDER, { name: 'Sort Second' })
+
+      const res = await app.handle(new Request('http://localhost/projects?limit=100'))
+      const body = await res.json()
+      expect(body.data.length).toBeGreaterThanOrEqual(2)
+      for (let i = 1; i < body.data.length; i++) {
+        const prev = new Date(body.data[i - 1].createdAt).getTime()
+        const curr = new Date(body.data[i].createdAt).getTime()
+        expect(prev).toBeGreaterThanOrEqual(curr)
+      }
+    })
+
+    it('sorts by recently_updated', async () => {
+      const project = await createLiveProject(FOUNDER, { name: 'Updated Sort' })
+      const proposal = await projectService.createProposal(project.id, { tagline: 'updated tagline' })
+      expect(proposal).not.toBeInstanceOf(Error)
+      proposalIds.push((proposal as { id: number }).id)
+      await projectService.approveProposal(OPERATOR, (proposal as { id: number }).id)
+
+      const res = await app.handle(new Request('http://localhost/projects?sort=recently_updated&limit=5'))
+      const body = await res.json()
+      expect(body.data.length).toBeGreaterThanOrEqual(2)
+      for (let i = 1; i < body.data.length; i++) {
+        const prev = new Date(body.data[i - 1].updatedAt).getTime()
+        const curr = new Date(body.data[i].updatedAt).getTime()
+        expect(prev).toBeGreaterThanOrEqual(curr)
+      }
+    })
+
+    it('paginates with offset and limit', async () => {
+      await createLiveProject(FOUNDER, { name: 'Page A' })
+      await createLiveProject(FOUNDER, { name: 'Page B' })
+      await createLiveProject(FOUNDER, { name: 'Page C' })
+
+      const page1 = await (await app.handle(new Request('http://localhost/projects?limit=2&offset=0'))).json()
+      const page2 = await (await app.handle(new Request('http://localhost/projects?limit=2&offset=2'))).json()
+
+      expect(page1.data.length).toBeLessThanOrEqual(2)
+      expect(page2.data.length).toBeLessThanOrEqual(2)
+      const page1Ids = new Set(page1.data.map((p: { id: number }) => p.id))
+      for (const p of page2.data) {
+        expect(page1Ids.has(p.id)).toBe(false)
+      }
+    })
+
+    it('returns empty array when no projects match', async () => {
+      const res = await app.handle(new Request('http://localhost/projects?q=zzz-nonexistent-zzz'))
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.data).toEqual([])
+      expect(body.total).toBe(0)
+    })
+
+    it('includes expected fields in each list item', async () => {
+      await createLiveProject(FOUNDER, {
+        name: 'Fields Check',
+        tagline: 'a tagline',
+        coverUrl: 'https://example.com/cover.png',
+        stage: 0,
+        categories: ['效率工具'],
+        contactName: 'Founder Nick',
+      })
+
+      const res = await app.handle(new Request('http://localhost/projects?q=Fields Check'))
+      const body = await res.json()
+      expect(body.data.length).toBeGreaterThanOrEqual(1)
+      const item = body.data.find((p: { name: string }) => p.name === 'Fields Check')
+      expect(item).toBeDefined()
+      expect(item.coverUrl).toBe('https://example.com/cover.png')
+      expect(item.tagline).toBe('a tagline')
+      expect(item.stage).toBe(0)
+      expect(item.categories).toContain('效率工具')
+      expect(item.contactName).toBe('Founder Nick')
+    })
+  })
 })

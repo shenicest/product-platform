@@ -117,6 +117,22 @@ export const ProposalListResponse = t.Object({
 })
 export type ProposalListResponse = typeof ProposalListResponse.static
 
+export const ProjectListQuery = t.Object({
+  category: t.Optional(t.String()),
+  stage: t.Optional(t.Numeric()),
+  q: t.Optional(t.String()),
+  sort: t.Optional(t.Union([t.Literal('latest'), t.Literal('recently_updated')])),
+  offset: t.Optional(t.Numeric({ minimum: 0 })),
+  limit: t.Optional(t.Numeric({ minimum: 1 })),
+})
+export type ProjectListQuery = typeof ProjectListQuery.static
+
+export const ProjectListResponse = t.Object({
+  data: t.Array(SelectProject),
+  total: t.Number(),
+})
+export type ProjectListResponse = typeof ProjectListResponse.static
+
 export class DomainError extends Error {
   readonly code: string
 
