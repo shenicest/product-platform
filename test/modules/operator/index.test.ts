@@ -6,6 +6,7 @@ import { db } from '../../../src/db'
 import { auditRecords, projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
 import { operatorModule } from '../../../src/modules/operator'
 import { projectService } from '../../../src/modules/project'
+import { OperatorService } from '../../../src/modules/operator/service'
 import { UserIdentityService } from '../../../src/modules/user-identity/service'
 import { Role } from '../../../src/modules/user-identity/model'
 import { ProjectStatus, ProposalStatus } from '../../../src/modules/project/model'
@@ -53,6 +54,7 @@ function jsonHeaders(token: string) {
 describe('Operator routes', () => {
   const app = createApp()
   const userIdentity = new UserIdentityService(db)
+  const operatorService = new OperatorService(db)
   const projectIds: number[] = []
   const userIds = [OPERATOR, REGULAR_USER, FOUNDER]
   let operatorToken: string
@@ -72,7 +74,7 @@ describe('Operator routes', () => {
 
   async function createLive(overrides: Record<string, unknown> = {}) {
     const project = await createPending({ ...VALID_PROJECT, ...overrides })
-    await projectService.approveProject(OPERATOR, project.id)
+    await operatorService.approveProject(OPERATOR, project.id)
     return (await projectService.getProject(project.id))!
   }
 
@@ -419,7 +421,7 @@ describe('Operator routes', () => {
 
       const project2 = await createLive()
       const proposal2 = await projectService.createProposal(project2.id, { description: 'approved one' })
-      await projectService.approveProposal(OPERATOR, (proposal2 as { id: number }).id)
+      await operatorService.approveProposal(OPERATOR, (proposal2 as { id: number }).id)
 
       const res = await operatorGet('/proposals')
       expect(res.status).toBe(200)
@@ -445,7 +447,7 @@ describe('Operator routes', () => {
     it('lists all proposals for a project (any status)', async () => {
       const project = await createLive()
       const p1 = await projectService.createProposal(project.id, { description: 'first' })
-      await projectService.approveProposal(OPERATOR, (p1 as { id: number }).id)
+      await operatorService.approveProposal(OPERATOR, (p1 as { id: number }).id)
       const p2 = await projectService.createProposal(project.id, { description: 'second' })
 
       const res = await operatorGet(`/projects/${project.id}/proposals`)

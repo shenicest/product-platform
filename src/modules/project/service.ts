@@ -1,10 +1,9 @@
 import { and, count, desc, eq, inArray, like, or, sql } from 'drizzle-orm'
-import { auditRecords, projectEditProposals, projects } from '../../db/schema'
+import { projectEditProposals, projects } from '../../db/schema'
 import type { Database } from '../../db'
 import { UserIdentityService } from '../user-identity/service'
 import { Role } from '../user-identity/model'
 import {
-  AuditAction,
   DuplicateProposalError,
   EDITABLE_PROJECT_FIELD_SET,
   ForbiddenError,
@@ -166,99 +165,6 @@ export class ProjectService {
     return (await this.getProject(projectId))!
   }
 
-  async approveProject(operatorId: string, projectId: number): Promise<ProjectRow | ProjectNotFoundError | InvalidTransitionError> {
-    const project = await this.getProject(projectId)
-    if (!project) return new ProjectNotFoundError(projectId)
-    if (project.status !== ProjectStatus.PendingReview) {
-      return new InvalidTransitionError(`Cannot approve: project is in status ${project.status}, expected Pending Review`)
-    }
-    await this.db.transaction(async (tx) => {
-      await tx.update(projects).set({ status: ProjectStatus.Live }).where(eq(projects.id, projectId))
-      await tx.insert(auditRecords).values({
-        projectId,
-        operatorId,
-        action: AuditAction.Approve,
-        proposalId: null,
-      })
-    })
-    return (await this.getProject(projectId))!
-  }
-
-  async requireProjectRevision(operatorId: string, projectId: number, reason: string): Promise<ProjectRow | ProjectNotFoundError | InvalidTransitionError> {
-    const project = await this.getProject(projectId)
-    if (!project) return new ProjectNotFoundError(projectId)
-    if (project.status !== ProjectStatus.PendingReview) {
-      return new InvalidTransitionError(`Cannot require revision: project is in status ${project.status}, expected Pending Review`)
-    }
-    await this.db.transaction(async (tx) => {
-      await tx.update(projects).set({ status: ProjectStatus.RevisionRequired }).where(eq(projects.id, projectId))
-      await tx.insert(auditRecords).values({
-        projectId,
-        operatorId,
-        action: AuditAction.RequireRevision,
-        proposalId: null,
-        reason,
-      })
-    })
-    return (await this.getProject(projectId))!
-  }
-
-  async rejectProject(operatorId: string, projectId: number, reason: string): Promise<ProjectRow | ProjectNotFoundError | InvalidTransitionError> {
-    const project = await this.getProject(projectId)
-    if (!project) return new ProjectNotFoundError(projectId)
-    if (project.status !== ProjectStatus.PendingReview) {
-      return new InvalidTransitionError(`Cannot reject: project is in status ${project.status}, expected Pending Review`)
-    }
-    await this.db.transaction(async (tx) => {
-      await tx.update(projects).set({ status: ProjectStatus.Rejected }).where(eq(projects.id, projectId))
-      await tx.insert(auditRecords).values({
-        projectId,
-        operatorId,
-        action: AuditAction.Reject,
-        proposalId: null,
-        reason,
-      })
-    })
-    return (await this.getProject(projectId))!
-  }
-
-  async delistProject(operatorId: string, projectId: number, reason: string): Promise<ProjectRow | ProjectNotFoundError | InvalidTransitionError> {
-    const project = await this.getProject(projectId)
-    if (!project) return new ProjectNotFoundError(projectId)
-    if (project.status !== ProjectStatus.Live) {
-      return new InvalidTransitionError(`Cannot delist: project is in status ${project.status}, expected Live`)
-    }
-    await this.db.transaction(async (tx) => {
-      await tx.update(projects).set({ status: ProjectStatus.Delisted }).where(eq(projects.id, projectId))
-      await tx.insert(auditRecords).values({
-        projectId,
-        operatorId,
-        action: AuditAction.Delist,
-        proposalId: null,
-        reason,
-      })
-    })
-    return (await this.getProject(projectId))!
-  }
-
-  async restoreProject(operatorId: string, projectId: number): Promise<ProjectRow | ProjectNotFoundError | InvalidTransitionError> {
-    const project = await this.getProject(projectId)
-    if (!project) return new ProjectNotFoundError(projectId)
-    if (project.status !== ProjectStatus.Delisted) {
-      return new InvalidTransitionError(`Cannot restore: project is in status ${project.status}, expected Delisted`)
-    }
-    await this.db.transaction(async (tx) => {
-      await tx.update(projects).set({ status: ProjectStatus.Live }).where(eq(projects.id, projectId))
-      await tx.insert(auditRecords).values({
-        projectId,
-        operatorId,
-        action: AuditAction.Restore,
-        proposalId: null,
-      })
-    })
-    return (await this.getProject(projectId))!
-  }
-
   async createProposal(projectId: number, changes: Record<string, unknown>): Promise<ProposalRow | ProjectNotFoundError | InvalidTransitionError | ValidationError | DuplicateProposalError> {
     const project = await this.getProject(projectId)
     if (!project) return new ProjectNotFoundError(projectId)
@@ -298,75 +204,6 @@ export class ProjectService {
       .update(projectEditProposals)
       .set({ changes, status: ProposalStatus.Pending, reason: null })
       .where(eq(projectEditProposals.id, proposalId))
-    return (await this.getProposal(proposalId))!
-  }
-
-  async approveProposal(operatorId: string, proposalId: number): Promise<ProposalRow | ProposalNotFoundError | InvalidTransitionError> {
-    const proposal = await this.getProposal(proposalId)
-    if (!proposal) return new ProposalNotFoundError(proposalId)
-    if (proposal.status !== ProposalStatus.Pending) {
-      return new InvalidTransitionError(`Cannot approve proposal: status is ${proposal.status}, expected Pending`)
-    }
-    const reviewedAt = new Date()
-    await this.db.transaction(async (tx) => {
-      await tx.update(projects).set(proposal.changes as ProjectUpdate).where(eq(projects.id, proposal.projectId))
-      await tx
-        .update(projectEditProposals)
-        .set({ status: ProposalStatus.Approved, reviewedBy: operatorId, reviewedAt })
-        .where(eq(projectEditProposals.id, proposalId))
-      await tx.insert(auditRecords).values({
-        projectId: proposal.projectId,
-        operatorId,
-        action: AuditAction.Approve,
-        proposalId,
-      })
-    })
-    return (await this.getProposal(proposalId))!
-  }
-
-  async rejectProposal(operatorId: string, proposalId: number, reason: string): Promise<ProposalRow | ProposalNotFoundError | InvalidTransitionError> {
-    const proposal = await this.getProposal(proposalId)
-    if (!proposal) return new ProposalNotFoundError(proposalId)
-    if (proposal.status !== ProposalStatus.Pending) {
-      return new InvalidTransitionError(`Cannot reject proposal: status is ${proposal.status}, expected Pending`)
-    }
-    const reviewedAt = new Date()
-    await this.db.transaction(async (tx) => {
-      await tx
-        .update(projectEditProposals)
-        .set({ status: ProposalStatus.Rejected, reviewedBy: operatorId, reviewedAt, reason })
-        .where(eq(projectEditProposals.id, proposalId))
-      await tx.insert(auditRecords).values({
-        projectId: proposal.projectId,
-        operatorId,
-        action: AuditAction.Reject,
-        proposalId,
-        reason,
-      })
-    })
-    return (await this.getProposal(proposalId))!
-  }
-
-  async requireProposalRevision(operatorId: string, proposalId: number, reason: string): Promise<ProposalRow | ProposalNotFoundError | InvalidTransitionError> {
-    const proposal = await this.getProposal(proposalId)
-    if (!proposal) return new ProposalNotFoundError(proposalId)
-    if (proposal.status !== ProposalStatus.Pending) {
-      return new InvalidTransitionError(`Cannot require revision on proposal: status is ${proposal.status}, expected Pending`)
-    }
-    const reviewedAt = new Date()
-    await this.db.transaction(async (tx) => {
-      await tx
-        .update(projectEditProposals)
-        .set({ status: ProposalStatus.RevisionRequired, reviewedBy: operatorId, reviewedAt, reason })
-        .where(eq(projectEditProposals.id, proposalId))
-      await tx.insert(auditRecords).values({
-        projectId: proposal.projectId,
-        operatorId,
-        action: AuditAction.RequireRevision,
-        proposalId,
-        reason,
-      })
-    })
     return (await this.getProposal(proposalId))!
   }
 }

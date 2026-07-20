@@ -5,6 +5,7 @@ import { eq, inArray } from 'drizzle-orm'
 import { db } from '../../../src/db'
 import { projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
 import { projectModule, projectService } from '../../../src/modules/project'
+import { OperatorService } from '../../../src/modules/operator/service'
 import { UserIdentityService } from '../../../src/modules/user-identity/service'
 import { Role } from '../../../src/modules/user-identity/model'
 import { ProjectStatus } from '../../../src/modules/project/model'
@@ -53,6 +54,7 @@ function jsonHeaders(token: string) {
 describe('Project routes', () => {
   const app = createApp()
   const userIdentity = new UserIdentityService(db)
+  const operatorService = new OperatorService(db)
   const projectIds: number[] = []
   const proposalIds: number[] = []
   const userIds = [FOUNDER, OTHER_FOUNDER, OPERATOR]
@@ -236,7 +238,7 @@ describe('Project routes', () => {
       const created = await (await createProjectAs(userId, VALID_BODY)).json()
       projectIds.push(created.id)
       await submitAs(userId, created.id)
-      await projectService.approveProject(OPERATOR, created.id)
+      await operatorService.approveProject(OPERATOR, created.id)
       return created
     }
 
@@ -316,7 +318,7 @@ describe('Project routes', () => {
       const created = await (await createProjectAs(userId, VALID_BODY)).json()
       projectIds.push(created.id)
       await submitAs(userId, created.id)
-      await projectService.approveProject(OPERATOR, created.id)
+      await operatorService.approveProject(OPERATOR, created.id)
       const proposal = await projectService.createProposal(created.id, { name: 'Updated Name' })
       if ('id' in proposal) proposalIds.push(proposal.id)
       return { project: created, proposal }
@@ -387,7 +389,7 @@ describe('Project routes', () => {
       const created = await (await createProjectAs(userId, body)).json()
       projectIds.push(created.id)
       await submitAs(userId, created.id)
-      await projectService.approveProject(OPERATOR, created.id)
+      await operatorService.approveProject(OPERATOR, created.id)
       return created
     }
 
@@ -500,7 +502,7 @@ describe('Project routes', () => {
       const proposal = await projectService.createProposal(project.id, { tagline: 'updated tagline' })
       expect(proposal).not.toBeInstanceOf(Error)
       proposalIds.push((proposal as { id: number }).id)
-      await projectService.approveProposal(OPERATOR, (proposal as { id: number }).id)
+      await operatorService.approveProposal(OPERATOR, (proposal as { id: number }).id)
 
       const res = await app.handle(new Request('http://localhost/projects?sort=recently_updated&limit=5'))
       const body = await res.json()

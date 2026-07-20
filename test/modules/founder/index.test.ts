@@ -6,6 +6,7 @@ import { db } from '../../../src/db'
 import { auditRecords, projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
 import { founderModule } from '../../../src/modules/founder'
 import { projectService } from '../../../src/modules/project'
+import { OperatorService } from '../../../src/modules/operator/service'
 import { ProjectStatus, ProposalStatus } from '../../../src/modules/project/model'
 import { UserIdentityService } from '../../../src/modules/user-identity/service'
 import { Role } from '../../../src/modules/user-identity/model'
@@ -50,6 +51,7 @@ function authHeaders(token: string) {
 describe('Founder routes', () => {
   const app = createApp()
   const userIdentity = new UserIdentityService(db)
+  const operatorService = new OperatorService(db)
   const projectIds: number[] = []
   const userIds = [FOUNDER, OTHER_FOUNDER, NON_FOUNDER, OPERATOR]
   let founderToken: string
@@ -74,7 +76,7 @@ describe('Founder routes', () => {
 
   async function createLive(overrides: Record<string, unknown> = {}) {
     const project = await createPending({ ...VALID_PROJECT, ...overrides })
-    await projectService.approveProject(OPERATOR, project.id)
+    await operatorService.approveProject(OPERATOR, project.id)
     return (await projectService.getProject(project.id))!
   }
 
@@ -260,7 +262,7 @@ describe('Founder routes', () => {
   describe('GET /founder/projects/:id/audit-reason', () => {
     it('returns the reason for a revision-required project', async () => {
       const project = await createPending({ ...VALID_PROJECT, name: 'Reason Revision' })
-      await projectService.requireProjectRevision(OPERATOR, project.id, 'please fix the description')
+      await operatorService.requireProjectRevision(OPERATOR, project.id, 'please fix the description')
 
       const res = await founderGet(`/projects/${project.id}/audit-reason`)
       expect(res.status).toBe(200)
@@ -272,7 +274,7 @@ describe('Founder routes', () => {
 
     it('returns the reason for a rejected project', async () => {
       const project = await createPending({ ...VALID_PROJECT, name: 'Reason Reject' })
-      await projectService.rejectProject(OPERATOR, project.id, 'not a fit for the platform')
+      await operatorService.rejectProject(OPERATOR, project.id, 'not a fit for the platform')
 
       const res = await founderGet(`/projects/${project.id}/audit-reason`)
       expect(res.status).toBe(200)
@@ -283,7 +285,7 @@ describe('Founder routes', () => {
 
     it('returns the reason for a delisted project', async () => {
       const project = await createLive({ name: 'Reason Delist' })
-      await projectService.delistProject(OPERATOR, project.id, 'policy violation')
+      await operatorService.delistProject(OPERATOR, project.id, 'policy violation')
 
       const res = await founderGet(`/projects/${project.id}/audit-reason`)
       expect(res.status).toBe(200)
@@ -294,11 +296,11 @@ describe('Founder routes', () => {
 
     it('returns the latest reason when there are multiple', async () => {
       const project = await createPending({ ...VALID_PROJECT, name: 'Reason Latest' })
-      await projectService.requireProjectRevision(OPERATOR, project.id, 'first reason')
+      await operatorService.requireProjectRevision(OPERATOR, project.id, 'first reason')
       // Founder reworks and resubmits, operator requires revision again.
       await projectService.saveDraft(project.id, { description: 'improved description' })
       await projectService.submitForReview(project.id)
-      await projectService.requireProjectRevision(OPERATOR, project.id, 'second reason')
+      await operatorService.requireProjectRevision(OPERATOR, project.id, 'second reason')
 
       const res = await founderGet(`/projects/${project.id}/audit-reason`)
       expect(res.status).toBe(200)
@@ -322,7 +324,7 @@ describe('Founder routes', () => {
 
     it('returns 403 for another founder\'s project', async () => {
       const project = await createPending({ ...VALID_PROJECT, name: 'Owned By Founder' })
-      await projectService.rejectProject(OPERATOR, project.id, 'nope')
+      await operatorService.rejectProject(OPERATOR, project.id, 'nope')
       const res = await founderGet(`/projects/${project.id}/audit-reason`, otherToken)
       expect(res.status).toBe(403)
     })
@@ -345,7 +347,7 @@ describe('Founder routes', () => {
       const project = await createLive({ name: 'Proposal List', description: 'original description' })
       const proposal = await projectService.createProposal(project.id, { description: 'updated' })
       const proposalId = (proposal as { id: number }).id
-      await projectService.approveProposal(OPERATOR, proposalId)
+      await operatorService.approveProposal(OPERATOR, proposalId)
 
       const res = await founderGet(`/projects/${project.id}/proposals`)
       expect(res.status).toBe(200)

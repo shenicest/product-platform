@@ -3,7 +3,6 @@ import { dbPlugin } from '../../plugins/db'
 import { authPlugin } from '../../plugins/auth'
 import { roleGuardPlugin } from '../../plugins/role-guard'
 import { db } from '../../db'
-import { projectService } from '../project'
 import { OperatorService } from './service'
 import {
   InvalidTransitionError,
@@ -54,7 +53,7 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
   .prefix('model', 'Operator.')
   // ── Project-level review (first submission) ──────────────────────────
   .post('/projects/:id/approve', async ({ user, params }) => {
-    const result = await projectService.approveProject(user.userId, params.id)
+    const result = await operatorService.approveProject(user.userId, params.id)
     if (result instanceof ProjectNotFoundError) return status(404, errorBody(result))
     if (result instanceof InvalidTransitionError) return status(400, errorBody(result))
     return result
@@ -75,7 +74,7 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     },
   })
   .post('/projects/:id/require-revision', async ({ user, params, body }) => {
-    const result = await projectService.requireProjectRevision(user.userId, params.id, body.reason)
+    const result = await operatorService.requireProjectRevision(user.userId, params.id, body.reason)
     if (result instanceof ProjectNotFoundError) return status(404, errorBody(result))
     if (result instanceof InvalidTransitionError) return status(400, errorBody(result))
     return result
@@ -97,7 +96,7 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     },
   })
   .post('/projects/:id/reject', async ({ user, params, body }) => {
-    const result = await projectService.rejectProject(user.userId, params.id, body.reason)
+    const result = await operatorService.rejectProject(user.userId, params.id, body.reason)
     if (result instanceof ProjectNotFoundError) return status(404, errorBody(result))
     if (result instanceof InvalidTransitionError) return status(400, errorBody(result))
     return result
@@ -119,7 +118,7 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     },
   })
   .post('/projects/:id/delist', async ({ user, params, body }) => {
-    const result = await projectService.delistProject(user.userId, params.id, body.reason)
+    const result = await operatorService.delistProject(user.userId, params.id, body.reason)
     if (result instanceof ProjectNotFoundError) return status(404, errorBody(result))
     if (result instanceof InvalidTransitionError) return status(400, errorBody(result))
     return result
@@ -141,7 +140,7 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     },
   })
   .post('/projects/:id/restore', async ({ user, params }) => {
-    const result = await projectService.restoreProject(user.userId, params.id)
+    const result = await operatorService.restoreProject(user.userId, params.id)
     if (result instanceof ProjectNotFoundError) return status(404, errorBody(result))
     if (result instanceof InvalidTransitionError) return status(400, errorBody(result))
     return result
@@ -163,7 +162,7 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
   })
   // ── Proposal-level review (post-live edit) ───────────────────────────
   .post('/proposals/:proposalId/approve', async ({ user, params }) => {
-    const result = await projectService.approveProposal(user.userId, params.proposalId)
+    const result = await operatorService.approveProposal(user.userId, params.proposalId)
     if (result instanceof ProposalNotFoundError) return status(404, errorBody(result))
     if (result instanceof InvalidTransitionError) return status(400, errorBody(result))
     return result
@@ -184,7 +183,7 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     },
   })
   .post('/proposals/:proposalId/reject', async ({ user, params, body }) => {
-    const result = await projectService.rejectProposal(user.userId, params.proposalId, body.reason)
+    const result = await operatorService.rejectProposal(user.userId, params.proposalId, body.reason)
     if (result instanceof ProposalNotFoundError) return status(404, errorBody(result))
     if (result instanceof InvalidTransitionError) return status(400, errorBody(result))
     return result
@@ -206,7 +205,7 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     },
   })
   .post('/proposals/:proposalId/require-revision', async ({ user, params, body }) => {
-    const result = await projectService.requireProposalRevision(user.userId, params.proposalId, body.reason)
+    const result = await operatorService.requireProposalRevision(user.userId, params.proposalId, body.reason)
     if (result instanceof ProposalNotFoundError) return status(404, errorBody(result))
     if (result instanceof InvalidTransitionError) return status(400, errorBody(result))
     return result
@@ -261,7 +260,7 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     },
   })
   .get('/projects/:id/proposals', async ({ params }) => {
-    const project = await projectService.getProject(params.id)
+    const project = await operatorService.getProject(params.id)
     if (!project) return status(404, errorBody(new ProjectNotFoundError(params.id)))
     const data = await operatorService.listProjectProposals(params.id)
     return { data, total: data.length }
