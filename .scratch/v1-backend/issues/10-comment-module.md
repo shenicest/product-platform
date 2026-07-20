@@ -2,7 +2,7 @@
 
 **What to build:** APIs for users to submit comments on projects and for Founders/operators to view them. Comments are NOT publicly displayed in 1.0 — only visible to the project's Founder and operators. Machine-based content review runs asynchronously and sets `is_flagged` on violations. A user can submit multiple comments on the same project.
 
-**Blocked by:** 02 — Auth plugin, 04 — Project + ProjectRevision schema + core service
+**Blocked by:** 02 — Auth plugin, 04 — Project + ProjectEditProposal schema + core service
 
 **Status:** ready-for-agent
 

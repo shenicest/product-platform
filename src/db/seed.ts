@@ -3,9 +3,9 @@ import { UserIdentityService } from '../modules/user-identity/service'
 import { Role } from '../modules/user-identity/model'
 
 const OPERATOR_USER_ID = process.env.OPERATOR_USER_ID ?? 'operator-001'
+const service = new UserIdentityService(db)
 
 async function seed() {
-  const service = new UserIdentityService(db)
   await service.grantRole(OPERATOR_USER_ID, Role.Operator)
   console.log(`Seeded operator role for user: ${OPERATOR_USER_ID}`)
   process.exit(0)
