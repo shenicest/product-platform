@@ -16,3 +16,10 @@ export const roleGuardPlugin = new Elysia({ name: 'role-guard' })
       if (!isOperator) return status(403, { error: { code: ErrorCode.FORBIDDEN, message: ErrorMessage.FORBIDDEN } })
     },
   })
+  .macro('founderOnly', {
+    auth: true,
+    resolve: async ({ user }) => {
+      const isFounder = await userIdentityService.hasRole(user.userId, Role.Founder)
+      if (!isFounder) return status(403, { error: { code: ErrorCode.FORBIDDEN, message: ErrorMessage.FORBIDDEN } })
+    },
+  })
