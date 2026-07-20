@@ -1,16 +1,21 @@
 import { and, eq, inArray } from 'drizzle-orm'
 import { auditRecords, projectEditProposals, projects } from '../../db/schema'
 import type { Database } from '../../db'
+import { UserIdentityService } from '../user-identity/service'
+import { Role } from '../user-identity/model'
 import {
   AuditAction,
   DuplicateProposalError,
   EDITABLE_PROJECT_FIELD_SET,
   InvalidTransitionError,
+  MissingRequiredFieldError,
   ProjectNotFoundError,
   ProjectStatus,
   ProposalNotFoundError,
   ProposalStatus,
+  SUBMISSION_REQUIRED_FIELDS,
   ValidationError,
+  type SubmissionRequiredField,
 } from './model'
 
 type ProjectRow = typeof projects.$inferSelect
@@ -35,8 +40,26 @@ function pickEditable(data: Record<string, unknown>): ProjectUpdate {
   return result as ProjectUpdate
 }
 
+function isFieldEmpty(value: unknown): boolean {
+  if (value === null || value === undefined) return true
+  if (typeof value === 'string') return value.trim() === ''
+  if (Array.isArray(value)) return value.length === 0
+  return false
+}
+
+// Returns the first required field that is empty (in form-display order), or null
+// when the project is complete enough to submit. `betaDescription` is only required
+// when the project is open for beta.
+function findMissingRequiredField(project: ProjectRow): SubmissionRequiredField | 'betaDescription' | null {
+  for (const field of SUBMISSION_REQUIRED_FIELDS) {
+    if (isFieldEmpty(project[field])) return field
+  }
+  if (project.isOpenForBeta === true && isFieldEmpty(project.betaDescription)) return 'betaDescription'
+  return null
+}
+
 export class ProjectService {
-  constructor(private db: Database) {}
+  constructor(private db: Database, private userIdentity: UserIdentityService) {}
 
   async getProject(projectId: number): Promise<ProjectRow | null> {
     const rows = await this.db.select().from(projects).where(eq(projects.id, projectId)).limit(1)
@@ -54,6 +77,9 @@ export class ProjectService {
       userId,
       status: ProjectStatus.Draft,
     } as typeof projects.$inferInsert)
+    // Creating a project makes the user a Founder. grantRole is an idempotent
+    // upsert, so repeat creations by the same user are no-ops.
+    await this.userIdentity.grantRole(userId, Role.Founder)
     return (await this.getProject(result.insertId))!
   }
 
@@ -70,12 +96,14 @@ export class ProjectService {
     return (await this.getProject(projectId))!
   }
 
-  async submitForReview(projectId: number): Promise<ProjectRow | ProjectNotFoundError | InvalidTransitionError> {
+  async submitForReview(projectId: number): Promise<ProjectRow | ProjectNotFoundError | InvalidTransitionError | MissingRequiredFieldError> {
     const project = await this.getProject(projectId)
     if (!project) return new ProjectNotFoundError(projectId)
     if (project.status !== ProjectStatus.Draft && project.status !== ProjectStatus.RevisionRequired) {
       return new InvalidTransitionError(`Cannot submit: project is in status ${project.status}, expected Draft or Revision Required`)
     }
+    const missing = findMissingRequiredField(project)
+    if (missing) return new MissingRequiredFieldError(missing)
     await this.db.update(projects).set({ status: ProjectStatus.PendingReview }).where(eq(projects.id, projectId))
     return (await this.getProject(projectId))!
   }

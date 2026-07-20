@@ -2,6 +2,7 @@ import { Elysia, t } from 'elysia'
 import { openapi } from '@elysiajs/openapi'
 import { authModule } from './modules/auth'
 import { userIdentityModule } from './modules/user-identity'
+import { projectModule } from './modules/project'
 
 const app = new Elysia()
   .use(openapi({
@@ -13,6 +14,7 @@ const app = new Elysia()
       tags: [
         { name: 'Auth', description: 'Authentication' },
         { name: 'UserIdentity', description: 'User identity management' },
+        { name: 'Project', description: 'Project submission and lifecycle' },
       ],
       components: {
         securitySchemes: {
@@ -27,6 +29,7 @@ const app = new Elysia()
   }))
   .use(authModule)
   .use(userIdentityModule)
+  .use(projectModule)
   .get('/health', () => ({ status: 'ok' as const }), {
     detail: {
       summary: 'Health check',

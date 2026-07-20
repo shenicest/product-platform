@@ -1,11 +1,14 @@
 import { afterAll, describe, expect, it } from 'bun:test'
 import { and, eq, inArray } from 'drizzle-orm'
 import { db } from '../../../src/db'
-import { auditRecords, projectEditProposals, projects } from '../../../src/db/schema'
+import { auditRecords, projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
 import { ProjectService } from '../../../src/modules/project/service'
+import { UserIdentityService } from '../../../src/modules/user-identity/service'
+import { Role } from '../../../src/modules/user-identity/model'
 import {
   DuplicateProposalError,
   InvalidTransitionError,
+  MissingRequiredFieldError,
   ProjectNotFoundError,
   ProjectStatus,
   ProposalNotFoundError,
@@ -17,9 +20,28 @@ const TEST_FOUNDER = `test-founder-${crypto.randomUUID()}`
 const TEST_OPERATOR = `test-operator-${crypto.randomUUID()}`
 const NONEXISTENT_ID = 2_000_000_000
 
+// A complete project that passes submitForReview's required-field validation.
+const VALID_PROJECT: Record<string, unknown> = {
+  name: 'Test Project',
+  tagline: 'original tagline',
+  categories: ['效率工具'],
+  stage: 0,
+  coverUrl: 'https://example.com/cover.png',
+  description: 'original description',
+  targetUsers: '目标用户说明，至少二十个字的内容。',
+  userProblem: '用户遇到的问题说明，至少二十个字。',
+  progress: '当前进展说明，至少二十个字的内容。',
+  messageToUsers: '对用户说的话',
+  isOpenForBeta: false,
+  contactName: 'Tester',
+  contactPhone: '13800138000',
+}
+
 describe('ProjectService', () => {
-  const service = new ProjectService(db)
+  const userIdentity = new UserIdentityService(db)
+  const service = new ProjectService(db, userIdentity)
   const projectIds: number[] = []
+  const founderIds: string[] = [TEST_FOUNDER]
 
   async function createDraft(data: Record<string, unknown> = { name: 'Test Project' }) {
     const project = await service.createProject(TEST_FOUNDER, data)
@@ -27,18 +49,14 @@ describe('ProjectService', () => {
     return project
   }
 
-  async function createPending(data: Record<string, unknown> = { name: 'Test Project' }) {
+  async function createPending(data: Record<string, unknown> = VALID_PROJECT) {
     const project = await createDraft(data)
     await service.submitForReview(project.id)
     return (await service.getProject(project.id))!
   }
 
-  async function createLive(data: Record<string, unknown> = {
-    name: 'Live Project',
-    description: 'original description',
-    tagline: 'original tagline',
-  }) {
-    const project = await createPending(data)
+  async function createLive(overrides: Record<string, unknown> = {}) {
+    const project = await createPending({ ...VALID_PROJECT, ...overrides })
     await service.approveProject(TEST_OPERATOR, project.id)
     return (await service.getProject(project.id))!
   }
@@ -48,10 +66,14 @@ describe('ProjectService', () => {
   }
 
   afterAll(async () => {
-    if (projectIds.length === 0) return
-    await db.delete(auditRecords).where(inArray(auditRecords.projectId, projectIds))
-    await db.delete(projectEditProposals).where(inArray(projectEditProposals.projectId, projectIds))
-    await db.delete(projects).where(inArray(projects.id, projectIds))
+    if (projectIds.length > 0) {
+      await db.delete(auditRecords).where(inArray(auditRecords.projectId, projectIds))
+      await db.delete(projectEditProposals).where(inArray(projectEditProposals.projectId, projectIds))
+      await db.delete(projects).where(inArray(projects.id, projectIds))
+    }
+    if (founderIds.length > 0) {
+      await db.delete(userIdentities).where(inArray(userIdentities.userId, founderIds))
+    }
   })
 
   describe('createProject', () => {
@@ -72,13 +94,33 @@ describe('ProjectService', () => {
       expect(project.status).toBe(ProjectStatus.Draft)
       expect(project.userId).toBe(TEST_FOUNDER)
     })
+
+    it('grants the founder role when a project is created', async () => {
+      const founder = `test-founder-${crypto.randomUUID()}`
+      founderIds.push(founder)
+      expect(await userIdentity.hasRole(founder, Role.Founder)).toBe(false)
+      const project = await service.createProject(founder, { name: 'First Project' })
+      projectIds.push(project.id)
+      expect(await userIdentity.hasRole(founder, Role.Founder)).toBe(true)
+    })
+
+    it('grants the founder role idempotently across multiple projects', async () => {
+      const founder = `test-founder-${crypto.randomUUID()}`
+      founderIds.push(founder)
+      const first = await service.createProject(founder, { name: 'One' })
+      const second = await service.createProject(founder, { name: 'Two' })
+      projectIds.push(first.id, second.id)
+      const roles = await userIdentity.getRoles(founder)
+      expect(roles.filter((r) => r === Role.Founder)).toHaveLength(1)
+    })
   })
 
   describe('valid project status transitions', () => {
     it('0 → 1: submit a draft for review', async () => {
-      const project = await createDraft()
+      const project = await createDraft(VALID_PROJECT)
       const result = await service.submitForReview(project.id)
       expect(result).not.toBeInstanceOf(InvalidTransitionError)
+      expect(result).not.toBeInstanceOf(MissingRequiredFieldError)
       expect((result as { status: number }).status).toBe(ProjectStatus.PendingReview)
     })
 
@@ -196,6 +238,22 @@ describe('ProjectService', () => {
       expect(updated.description).toBe('draft body')
     })
 
+    it('saves draft multiple times on the same row (no new records)', async () => {
+      const project = await createDraft({ name: 'v1' })
+      await service.saveDraft(project.id, { name: 'v2', tagline: 'tagline' })
+      await service.saveDraft(project.id, { name: 'v3', description: 'body' })
+      const rows = await db
+        .select()
+        .from(projects)
+        .where(and(eq(projects.id, project.id), eq(projects.userId, TEST_FOUNDER)))
+      expect(rows).toHaveLength(1)
+      const after = await service.getProject(project.id)
+      expect(after!.id).toBe(project.id)
+      expect(after!.name).toBe('v3')
+      expect(after!.tagline).toBe('tagline')
+      expect(after!.description).toBe('body')
+    })
+
     it('allows editing while Revision Required', async () => {
       const project = await createPending()
       await service.requireProjectRevision(TEST_OPERATOR, project.id, 'fix it')
@@ -221,6 +279,55 @@ describe('ProjectService', () => {
       await service.saveDraft(project.id, { status: ProjectStatus.Live })
       const after = await service.getProject(project.id)
       expect(after!.status).toBe(ProjectStatus.Draft)
+    })
+  })
+
+  describe('submitForReview required-field validation', () => {
+    it('rejects submission with missing required fields, pointing to the first missing field', async () => {
+      const project = await createDraft({ name: 'Only Name' })
+      const result = await service.submitForReview(project.id)
+      expect(result).toBeInstanceOf(MissingRequiredFieldError)
+      expect((result as MissingRequiredFieldError).field).toBe('tagline')
+    })
+
+    it('reports the first missing field in form-display order', async () => {
+      const project = await createDraft({ ...VALID_PROJECT, categories: [] })
+      const result = await service.submitForReview(project.id)
+      expect(result).toBeInstanceOf(MissingRequiredFieldError)
+      expect((result as MissingRequiredFieldError).field).toBe('categories')
+    })
+
+    it('treats whitespace-only strings as empty', async () => {
+      const project = await createDraft({ ...VALID_PROJECT, description: '   ' })
+      const result = await service.submitForReview(project.id)
+      expect(result).toBeInstanceOf(MissingRequiredFieldError)
+      expect((result as MissingRequiredFieldError).field).toBe('description')
+    })
+
+    it('does not transition status when a required field is missing', async () => {
+      const project = await createDraft({ name: 'Only Name' })
+      await service.submitForReview(project.id)
+      const after = await service.getProject(project.id)
+      expect(after!.status).toBe(ProjectStatus.Draft)
+    })
+
+    it('requires betaDescription when open for beta', async () => {
+      const project = await createDraft({ ...VALID_PROJECT, isOpenForBeta: true })
+      const result = await service.submitForReview(project.id)
+      expect(result).toBeInstanceOf(MissingRequiredFieldError)
+      expect((result as MissingRequiredFieldError).field).toBe('betaDescription')
+    })
+
+    it('submits when open for beta with betaDescription filled', async () => {
+      const project = await createDraft({ ...VALID_PROJECT, isOpenForBeta: true, betaDescription: 'beta details' })
+      const result = await service.submitForReview(project.id)
+      expect((result as { status: number }).status).toBe(ProjectStatus.PendingReview)
+    })
+
+    it('submits a fully valid project', async () => {
+      const project = await createDraft(VALID_PROJECT)
+      const result = await service.submitForReview(project.id)
+      expect((result as { status: number }).status).toBe(ProjectStatus.PendingReview)
     })
   })
 

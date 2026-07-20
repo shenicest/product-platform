@@ -67,6 +67,50 @@ export const EDITABLE_PROJECT_FIELD_SET = new Set<string>(EDITABLE_PROJECT_FIELD
 export const ProjectChanges = t.Partial(t.Pick(InsertProject, [...EDITABLE_PROJECT_FIELDS]))
 export type ProjectChanges = Partial<Pick<SelectProject, EditableProjectField>>
 
+// Fields that must be filled before a Project can be submitted for review, ordered
+// as the submission form displays them so the first missing field reported matches
+// what the Founder sees. `betaDescription` is conditionally required when
+// `isOpenForBeta` is true and is checked separately in the service.
+export const SUBMISSION_REQUIRED_FIELDS = [
+  'name',
+  'tagline',
+  'categories',
+  'stage',
+  'coverUrl',
+  'description',
+  'targetUsers',
+  'userProblem',
+  'progress',
+  'messageToUsers',
+  'isOpenForBeta',
+  'contactName',
+  'contactPhone',
+] as const
+export type SubmissionRequiredField = (typeof SUBMISSION_REQUIRED_FIELDS)[number]
+
+// Create + save-draft body: `name` is required (the minimum field), every other
+// editable field is optional so a Founder can fill the project in incrementally.
+// `name` stays required because InsertProject marks the not-null column required.
+export const ProjectDraftBody = t.Pick(InsertProject, [...EDITABLE_PROJECT_FIELDS])
+export type ProjectDraftBody = typeof ProjectDraftBody.static
+
+export const ProjectIdParams = t.Object({
+  id: t.Numeric(),
+})
+export type ProjectIdParams = typeof ProjectIdParams.static
+
+export const ProjectResponse = SelectProject
+export type ProjectResponse = typeof ProjectResponse.static
+
+export const FieldErrorResponse = t.Object({
+  error: t.Object({
+    code: t.String(),
+    message: t.String(),
+    field: t.String(),
+  }),
+})
+export type FieldErrorResponse = typeof FieldErrorResponse.static
+
 export class DomainError extends Error {
   readonly code: string
 
@@ -104,6 +148,15 @@ export class ForbiddenError extends DomainError {
 export class ValidationError extends DomainError {
   constructor(message: string) {
     super('VALIDATION_ERROR', message)
+  }
+}
+
+export class MissingRequiredFieldError extends DomainError {
+  readonly field: string
+
+  constructor(field: string) {
+    super('MISSING_REQUIRED_FIELD', `Missing required field: ${field}`)
+    this.field = field
   }
 }
 
