@@ -3,8 +3,8 @@ import { Elysia } from 'elysia'
 import { jwt } from '@elysiajs/jwt'
 import { eq, inArray } from 'drizzle-orm'
 import { db } from '../../../src/db'
-import { projects, userIdentities } from '../../../src/db/schema'
-import { projectModule } from '../../../src/modules/project'
+import { projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
+import { projectModule, projectService } from '../../../src/modules/project'
 import { UserIdentityService } from '../../../src/modules/user-identity/service'
 import { Role } from '../../../src/modules/user-identity/model'
 import { ProjectStatus } from '../../../src/modules/project/model'
@@ -12,6 +12,7 @@ import { ProjectStatus } from '../../../src/modules/project/model'
 const TEST_SECRET = 'dev-secret-change-in-production'
 const FOUNDER = `test-founder-${crypto.randomUUID()}`
 const OTHER_FOUNDER = `test-founder-${crypto.randomUUID()}`
+const OPERATOR = `test-operator-${crypto.randomUUID()}`
 const NONEXISTENT_ID = 2_000_000_000
 
 // A complete project body that passes submitForReview's required-field validation.
@@ -53,7 +54,8 @@ describe('Project routes', () => {
   const app = createApp()
   const userIdentity = new UserIdentityService(db)
   const projectIds: number[] = []
-  const founderIds = [FOUNDER, OTHER_FOUNDER]
+  const proposalIds: number[] = []
+  const userIds = [FOUNDER, OTHER_FOUNDER, OPERATOR]
 
   async function createProjectAs(userId: string, body: Record<string, unknown>) {
     const token = await signToken({ user_id: userId })
@@ -88,11 +90,14 @@ describe('Project routes', () => {
   }
 
   afterAll(async () => {
+    if (proposalIds.length > 0) {
+      await db.delete(projectEditProposals).where(inArray(projectEditProposals.id, proposalIds))
+    }
     if (projectIds.length > 0) {
       await db.delete(projects).where(inArray(projects.id, projectIds))
     }
-    if (founderIds.length > 0) {
-      await db.delete(userIdentities).where(inArray(userIdentities.userId, founderIds))
+    if (userIds.length > 0) {
+      await db.delete(userIdentities).where(inArray(userIdentities.userId, userIds))
     }
   })
 
@@ -222,6 +227,156 @@ describe('Project routes', () => {
 
     it('returns 404 for a missing project', async () => {
       const res = await submitAs(FOUNDER, NONEXISTENT_ID)
+      expect(res.status).toBe(404)
+    })
+  })
+
+  describe('GET /projects/:id', () => {
+    async function createLiveProject(userId: string) {
+      const created = await (await createProjectAs(userId, VALID_BODY)).json()
+      projectIds.push(created.id)
+      await submitAs(userId, created.id)
+      await projectService.approveProject(OPERATOR, created.id)
+      return created
+    }
+
+    it('returns a Live project without authentication', async () => {
+      const created = await createLiveProject(FOUNDER)
+      const res = await app.handle(
+        new Request(`http://localhost/projects/${created.id}`),
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.id).toBe(created.id)
+      expect(body.status).toBe(ProjectStatus.Live)
+      expect(body.name).toBe(VALID_BODY.name)
+    })
+
+    it('returns 404 for a non-Live project without authentication', async () => {
+      const created = await (await createProjectAs(FOUNDER, { name: 'Draft' })).json()
+      projectIds.push(created.id)
+      const res = await app.handle(
+        new Request(`http://localhost/projects/${created.id}`),
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it('returns 404 for a non-Live project as a non-owner authenticated user', async () => {
+      const created = await (await createProjectAs(FOUNDER, { name: 'Draft' })).json()
+      projectIds.push(created.id)
+      const token = await signToken({ user_id: OTHER_FOUNDER })
+      const res = await app.handle(
+        new Request(`http://localhost/projects/${created.id}`, {
+          headers: authHeaders(token),
+        }),
+      )
+      expect(res.status).toBe(404)
+    })
+
+    it('returns a non-Live project to the owning founder', async () => {
+      const created = await (await createProjectAs(FOUNDER, { name: 'My Draft' })).json()
+      projectIds.push(created.id)
+      const token = await signToken({ user_id: FOUNDER })
+      const res = await app.handle(
+        new Request(`http://localhost/projects/${created.id}`, {
+          headers: authHeaders(token),
+        }),
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.id).toBe(created.id)
+      expect(body.status).toBe(ProjectStatus.Draft)
+    })
+
+    it('returns any project to an operator', async () => {
+      const created = await (await createProjectAs(FOUNDER, { name: 'Draft' })).json()
+      projectIds.push(created.id)
+      await userIdentity.grantRole(OPERATOR, Role.Operator)
+      const token = await signToken({ user_id: OPERATOR })
+      const res = await app.handle(
+        new Request(`http://localhost/projects/${created.id}`, {
+          headers: authHeaders(token),
+        }),
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.id).toBe(created.id)
+    })
+
+    it('returns 404 for a non-existent project', async () => {
+      const res = await app.handle(
+        new Request(`http://localhost/projects/${NONEXISTENT_ID}`),
+      )
+      expect(res.status).toBe(404)
+    })
+  })
+
+  describe('GET /projects/:id/proposals', () => {
+    async function createLiveProjectWithProposal(userId: string) {
+      const created = await (await createProjectAs(userId, VALID_BODY)).json()
+      projectIds.push(created.id)
+      await submitAs(userId, created.id)
+      await projectService.approveProject(OPERATOR, created.id)
+      const proposal = await projectService.createProposal(created.id, { name: 'Updated Name' })
+      if ('id' in proposal) proposalIds.push(proposal.id)
+      return { project: created, proposal }
+    }
+
+    it('returns 401 without authentication', async () => {
+      const { project } = await createLiveProjectWithProposal(FOUNDER)
+      const res = await app.handle(
+        new Request(`http://localhost/projects/${project.id}/proposals`),
+      )
+      expect(res.status).toBe(401)
+    })
+
+    it('returns proposals to the owning founder', async () => {
+      const { project, proposal } = await createLiveProjectWithProposal(FOUNDER)
+      const token = await signToken({ user_id: FOUNDER })
+      const res = await app.handle(
+        new Request(`http://localhost/projects/${project.id}/proposals`, {
+          headers: authHeaders(token),
+        }),
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.total).toBe(1)
+      expect(body.data[0].id).toBe((proposal as { id: number }).id)
+      expect(body.data[0].changes).toEqual({ name: 'Updated Name' })
+    })
+
+    it('returns proposals to an operator', async () => {
+      const { project } = await createLiveProjectWithProposal(FOUNDER)
+      await userIdentity.grantRole(OPERATOR, Role.Operator)
+      const token = await signToken({ user_id: OPERATOR })
+      const res = await app.handle(
+        new Request(`http://localhost/projects/${project.id}/proposals`, {
+          headers: authHeaders(token),
+        }),
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.total).toBeGreaterThanOrEqual(1)
+    })
+
+    it('returns 403 for a non-owner non-operator', async () => {
+      const { project } = await createLiveProjectWithProposal(FOUNDER)
+      const token = await signToken({ user_id: OTHER_FOUNDER })
+      const res = await app.handle(
+        new Request(`http://localhost/projects/${project.id}/proposals`, {
+          headers: authHeaders(token),
+        }),
+      )
+      expect(res.status).toBe(403)
+    })
+
+    it('returns 404 for a non-existent project', async () => {
+      const token = await signToken({ user_id: FOUNDER })
+      const res = await app.handle(
+        new Request(`http://localhost/projects/${NONEXISTENT_ID}/proposals`, {
+          headers: authHeaders(token),
+        }),
+      )
       expect(res.status).toBe(404)
     })
   })

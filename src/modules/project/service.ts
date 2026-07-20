@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import { auditRecords, projectEditProposals, projects } from '../../db/schema'
 import type { Database } from '../../db'
 import { UserIdentityService } from '../user-identity/service'
@@ -7,6 +7,7 @@ import {
   AuditAction,
   DuplicateProposalError,
   EDITABLE_PROJECT_FIELD_SET,
+  ForbiddenError,
   InvalidTransitionError,
   MissingRequiredFieldError,
   ProjectNotFoundError,
@@ -69,6 +70,31 @@ export class ProjectService {
   async getProposal(proposalId: number): Promise<ProposalRow | null> {
     const rows = await this.db.select().from(projectEditProposals).where(eq(projectEditProposals.id, proposalId)).limit(1)
     return rows[0] ?? null
+  }
+
+  async listProposals(projectId: number): Promise<ProposalRow[]> {
+    return this.db
+      .select()
+      .from(projectEditProposals)
+      .where(eq(projectEditProposals.projectId, projectId))
+      .orderBy(desc(projectEditProposals.createdAt))
+  }
+
+  async getVisibleProject(userId: string | null, projectId: number): Promise<ProjectRow | ProjectNotFoundError> {
+    const project = await this.getProject(projectId)
+    if (!project) return new ProjectNotFoundError(projectId)
+    if (project.status === ProjectStatus.Live) return project
+    if (userId && project.userId === userId) return project
+    if (userId && await this.userIdentity.hasRole(userId, Role.Operator)) return project
+    return new ProjectNotFoundError(projectId)
+  }
+
+  async getProjectForProposals(userId: string, projectId: number): Promise<ProjectRow | ProjectNotFoundError | ForbiddenError> {
+    const project = await this.getProject(projectId)
+    if (!project) return new ProjectNotFoundError(projectId)
+    if (project.userId === userId) return project
+    if (await this.userIdentity.hasRole(userId, Role.Operator)) return project
+    return new ForbiddenError()
   }
 
   async createProject(userId: string, data: Record<string, unknown>): Promise<ProjectRow> {

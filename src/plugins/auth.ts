@@ -29,3 +29,17 @@ export const authPlugin = new Elysia({ name: 'auth' })
       return { user: { userId: payload.user_id } satisfies AuthUser }
     },
   })
+  .macro('optionalAuth', {
+    resolve: async ({ jwt, headers }) => {
+      try {
+        const authorization = headers.authorization
+        if (!authorization?.startsWith('Bearer ')) return { user: null as AuthUser | null }
+        const token = authorization.slice(7)
+        const payload = await jwt.verify(token)
+        if (!payload || typeof payload.user_id !== 'string') return { user: null as AuthUser | null }
+        return { user: { userId: payload.user_id } as AuthUser | null }
+      } catch {
+        return { user: null as AuthUser | null }
+      }
+    },
+  })

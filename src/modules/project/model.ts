@@ -1,5 +1,5 @@
 import { t } from 'elysia'
-import { InsertProject, SelectProject } from '../../db/schema'
+import { InsertProject, SelectProject, SelectProjectEditProposal } from '../../db/schema'
 
 export const ProjectStatus = {
   Draft: 0,
@@ -110,6 +110,12 @@ export const FieldErrorResponse = t.Object({
   }),
 })
 export type FieldErrorResponse = typeof FieldErrorResponse.static
+
+export const ProposalListResponse = t.Object({
+  data: t.Array(SelectProjectEditProposal),
+  total: t.Number(),
+})
+export type ProposalListResponse = typeof ProposalListResponse.static
 
 export class DomainError extends Error {
   readonly code: string

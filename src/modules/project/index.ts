@@ -5,12 +5,14 @@ import { db } from '../../db'
 import { userIdentityService } from '../user-identity'
 import { ProjectService } from './service'
 import {
+  ForbiddenError,
   InvalidTransitionError,
   MissingRequiredFieldError,
   ProjectDraftBody,
   ProjectIdParams,
   ProjectNotFoundError,
   ProjectResponse,
+  ProposalListResponse,
   FieldErrorResponse,
   type DomainError,
 } from './model'
@@ -34,6 +36,7 @@ export const projectModule = new Elysia()
     ProjectIdParams,
     ProjectDraftBody,
     FieldErrorResponse,
+    ProposalListResponse,
   })
   .prefix('model', 'Project.')
   .post('/projects', async ({ user, body }) => {
@@ -102,5 +105,44 @@ export const projectModule = new Elysia()
       403: ErrorResponse,
       404: ErrorResponse,
       422: 'Project.FieldErrorResponse',
+    },
+  })
+  .get('/projects/:id', async ({ params, user }) => {
+    const result = await projectService.getVisibleProject(user?.userId ?? null, params.id)
+    if (result instanceof ProjectNotFoundError) return status(404, errorBody(result))
+    return result
+  }, {
+    optionalAuth: true,
+    detail: {
+      summary: 'Get project detail',
+      description: 'Returns the project content. Live projects are public. Non-Live projects are only visible to the owning founder or an operator.',
+      tags: ['Project'],
+    },
+    params: 'Project.ProjectIdParams',
+    response: {
+      200: 'Project.ProjectResponse',
+      404: ErrorResponse,
+    },
+  })
+  .get('/projects/:id/proposals', async ({ user, params }) => {
+    const result = await projectService.getProjectForProposals(user.userId, params.id)
+    if (result instanceof ProjectNotFoundError) return status(404, errorBody(result))
+    if (result instanceof ForbiddenError) return status(403, forbiddenBody())
+
+    const data = await projectService.listProposals(params.id)
+    return { data, total: data.length }
+  }, {
+    auth: true,
+    detail: {
+      summary: 'List project proposals',
+      description: 'Returns the proposal history for a project. Accessible to the owning founder or an operator.',
+      tags: ['Project'],
+    },
+    params: 'Project.ProjectIdParams',
+    response: {
+      200: 'Project.ProposalListResponse',
+      401: ErrorResponse,
+      403: ErrorResponse,
+      404: ErrorResponse,
     },
   })
