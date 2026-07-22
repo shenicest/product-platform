@@ -6,9 +6,8 @@ import {
   InvalidTransitionError,
   ProjectNotFoundError,
   ProjectStatus,
-  ProposalNotFoundError,
-  ProposalStatus,
 } from '../project/model'
+import { ProposalNotFoundError, ProposalStatus } from '../proposal/model'
 import type { AuditRecordQuery, OperatorProjectQuery, OperatorProposalQuery } from './model'
 
 type ProjectRow = typeof projects.$inferSelect

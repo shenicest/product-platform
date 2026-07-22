@@ -3,6 +3,7 @@ import { openapi } from '@elysiajs/openapi'
 import { authModule } from './modules/auth'
 import { userIdentityModule } from './modules/user-identity'
 import { projectModule } from './modules/project'
+import { proposalModule } from './modules/proposal'
 import { operatorModule } from './modules/operator'
 import { founderModule } from './modules/founder'
 
@@ -17,6 +18,7 @@ const app = new Elysia()
         { name: 'Auth', description: 'Authentication' },
         { name: 'UserIdentity', description: 'User identity management' },
         { name: 'Project', description: 'Project submission and lifecycle' },
+        { name: 'Proposal', description: 'Post-live edit proposals' },
         { name: 'Founder', description: 'Founder dashboard — own projects, stats, and proposals' },
         { name: 'Operator', description: 'Operator review, management, and statistics' },
       ],
@@ -34,6 +36,7 @@ const app = new Elysia()
   .use(authModule)
   .use(userIdentityModule)
   .use(projectModule)
+  .use(proposalModule)
   .use(founderModule)
   .use(operatorModule)
   .get('/health', () => ({ status: 'ok' as const }), {

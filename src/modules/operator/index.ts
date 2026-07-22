@@ -9,9 +9,9 @@ import {
   ProjectIdParams,
   ProjectNotFoundError,
   ProjectResponse,
-  ProposalNotFoundError,
   type DomainError,
 } from '../project/model'
+import { ProposalNotFoundError } from '../proposal/model'
 import { ErrorCode, ErrorMessage, ErrorResponse } from '../../common'
 import {
   AuditRecordListResponse,

@@ -6,10 +6,12 @@ import { db } from '../../../src/db'
 import { auditRecords, projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
 import { operatorModule } from '../../../src/modules/operator'
 import { projectService } from '../../../src/modules/project'
+import { proposalService } from '../../../src/modules/proposal'
 import { OperatorService } from '../../../src/modules/operator/service'
 import { UserIdentityService } from '../../../src/modules/user-identity/service'
 import { Role } from '../../../src/modules/user-identity/model'
-import { ProjectStatus, ProposalStatus } from '../../../src/modules/project/model'
+import { ProjectStatus } from '../../../src/modules/project/model'
+import { ProposalStatus } from '../../../src/modules/proposal/model'
 
 const TEST_SECRET = 'dev-secret-change-in-production'
 const OPERATOR = `test-operator-${crypto.randomUUID()}`
@@ -237,7 +239,7 @@ describe('Operator routes', () => {
   describe('POST /operator/proposals/:proposalId/approve', () => {
     it('approves a pending proposal and applies the diff (0 → 1)', async () => {
       const project = await createLive({ description: 'original description' })
-      const proposal = await projectService.createProposal(project.id, { description: 'updated' })
+      const proposal = await proposalService.createProposal(project.id, { description: 'updated' })
       const proposalId = (proposal as { id: number }).id
       const res = await operatorPost(`/proposals/${proposalId}/approve`)
       expect(res.status).toBe(200)
@@ -250,7 +252,7 @@ describe('Operator routes', () => {
 
     it('returns 400 when approving an already-approved proposal', async () => {
       const project = await createLive()
-      const proposal = await projectService.createProposal(project.id, { description: 'x' })
+      const proposal = await proposalService.createProposal(project.id, { description: 'x' })
       const proposalId = (proposal as { id: number }).id
       await operatorPost(`/proposals/${proposalId}/approve`)
       const res = await operatorPost(`/proposals/${proposalId}/approve`)
@@ -266,7 +268,7 @@ describe('Operator routes', () => {
   describe('POST /operator/proposals/:proposalId/reject', () => {
     it('rejects a pending proposal (0 → 2), project unchanged', async () => {
       const project = await createLive({ description: 'original description' })
-      const proposal = await projectService.createProposal(project.id, { description: 'updated' })
+      const proposal = await proposalService.createProposal(project.id, { description: 'updated' })
       const proposalId = (proposal as { id: number }).id
       const res = await operatorPost(`/proposals/${proposalId}/reject`, { reason: 'no thanks' })
       expect(res.status).toBe(200)
@@ -277,7 +279,7 @@ describe('Operator routes', () => {
 
     it('returns 400 when rejecting an already-rejected proposal', async () => {
       const project = await createLive()
-      const proposal = await projectService.createProposal(project.id, { description: 'x' })
+      const proposal = await proposalService.createProposal(project.id, { description: 'x' })
       const proposalId = (proposal as { id: number }).id
       await operatorPost(`/proposals/${proposalId}/reject`, { reason: 'no' })
       const res = await operatorPost(`/proposals/${proposalId}/reject`, { reason: 'no again' })
@@ -288,7 +290,7 @@ describe('Operator routes', () => {
   describe('POST /operator/proposals/:proposalId/require-revision', () => {
     it('requires revision on a pending proposal (0 → 3)', async () => {
       const project = await createLive()
-      const proposal = await projectService.createProposal(project.id, { description: 'x' })
+      const proposal = await proposalService.createProposal(project.id, { description: 'x' })
       const proposalId = (proposal as { id: number }).id
       const res = await operatorPost(`/proposals/${proposalId}/require-revision`, { reason: 'clarify' })
       expect(res.status).toBe(200)
@@ -297,7 +299,7 @@ describe('Operator routes', () => {
 
     it('returns 400 when requiring revision on an approved proposal', async () => {
       const project = await createLive()
-      const proposal = await projectService.createProposal(project.id, { description: 'x' })
+      const proposal = await proposalService.createProposal(project.id, { description: 'x' })
       const proposalId = (proposal as { id: number }).id
       await operatorPost(`/proposals/${proposalId}/approve`)
       const res = await operatorPost(`/proposals/${proposalId}/require-revision`, { reason: 'x' })
@@ -329,7 +331,7 @@ describe('Operator routes', () => {
 
     it('proposal-level approve sets proposalId', async () => {
       const project = await createLive()
-      const proposal = await projectService.createProposal(project.id, { description: 'x' })
+      const proposal = await proposalService.createProposal(project.id, { description: 'x' })
       const proposalId = (proposal as { id: number }).id
       await operatorPost(`/proposals/${proposalId}/approve`)
       const rows = await db.select().from(auditRecords).where(eq(auditRecords.projectId, project.id))
@@ -340,7 +342,7 @@ describe('Operator routes', () => {
 
     it('proposal-level reject records reason and proposalId', async () => {
       const project = await createLive()
-      const proposal = await projectService.createProposal(project.id, { description: 'x' })
+      const proposal = await proposalService.createProposal(project.id, { description: 'x' })
       const proposalId = (proposal as { id: number }).id
       await operatorPost(`/proposals/${proposalId}/reject`, { reason: 'nope' })
       const rows = await db.select().from(auditRecords).where(eq(auditRecords.projectId, project.id))
@@ -416,11 +418,11 @@ describe('Operator routes', () => {
   describe('GET /operator/proposals', () => {
     it('lists only pending proposals', async () => {
       const project = await createLive()
-      const proposal = await projectService.createProposal(project.id, { description: 'pending one' })
+      const proposal = await proposalService.createProposal(project.id, { description: 'pending one' })
       const proposalId = (proposal as { id: number }).id
 
       const project2 = await createLive()
-      const proposal2 = await projectService.createProposal(project2.id, { description: 'approved one' })
+      const proposal2 = await proposalService.createProposal(project2.id, { description: 'approved one' })
       await operatorService.approveProposal(OPERATOR, (proposal2 as { id: number }).id)
 
       const res = await operatorGet('/proposals')
@@ -433,7 +435,7 @@ describe('Operator routes', () => {
 
     it('filters by projectId', async () => {
       const project = await createLive()
-      const proposal = await projectService.createProposal(project.id, { description: 'filtered' })
+      const proposal = await proposalService.createProposal(project.id, { description: 'filtered' })
       const proposalId = (proposal as { id: number }).id
       const res = await operatorGet(`/proposals?projectId=${project.id}`)
       expect(res.status).toBe(200)
@@ -446,9 +448,9 @@ describe('Operator routes', () => {
   describe('GET /operator/projects/:id/proposals', () => {
     it('lists all proposals for a project (any status)', async () => {
       const project = await createLive()
-      const p1 = await projectService.createProposal(project.id, { description: 'first' })
+      const p1 = await proposalService.createProposal(project.id, { description: 'first' })
       await operatorService.approveProposal(OPERATOR, (p1 as { id: number }).id)
-      const p2 = await projectService.createProposal(project.id, { description: 'second' })
+      const p2 = await proposalService.createProposal(project.id, { description: 'second' })
 
       const res = await operatorGet(`/projects/${project.id}/proposals`)
       expect(res.status).toBe(200)

@@ -1,5 +1,5 @@
 import { t } from 'elysia'
-import { InsertProject, SelectProject, SelectProjectEditProposal } from '../../db/schema'
+import { InsertProject, SelectProject } from '../../db/schema'
 
 export const ProjectStatus = {
   Draft: 0,
@@ -10,14 +10,6 @@ export const ProjectStatus = {
   Rejected: 5,
 } as const
 export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus]
-
-export const ProposalStatus = {
-  Pending: 0,
-  Approved: 1,
-  Rejected: 2,
-  RevisionRequired: 3,
-} as const
-export type ProposalStatus = (typeof ProposalStatus)[keyof typeof ProposalStatus]
 
 export const ProjectStage = {
   MVP: 0,
@@ -64,9 +56,6 @@ export type EditableProjectField = (typeof EDITABLE_PROJECT_FIELDS)[number]
 
 export const EDITABLE_PROJECT_FIELD_SET = new Set<string>(EDITABLE_PROJECT_FIELDS)
 
-export const ProjectChanges = t.Partial(t.Pick(InsertProject, [...EDITABLE_PROJECT_FIELDS]))
-export type ProjectChanges = Partial<Pick<SelectProject, EditableProjectField>>
-
 // Fields that must be filled before a Project can be submitted for review, ordered
 // as the submission form displays them so the first missing field reported matches
 // what the Founder sees. `betaDescription` is conditionally required when
@@ -111,12 +100,6 @@ export const FieldErrorResponse = t.Object({
 })
 export type FieldErrorResponse = typeof FieldErrorResponse.static
 
-export const ProposalListResponse = t.Object({
-  data: t.Array(SelectProjectEditProposal),
-  total: t.Number(),
-})
-export type ProposalListResponse = typeof ProposalListResponse.static
-
 export const ProjectListQuery = t.Object({
   category: t.Optional(t.String()),
   stage: t.Optional(t.Numeric()),
@@ -149,12 +132,6 @@ export class ProjectNotFoundError extends DomainError {
   }
 }
 
-export class ProposalNotFoundError extends DomainError {
-  constructor(proposalId: number) {
-    super('PROPOSAL_NOT_FOUND', `Proposal ${proposalId} not found`)
-  }
-}
-
 export class InvalidTransitionError extends DomainError {
   constructor(message: string) {
     super('INVALID_TRANSITION', message)
@@ -167,23 +144,11 @@ export class ForbiddenError extends DomainError {
   }
 }
 
-export class ValidationError extends DomainError {
-  constructor(message: string) {
-    super('VALIDATION_ERROR', message)
-  }
-}
-
 export class MissingRequiredFieldError extends DomainError {
   readonly field: string
 
   constructor(field: string) {
     super('MISSING_REQUIRED_FIELD', `Missing required field: ${field}`)
     this.field = field
-  }
-}
-
-export class DuplicateProposalError extends DomainError {
-  constructor(projectId: number) {
-    super('DUPLICATE_PROPOSAL', `Project ${projectId} already has a pending or revision-required proposal`)
   }
 }

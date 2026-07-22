@@ -6,8 +6,10 @@ import { db } from '../../../src/db'
 import { auditRecords, projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
 import { founderModule } from '../../../src/modules/founder'
 import { projectService } from '../../../src/modules/project'
+import { proposalService } from '../../../src/modules/proposal'
 import { OperatorService } from '../../../src/modules/operator/service'
-import { ProjectStatus, ProposalStatus } from '../../../src/modules/project/model'
+import { ProjectStatus } from '../../../src/modules/project/model'
+import { ProposalStatus } from '../../../src/modules/proposal/model'
 import { UserIdentityService } from '../../../src/modules/user-identity/service'
 import { Role } from '../../../src/modules/user-identity/model'
 
@@ -345,7 +347,7 @@ describe('Founder routes', () => {
   describe('GET /founder/projects/:id/proposals', () => {
     it('lists the founder\'s own proposals with status, changes, reason, reviewed_at', async () => {
       const project = await createLive({ name: 'Proposal List', description: 'original description' })
-      const proposal = await projectService.createProposal(project.id, { description: 'updated' })
+      const proposal = await proposalService.createProposal(project.id, { description: 'updated' })
       const proposalId = (proposal as { id: number }).id
       await operatorService.approveProposal(OPERATOR, proposalId)
 
@@ -361,7 +363,7 @@ describe('Founder routes', () => {
 
     it('returns 403 for another founder\'s project', async () => {
       const project = await createLive({ name: 'Proposal Owned' })
-      await projectService.createProposal(project.id, { description: 'x' })
+      await proposalService.createProposal(project.id, { description: 'x' })
       const res = await founderGet(`/projects/${project.id}/proposals`, otherToken)
       expect(res.status).toBe(403)
     })

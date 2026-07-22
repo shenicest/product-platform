@@ -1,19 +1,16 @@
 import { afterAll, describe, expect, it } from 'bun:test'
 import { and, eq, inArray } from 'drizzle-orm'
 import { db } from '../../../src/db'
-import { auditRecords, projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
+import { auditRecords, projects, userIdentities } from '../../../src/db/schema'
 import { ProjectService } from '../../../src/modules/project/service'
 import { OperatorService } from '../../../src/modules/operator/service'
 import { UserIdentityService } from '../../../src/modules/user-identity/service'
 import { Role } from '../../../src/modules/user-identity/model'
 import {
-  DuplicateProposalError,
   InvalidTransitionError,
   MissingRequiredFieldError,
   ProjectNotFoundError,
   ProjectStatus,
-  ProposalStatus,
-  ValidationError,
 } from '../../../src/modules/project/model'
 
 const TEST_FOUNDER = `test-founder-${crypto.randomUUID()}`
@@ -69,7 +66,6 @@ describe('ProjectService', () => {
   afterAll(async () => {
     if (projectIds.length > 0) {
       await db.delete(auditRecords).where(inArray(auditRecords.projectId, projectIds))
-      await db.delete(projectEditProposals).where(inArray(projectEditProposals.projectId, projectIds))
       await db.delete(projects).where(inArray(projects.id, projectIds))
     }
     if (founderIds.length > 0) {
@@ -254,113 +250,6 @@ describe('ProjectService', () => {
       const project = await createDraft(VALID_PROJECT)
       const result = await service.submitForReview(project.id)
       expect((result as { status: number }).status).toBe(ProjectStatus.PendingReview)
-    })
-  })
-
-  describe('proposal lifecycle (founder side)', () => {
-    it('creates a pending proposal on a live project, leaving the project row untouched', async () => {
-      const project = await createLive()
-      const before = await service.getProject(project.id)
-      const proposal = await service.createProposal(project.id, { description: 'proposed change' })
-      expect(proposal).not.toBeInstanceOf(InvalidTransitionError)
-      const row = proposal as { status: number; projectId: number; changes: Record<string, unknown> }
-      expect(row.status).toBe(ProposalStatus.Pending)
-      expect(row.projectId).toBe(project.id)
-      expect(row.changes).toEqual({ description: 'proposed change' })
-      const after = await service.getProject(project.id)
-      expect(after!.description).toBe(before!.description)
-      expect(after!.status).toBe(ProjectStatus.Live)
-    })
-
-    it('rejects creating a proposal on a non-live project', async () => {
-      const project = await createDraft()
-      const result = await service.createProposal(project.id, { description: 'x' })
-      expect(result).toBeInstanceOf(InvalidTransitionError)
-    })
-
-    it('rejects creating a proposal on a missing project', async () => {
-      const result = await service.createProposal(NONEXISTENT_ID, { description: 'x' })
-      expect(result).toBeInstanceOf(ProjectNotFoundError)
-    })
-
-    it('resubmit (3 → 0) updates the diff and returns to Pending', async () => {
-      const project = await createLive()
-      const proposal = await service.createProposal(project.id, { description: 'v1' })
-      const proposalId = (proposal as { id: number }).id
-      await operatorService.requireProposalRevision(TEST_OPERATOR, proposalId, 'clarify')
-      const result = await service.updateProposal(proposalId, { description: 'v2' })
-      const row = result as { status: number; changes: Record<string, unknown> }
-      expect(row.status).toBe(ProposalStatus.Pending)
-      expect(row.changes).toEqual({ description: 'v2' })
-    })
-
-    it('rejects updating a proposal that is not Revision Required', async () => {
-      const project = await createLive()
-      const proposal = await service.createProposal(project.id, { description: 'v1' })
-      const result = await service.updateProposal((proposal as { id: number }).id, { description: 'v2' })
-      expect(result).toBeInstanceOf(InvalidTransitionError)
-    })
-  })
-
-  describe('single pending/revision-required proposal constraint', () => {
-    it('rejects a second proposal while one is Pending', async () => {
-      const project = await createLive()
-      await service.createProposal(project.id, { description: 'first' })
-      const result = await service.createProposal(project.id, { description: 'second' })
-      expect(result).toBeInstanceOf(DuplicateProposalError)
-    })
-
-    it('rejects a new proposal while one is Revision Required', async () => {
-      const project = await createLive()
-      const proposal = await service.createProposal(project.id, { description: 'first' })
-      await operatorService.requireProposalRevision(TEST_OPERATOR, (proposal as { id: number }).id, 'fix')
-      const result = await service.createProposal(project.id, { description: 'second' })
-      expect(result).toBeInstanceOf(DuplicateProposalError)
-    })
-
-    it('allows a new proposal after the previous one is Approved', async () => {
-      const project = await createLive()
-      const proposal = await service.createProposal(project.id, { description: 'first' })
-      await operatorService.approveProposal(TEST_OPERATOR, (proposal as { id: number }).id)
-      const result = await service.createProposal(project.id, { description: 'second' })
-      expect(result).not.toBeInstanceOf(DuplicateProposalError)
-    })
-
-    it('allows a new proposal after the previous one is Rejected', async () => {
-      const project = await createLive()
-      const proposal = await service.createProposal(project.id, { description: 'first' })
-      await operatorService.rejectProposal(TEST_OPERATOR, (proposal as { id: number }).id, 'no')
-      const result = await service.createProposal(project.id, { description: 'second' })
-      expect(result).not.toBeInstanceOf(DuplicateProposalError)
-    })
-  })
-
-  describe('diff key validation', () => {
-    it('rejects an empty changes object', async () => {
-      const project = await createLive()
-      const result = await service.createProposal(project.id, {})
-      expect(result).toBeInstanceOf(ValidationError)
-    })
-
-    it('rejects unknown fields', async () => {
-      const project = await createLive()
-      const result = await service.createProposal(project.id, { notAField: 'x' })
-      expect(result).toBeInstanceOf(ValidationError)
-    })
-
-    it('rejects lifecycle fields (status is not editable)', async () => {
-      const project = await createLive()
-      const result = await service.createProposal(project.id, { status: ProjectStatus.Draft })
-      expect(result).toBeInstanceOf(ValidationError)
-    })
-
-    it('rejects unknown fields on resubmit', async () => {
-      const project = await createLive()
-      const proposal = await service.createProposal(project.id, { description: 'v1' })
-      const proposalId = (proposal as { id: number }).id
-      await operatorService.requireProposalRevision(TEST_OPERATOR, proposalId, 'fix')
-      const result = await service.updateProposal(proposalId, { bogus: 'x' })
-      expect(result).toBeInstanceOf(ValidationError)
     })
   })
 
