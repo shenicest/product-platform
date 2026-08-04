@@ -1,11 +1,6 @@
 import { t } from 'elysia'
 
-export const Role = {
-  Founder: 0,
-  Operator: 1,
-} as const
-
-export type Role = (typeof Role)[keyof typeof Role]
+export { Role } from '@shenicest/shared'
 
 export const RolesResponse = t.Object({
   roles: t.Array(t.Number(), { description: 'Role IDs: 0=Founder, 1=Operator' }),

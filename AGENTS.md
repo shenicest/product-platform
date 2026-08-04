@@ -16,13 +16,21 @@
 
 ## Commands
 
+Monorepo（bun workspaces），依赖统一在根目录安装。
+
 ```bash
-bun install              # 安装依赖
-bun run dev              # 启动开发服务器 (bun --watch)
-bun run build            # 构建生产版本
-bun run start            # 启动生产服务器
-bun test                 # 运行测试
-bun test <file>          # 运行单个测试文件
+bun install                # 安装依赖（根目录，自动链接 workspaces）
+bun run dev                # 启动后端开发服务器 (bun --watch)
+bun run dev:web            # 启动前端开发服务器 (Next.js)
+bun run build              # 构建全部（api + web）
+bun run start              # 启动后端生产服务器
+bun run test               # 运行后端测试
+bun run seed               # 初始化种子数据
+```
+
+drizzle-kit 命令需在 `apps/api` 目录下执行：
+
+```bash
 bunx drizzle-kit generate  # 生成迁移文件
 bunx drizzle-kit migrate   # 执行迁移
 bunx drizzle-kit studio    # 可视化数据库管理
@@ -31,20 +39,41 @@ bunx drizzle-kit studio    # 可视化数据库管理
 ## Project Structure
 
 ```
-src/
-├── index.ts              # 服务器入口，注册插件和路由
-├── modules/              # 按功能域划分模块
-│   └── <module>/
-│       ├── index.ts      # 路由控制器 (Elysia 实例)
-│       ├── service.ts    # 业务逻辑 (class/abstract class)
-│       └── model.ts      # TypeBox schema + 导出类型
-├── plugins/              # 可复用的 Elysia 插件
-├── db/                   # Drizzle ORM 配置
-│   ├── index.ts          # 数据库连接实例
-│   └── schema/           # Drizzle schema 定义
-└── common/               # 共享工具、类型、错误定义
-test/                     # 测试文件，镜像 src/ 结构
+apps/
+├── api/                    # 后端（Elysia + Drizzle），包名 @shenicest/api
+│   ├── src/
+│   │   ├── index.ts        # 服务器入口，注册插件和路由
+│   │   ├── modules/        # 按功能域划分模块
+│   │   │   └── <module>/
+│   │   │       ├── index.ts    # 路由控制器 (Elysia 实例)
+│   │   │       ├── service.ts  # 业务逻辑 (class/abstract class)
+│   │   │       └── model.ts    # TypeBox schema + 导出类型
+│   │   ├── plugins/        # 可复用的 Elysia 插件
+│   │   ├── db/             # Drizzle ORM 配置
+│   │   │   ├── index.ts    # 数据库连接实例
+│   │   │   └── schema/     # Drizzle schema 定义
+│   │   └── common/         # 共享工具、类型、错误定义
+│   ├── test/               # 测试文件，镜像 src/ 结构
+│   └── drizzle/            # 迁移文件
+├── web/                    # 前端（Next.js App Router + shadcn/ui + Tailwind），包名 @shenicest/web
+│   └── src/app/            # 页面与路由
+packages/
+└── shared/                 # 前后端共享的领域常量与类型，包名 @shenicest/shared
 ```
+
+## Shared Package
+
+- `@shenicest/shared` 存放前后端共用的领域常量（ProjectStatus、ProposalStatus、ProjectStage、Role、CATEGORIES），取值必须与 CONTEXT.md 一致
+- 纯 TypeScript，不依赖 elysia/drizzle；后端与前端都通过 workspace 依赖引入
+- Next.js 侧已在 `next.config.ts` 配置 `transpilePackages`
+- API 请求/响应类型目前仍在 api 的 model.ts 中；前端需要时逐步抽取到 shared
+
+## Frontend (apps/web)
+
+- Next.js App Router + TypeScript + Tailwind CSS v4 + shadcn/ui（radix base, nova preset）
+- 修改 Next.js 代码前先阅读 `apps/web/AGENTS.md`（Next.js 自动生成，指向 `node_modules/next/dist/docs/` 内置文档）
+- 添加 shadcn 组件：在 `apps/web` 下执行 `bunx shadcn@latest add <component>`
+- 领域枚举值一律从 `@shenicest/shared` 引入，禁止硬编码魔法数字
 
 ## ElysiaJS Conventions
 
@@ -54,7 +83,7 @@ test/                     # 测试文件，镜像 src/ 结构
 - **内联函数**：路由 handler 必须使用内联函数以确保类型推断正确
 - **显式依赖**：每个 Elysia 实例必须通过 `.use()` 显式声明所依赖的插件/状态，类型不会自动传递
 - **注册顺序**：lifecycle hooks 和中间件只影响其后注册的路由
-- **入口文件只做引导**：`src/index.ts` 只负责注册插件和模块、启动服务器，不定义业务路由
+- **入口文件只做引导**：`apps/api/src/index.ts` 只负责注册插件和模块、启动服务器，不定义业务路由
 
 ### Macro
 
@@ -91,8 +120,8 @@ test/                     # 测试文件，镜像 src/ 结构
 
 **原则：** DB schema 是唯一真相源，API schema 从它派生。
 
-- Schema 层（`src/db/schema/`）：用 `createInsertSchema` 定义字段级验证（minLength, format 等）
-- Model 层（`src/modules/*/model.ts`）：用 `t.Pick` / `t.Omit` 派生 API schema
+- Schema 层（`apps/api/src/db/schema/`）：用 `createInsertSchema` 定义字段级验证（minLength, format 等）
+- Model 层（`apps/api/src/modules/*/model.ts`）：用 `t.Pick` / `t.Omit` 派生 API schema
 
 **决策：**
 - API 验证 = DB 约束 → 用 `t.Pick` 直接选取
@@ -131,11 +160,11 @@ export const SubmitBody = t.Intersect([
 
 ## Drizzle ORM
 
-- Schema 定义在 `src/db/schema/` 下，按表拆分文件
+- Schema 定义在 `apps/api/src/db/schema/` 下，按表拆分文件
 - 数据库连接实例通过 `.decorate()` 注入 Elysia context
 - 迁移文件由 `drizzle-kit generate` 生成，不要手动编辑
 
 ## Testing
 
 - 使用 `bun test`，handler 函数可直接 `.handle(Request)` 测试
-- 测试文件放在 `test/` 目录，路径镜像 `src/`
+- 测试文件放在 `apps/api/test/` 目录，路径镜像 `apps/api/src/`
