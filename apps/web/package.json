@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@elysiajs/eden": "1.4.9",
+    "@shenicest/api": "workspace:*",
     "@shenicest/shared": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
