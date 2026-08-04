@@ -1,0 +1,103 @@
+import Link from 'next/link'
+import { cn } from '@/lib/utils'
+import type { SearchParams } from '@/lib/project-filters'
+
+interface PaginationProps {
+  page: number
+  totalPages: number
+  searchParams: SearchParams
+}
+
+function getPageWindow(page: number, totalPages: number): (number | string)[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1)
+  }
+  const pages = new Set<number>([
+    1,
+    2,
+    totalPages - 1,
+    totalPages,
+    page - 1,
+    page,
+    page + 1,
+  ])
+  const sorted = [...pages]
+    .filter((value) => value >= 1 && value <= totalPages)
+    .sort((a, b) => a - b)
+
+  const result: (number | string)[] = []
+  let previous = 0
+  for (const value of sorted) {
+    if (previous && value - previous > 1) result.push(`ellipsis-${value}`)
+    result.push(value)
+    previous = value
+  }
+  return result
+}
+
+export function Pagination({ page, totalPages, searchParams }: PaginationProps) {
+  if (totalPages <= 1) return null
+
+  const hrefFor = (target: number): string => {
+    const params = new URLSearchParams()
+    for (const [key, value] of Object.entries(searchParams)) {
+      if (key === 'page' || value === undefined) continue
+      const resolved = Array.isArray(value) ? value[0] : value
+      if (resolved) params.set(key, resolved)
+    }
+    if (target > 1) params.set('page', String(target))
+    const qs = params.toString()
+    return qs ? `/?${qs}` : '/'
+  }
+
+  const edgeLink =
+    'flex h-8 items-center rounded-md border border-border px-3 text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground'
+  const edgeDisabled =
+    'flex h-8 items-center rounded-md border border-border px-3 text-sm text-muted-foreground/40'
+
+  return (
+    <nav aria-label="分页" className="mt-10 flex items-center justify-center gap-1.5">
+      {page > 1 ? (
+        <Link href={hrefFor(page - 1)} className={edgeLink}>
+          上一页
+        </Link>
+      ) : (
+        <span aria-disabled="true" className={edgeDisabled}>
+          上一页
+        </span>
+      )}
+
+      {getPageWindow(page, totalPages).map((item) =>
+        typeof item === 'number' ? (
+          <Link
+            key={item}
+            href={hrefFor(item)}
+            aria-current={item === page ? 'page' : undefined}
+            className={cn(
+              'flex h-8 w-8 items-center justify-center rounded-md border text-sm transition-colors',
+              item === page
+                ? 'border-foreground bg-foreground text-background'
+                : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+            )}
+          >
+            {item}
+          </Link>
+        ) : (
+          <span key={item} className="px-1 text-muted-foreground">
+            …
+          </span>
+        )
+      )}
+
+      {page < totalPages ? (
+        <Link href={hrefFor(page + 1)} className={edgeLink}>
+          下一页
+        </Link>
+      ) : (
+        <span aria-disabled="true" className={edgeDisabled}>
+          下一页
+        </span>
+      )}
+    </nav>
+  )
+}

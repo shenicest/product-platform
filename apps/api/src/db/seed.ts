@@ -1,9 +1,9 @@
-import { sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { db } from './index'
 import { projects } from './schema'
 import { UserIdentityService } from '../modules/user-identity/service'
 import { Role } from '../modules/user-identity/model'
-import { ProjectStatus, ProjectStage } from '@shenicest/shared'
+import { CATEGORIES, ProjectStatus, ProjectStage } from '@shenicest/shared'
 
 const OPERATOR_USER_ID = process.env.OPERATOR_USER_ID ?? 'operator-001'
 const FOUNDER_USER_ID = process.env.FOUNDER_USER_ID ?? 'founder-001'
@@ -140,21 +140,44 @@ const demoProjects: typeof projects.$inferInsert[] = [
   },
 ]
 
+function generatedProjects(count: number): typeof projects.$inferInsert[] {
+  const rows: typeof projects.$inferInsert[] = []
+  for (let index = 1; index <= count; index += 1) {
+    const category = CATEGORIES[index % CATEGORIES.length]
+    rows.push({
+      userId: FOUNDER_USER_ID,
+      status: ProjectStatus.Live,
+      name: `示例项目 ${String(index).padStart(2, '0')}`,
+      tagline: `用于演示列表、筛选与分页的示例项目 ${index}`,
+      description: `这是第 ${index} 个示例项目，用于验证公开列表的分类筛选、阶段筛选、搜索、排序与分页。`,
+      coverUrl: cover(`gen-${index}`),
+      demoLink: `https://example.com/gen-${index}`,
+      stage: index % 2 === 0 ? ProjectStage.Growth : ProjectStage.MVP,
+      categories: [category],
+      targetUsers: '演示数据，无真实目标用户。',
+      userProblem: '演示数据。',
+      progress: '演示数据。',
+      nextSteps: '演示数据。',
+      messageToUsers: '演示数据。',
+      isOpenForBeta: index % 3 === 0,
+      betaDescription: index % 3 === 0 ? '演示 beta 招募。' : null,
+      contactName: `示例联系人 ${index}`,
+      teamName: '示例团队',
+    })
+  }
+  return rows
+}
+
 async function seed() {
   await service.grantRole(OPERATOR_USER_ID, Role.Operator)
   console.log(`Seeded operator role for user: ${OPERATOR_USER_ID}`)
 
-  const existing = await db
-    .select({ value: sql<number>`count(*)` })
-    .from(projects)
-  const count = existing[0]?.value ?? 0
-  if (count > 0) {
-    console.log(`Projects already seeded (${count} rows), skipping demo data`)
-  } else {
-    await service.grantRole(FOUNDER_USER_ID, Role.Founder)
-    await db.insert(projects).values(demoProjects)
-    console.log(`Seeded ${demoProjects.length} demo projects`)
-  }
+  await service.grantRole(FOUNDER_USER_ID, Role.Founder)
+  await db.delete(projects).where(eq(projects.userId, FOUNDER_USER_ID))
+  const rows = [...demoProjects, ...generatedProjects(20)]
+  await db.insert(projects).values(rows)
+  const liveCount = rows.filter((row) => row.status === ProjectStatus.Live).length
+  console.log(`Seeded ${rows.length} demo projects (${liveCount} Live)`)
 
   process.exit(0)
 }

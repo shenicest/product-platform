@@ -1,11 +1,6 @@
 import Link from 'next/link'
-import { ProjectStage } from '@shenicest/shared'
 import type { Project } from '@/server/projects'
-
-const STAGE_LABELS: Record<number, string> = {
-  [ProjectStage.MVP]: 'MVP 阶段',
-  [ProjectStage.Growth]: '成长阶段',
-}
+import { STAGE_LABELS } from '@/lib/project-filters'
 
 export function ProjectCard({ project }: { project: Project }) {
   const stageLabel =
