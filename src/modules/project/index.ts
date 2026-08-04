@@ -46,8 +46,9 @@ export const projectModule = new Elysia()
     auth: true,
     detail: {
       summary: 'Create a project',
-      description: 'Creates a new Draft project owned by the authenticated user and grants the founder role.',
+      description: 'Creates a new Draft project (status=0) owned by the authenticated user and grants the Founder role if not already held. Only `name` is required at this stage.',
       tags: ['Project'],
+      operationId: 'project.create',
     },
     body: 'Project.ProjectDraftBody',
     response: {
@@ -60,8 +61,10 @@ export const projectModule = new Elysia()
   }, {
     detail: {
       summary: 'List live projects',
-      description: 'Paginated list of Live (status=3) projects. Supports filtering by category, stage, and keyword search. Public — no authentication required.',
+      description: 'Paginated list of Live (status=3) projects. Supports filtering by category, stage, and keyword search on name/tagline. Public — no authentication required.',
       tags: ['Project'],
+      operationId: 'project.listLive',
+      security: [],
     },
     query: 'Project.ProjectListQuery',
     response: {
@@ -80,8 +83,9 @@ export const projectModule = new Elysia()
     auth: true,
     detail: {
       summary: 'Save draft',
-      description: 'Updates the project row in place. Only allowed while status is Draft or Revision Required.',
+      description: 'Updates the project row in place. Only allowed while status is Draft (0) or Revision Required (2). Only the project owner may call this.',
       tags: ['Project'],
+      operationId: 'project.saveDraft',
     },
     params: 'Project.ProjectIdParams',
     body: 'Project.ProjectDraftBody',
@@ -108,8 +112,9 @@ export const projectModule = new Elysia()
     auth: true,
     detail: {
       summary: 'Submit for review',
-      description: 'Validates all required fields and transitions status to Pending Review. Allowed from Draft or Revision Required.',
+      description: 'Validates all required fields and transitions status to Pending Review (0/2 → 1). Returns 422 with the first missing field name if validation fails.',
       tags: ['Project'],
+      operationId: 'project.submit',
     },
     params: 'Project.ProjectIdParams',
     response: {
@@ -129,8 +134,10 @@ export const projectModule = new Elysia()
     optionalAuth: true,
     detail: {
       summary: 'Get project detail',
-      description: 'Returns the project content. Live projects are public. Non-Live projects are only visible to the owning founder or an operator.',
+      description: 'Returns the full project content. Live projects (status=3) are public. Non-Live projects return 404 for anonymous users and non-owners; the owning founder or an operator sees full content.',
       tags: ['Project'],
+      operationId: 'project.getDetail',
+      security: [{ bearerAuth: [] }, {}],
     },
     params: 'Project.ProjectIdParams',
     response: {

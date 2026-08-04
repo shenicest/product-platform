@@ -12,22 +12,27 @@ const app = new Elysia()
     documentation: {
       info: {
         title: 'Shenicest Product Platform',
-        version: '0.1.0',
+        version: '1.0.0',
+        description:
+          'Product showcase platform backend API. Founders submit projects for review, operators curate and manage them, and visitors browse live projects. ' +
+          'Authentication consumes JWTs issued by an external auth service — this API does not manage credentials.',
       },
       tags: [
-        { name: 'Auth', description: 'Authentication' },
-        { name: 'UserIdentity', description: 'User identity management' },
-        { name: 'Project', description: 'Project submission and lifecycle' },
-        { name: 'Proposal', description: 'Post-live edit proposals' },
-        { name: 'Founder', description: 'Founder dashboard — own projects, stats, and proposals' },
-        { name: 'Operator', description: 'Operator review, management, and statistics' },
+        { name: 'Auth', description: 'Current-user identity from JWT' },
+        { name: 'UserIdentity', description: 'Role queries (Founder / Operator)' },
+        { name: 'Project', description: 'Project submission, draft editing, review submission, and public browsing' },
+        { name: 'Proposal', description: 'Post-live edit proposals — diff-based changes reviewed by operators' },
+        { name: 'Founder', description: 'Founder dashboard — own projects, stats, audit reasons, and proposals' },
+        { name: 'Operator', description: 'Operator review actions, management lists, audit records, and platform statistics' },
       ],
+      security: [{ bearerAuth: [] }],
       components: {
         securitySchemes: {
           bearerAuth: {
             type: 'http',
             scheme: 'bearer',
             bearerFormat: 'JWT',
+            description: 'JWT issued by the external auth service. Pass as `Authorization: Bearer <token>`.',
           },
         },
       },

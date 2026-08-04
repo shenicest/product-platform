@@ -15,17 +15,17 @@ export type ProjectChanges = Partial<Pick<SelectProject, (typeof EDITABLE_PROJEC
 
 export const ProposalBody = t.Object({
   changes: ProjectChanges,
-})
+}, { description: 'Request body for creating or updating a proposal' })
 export type ProposalBody = typeof ProposalBody.static
 
 export const ProjectIdParams = t.Object({
-  id: t.Numeric(),
+  id: t.Numeric({ description: 'Project ID' }),
 })
 export type ProjectIdParams = typeof ProjectIdParams.static
 
 export const ProposalIdParams = t.Object({
-  id: t.Numeric(),
-  proposalId: t.Numeric(),
+  id: t.Numeric({ description: 'Project ID' }),
+  proposalId: t.Numeric({ description: 'Proposal ID' }),
 })
 export type ProposalIdParams = typeof ProposalIdParams.static
 

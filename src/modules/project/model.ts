@@ -84,7 +84,7 @@ export const ProjectDraftBody = t.Pick(InsertProject, [...EDITABLE_PROJECT_FIELD
 export type ProjectDraftBody = typeof ProjectDraftBody.static
 
 export const ProjectIdParams = t.Object({
-  id: t.Numeric(),
+  id: t.Numeric({ description: 'Project ID' }),
 })
 export type ProjectIdParams = typeof ProjectIdParams.static
 
@@ -93,20 +93,20 @@ export type ProjectResponse = typeof ProjectResponse.static
 
 export const FieldErrorResponse = t.Object({
   error: t.Object({
-    code: t.String(),
-    message: t.String(),
-    field: t.String(),
+    code: t.String({ description: 'Error code, e.g. MISSING_REQUIRED_FIELD' }),
+    message: t.String({ description: 'Human-readable error message' }),
+    field: t.String({ description: 'Name of the first missing required field' }),
   }),
 })
 export type FieldErrorResponse = typeof FieldErrorResponse.static
 
 export const ProjectListQuery = t.Object({
-  category: t.Optional(t.String()),
-  stage: t.Optional(t.Numeric()),
-  q: t.Optional(t.String()),
-  sort: t.Optional(t.Union([t.Literal('latest'), t.Literal('recently_updated')])),
-  offset: t.Optional(t.Numeric({ minimum: 0 })),
-  limit: t.Optional(t.Numeric({ minimum: 1 })),
+  category: t.Optional(t.String({ description: 'Filter by category name' })),
+  stage: t.Optional(t.Numeric({ description: 'Filter by stage: 0=MVP, 1=Growth' })),
+  q: t.Optional(t.String({ description: 'Keyword search on project name and tagline' })),
+  sort: t.Optional(t.Union([t.Literal('latest'), t.Literal('recently_updated')], { description: 'Sort order (default: latest)' })),
+  offset: t.Optional(t.Numeric({ minimum: 0, description: 'Number of records to skip (default: 0)' })),
+  limit: t.Optional(t.Numeric({ minimum: 1, description: 'Page size (default: 20)' })),
 })
 export type ProjectListQuery = typeof ProjectListQuery.static
 

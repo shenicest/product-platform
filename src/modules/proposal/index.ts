@@ -59,8 +59,9 @@ export const proposalModule = new Elysia()
     auth: true,
     detail: {
       summary: 'Create a proposal',
-      description: 'Creates a post-live edit proposal on a Live project. The project row is not modified until the proposal is approved.',
+      description: 'Creates a post-live edit proposal (status=0 Pending) on a Live project. The `changes` object holds only the fields to update. The project row is not modified until an operator approves. Fails with 409 if the project already has a pending or revision-required proposal.',
       tags: ['Proposal'],
+      operationId: 'proposal.create',
     },
     params: 'Proposal.ProjectIdParams',
     body: 'Proposal.ProposalBody',
@@ -92,8 +93,9 @@ export const proposalModule = new Elysia()
     auth: true,
     detail: {
       summary: 'Edit and resubmit a proposal',
-      description: 'Updates the changes diff of a Revision Required proposal and transitions it back to Pending Review.',
+      description: 'Updates the `changes` diff of a Revision Required proposal (status 3 → 0). Only the project owner may call this. No new proposal is created.',
       tags: ['Proposal'],
+      operationId: 'proposal.editResubmit',
     },
     params: 'Proposal.ProposalIdParams',
     body: 'Proposal.ProposalBody',
@@ -117,8 +119,9 @@ export const proposalModule = new Elysia()
     auth: true,
     detail: {
       summary: 'List project proposals',
-      description: 'Returns the proposal history for a project. Accessible to the owning founder or an operator.',
+      description: 'Returns the full proposal history for a project (all statuses). Accessible to the owning founder or an operator.',
       tags: ['Proposal'],
+      operationId: 'proposal.listByProject',
     },
     params: 'Proposal.ProjectIdParams',
     response: {
@@ -141,8 +144,9 @@ export const proposalModule = new Elysia()
     auth: true,
     detail: {
       summary: 'Get proposal detail',
-      description: 'Returns a single proposal with its changes diff, status, and review info. Accessible to the owning founder or an operator.',
+      description: 'Returns a single proposal with its `changes` diff, status, review reason, and reviewer info. Accessible to the owning founder or an operator.',
       tags: ['Proposal'],
+      operationId: 'proposal.getDetail',
     },
     params: 'Proposal.ProposalIdParams',
     response: {

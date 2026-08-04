@@ -8,8 +8,9 @@ export const authModule = new Elysia()
     auth: true,
     detail: {
       summary: 'Get current user',
-      description: 'Returns the authenticated user\'s ID',
+      description: 'Returns the user ID parsed from the JWT token.',
       tags: ['Auth'],
+      operationId: 'auth.getCurrentUser',
     },
     response: {
       200: t.Object({ userId: t.String() }),

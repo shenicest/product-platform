@@ -21,5 +21,13 @@ export const InsertAuditRecord = createInsertSchema(auditRecords, {
 })
 export type InsertAuditRecord = typeof InsertAuditRecord.static
 
-export const SelectAuditRecord = createSelectSchema(auditRecords)
+export const SelectAuditRecord = createSelectSchema(auditRecords, {
+  id: (s) => { s.description = 'Unique audit record identifier'; return s },
+  projectId: (s) => { s.description = 'Associated project ID'; return s },
+  operatorId: (s) => { s.description = 'Operator who performed the action'; return s },
+  action: (s) => { s.description = 'Action type: approve, require_revision, reject, delist, restore'; return s },
+  proposalId: (s) => { s.description = 'Associated proposal ID (null for project-level actions)'; return s },
+  reason: (s) => { s.description = "Operator's reason for the action"; return s },
+  createdAt: (s) => { s.description = 'Action timestamp'; return s },
+})
 export type SelectAuditRecord = typeof SelectAuditRecord.static

@@ -44,8 +44,9 @@ export const founderModule = new Elysia({ prefix: '/founder' })
     founderOnly: true,
     detail: {
       summary: 'List my projects',
-      description: 'Lists all projects owned by the authenticated founder, with optional status/stage filters and keyword search on name/tagline. Requires the founder role.',
+      description: 'Lists all projects owned by the authenticated founder. Supports optional status/stage filters and keyword search on name/tagline. Requires the Founder role.',
       tags: ['Founder'],
+      operationId: 'founder.listProjects',
     },
     query: 'Founder.FounderProjectQuery',
     response: {
@@ -60,8 +61,9 @@ export const founderModule = new Elysia({ prefix: '/founder' })
     founderOnly: true,
     detail: {
       summary: 'My project statistics',
-      description: 'Real-time counts of the authenticated founder\'s projects: total, live, and pending review. Requires the founder role.',
+      description: 'Real-time counts of the authenticated founder\'s projects: total, live, and pending review. Requires the Founder role.',
       tags: ['Founder'],
+      operationId: 'founder.getStats',
     },
     response: {
       200: 'Founder.StatsResponse',
@@ -79,8 +81,9 @@ export const founderModule = new Elysia({ prefix: '/founder' })
     founderOnly: true,
     detail: {
       summary: 'Latest audit reason for my project',
-      description: 'Returns the reason from the latest project-level audit record (revision required, rejection, or delisting) for the founder\'s own project. Requires the founder role.',
+      description: 'Returns the action, reason, and timestamp from the latest project-level audit record (require_revision / reject / delist) for the founder\'s own project. Returns 404 if no audit record exists. Requires the Founder role.',
       tags: ['Founder'],
+      operationId: 'founder.getAuditReason',
     },
     params: 'Founder.ProjectIdParams',
     response: {
@@ -99,8 +102,9 @@ export const founderModule = new Elysia({ prefix: '/founder' })
     founderOnly: true,
     detail: {
       summary: 'List my proposals for a project',
-      description: 'Returns the proposal history (status, changes diff, reason, reviewed_at) for the founder\'s own project. Requires the founder role.',
+      description: 'Returns the proposal history (status, changes diff, reason, reviewedAt) for the founder\'s own project. Requires the Founder role.',
       tags: ['Founder'],
+      operationId: 'founder.listProposals',
     },
     params: 'Founder.ProjectIdParams',
     response: {

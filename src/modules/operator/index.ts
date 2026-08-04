@@ -61,8 +61,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     operatorOnly: true,
     detail: {
       summary: 'Approve a project',
-      description: 'Transitions a Pending Review project to Live (status 1 → 3).',
+      description: 'Transitions a Pending Review project to Live (status 1 → 3). Creates an audit record. Fails with 400 if the project is not in Pending Review.',
       tags: ['Operator'],
+      operationId: 'operator.approveProject',
     },
     params: 'Operator.ProjectIdParams',
     response: {
@@ -82,8 +83,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     operatorOnly: true,
     detail: {
       summary: 'Require revision on a project',
-      description: 'Transitions a Pending Review project to Revision Required (status 1 → 2).',
+      description: 'Transitions a Pending Review project to Revision Required (status 1 → 2). The founder can then edit and resubmit. Creates an audit record with the reason.',
       tags: ['Operator'],
+      operationId: 'operator.requireProjectRevision',
     },
     params: 'Operator.ProjectIdParams',
     body: 'Operator.ReviewReasonBody',
@@ -104,8 +106,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     operatorOnly: true,
     detail: {
       summary: 'Reject a project',
-      description: 'Transitions a Pending Review project to Rejected (status 1 → 5, terminal).',
+      description: 'Transitions a Pending Review project to Rejected (status 1 → 5, terminal — the founder must create a new project). Creates an audit record with the reason.',
       tags: ['Operator'],
+      operationId: 'operator.rejectProject',
     },
     params: 'Operator.ProjectIdParams',
     body: 'Operator.ReviewReasonBody',
@@ -126,8 +129,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     operatorOnly: true,
     detail: {
       summary: 'Delist a project',
-      description: 'Transitions a Live project to Delisted (status 3 → 4).',
+      description: 'Transitions a Live project to Delisted (status 3 → 4), hiding it from the public listing. Creates an audit record with the reason.',
       tags: ['Operator'],
+      operationId: 'operator.delistProject',
     },
     params: 'Operator.ProjectIdParams',
     body: 'Operator.ReviewReasonBody',
@@ -148,8 +152,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     operatorOnly: true,
     detail: {
       summary: 'Restore a delisted project',
-      description: 'Transitions a Delisted project back to Live (status 4 → 3).',
+      description: 'Transitions a Delisted project back to Live (status 4 → 3), making it publicly visible again. Creates an audit record.',
       tags: ['Operator'],
+      operationId: 'operator.restoreProject',
     },
     params: 'Operator.ProjectIdParams',
     response: {
@@ -170,8 +175,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     operatorOnly: true,
     detail: {
       summary: 'Approve a proposal',
-      description: 'Applies the proposal diff to the project and marks it Approved (status 0 → 1).',
+      description: 'Applies the proposal\'s `changes` diff to the project row (partial PATCH) and marks the proposal Approved (status 0 → 1). The project stays Live. Creates an audit record with `proposalId` set.',
       tags: ['Operator'],
+      operationId: 'operator.approveProposal',
     },
     params: 'Operator.ProposalIdParams',
     response: {
@@ -191,8 +197,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     operatorOnly: true,
     detail: {
       summary: 'Reject a proposal',
-      description: 'Rejects the proposal (status 0 → 2). Project row is unchanged.',
+      description: 'Rejects the proposal (status 0 → 2). The project row is unchanged. Creates an audit record with the reason and `proposalId` set.',
       tags: ['Operator'],
+      operationId: 'operator.rejectProposal',
     },
     params: 'Operator.ProposalIdParams',
     body: 'Operator.ReviewReasonBody',
@@ -213,8 +220,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     operatorOnly: true,
     detail: {
       summary: 'Require revision on a proposal',
-      description: 'Moves the proposal to Revision Required (status 0 → 3).',
+      description: 'Moves the proposal to Revision Required (status 0 → 3). The founder can edit the `changes` diff and resubmit on the same proposal. Creates an audit record with the reason.',
       tags: ['Operator'],
+      operationId: 'operator.requireProposalRevision',
     },
     params: 'Operator.ProposalIdParams',
     body: 'Operator.ReviewReasonBody',
@@ -233,8 +241,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     operatorOnly: true,
     detail: {
       summary: 'List all projects',
-      description: 'Project management list with filters (status, stage, category), search, and sort.',
+      description: 'Project management list with filters (status, stage, category), keyword search on name/founder, and sort by created_at or updated_at. Returns all statuses.',
       tags: ['Operator'],
+      operationId: 'operator.listProjects',
     },
     query: 'Operator.OperatorProjectQuery',
     response: {
@@ -249,8 +258,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     operatorOnly: true,
     detail: {
       summary: 'List pending proposals',
-      description: 'Review queue of pending proposals (status=0), optionally filtered by project, stage, or category.',
+      description: 'Review queue of pending proposals (status=0), optionally filtered by project, stage, or category. Use this to find proposals awaiting review.',
       tags: ['Operator'],
+      operationId: 'operator.listPendingProposals',
     },
     query: 'Operator.OperatorProposalQuery',
     response: {
@@ -268,8 +278,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     operatorOnly: true,
     detail: {
       summary: 'Proposal history for a project',
-      description: 'Lists all proposals (any status) for a specific project.',
+      description: 'Lists all proposals (any status) for a specific project, ordered by creation time.',
       tags: ['Operator'],
+      operationId: 'operator.listProjectProposals',
     },
     params: 'Operator.ProjectIdParams',
     response: {
@@ -286,8 +297,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     operatorOnly: true,
     detail: {
       summary: 'List audit records',
-      description: 'Query audit records with optional filters (project, time range).',
+      description: 'Query audit records with optional filters: project ID, time range (from/to as ISO 8601 strings). Ordered by creation time descending.',
       tags: ['Operator'],
+      operationId: 'operator.listAuditRecords',
     },
     query: 'Operator.AuditRecordQuery',
     response: {
@@ -303,8 +315,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     operatorOnly: true,
     detail: {
       summary: 'Platform statistics',
-      description: 'Aggregated project counts by status, stage, and category.',
+      description: 'Aggregated project counts: total, by status (Draft/PendingReview/RevisionRequired/Live/Delisted/Rejected), by stage (MVP/Growth), and by category.',
       tags: ['Operator'],
+      operationId: 'operator.getStats',
     },
     response: {
       200: 'Operator.StatsResponse',

@@ -25,8 +25,9 @@ export const userIdentityModule = new Elysia({ prefix: '/identity' })
     auth: true,
     detail: {
       summary: 'Get my roles',
-      description: 'Returns the roles of the authenticated user',
+      description: 'Returns the role IDs of the authenticated user. 0 = Founder, 1 = Operator.',
       tags: ['UserIdentity'],
+      operationId: 'identity.getMyRoles',
     },
     response: {
       200: 'UserIdentity.RolesResponse',
@@ -40,8 +41,9 @@ export const userIdentityModule = new Elysia({ prefix: '/identity' })
     operatorOnly: true,
     detail: {
       summary: 'Get user roles (operator)',
-      description: 'Returns the roles of a specific user. Operator only.',
+      description: 'Returns the role IDs of a specific user. Operator only.',
       tags: ['UserIdentity'],
+      operationId: 'identity.getUserRoles',
     },
     params: 'UserIdentity.UserIdParams',
     response: {
