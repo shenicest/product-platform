@@ -1,11 +1,8 @@
 import Link from 'next/link'
 import type { Project } from '@/server/projects'
-import { STAGE_LABELS } from '@/lib/project-filters'
+import { ProjectBadges } from '@/components/project-badges'
 
 export function ProjectCard({ project }: { project: Project }) {
-  const stageLabel =
-    project.stage !== null ? STAGE_LABELS[project.stage] : undefined
-
   return (
     <Link
       href={`/projects/${project.id}`}
@@ -39,23 +36,11 @@ export function ProjectCard({ project }: { project: Project }) {
           </p>
         ) : null}
 
-        {stageLabel || project.categories?.length ? (
-          <div className="mt-auto flex flex-wrap gap-1.5 pt-2">
-            {stageLabel ? (
-              <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground">
-                {stageLabel}
-              </span>
-            ) : null}
-            {project.categories?.map((category) => (
-              <span
-                key={category}
-                className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground"
-              >
-                {category}
-              </span>
-            ))}
-          </div>
-        ) : null}
+        <ProjectBadges
+          stage={project.stage}
+          categories={project.categories}
+          className="mt-auto pt-2"
+        />
       </div>
     </Link>
   )

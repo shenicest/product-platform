@@ -17,3 +17,15 @@ export const getLiveProjects = cache(async (query: ProjectListQuery = {}) => {
 
 export type ProjectListResponse = Awaited<ReturnType<typeof getLiveProjects>>
 export type Project = ProjectListResponse['data'][number]
+
+// Returns null only when the API answers 404 — which covers both nonexistent
+// projects and projects not visible to anonymous visitors (non-Live). Any other
+// failure (network, 5xx) throws, matching getLiveProjects.
+export const getProject = cache(async (id: number) => {
+  const { data, error } = await api.projects({ id }).get()
+  if (error?.status === 404) return null
+  if (error || !data) throw new Error('Failed to load project')
+  return data
+})
+
+export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProject>>>
