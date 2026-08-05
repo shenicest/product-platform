@@ -144,7 +144,7 @@ Because the Project row IS the content row, `categories` and `stage` are already
   - `GET /projects/:id/proposals/:proposalId`: View a single proposal (founder on own project; operator on any).
 
 - **Project detail**:
-  - `GET /projects/:id`: Return the Project content directly. `status=3` → public. Non-Live → 404 for regular users, full content for founder/operator.
+  - `GET /projects/:id`: Return the Project content directly, enriched with `founder` — the founder's public profile (`nickname`, `avatarUrl`) read from the shared users table, or `null` when the founder has no profile there. `status=3` → public. Non-Live → 404 for regular users, full content for founder/operator.
 
 - **Project list**:
   - `GET /projects`: Paginated list of `status=3` (Live) projects. Query params: `category`, `stage`, `q` (search), `sort`, `cursor`/`offset`, `limit`. Reads the `projects` table only — zero JOIN.

@@ -1,5 +1,6 @@
 import { t } from 'elysia'
 import { InsertProject, SelectProject } from '../../db/schema'
+import { PublicProfile } from '../user/model'
 
 export const ProjectStatus = {
   Draft: 0,
@@ -90,6 +91,18 @@ export type ProjectIdParams = typeof ProjectIdParams.static
 
 export const ProjectResponse = SelectProject
 export type ProjectResponse = typeof ProjectResponse.static
+
+// Public detail view: the project row plus the founder's public profile from
+// the shared users table (null when the founder has no profile there).
+// t.Composite (not t.Intersect): Elysia's response serializer only understands
+// plain object schemas, and Composite merges into one.
+export const ProjectDetailResponse = t.Composite([
+  SelectProject,
+  t.Object({
+    founder: t.Union([PublicProfile, t.Null()], { description: 'Founder public profile; null when unavailable' }),
+  }),
+])
+export type ProjectDetailResponse = typeof ProjectDetailResponse.static
 
 export const FieldErrorResponse = t.Object({
   error: t.Object({

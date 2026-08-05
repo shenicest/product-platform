@@ -3,6 +3,8 @@ import { projects } from '../../db/schema'
 import type { Database } from '../../db'
 import { UserIdentityService } from '../user-identity/service'
 import { Role } from '../user-identity/model'
+import { UserProfileService } from '../user/service'
+import type { PublicProfile } from '../user/model'
 import {
   EDITABLE_PROJECT_FIELD_SET,
   InvalidTransitionError,
@@ -16,6 +18,8 @@ import {
 
 type ProjectRow = typeof projects.$inferSelect
 type ProjectUpdate = Partial<typeof projects.$inferInsert>
+
+export type ProjectDetail = ProjectRow & { founder: PublicProfile | null }
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100
@@ -54,7 +58,11 @@ function findMissingRequiredField(project: ProjectRow): SubmissionRequiredField 
 }
 
 export class ProjectService {
-  constructor(private db: Database, private userIdentity: UserIdentityService) {}
+  constructor(
+    private db: Database,
+    private userIdentity: UserIdentityService,
+    private userProfile: UserProfileService,
+  ) {}
 
   async getProject(projectId: number): Promise<ProjectRow | null> {
     const rows = await this.db.select().from(projects).where(eq(projects.id, projectId)).limit(1)
@@ -91,6 +99,15 @@ export class ProjectService {
     if (userId && project.userId === userId) return project
     if (userId && await this.userIdentity.hasRole(userId, Role.Operator)) return project
     return new ProjectNotFoundError(projectId)
+  }
+
+  // Public detail view: the visible project enriched with the founder's public
+  // profile (null when the founder has none).
+  async getProjectDetail(userId: string | null, projectId: number): Promise<ProjectDetail | ProjectNotFoundError> {
+    const project = await this.getVisibleProject(userId, projectId)
+    if (project instanceof ProjectNotFoundError) return project
+    const founder = await this.userProfile.getPublicProfile(project.userId)
+    return { ...project, founder }
   }
 
   async createProject(userId: string, data: Record<string, unknown>): Promise<ProjectRow> {

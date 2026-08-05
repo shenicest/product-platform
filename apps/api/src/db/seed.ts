@@ -1,12 +1,15 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import { db } from './index'
 import { projects } from './schema'
 import { UserIdentityService } from '../modules/user-identity/service'
 import { Role } from '../modules/user-identity/model'
+import { SHARED_USERS_TABLE } from '../modules/user/service'
 import { CATEGORIES, ProjectStatus, ProjectStage } from '@shenicest/shared'
 
-const OPERATOR_USER_ID = process.env.OPERATOR_USER_ID ?? 'operator-001'
-const FOUNDER_USER_ID = process.env.FOUNDER_USER_ID ?? 'founder-001'
+// Integer-string ids to match the external auth system's user ids, which the
+// shared users table keys by integer.
+const OPERATOR_USER_ID = process.env.OPERATOR_USER_ID ?? '2'
+const FOUNDER_USER_ID = process.env.FOUNDER_USER_ID ?? '1'
 const service = new UserIdentityService(db)
 
 const cover = (seed: string) => `https://picsum.photos/seed/${seed}/800/600`
@@ -168,9 +171,26 @@ function generatedProjects(count: number): typeof projects.$inferInsert[] {
   return rows
 }
 
+// The shared users table is owned by the external auth system; the seed only
+// touches it so dev data can demonstrate the public founder profile. Best
+// effort — the platform works without it (founder simply isn't shown).
+async function seedSharedUserProfile() {
+  if (!/^\d+$/.test(FOUNDER_USER_ID)) return
+  await db.execute(sql`INSERT INTO ${sql.raw(SHARED_USERS_TABLE)} (id, nickname, avatar_url)
+    VALUES (${FOUNDER_USER_ID}, '示例创始人', ${cover('founder-avatar')})
+    ON DUPLICATE KEY UPDATE nickname = VALUES(nickname), avatar_url = VALUES(avatar_url)`)
+}
+
 async function seed() {
   await service.grantRole(OPERATOR_USER_ID, Role.Operator)
   console.log(`Seeded operator role for user: ${OPERATOR_USER_ID}`)
+
+  try {
+    await seedSharedUserProfile()
+    console.log(`Seeded shared users profile for user: ${FOUNDER_USER_ID}`)
+  } catch (err) {
+    console.warn(`Skipped shared users profile (${SHARED_USERS_TABLE} not reachable): ${err}`)
+  }
 
   await service.grantRole(FOUNDER_USER_ID, Role.Founder)
   await db.delete(projects).where(eq(projects.userId, FOUNDER_USER_ID))

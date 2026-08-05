@@ -8,6 +8,7 @@ import { proposalModule, proposalService } from '../../../src/modules/proposal'
 import { ProjectService } from '../../../src/modules/project/service'
 import { OperatorService } from '../../../src/modules/operator/service'
 import { UserIdentityService } from '../../../src/modules/user-identity/service'
+import { UserProfileService } from '../../../src/modules/user/service'
 import { Role } from '../../../src/modules/user-identity/model'
 import { ProjectStatus } from '../../../src/modules/project/model'
 import { ProposalStatus } from '../../../src/modules/proposal/model'
@@ -55,7 +56,8 @@ function jsonHeaders(token: string) {
 describe('Proposal routes', () => {
   const app = createApp()
   const userIdentity = new UserIdentityService(db)
-  const projectService = new ProjectService(db, userIdentity)
+  const userProfile = new UserProfileService(db)
+  const projectService = new ProjectService(db, userIdentity, userProfile)
   const operatorService = new OperatorService(db)
   const projectIds: number[] = []
   const proposalIds: number[] = []

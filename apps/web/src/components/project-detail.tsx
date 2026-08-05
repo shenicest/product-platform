@@ -108,6 +108,8 @@ export function ProjectDetail({ project }: { project: ProjectDetail }) {
   const tagline = nonEmpty(project.tagline)
   const description = nonEmpty(project.description)
   const teamName = nonEmpty(project.teamName)
+  const founderNickname = nonEmpty(project.founder?.nickname)
+  const founderAvatarUrl = nonEmpty(project.founder?.avatarUrl)
 
   const longFormSections = [
     { title: '目标用户', content: nonEmpty(project.targetUsers) },
@@ -146,6 +148,22 @@ export function ProjectDetail({ project }: { project: ProjectDetail }) {
           </h1>
           {tagline ? (
             <p className="mt-2 text-lg text-muted-foreground">{tagline}</p>
+          ) : null}
+
+          {founderNickname || founderAvatarUrl ? (
+            <div className="mt-4 flex items-center gap-2">
+              {founderAvatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={founderAvatarUrl}
+                  alt={founderNickname ?? `${project.name} 创始人`}
+                  className="size-8 rounded-full border border-border bg-muted object-cover"
+                />
+              ) : null}
+              {founderNickname ? (
+                <span className="text-sm font-medium">{founderNickname}</span>
+              ) : null}
+            </div>
           ) : null}
 
           {project.stage !== null ||

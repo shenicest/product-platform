@@ -6,6 +6,7 @@ import { ProjectService } from '../../../src/modules/project/service'
 import { ProposalService } from '../../../src/modules/proposal/service'
 import { OperatorService } from '../../../src/modules/operator/service'
 import { UserIdentityService } from '../../../src/modules/user-identity/service'
+import { UserProfileService } from '../../../src/modules/user/service'
 import {
   InvalidTransitionError,
   ProjectNotFoundError,
@@ -39,7 +40,8 @@ const VALID_PROJECT: Record<string, unknown> = {
 
 describe('ProposalService', () => {
   const userIdentity = new UserIdentityService(db)
-  const projectService = new ProjectService(db, userIdentity)
+  const userProfile = new UserProfileService(db)
+  const projectService = new ProjectService(db, userIdentity, userProfile)
   const service = new ProposalService(db, userIdentity)
   const operatorService = new OperatorService(db)
   const projectIds: number[] = []

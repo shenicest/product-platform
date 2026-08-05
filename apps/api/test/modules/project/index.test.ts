@@ -1,7 +1,7 @@
 import { afterAll, describe, expect, it } from 'bun:test'
 import { Elysia } from 'elysia'
 import { jwt } from '@elysiajs/jwt'
-import { eq, inArray } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import { db } from '../../../src/db'
 import { projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
 import { projectModule } from '../../../src/modules/project'
@@ -10,11 +10,14 @@ import { OperatorService } from '../../../src/modules/operator/service'
 import { UserIdentityService } from '../../../src/modules/user-identity/service'
 import { Role } from '../../../src/modules/user-identity/model'
 import { ProjectStatus } from '../../../src/modules/project/model'
+import { SHARED_USERS_TABLE } from '../../../src/modules/user/service'
 
 const TEST_SECRET = 'dev-secret-change-in-production'
 const FOUNDER = `test-founder-${crypto.randomUUID()}`
 const OTHER_FOUNDER = `test-founder-${crypto.randomUUID()}`
 const OPERATOR = `test-operator-${crypto.randomUUID()}`
+// Integer-keyed ids that can't collide with real users in the shared table.
+const PROFILE_FOUNDER = '9999904'
 const NONEXISTENT_ID = 2_000_000_000
 
 // A complete project body that passes submitForReview's required-field validation.
@@ -58,7 +61,8 @@ describe('Project routes', () => {
   const operatorService = new OperatorService(db)
   const projectIds: number[] = []
   const proposalIds: number[] = []
-  const userIds = [FOUNDER, OTHER_FOUNDER, OPERATOR]
+  const userIds = [FOUNDER, OTHER_FOUNDER, OPERATOR, PROFILE_FOUNDER]
+  const sharedUserIds: string[] = []
 
   async function createProjectAs(userId: string, body: Record<string, unknown>) {
     const token = await signToken({ user_id: userId })
@@ -101,6 +105,9 @@ describe('Project routes', () => {
     }
     if (userIds.length > 0) {
       await db.delete(userIdentities).where(inArray(userIdentities.userId, userIds))
+    }
+    for (const id of sharedUserIds) {
+      await db.execute(sql`DELETE FROM ${sql.raw(SHARED_USERS_TABLE)} WHERE id = ${id}`)
     }
   })
 
@@ -253,6 +260,32 @@ describe('Project routes', () => {
       expect(body.id).toBe(created.id)
       expect(body.status).toBe(ProjectStatus.Live)
       expect(body.name).toBe(VALID_BODY.name)
+    })
+
+    it('includes the founder public profile from the shared users table', async () => {
+      await db.execute(sql`INSERT INTO ${sql.raw(SHARED_USERS_TABLE)} (id, nickname, avatar_url)
+        VALUES (${PROFILE_FOUNDER}, '路由测试创始人', 'https://example.com/avatar.png')`)
+      sharedUserIds.push(PROFILE_FOUNDER)
+      const created = await createLiveProject(PROFILE_FOUNDER)
+      const res = await app.handle(
+        new Request(`http://localhost/projects/${created.id}`),
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.founder).toEqual({
+        nickname: '路由测试创始人',
+        avatarUrl: 'https://example.com/avatar.png',
+      })
+    })
+
+    it('returns founder null when the founder has no shared users row', async () => {
+      const created = await createLiveProject(FOUNDER)
+      const res = await app.handle(
+        new Request(`http://localhost/projects/${created.id}`),
+      )
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.founder).toBeNull()
     })
 
     it('returns 404 for a non-Live project without authentication', async () => {

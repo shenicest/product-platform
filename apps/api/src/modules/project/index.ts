@@ -3,6 +3,7 @@ import { dbPlugin } from '../../plugins/db'
 import { authPlugin } from '../../plugins/auth'
 import { db } from '../../db'
 import { userIdentityService } from '../user-identity'
+import { userProfileService } from '../user'
 import { ProjectService } from './service'
 import {
   InvalidTransitionError,
@@ -13,12 +14,13 @@ import {
   ProjectListResponse,
   ProjectNotFoundError,
   ProjectResponse,
+  ProjectDetailResponse,
   FieldErrorResponse,
   type DomainError,
 } from './model'
 import { ErrorCode, ErrorMessage, ErrorResponse } from '../../common'
 
-export const projectService = new ProjectService(db, userIdentityService)
+export const projectService = new ProjectService(db, userIdentityService, userProfileService)
 
 function errorBody(error: DomainError) {
   return { error: { code: error.code, message: error.message } }
@@ -33,6 +35,7 @@ export const projectModule = new Elysia()
   .use(authPlugin)
   .model({
     ProjectResponse,
+    ProjectDetailResponse,
     ProjectIdParams,
     ProjectDraftBody,
     FieldErrorResponse,
@@ -127,21 +130,21 @@ export const projectModule = new Elysia()
     },
   })
   .get('/projects/:id', async ({ params, user }) => {
-    const result = await projectService.getVisibleProject(user?.userId ?? null, params.id)
+    const result = await projectService.getProjectDetail(user?.userId ?? null, params.id)
     if (result instanceof ProjectNotFoundError) return status(404, errorBody(result))
     return result
   }, {
     optionalAuth: true,
     detail: {
       summary: 'Get project detail',
-      description: 'Returns the full project content. Live projects (status=3) are public. Non-Live projects return 404 for anonymous users and non-owners; the owning founder or an operator sees full content.',
+      description: 'Returns the full project content plus the founder\'s public profile (`founder`: nickname and avatarUrl from the shared users table, null when unavailable). Live projects (status=3) are public. Non-Live projects return 404 for anonymous users and non-owners; the owning founder or an operator sees full content.',
       tags: ['Project'],
       operationId: 'project.getDetail',
       security: [{ bearerAuth: [] }, {}],
     },
     params: 'Project.ProjectIdParams',
     response: {
-      200: 'Project.ProjectResponse',
+      200: 'Project.ProjectDetailResponse',
       404: ErrorResponse,
     },
   })

@@ -8,6 +8,10 @@ A platform for discovering, submitting, and managing early-stage products. Found
 A person authenticated via the external auth system. Identified by `user_id` from JWT. Profile data lives in the existing shared User table.
 _Avoid_: Account, member
 
+**Shared User table**:
+The external auth system's `users` table (default `event_management.users`, overridable via `SHARED_USERS_TABLE`). Keyed by integer `id`; this platform carries the same id as a string. **Read-only for runtime code** — never created, migrated, or written to by this service (only the dev seed and tests insert fixture rows there). Provides the **public founder profile** (`nickname`, `avatar_url`), surfaced as `founder` on the project detail response. A missing row, a non-integer user id, or an unreachable table all degrade to `founder: null` — the public page simply omits the founder block.
+_Avoid_: profile table, member table
+
 **UserIdentity**:
 A platform-specific role record linking a User to a role. Stored as `tinyint`, not database enum. A User can hold multiple roles simultaneously (e.g. both `founder` and `operator`). Granted explicitly — a User becomes a Founder when their first Project is created; an Operator is seeded or assigned out-of-band.
 _Avoid_: Role, permission, profile
