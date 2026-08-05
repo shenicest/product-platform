@@ -1,3 +1,4 @@
+import 'dotenv/config'
 import { Elysia, t } from 'elysia'
 import { openapi } from '@elysiajs/openapi'
 import { cors } from '@elysiajs/cors'

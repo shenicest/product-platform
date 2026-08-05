@@ -13,6 +13,7 @@
         "@elysiajs/jwt": "^1.4.2",
         "@elysiajs/openapi": "^1.4.15",
         "@shenicest/shared": "workspace:*",
+        "dotenv": "^17.4.2",
         "drizzle-orm": "^0.44.2",
         "drizzle-typebox": "^0.3.3",
         "elysia": "^1.2.25",
