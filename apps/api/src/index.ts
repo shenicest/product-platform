@@ -1,5 +1,6 @@
 import { Elysia, t } from 'elysia'
 import { openapi } from '@elysiajs/openapi'
+import { cors } from '@elysiajs/cors'
 import { authModule } from './modules/auth'
 import { userIdentityModule } from './modules/user-identity'
 import { projectModule } from './modules/project'
@@ -37,6 +38,9 @@ const app = new Elysia()
         },
       },
     },
+  }))
+  .use(cors({
+    origin: [/\.vercel\.app$/],
   }))
   .use(authModule)
   .use(userIdentityModule)

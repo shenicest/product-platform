@@ -14,9 +14,10 @@
     "seed": "bun src/db/seed.ts"
   },
   "dependencies": {
+    "@elysiajs/cors": "^1.4.2",
     "@elysiajs/jwt": "^1.4.2",
-    "@shenicest/shared": "workspace:*",
     "@elysiajs/openapi": "^1.4.15",
+    "@shenicest/shared": "workspace:*",
     "drizzle-orm": "^0.44.2",
     "drizzle-typebox": "^0.3.3",
     "elysia": "^1.2.25",
