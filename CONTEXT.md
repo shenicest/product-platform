@@ -25,7 +25,7 @@ A User who has submitted at least one Project. Identity is explicitly granted (n
 _Avoid_: Creator, author, submitter, owner
 
 **Project**:
-A product submitted by a Founder for review and public display. The Project holds BOTH the lifecycle state AND the source-of-truth content directly — `id`, `user_id`, `status` (tinyint 0-5), all displayable content fields (name, tagline, description, cover, demo assets, stage, categories, contact info, etc.), and timestamps. No separate content table. Pre-live edits (draft, first submission, revision-required rework) modify the Project row directly. Post-live edits go through a ProjectEditProposal. Only `status=3` (Live) projects appear in public listings.
+A product submitted by a Founder for review and public display. The Project holds BOTH the lifecycle state AND the source-of-truth content directly — `id`, `user_id`, `status` (tinyint 0-5), all displayable content fields (name, tagline, description, cover, demo assets, stage, categories, contact info, etc.), and timestamps. No separate content table. Pre-live edits (draft, pending review, revision-required rework) modify the Project row directly — editing a Pending Review project keeps it in the review queue. Post-live edits go through a ProjectEditProposal. Only `status=3` (Live) projects appear in public listings.
 _Avoid_: Submission, entry, listing, Version, Snapshot, Revision
 
 **Project Status** (tinyint, single stored field on Project):

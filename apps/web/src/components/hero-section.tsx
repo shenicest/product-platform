@@ -71,9 +71,9 @@ export function HeroSection({ project }: { project?: Project }) {
             <a href="#all-projects" className="btn-hard btn-primary">
               浏览项目 <span aria-hidden>→</span>
             </a>
-            <button type="button" disabled title="即将上线" className="btn-hard btn-ghost">
-              提交项目
-            </button>
+            <Link href="/submit" className="btn-hard btn-ghost">
+              提交项目 <span aria-hidden>→</span>
+            </Link>
           </div>
         </div>
 

@@ -6,6 +6,7 @@ interface PaginationProps {
   page: number
   totalPages: number
   searchParams: SearchParams
+  basePath?: string
 }
 
 function getPageWindow(page: number, totalPages: number): (number | string)[] {
@@ -35,7 +36,7 @@ function getPageWindow(page: number, totalPages: number): (number | string)[] {
   return result
 }
 
-export function Pagination({ page, totalPages, searchParams }: PaginationProps) {
+export function Pagination({ page, totalPages, searchParams, basePath = '/' }: PaginationProps) {
   if (totalPages <= 1) return null
 
   const hrefFor = (target: number): string => {
@@ -47,7 +48,8 @@ export function Pagination({ page, totalPages, searchParams }: PaginationProps) 
     }
     if (target > 1) params.set('page', String(target))
     const qs = params.toString()
-    return qs ? `/?${qs}` : '/'
+    const path = basePath.replace(/\/$/, '') || '/'
+    return qs ? `${path}?${qs}` : path
   }
 
   const edgeLink =

@@ -114,7 +114,7 @@ function DemoAssets({ project }: { project: ProjectDetail }) {
   )
 }
 
-export function ProjectDetail({ project }: { project: ProjectDetail }) {
+export function ProjectDetail({ project, backHref = '/' }: { project: ProjectDetail; backHref?: string }) {
   const coverUrl = nonEmpty(project.coverUrl)
   const tagline = nonEmpty(project.tagline)
   const description = nonEmpty(project.description)
@@ -138,10 +138,10 @@ export function ProjectDetail({ project }: { project: ProjectDetail }) {
   return (
     <article className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6">
       <Link
-        href="/"
+        href={backHref}
         className="font-mono text-xs tracking-[0.08em] text-muted-foreground transition-colors hover:text-primary"
       >
-        ← BACK / INDEX
+        ← BACK / {backHref === '/' ? 'INDEX' : 'DASHBOARD'}
       </Link>
 
       <header className="mt-8">

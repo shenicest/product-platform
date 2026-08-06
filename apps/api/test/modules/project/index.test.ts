@@ -3,7 +3,7 @@ import { Elysia } from 'elysia'
 import { jwt } from '@elysiajs/jwt'
 import { eq, inArray, sql } from 'drizzle-orm'
 import { db } from '../../../src/db'
-import { projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
+import { auditRecords, projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
 import { projectModule } from '../../../src/modules/project'
 import { proposalService } from '../../../src/modules/proposal'
 import { OperatorService } from '../../../src/modules/operator/service'
@@ -101,6 +101,7 @@ describe('Project routes', () => {
       await db.delete(projectEditProposals).where(inArray(projectEditProposals.id, proposalIds))
     }
     if (projectIds.length > 0) {
+      await db.delete(auditRecords).where(inArray(auditRecords.projectId, projectIds))
       await db.delete(projects).where(inArray(projects.id, projectIds))
     }
     if (userIds.length > 0) {
@@ -190,12 +191,26 @@ describe('Project routes', () => {
       expect(res.status).toBe(404)
     })
 
-    it('returns 400 when editing after status leaves Draft/Revision Required', async () => {
+    it('allows editing while Pending Review and keeps the status unchanged', async () => {
       const created = await (await createProjectAs(FOUNDER, VALID_BODY)).json()
       projectIds.push(created.id)
       const submitted = await submitAs(FOUNDER, created.id)
       expect(submitted.status).toBe(200)
       expect((await submitted.json()).status).toBe(ProjectStatus.PendingReview)
+
+      const res = await draftAs(FOUNDER, created.id, { name: 'still editable' })
+      expect(res.status).toBe(200)
+      const body = await res.json()
+      expect(body.status).toBe(ProjectStatus.PendingReview)
+      expect(body.name).toBe('still editable')
+    })
+
+    it('returns 400 when editing after status leaves the editable set (e.g. Live)', async () => {
+      const created = await (await createProjectAs(FOUNDER, VALID_BODY)).json()
+      projectIds.push(created.id)
+      await submitAs(FOUNDER, created.id)
+      const approved = await operatorService.approveProject(OPERATOR, created.id)
+      expect((approved as { status: number }).status).toBe(ProjectStatus.Live)
 
       const res = await draftAs(FOUNDER, created.id, { name: 'too late' })
       expect(res.status).toBe(400)

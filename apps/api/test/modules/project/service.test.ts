@@ -186,10 +186,12 @@ describe('ProjectService', () => {
       expect((result as { description: string }).description).toBe('reworked')
     })
 
-    it('rejects editing a pending project', async () => {
+    it('allows editing while Pending Review', async () => {
       const project = await createPending()
       const result = await service.saveDraft(project.id, { description: 'x' })
-      expect(result).toBeInstanceOf(InvalidTransitionError)
+      expect(result).not.toBeInstanceOf(InvalidTransitionError)
+      expect((result as { description: string }).description).toBe('x')
+      expect((result as { status: number }).status).toBe(ProjectStatus.PendingReview)
     })
 
     it('rejects editing a live project', async () => {

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { AuthNav } from '@/components/auth-nav'
 
 export function SiteHeader() {
   return (
@@ -18,7 +19,14 @@ export function SiteHeader() {
             >
               项目
             </Link>
+            <Link
+              href="/submit"
+              className="transition-colors hover:text-primary"
+            >
+              提交
+            </Link>
           </nav>
+          <AuthNav />
           <p className="hidden items-center gap-2.5 font-mono text-xs sm:flex">
             <i
               aria-hidden

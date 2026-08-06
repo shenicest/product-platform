@@ -4,6 +4,7 @@
 
 - [CONTEXT.md](./CONTEXT.md) — 领域术语表，定义项目核心概念（Project、ProjectEditProposal、Comment 等）
 - [docs/spec-v1-backend-api.md](./docs/spec-v1-backend-api.md) — v1.0 后端 API 完整规格说明
+- [docs/spec-v1-frontend.md](./docs/spec-v1-frontend.md) — v1.0 前端路由、页面与组件规格说明
 - [docs/adr/](./docs/adr/) — 架构决策记录，解释关键设计选择的原因
   - [0001-project-revision-separation.md](./docs/adr/0001-project-revision-separation.md) — _Superseded by 0004_
   - [0002-no-project-status-field.md](./docs/adr/0002-no-project-status-field.md) — _Superseded by 0005_
@@ -56,7 +57,12 @@ apps/
 │   ├── test/               # 测试文件，镜像 src/ 结构
 │   └── drizzle/            # 迁移文件
 ├── web/                    # 前端（Next.js App Router + shadcn/ui + Tailwind），包名 @shenicest/web
-│   └── src/app/            # 页面与路由
+│   └── src/
+│       ├── app/            # 页面与路由（App Router）
+│       ├── components/     # React 组件（含 submit/ 子目录）
+│       ├── lib/            # 工具函数、API 客户端、筛选逻辑
+│       ├── server/         # Server-only 数据获取层（React cache 包装）
+│       └── fonts/          # 本地字体文件（Harmony、Monocraft、DSEG7）
 packages/
 └── shared/                 # 前后端共享的领域常量与类型，包名 @shenicest/shared
 ```
@@ -74,6 +80,33 @@ packages/
 - 修改 Next.js 代码前先阅读 `apps/web/AGENTS.md`（Next.js 自动生成，指向 `node_modules/next/dist/docs/` 内置文档）
 - 添加 shadcn 组件：在 `apps/web` 下执行 `bunx shadcn@latest add <component>`
 - 领域枚举值一律从 `@shenicest/shared` 引入，禁止硬编码魔法数字
+
+### Server Components vs Client Components
+
+- **默认使用 Server Component**：页面（`page.tsx`）和纯展示组件保持为 Server Component
+- **Client Component**：仅在需要交互（事件处理、状态、浏览器 API）时添加 `'use client'`
+- 表单、筛选栏、认证 UI 等交互组件放在 `components/` 下，标记 `'use client'`
+- 数据获取逻辑放在 `server/` 目录下，使用 `react` 的 `cache()` 包装，仅在 Server Component 中调用
+
+### API 调用
+
+- **Server 端**：使用 `@elysiajs/eden` 的 `treaty` 创建类型安全客户端（`src/lib/api.ts`），从 `@shenicest/api` 导入 `App` 类型
+- **Client 端**：使用 `fetch` 封装（`src/lib/client-api.ts`），通过 `localStorage` 存储的 JWT token 认证
+- Server 端数据获取函数统一放在 `src/server/` 下，用 `cache()` 去重
+
+### Auth
+
+- JWT token 存储在 `localStorage`（key: `shenicest_token`）
+- `AuthProvider`（Client Component）提供全局认证上下文，通过 `useAuth()` hook 访问
+- 页面组件不直接操作 token，通过 `AuthProvider` 的 `login`/`logout` 方法管理
+
+### Commands
+
+```bash
+bun run dev:web            # 启动前端开发服务器
+bun run lint               # ESLint 检查（在 apps/web 目录下）
+bun run build              # 构建前端（通过根目录 build 命令自动执行）
+```
 
 ## ElysiaJS Conventions
 

@@ -7,3 +7,16 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Project References
+
+- 根目录 [AGENTS.md](../../AGENTS.md) — 全局约定（Frontend 章节、Shared Package、ElysiaJS 规范等）
+- [docs/spec-v1-frontend.md](../../docs/spec-v1-frontend.md) — 前端路由、页面与组件规格说明
+- [docs/spec-v1-backend-api.md](../../docs/spec-v1-backend-api.md) — 后端 API 合约
+
+## Environment Variables
+
+| 变量 | 用途 | 默认值 |
+|------|------|--------|
+| `API_URL` | Server 端 eden treaty 请求地址 | `http://localhost:3000` |
+| `NEXT_PUBLIC_API_URL` | Client 端 fetch 请求地址 | `http://localhost:3000` |

@@ -26,7 +26,7 @@ The system uses an external auth service for JWT tokens, so this backend only co
 2. As a Founder, I want to save my project as a draft multiple times, so that I can work on it incrementally without submitting for review
 3. As a Founder, I want to submit my project for review, so that operators can evaluate whether it meets platform standards
 4. As a Founder, I want to receive validation errors pointing to the first missing required field when I submit, so that I know exactly what to fix
-5. As a Founder, I want to view my project while it's pending review, so that I can see what I submitted
+5. As a Founder, I want to view my project while it's pending review, so that I can see what I submitted — and edit it in place if I spot something to fix
 6. As a Founder, I want to see the operator's revision requirements when my project needs changes, so that I know what to improve
 7. As a Founder, I want to edit my project after receiving revision requirements, so that I can address the feedback and resubmit
 8. As a Founder, I want to see the rejection reason when my project is rejected, so that I understand why it wasn't approved
@@ -108,6 +108,7 @@ The system uses an external auth service for JWT tokens, so this backend only co
 
 - **Draft phase**: Repeated "save draft" updates the Project row in place (no proposal, no new record).
 - **First submission**: Same Project row, `status` transitions `0 → 1` (Pending Review).
+- **Edit while pending**: Founder may still edit the Project row in place while `status=1` (Pending Review). The status stays `1` — the operator reviews the updated content.
 - **Require modification (first submission)**: Same Project row, `status` transitions `1 → 2` (Revision Required). Founder edits the Project row and resubmits (`2 → 1`).
 - **Post-live edit**: Project stays `status=3` (Live). Founder creates a NEW proposal (`status=0` Pending) with a `changes` diff. Project row is untouched; old version stays publicly visible.
 - **Approve proposal**: Apply the diff to the Project row (partial PATCH of changed fields); proposal `0 → 1` (Approved). Project stays Live.
@@ -134,7 +135,7 @@ Because the Project row IS the content row, `categories` and `stage` are already
 
 - **Project submission (pre-live)**:
   - `POST /projects`: Create a new Project row (`status=0`), grant founder role. Body: initial draft fields (minimum `name`).
-  - `PUT /projects/:id/draft`: Update the Project row in place. Validates minimum fields (`name`). Only allowed while `status` is `0` (Draft) or `2` (Revision Required).
+  - `PUT /projects/:id/draft`: Update the Project row in place. Validates minimum fields (`name`). Allowed while `status` is `0` (Draft), `1` (Pending Review), or `2` (Revision Required). Editing a Pending Review project keeps it in the review queue — the operator reviews the updated content.
   - `PUT /projects/:id/submit`: Validate all required fields, transition `status` to `1` (Pending Review). Allowed from `0` or `2`.
 
 - **Post-live edit proposals**:
@@ -240,7 +241,7 @@ The following features are explicitly excluded from v1.0:
 - **Beta applications**: No beta signup or management.
 - **Purchase/support**: No e-commerce or payment integration.
 - **Public comment display**: Comments are submitted but only visible to Founders and Operators.
-- **Frontend**: This spec covers backend API only. No UI implementation.
+- **Frontend UI spec**: This document defines backend API contracts only. Frontend implementation (Next.js App Router) exists in `apps/web/` but its page/routing spec is not covered here. See `docs/spec-v1-frontend.md` for frontend details.
 - **Project statistics counters**: No view_count, like_count, vote_count, share_count fields (deferred to 2.0).
 - **Project form field**: No "project form" (hardware/software/hybrid) field.
 - **Activity association**: No "belonging to activity" field on projects.

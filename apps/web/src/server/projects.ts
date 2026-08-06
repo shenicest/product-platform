@@ -1,4 +1,5 @@
 import { cache } from 'react'
+import { cookies } from 'next/headers'
 import { api } from '@/lib/api'
 import type { ProjectFilters } from '@/lib/project-filters'
 
@@ -29,3 +30,13 @@ export const getProject = cache(async (id: number) => {
 })
 
 export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProject>>>
+
+export const getProjectWithAuth = cache(async (id: number) => {
+  const jar = await cookies()
+  const token = jar.get('shenicest_token')?.value
+  const headers = token ? { authorization: `Bearer ${token}` } : undefined
+  const { data, error } = await api.projects({ id }).get({ headers })
+  if (error?.status === 404) return null
+  if (error || !data) throw new Error('Failed to load project')
+  return data
+})

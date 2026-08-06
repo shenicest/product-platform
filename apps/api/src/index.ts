@@ -41,7 +41,11 @@ const app = new Elysia()
     },
   }))
   .use(cors({
-    origin: [/\.vercel\.app$/],
+    origin: [
+      /\.vercel\.app$/,
+      /^https?:\/\/localhost(:\d+)?$/,
+      /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
+    ],
   }))
   .use(authModule)
   .use(userIdentityModule)

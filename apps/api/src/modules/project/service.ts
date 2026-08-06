@@ -125,8 +125,8 @@ export class ProjectService {
   async saveDraft(projectId: number, data: Record<string, unknown>): Promise<ProjectRow | ProjectNotFoundError | InvalidTransitionError> {
     const project = await this.getProject(projectId)
     if (!project) return new ProjectNotFoundError(projectId)
-    if (project.status !== ProjectStatus.Draft && project.status !== ProjectStatus.RevisionRequired) {
-      return new InvalidTransitionError(`Cannot edit draft: project is in status ${project.status}, expected Draft or Revision Required`)
+    if (project.status !== ProjectStatus.Draft && project.status !== ProjectStatus.PendingReview && project.status !== ProjectStatus.RevisionRequired) {
+      return new InvalidTransitionError(`Cannot edit draft: project is in status ${project.status}, expected Draft, Pending Review, or Revision Required`)
     }
     const updates = pickEditable(data)
     if (Object.keys(updates).length > 0) {
