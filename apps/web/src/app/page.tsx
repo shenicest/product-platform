@@ -42,24 +42,37 @@ export default async function HomePage(props: PageProps<"/">) {
 
       <section
         id="all-projects"
-        className="mx-auto w-full max-w-6xl scroll-mt-14 px-4 py-10 sm:px-6"
+        className="mx-auto w-full max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6 sm:py-20"
       >
-        <header className="mb-6">
-          <h2 className="text-2xl font-semibold tracking-tight">全部项目</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            共 {total} 个正在展示的项目
+        <header className="mb-8 flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <p className="eyebrow">INDEX / 02</p>
+            <h2 className="mt-2 text-[clamp(28px,3vw,40px)] font-bold leading-[1.15]">
+              全部项目
+            </h2>
+          </div>
+          <p className="pb-1 font-mono text-xs text-muted-foreground">
+            TOTAL: <b className="font-digits font-normal text-primary">{total}</b>{" "}
+            PROJECTS LIVE
           </p>
         </header>
 
         <FilterBar />
 
         {projects.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-border py-24 text-center text-muted-foreground">
-            {filtered ? "没有符合筛选条件的项目，试试调整筛选条件" : "暂无正在展示的项目"}
+          <div className="border border-dashed border-border py-24 text-center">
+            <p className="font-mono text-xs tracking-[0.12em] text-primary">
+              NO SIGNAL
+            </p>
+            <p className="mt-3 text-base text-muted-foreground">
+              {filtered
+                ? "没有符合筛选条件的项目，试试调整筛选条件"
+                : "暂无正在展示的项目"}
+            </p>
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {projects.map((project) => (
                 <ProjectCard key={project.id} project={project} />
               ))}

@@ -13,16 +13,13 @@ export function NotFoundShell({
 }) {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col items-start px-4 py-24 sm:px-6">
-      <p className="text-sm text-muted-foreground">404</p>
-      <h1 className="mt-2 text-2xl font-semibold tracking-tight">{title}</h1>
-      <p className="mt-3 max-w-md text-sm leading-relaxed text-muted-foreground">
+      <p className="eyebrow">ERROR / 404</p>
+      <h1 className="mt-4 text-3xl font-bold sm:text-4xl">{title}</h1>
+      <p className="mt-4 max-w-md text-base leading-[1.7] text-muted-foreground">
         {description}
       </p>
-      <Link
-        href={href}
-        className="mt-6 inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-      >
-        {linkLabel}
+      <Link href={href} className="btn-hard btn-primary mt-8">
+        {linkLabel} <span aria-hidden>→</span>
       </Link>
     </div>
   )

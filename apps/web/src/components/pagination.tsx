@@ -51,19 +51,19 @@ export function Pagination({ page, totalPages, searchParams }: PaginationProps) 
   }
 
   const edgeLink =
-    'flex h-8 items-center rounded-md border border-border px-3 text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground'
+    'flex h-9 items-center border border-border px-3.5 font-mono text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary'
   const edgeDisabled =
-    'flex h-8 items-center rounded-md border border-border px-3 text-sm text-muted-foreground/40'
+    'flex h-9 items-center border border-border px-3.5 font-mono text-xs text-muted-foreground/40'
 
   return (
-    <nav aria-label="分页" className="mt-10 flex items-center justify-center gap-1.5">
+    <nav aria-label="分页" className="mt-12 flex items-center justify-center gap-2">
       {page > 1 ? (
         <Link href={hrefFor(page - 1)} className={edgeLink}>
-          上一页
+          ← PREV
         </Link>
       ) : (
         <span aria-disabled="true" className={edgeDisabled}>
-          上一页
+          ← PREV
         </span>
       )}
 
@@ -74,16 +74,16 @@ export function Pagination({ page, totalPages, searchParams }: PaginationProps) 
             href={hrefFor(item)}
             aria-current={item === page ? 'page' : undefined}
             className={cn(
-              'flex h-8 w-8 items-center justify-center rounded-md border text-sm transition-colors',
+              'flex h-9 w-9 items-center justify-center border font-mono text-xs transition-colors',
               item === page
-                ? 'border-foreground bg-foreground text-background'
-                : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
             )}
           >
-            {item}
+            {String(item).padStart(2, '0')}
           </Link>
         ) : (
-          <span key={item} className="px-1 text-muted-foreground">
+          <span key={item} className="px-1 font-mono text-xs text-muted-foreground">
             …
           </span>
         )
@@ -91,11 +91,11 @@ export function Pagination({ page, totalPages, searchParams }: PaginationProps) 
 
       {page < totalPages ? (
         <Link href={hrefFor(page + 1)} className={edgeLink}>
-          下一页
+          NEXT →
         </Link>
       ) : (
         <span aria-disabled="true" className={edgeDisabled}>
-          下一页
+          NEXT →
         </span>
       )}
     </nav>

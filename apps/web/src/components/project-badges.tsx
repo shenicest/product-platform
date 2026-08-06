@@ -16,15 +16,10 @@ export function ProjectBadges({
   return (
     <div className={cn('flex flex-wrap gap-1.5', className)}>
       {stageLabel ? (
-        <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs text-secondary-foreground">
-          {stageLabel}
-        </span>
+        <span className="chip-hard chip-active">{stageLabel}</span>
       ) : null}
       {categories?.map((category) => (
-        <span
-          key={category}
-          className="rounded-full border border-border px-2.5 py-0.5 text-xs text-muted-foreground"
-        >
+        <span key={category} className="chip-hard">
           {category}
         </span>
       ))}

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { ProjectDetail } from '@/server/projects'
 import { ProjectBadges } from '@/components/project-badges'
 import { resolveDemoVideo } from '@/lib/demo-media'
+import { projectIdLabel } from '@/lib/utils'
 
 // Public display deliberately excludes all contact fields
 // (contactName / contactPhone / contactEmail / contactWechat).
@@ -12,16 +13,23 @@ function nonEmpty(value: string | null | undefined): string | null {
 }
 
 function DetailSection({
+  index,
   title,
   content,
 }: {
+  index: number
   title: string
   content: string
 }) {
   return (
     <section>
-      <h2 className="text-base font-semibold tracking-tight">{title}</h2>
-      <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+      <h2 className="flex items-baseline gap-3 text-lg font-bold">
+        <span className="font-mono text-[11px] tracking-[0.08em] text-primary">
+          {String(index).padStart(2, '0')}
+        </span>
+        {title}
+      </h2>
+      <p className="mt-3 max-w-[65ch] text-base leading-[1.7] text-muted-foreground whitespace-pre-line">
         {content}
       </p>
     </section>
@@ -39,22 +47,25 @@ function DemoAssets({ project }: { project: ProjectDetail }) {
   const video = demoVideoUrl ? resolveDemoVideo(demoVideoUrl) : null
 
   return (
-    <section className="mt-10">
-      <h2 className="text-base font-semibold tracking-tight">演示</h2>
-      <div className="mt-3 space-y-4">
+    <section className="mt-12 border border-border bg-card">
+      <div className="flex items-center justify-between border-b border-border px-5 py-3">
+        <h2 className="font-mono text-xs tracking-[0.12em] text-primary">
+          DEMO / SIGNAL
+        </h2>
         {demoLink ? (
           <a
             href={demoLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            className="btn-hard btn-primary px-4 py-2 text-xs"
           >
-            试用产品
+            试用产品 <span aria-hidden>→</span>
           </a>
         ) : null}
-
+      </div>
+      <div className="space-y-4 p-5">
         {video?.kind === 'iframe' ? (
-          <div className="aspect-video w-full overflow-hidden rounded-xl border border-border bg-muted">
+          <div className="aspect-video w-full overflow-hidden border border-border bg-muted">
             <iframe
               src={video.src}
               title={`${project.name} 演示视频`}
@@ -68,7 +79,7 @@ function DemoAssets({ project }: { project: ProjectDetail }) {
             src={video.src}
             controls
             preload="metadata"
-            className="aspect-video w-full rounded-xl border border-border bg-muted"
+            className="aspect-video w-full border border-border bg-muted"
           />
         ) : null}
         {video?.kind === 'link' && demoVideoUrl ? (
@@ -76,9 +87,9 @@ function DemoAssets({ project }: { project: ProjectDetail }) {
             href={demoVideoUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+            className="btn-hard btn-secondary w-fit"
           >
-            观看演示视频
+            观看演示视频 <span aria-hidden>→</span>
           </a>
         ) : null}
 
@@ -93,7 +104,7 @@ function DemoAssets({ project }: { project: ProjectDetail }) {
                 src={src}
                 alt={`${project.name} 演示图 ${index + 1}`}
                 loading="lazy"
-                className="aspect-video w-full rounded-xl border border-border bg-muted object-cover"
+                className="aspect-video w-full border border-border bg-muted object-cover"
               />
             ))}
           </div>
@@ -111,7 +122,8 @@ export function ProjectDetail({ project }: { project: ProjectDetail }) {
   const founderNickname = nonEmpty(project.founder?.nickname)
   const founderAvatarUrl = nonEmpty(project.founder?.avatarUrl)
 
-  const longFormSections = [
+  const sections = [
+    { title: '产品介绍', content: description },
     { title: '目标用户', content: nonEmpty(project.targetUsers) },
     { title: '解决的问题', content: nonEmpty(project.userProblem) },
     { title: '当前进展', content: nonEmpty(project.progress) },
@@ -124,61 +136,63 @@ export function ProjectDetail({ project }: { project: ProjectDetail }) {
   const betaDescription = nonEmpty(project.betaDescription)
 
   return (
-    <article className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
+    <article className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6">
       <Link
         href="/"
-        className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+        className="font-mono text-xs tracking-[0.08em] text-muted-foreground transition-colors hover:text-primary"
       >
-        ← 返回项目列表
+        ← BACK / INDEX
       </Link>
 
-      <header className="mt-6">
+      <header className="mt-8">
         {coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={coverUrl}
-            alt={project.name}
-            className="aspect-video w-full rounded-xl border border-border bg-muted object-cover"
-          />
+          <div className="scan-frame border border-foreground/40 bg-card p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={coverUrl}
+              alt={project.name}
+              className="aspect-video w-full border border-border bg-muted object-cover"
+            />
+          </div>
         ) : null}
 
-        <div className="mt-6">
-          <h1 className="text-3xl font-semibold tracking-tight">
+        <div className="mt-8">
+          <p className="eyebrow">OBJECT / {projectIdLabel(project.id)}</p>
+          <h1 className="mt-3 text-[clamp(30px,4vw,44px)] font-bold leading-[1.1]">
             {project.name}
           </h1>
           {tagline ? (
-            <p className="mt-2 text-lg text-muted-foreground">{tagline}</p>
+            <p className="mt-3 text-lg leading-[1.7] text-muted-foreground">
+              {tagline}
+            </p>
           ) : null}
 
           {founderNickname || founderAvatarUrl ? (
-            <div className="mt-4 flex items-center gap-2">
+            <p className="mt-5 flex items-center gap-2.5 font-mono text-xs text-muted-foreground">
               {founderAvatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={founderAvatarUrl}
                   alt={founderNickname ?? `${project.name} 创始人`}
-                  className="size-8 rounded-full border border-border bg-muted object-cover"
+                  className="size-8 border border-border bg-muted object-cover"
                 />
               ) : null}
-              {founderNickname ? (
-                <span className="text-sm font-medium">{founderNickname}</span>
-              ) : null}
-            </div>
+              FOUNDER:
+              <b className="font-normal text-foreground">{founderNickname}</b>
+            </p>
           ) : null}
 
           {project.stage !== null ||
           project.categories?.length ||
           teamName ? (
-            <div className="mt-4 flex flex-wrap items-center gap-1.5">
+            <div className="mt-5 flex flex-wrap items-center gap-1.5">
               <ProjectBadges
                 stage={project.stage}
                 categories={project.categories}
                 className="contents"
               />
               {teamName ? (
-                <span className="ml-1 text-xs text-muted-foreground">
-                  {teamName}
-                </span>
+                <span className="chip-hard">{teamName}</span>
               ) : null}
             </div>
           ) : null}
@@ -187,17 +201,12 @@ export function ProjectDetail({ project }: { project: ProjectDetail }) {
 
       <DemoAssets project={project} />
 
-      {description ? (
-        <div className="mt-10">
-          <DetailSection title="产品介绍" content={description} />
-        </div>
-      ) : null}
-
-      {longFormSections.length ? (
-        <div className="mt-10 space-y-8">
-          {longFormSections.map((section) => (
+      {sections.length ? (
+        <div className="mt-12 space-y-10">
+          {sections.map((section, index) => (
             <DetailSection
               key={section.title}
+              index={index + 1}
               title={section.title}
               content={section.content}
             />
@@ -206,12 +215,16 @@ export function ProjectDetail({ project }: { project: ProjectDetail }) {
       ) : null}
 
       {project.isOpenForBeta ? (
-        <section className="mt-10 rounded-xl border border-primary/30 bg-primary/5 p-6">
-          <h2 className="text-base font-semibold tracking-tight">
+        <section className="mt-12 border-2 border-primary p-6">
+          <h2 className="flex items-center gap-2.5 text-lg font-bold">
+            <i
+              aria-hidden
+              className="size-2.5 bg-primary shadow-[0_0_12px_var(--primary)]"
+            />
             正在招募 Beta 用户
           </h2>
           {betaDescription ? (
-            <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+            <p className="mt-3 max-w-[65ch] text-base leading-[1.7] text-muted-foreground whitespace-pre-line">
               {betaDescription}
             </p>
           ) : null}
