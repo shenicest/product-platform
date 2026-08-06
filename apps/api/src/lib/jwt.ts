@@ -3,8 +3,8 @@ import { jwtVerify } from 'jose'
 const JWT_SECRET = process.env.SHENICEST_JWT_SECRET
 if (!JWT_SECRET) throw new Error('SHENICEST_JWT_SECRET environment variable is required')
 
-const ISSUER = 'shenicest.ton-ton.fun'
-const AUDIENCE = 'shenicest.ton-ton.fun'
+const ISSUER = 'shenicest.com'
+const AUDIENCE = 'shenicest.com'
 
 export interface SheNicestUser {
   user_id: number
