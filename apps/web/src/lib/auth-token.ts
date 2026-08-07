@@ -1,3 +1,5 @@
+import { clientApi } from '@/lib/api'
+
 export interface AuthUser {
   user_id: number
   email: string | null
@@ -7,17 +9,16 @@ export interface AuthUser {
 
 export async function fetchCurrentUser(): Promise<AuthUser | null> {
   try {
-    const res = await fetch('/api/me')
-    if (!res.ok) return null
-    const data = await res.json()
-    const user = data.user
+    const { data, error } = await clientApi.me.get()
+    if (error || !data) return null
+    const user = (data as { user?: AuthUser }).user
     if (!user) return null
-    return { roles: [], ...user }
+    return { ...user, roles: user.roles ?? [] }
   } catch {
     return null
   }
 }
 
 export async function logoutRequest(): Promise<void> {
-  await fetch('/api/auth/logout', { method: 'POST' })
+  await clientApi.auth.logout.post()
 }

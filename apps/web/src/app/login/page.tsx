@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
+import { clientApi } from '@/lib/api'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -32,14 +33,13 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/auth/send-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: identifier.trim() }),
-      })
-      const data = await res.json()
+      const { data, error } = await clientApi.auth['send-code'].post({ identifier: identifier.trim() })
+      if (error || !data) {
+        setError('发送失败')
+        return
+      }
       if (!data.success) {
-        setError(data.error || '发送失败')
+        setError((data as { error?: string }).error || '发送失败')
         return
       }
       setStep('code')
@@ -56,14 +56,16 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/auth/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier: identifier.trim(), code: code.trim() }),
+      const { data, error } = await clientApi.auth['verify-code'].post({
+        identifier: identifier.trim(),
+        code: code.trim(),
       })
-      const data = await res.json()
+      if (error || !data) {
+        setError('验证失败')
+        return
+      }
       if (!data.success) {
-        setError(data.error || '验证失败')
+        setError((data as { error?: string }).error || '验证失败')
         return
       }
       await refresh()
