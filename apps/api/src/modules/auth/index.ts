@@ -52,7 +52,7 @@ export const authModule = new Elysia()
         value: result.token as string,
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        sameSite: 'none',
         path: '/',
         maxAge: 30 * 24 * 60 * 60,
       })

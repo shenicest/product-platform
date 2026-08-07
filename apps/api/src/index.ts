@@ -57,7 +57,7 @@ const app = new Elysia()
   .use(founderModule)
   .use(uploadModule)
   .use(operatorModule)
-  .get('/health', () => ({ status: 'ok' as const }), {
+  .get('/health', () => ({ status: 'ok' as const, env: process.env.NODE_ENV }), {
     detail: {
       summary: 'Health check',
       description: 'Returns server health status',
