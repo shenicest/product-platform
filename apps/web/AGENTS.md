@@ -18,5 +18,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 | 变量 | 用途 | 默认值 |
 |------|------|--------|
-| `API_URL` | Server 端 eden treaty 请求地址 | `http://localhost:3000` |
-| `NEXT_PUBLIC_API_URL` | Client 端 fetch 请求地址 | `http://localhost:3000` |
+| `API_URL` | 后端地址（Server 端 eden treaty、Next rewrite 与 `/api/me`、`/api/auth/*` 代理） | `http://localhost:3000` |

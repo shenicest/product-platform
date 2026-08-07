@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
-import { clientApi } from '@/lib/api'
+import { sendLoginCode, verifyLoginCode } from '@/lib/client-api'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -33,7 +33,7 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const { data, error } = await clientApi.auth['send-code'].post({ identifier: identifier.trim() })
+      const { data, error } = await sendLoginCode(identifier.trim())
       if (error || !data) {
         setError('发送失败')
         return
@@ -56,10 +56,7 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      const { data, error } = await clientApi.auth['verify-code'].post({
-        identifier: identifier.trim(),
-        code: code.trim(),
-      })
+      const { data, error } = await verifyLoginCode(identifier.trim(), code.trim())
       if (error || !data) {
         setError('验证失败')
         return

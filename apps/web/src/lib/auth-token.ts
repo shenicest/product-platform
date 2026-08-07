@@ -1,4 +1,4 @@
-import { clientApi } from '@/lib/api'
+import { loginLogout } from '@/lib/client-api'
 
 export interface AuthUser {
   user_id: number
@@ -9,16 +9,16 @@ export interface AuthUser {
 
 export async function fetchCurrentUser(): Promise<AuthUser | null> {
   try {
-    const { data, error } = await clientApi.me.get()
-    if (error || !data) return null
-    const user = (data as { user?: AuthUser }).user
-    if (!user) return null
-    return { ...user, roles: user.roles ?? [] }
+    const res = await fetch('/api/me', { credentials: 'same-origin' })
+    if (!res.ok) return null
+    const data = (await res.json()) as { user?: AuthUser }
+    if (!data.user) return null
+    return { ...data.user, roles: data.user.roles ?? [] }
   } catch {
     return null
   }
 }
 
 export async function logoutRequest(): Promise<void> {
-  await clientApi.auth.logout.post()
+  await loginLogout()
 }

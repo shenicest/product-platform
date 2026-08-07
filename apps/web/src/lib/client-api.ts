@@ -58,6 +58,24 @@ export interface ProjectData {
   updatedAt: string
 }
 
+export function sendLoginCode(identifier: string) {
+  return request<{ success: boolean; error?: string }>('POST', '/auth/send-code', {
+    identifier,
+  })
+}
+
+export function verifyLoginCode(identifier: string, code: string) {
+  return request<{ success: boolean; token?: string; error?: string }>(
+    'POST',
+    '/auth/verify-code',
+    { identifier, code },
+  )
+}
+
+export function loginLogout() {
+  return request<{ success: boolean }>('POST', '/auth/logout')
+}
+
 export function createProject(body: Record<string, unknown>) {
   return request<ProjectData>('POST', '/projects', body)
 }
