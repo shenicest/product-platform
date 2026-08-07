@@ -1,7 +1,7 @@
-const API_URL = process.env.API_URL ?? 'http://localhost:3000'
+import { apiUrl } from '@/lib/api-url'
 
 export async function GET(request: Request) {
-  const meUrl = new URL('/me', API_URL)
+  const meUrl = apiUrl('/me')
   const meProxy = new Request(meUrl, request)
   const meRes = await fetch(meProxy)
 
@@ -10,8 +10,7 @@ export async function GET(request: Request) {
   const meData = await meRes.json()
   if (!meData.user) return Response.json(meData)
 
-  const rolesUrl = new URL('/identity/roles', API_URL)
-  const rolesRes = await fetch(rolesUrl, {
+  const rolesRes = await fetch(apiUrl('/identity/roles'), {
     headers: {
       cookie: request.headers.get('cookie') ?? '',
     },

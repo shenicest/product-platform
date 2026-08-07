@@ -1,7 +1,6 @@
-const API_URL = process.env.API_URL ?? 'http://localhost:3000'
+import { apiUrl } from '@/lib/api-url'
 
 export async function POST(request: Request) {
-  const url = new URL('/auth/send-code', API_URL)
-  const proxy = new Request(url, request)
+  const proxy = new Request(apiUrl('/auth/send-code'), request)
   return fetch(proxy)
 }
