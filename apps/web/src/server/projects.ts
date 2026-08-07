@@ -34,7 +34,7 @@ export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProject>>>
 export const getProjectWithAuth = cache(async (id: number) => {
   const jar = await cookies()
   const token = jar.get('shenicest_token')?.value
-  const headers = token ? { authorization: `Bearer ${token}` } : undefined
+  const headers = token ? { cookie: `shenicest_token=${token}` } : undefined
   const { data, error } = await api.projects({ id }).get({ headers })
   if (error?.status === 404) return null
   if (error || !data) throw new Error('Failed to load project')

@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'bun:test'
-import { Elysia, t } from 'elysia'
-import { jwt } from '@elysiajs/jwt'
+import { Elysia } from 'elysia'
+import { SignJWT } from 'jose'
 import { authPlugin } from '../../src/plugins/auth'
 
-const TEST_SECRET = 'dev-secret-change-in-production'
+const TEST_SECRET = process.env.SHENICEST_JWT_SECRET
+if (!TEST_SECRET) throw new Error('SHENICEST_JWT_SECRET must be set for tests')
+const ISSUER = 'shenicest.com'
+const AUDIENCE = 'shenicest.com'
 
 function createApp() {
   return new Elysia()
@@ -15,9 +18,14 @@ function createApp() {
 }
 
 async function signToken(payload: Record<string, unknown>, secret = TEST_SECRET) {
-  const app = new Elysia().use(jwt({ name: 'jwt', secret }))
-  const { jwt: jwtInstance } = app.decorator
-  return jwtInstance.sign(payload)
+  const encoder = new TextEncoder()
+  const jwt = await new SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuer(ISSUER)
+    .setAudience(AUDIENCE)
+    .setIssuedAt()
+    .sign(encoder.encode(secret))
+  return jwt
 }
 
 describe('Auth plugin', () => {
@@ -44,13 +52,17 @@ describe('Auth plugin', () => {
   })
 
   it('protected route returns 401 with expired token', async () => {
-    const token = await signToken({
-      user_id: 'user-123',
-      exp: Math.floor(Date.now() / 1000) - 3600,
-    })
+    const encoder = new TextEncoder()
+    const jwt = await new SignJWT({ user_id: 'user-123' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuer(ISSUER)
+      .setAudience(AUDIENCE)
+      .setIssuedAt(Math.floor(Date.now() / 1000) - 7200)
+      .setExpirationTime(Math.floor(Date.now() / 1000) - 3600)
+      .sign(encoder.encode(TEST_SECRET))
     const response = await app.handle(
       new Request('http://localhost/protected', {
-        headers: { authorization: `Bearer ${token}` },
+        headers: { authorization: `Bearer ${jwt}` },
       }),
     )
     expect(response.status).toBe(401)

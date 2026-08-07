@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from 'bun:test'
 import { Elysia } from 'elysia'
-import { jwt } from '@elysiajs/jwt'
+import { SignJWT } from 'jose'
 import { eq, inArray, sql } from 'drizzle-orm'
 import { db } from '../../../src/db'
 import { auditRecords, projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
@@ -12,7 +12,9 @@ import { Role } from '../../../src/modules/user-identity/model'
 import { ProjectStatus } from '../../../src/modules/project/model'
 import { SHARED_USERS_TABLE } from '../../../src/modules/user/service'
 
-const TEST_SECRET = 'dev-secret-change-in-production'
+const TEST_SECRET = process.env.SHENICEST_JWT_SECRET!
+const ISSUER = 'shenicest.com'
+const AUDIENCE = 'shenicest.com'
 const FOUNDER = `test-founder-${crypto.randomUUID()}`
 const OTHER_FOUNDER = `test-founder-${crypto.randomUUID()}`
 const OPERATOR = `test-operator-${crypto.randomUUID()}`
@@ -42,9 +44,12 @@ function createApp() {
 }
 
 async function signToken(payload: Record<string, unknown>) {
-  const app = new Elysia().use(jwt({ name: 'jwt', secret: TEST_SECRET }))
-  const { jwt: jwtInstance } = app.decorator
-  return jwtInstance.sign(payload)
+  return new SignJWT(payload)
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuer(ISSUER)
+    .setAudience(AUDIENCE)
+    .setIssuedAt()
+    .sign(new TextEncoder().encode(TEST_SECRET))
 }
 
 function authHeaders(token: string) {

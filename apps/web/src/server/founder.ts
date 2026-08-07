@@ -26,7 +26,7 @@ export const getAuthToken = cache(async () => {
 
 export const getFounderProjects = cache(async (query: FounderProjectQuery = {}) => {
   const token = await getAuthToken()
-  const headers = token ? { authorization: `Bearer ${token}` } : undefined
+  const headers = token ? { cookie: `shenicest_token=${token}` } : undefined
   const { data, error } = await api.founder.projects.get({ query, headers })
   if (error) {
     throw new FounderApiError('Failed to load founder projects', typeof error.status === 'number' ? error.status : 500)
@@ -39,7 +39,7 @@ export const getFounderProjects = cache(async (query: FounderProjectQuery = {}) 
 
 export const getFounderStats = cache(async () => {
   const token = await getAuthToken()
-  const headers = token ? { authorization: `Bearer ${token}` } : undefined
+  const headers = token ? { cookie: `shenicest_token=${token}` } : undefined
   const { data, error } = await api.founder.stats.get({ headers })
   if (error) {
     throw new FounderApiError('Failed to load founder stats', typeof error.status === 'number' ? error.status : 500)
@@ -52,7 +52,7 @@ export const getFounderStats = cache(async () => {
 
 export const getFounderProjectProposals = cache(async (projectId: number): Promise<ProposalList | null> => {
   const token = await getAuthToken()
-  const headers = token ? { authorization: `Bearer ${token}` } : undefined
+  const headers = token ? { cookie: `shenicest_token=${token}` } : undefined
   const { data, error } = await api.founder.projects({ id: projectId }).proposals.get({ headers })
   if (error?.status === 404) return null
   if (error) {
@@ -89,7 +89,7 @@ export interface ProposalList {
 
 export const getFounderProjectAuditReason = cache(async (projectId: number) => {
   const token = await getAuthToken()
-  const headers = token ? { authorization: `Bearer ${token}` } : undefined
+  const headers = token ? { cookie: `shenicest_token=${token}` } : undefined
   const client = api.founder.projects({ id: projectId }) as unknown as Record<string, { get: (opts: { headers?: Record<string, string> }) => Promise<{ data: AuditReason | null; error: { status: number } | null }> }>
   const { data, error } = await client['audit-reason'].get({ headers })
   if (error?.status === 404) return null
