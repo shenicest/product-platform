@@ -48,6 +48,7 @@ const app = new Elysia()
       /^https?:\/\/localhost(:\d+)?$/,
       /^https?:\/\/127\.0\.0\.1(:\d+)?$/,
     ],
+    credentials: true,
   }))
   .use(authModule)
   .use(userIdentityModule)
