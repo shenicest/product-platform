@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { ProjectSubmissionForm } from '@/components/submit/project-submission-form'
 
 export const metadata: Metadata = {
@@ -8,7 +10,10 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic'
 
-export default function SubmitPage() {
+export default async function SubmitPage() {
+  const jar = await cookies()
+  const token = jar.get('shenicest_token')?.value
+  if (!token) redirect('/login')
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6">
       <header className="mb-10">
