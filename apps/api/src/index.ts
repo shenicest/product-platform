@@ -66,6 +66,7 @@ const app = new Elysia()
     },
     response: t.Object({
       status: t.Literal('ok'),
+      env: t.Optional(t.String()),
     }),
   })
   .listen(Number(process.env.PORT) || 3000)
