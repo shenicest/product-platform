@@ -8,6 +8,7 @@ import { projectModule } from './modules/project'
 import { proposalModule } from './modules/proposal'
 import { operatorModule } from './modules/operator'
 import { founderModule } from './modules/founder'
+import { uploadModule } from './modules/upload'
 
 const app = new Elysia()
   .use(openapi({
@@ -26,6 +27,7 @@ const app = new Elysia()
         { name: 'Proposal', description: 'Post-live edit proposals — diff-based changes reviewed by operators' },
         { name: 'Founder', description: 'Founder dashboard — own projects, stats, audit reasons, and proposals' },
         { name: 'Operator', description: 'Operator review actions, management lists, audit records, and platform statistics' },
+        { name: 'Upload', description: 'Pre-signed COS image upload for project assets' },
       ],
       security: [{ bearerAuth: [] }],
       components: {
@@ -52,6 +54,7 @@ const app = new Elysia()
   .use(projectModule)
   .use(proposalModule)
   .use(founderModule)
+  .use(uploadModule)
   .use(operatorModule)
   .get('/health', () => ({ status: 'ok' as const }), {
     detail: {

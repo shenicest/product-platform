@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { CATEGORIES, ProjectStage, ProjectStatus } from '@shenicest/shared'
 import { useAuth } from '@/components/auth-provider'
 import { createProject, saveDraft, submitForReview } from '@/lib/client-api'
+import { ImageUploader } from './image-uploader'
+import { VideoUploader } from './video-uploader'
 import {
   CheckboxInput,
   FormField,
@@ -23,7 +25,7 @@ interface FormState {
   stage: string
   description: string
   coverUrl: string
-  demoImages: string
+  demoImages: string[]
   demoVideoUrl: string
   demoLink: string
   targetUsers: string
@@ -47,7 +49,7 @@ const EMPTY_FORM: FormState = {
   stage: '',
   description: '',
   coverUrl: '',
-  demoImages: '',
+  demoImages: [],
   demoVideoUrl: '',
   demoLink: '',
   targetUsers: '',
@@ -73,12 +75,7 @@ function toApiBody(form: FormState): Record<string, unknown> {
   if (form.stage !== '') body.stage = Number(form.stage)
   if (form.description) body.description = form.description
   if (form.coverUrl) body.coverUrl = form.coverUrl
-  if (form.demoImages) {
-    body.demoImages = form.demoImages
-      .split('\n')
-      .map((s) => s.trim())
-      .filter(Boolean)
-  }
+  if (form.demoImages.length > 0) body.demoImages = form.demoImages
   if (form.demoVideoUrl) body.demoVideoUrl = form.demoVideoUrl
   if (form.demoLink) body.demoLink = form.demoLink
   if (form.targetUsers) body.targetUsers = form.targetUsers
@@ -104,7 +101,7 @@ function fromProjectData(project: Record<string, unknown>): FormState {
     stage: project.stage !== null && project.stage !== undefined ? String(project.stage) : '',
     description: (project.description as string) ?? '',
     coverUrl: (project.coverUrl as string) ?? '',
-    demoImages: Array.isArray(project.demoImages) ? (project.demoImages as string[]).join('\n') : '',
+    demoImages: Array.isArray(project.demoImages) ? (project.demoImages as string[]) : [],
     demoVideoUrl: (project.demoVideoUrl as string) ?? '',
     demoLink: (project.demoLink as string) ?? '',
     targetUsers: (project.targetUsers as string) ?? '',
@@ -340,39 +337,30 @@ export function ProjectSubmissionForm({
             error={errors.description}
           />
         </FormField>
-        <FormField label="封面图 URL" htmlFor="coverUrl" required error={errors.coverUrl}>
-          <TextInput
+        <FormField label="封面图" htmlFor="coverUrl" required error={errors.coverUrl}>
+          <ImageUploader
             id="coverUrl"
-            name="coverUrl"
-            value={form.coverUrl}
-            onChange={(v) => update('coverUrl', v)}
-            placeholder="https://example.com/cover.png"
-            type="url"
-            required
-            error={errors.coverUrl}
+            value={form.coverUrl ? [form.coverUrl] : []}
+            onChange={(urls) => update('coverUrl', urls[0] ?? '')}
           />
         </FormField>
       </FormSection>
 
       <FormSection index={4} title="演示资料">
-        <FormField label="演示截图" htmlFor="demoImages" hint="每行一个图片 URL">
-          <TextArea
+        <FormField label="演示截图" htmlFor="demoImages" error={errors.demoImages}>
+          <ImageUploader
             id="demoImages"
-            name="demoImages"
+            multiple
+            max={5}
             value={form.demoImages}
-            onChange={(v) => update('demoImages', v)}
-            placeholder="https://example.com/screenshot-1.png&#10;https://example.com/screenshot-2.png"
-            rows={3}
+            onChange={(urls) => update('demoImages', urls)}
           />
         </FormField>
-        <FormField label="演示视频 URL" htmlFor="demoVideoUrl">
-          <TextInput
+        <FormField label="演示视频" htmlFor="demoVideoUrl">
+          <VideoUploader
             id="demoVideoUrl"
-            name="demoVideoUrl"
             value={form.demoVideoUrl}
             onChange={(v) => update('demoVideoUrl', v)}
-            placeholder="https://youtube.com/watch?v=... 或直接视频链接"
-            type="url"
           />
         </FormField>
         <FormField label="产品链接" htmlFor="demoLink">
