@@ -27,9 +27,18 @@ export function AuthNav() {
   }
 
   const isFounder = user.roles?.includes(Role.Founder) ?? false
+  const isOperator = user.roles?.includes(Role.Operator) ?? false
 
   return (
     <div className="flex items-center gap-3">
+      {isOperator ? (
+        <Link
+          href="/operator"
+          className="hidden font-mono text-xs text-destructive transition-colors hover:text-destructive/80 sm:inline"
+        >
+          运营后台
+        </Link>
+      ) : null}
       {isFounder ? (
         <Link
           href="/founder/dashboard"
