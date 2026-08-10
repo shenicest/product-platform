@@ -1,10 +1,11 @@
-import { and, asc, count, desc, eq, gte, like, lte, or, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gte, like, lte, ne, or, sql } from 'drizzle-orm'
 import { auditRecords, projectEditProposals, projects } from '../../db/schema'
 import type { Database } from '../../db'
 import {
   AuditAction,
   InvalidTransitionError,
   ProjectNotFoundError,
+  ProjectStage,
   ProjectStatus,
 } from '../project/model'
 import { ProposalNotFoundError, ProposalStatus } from '../proposal/model'
@@ -21,6 +22,13 @@ function clampLimit(raw: number | undefined): number {
   const value = raw ?? DEFAULT_LIMIT
   return Math.max(1, Math.min(value, MAX_LIMIT))
 }
+
+const statusNameByValue = new Map<number, string>(
+  Object.entries(ProjectStatus).map(([name, value]) => [value, name]),
+)
+const stageNameByValue = new Map<number, string>(
+  Object.entries(ProjectStage).map(([name, value]) => [value, name]),
+)
 
 export class OperatorService {
   constructor(private db: Database) {}
@@ -204,7 +212,7 @@ export class OperatorService {
   // ── Management queries ─────────────────────────────────────────────
 
   async listProjects(query: OperatorProjectQuery) {
-    const conditions = []
+    const conditions = [ne(projects.status, ProjectStatus.Draft)]
     if (query.status !== undefined) conditions.push(eq(projects.status, query.status))
     if (query.stage !== undefined) conditions.push(eq(projects.stage, query.stage))
     if (query.category) {
@@ -317,10 +325,15 @@ export class OperatorService {
     ])
 
     const byStatus: Record<string, number> = {}
-    for (const row of statusRows) byStatus[String(row.status)] = row.value
+    for (const row of statusRows) {
+      byStatus[statusNameByValue.get(row.status) ?? String(row.status)] = row.value
+    }
 
     const byStage: Record<string, number> = {}
-    for (const row of stageRows) byStage[String(row.stage)] = row.value
+    for (const row of stageRows) {
+      if (row.stage === null) continue
+      byStage[stageNameByValue.get(row.stage) ?? String(row.stage)] = row.value
+    }
 
     const byCategory: Record<string, number> = {}
     for (const row of categoryRows) {

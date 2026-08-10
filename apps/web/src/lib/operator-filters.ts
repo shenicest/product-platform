@@ -1,7 +1,6 @@
 import { CATEGORIES, ProjectStage, ProjectStatus } from '@shenicest/shared'
 
 export const OPERATOR_STATUS_LABELS: Record<number, string> = {
-  [ProjectStatus.Draft]: '草稿',
   [ProjectStatus.PendingReview]: '待审核',
   [ProjectStatus.RevisionRequired]: '需修改',
   [ProjectStatus.Live]: '已上线',
@@ -10,7 +9,6 @@ export const OPERATOR_STATUS_LABELS: Record<number, string> = {
 }
 
 export const OPERATOR_STATUS_COLORS: Record<number, string> = {
-  [ProjectStatus.Draft]: 'bg-muted text-muted-foreground',
   [ProjectStatus.PendingReview]: 'bg-primary/10 text-primary',
   [ProjectStatus.RevisionRequired]: 'bg-amber-500/10 text-amber-600',
   [ProjectStatus.Live]: 'bg-emerald-500/10 text-emerald-600',

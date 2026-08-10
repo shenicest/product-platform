@@ -1,8 +1,7 @@
 import Link from 'next/link'
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { Role } from '@shenicest/shared'
-import { fetchCurrentUser } from '@/lib/auth-token'
+import { getSessionUser } from '@/server/auth'
 
 const NAV_ITEMS = [
   { href: '/operator', label: '总览' },
@@ -16,12 +15,9 @@ export default async function OperatorLayout({
 }: {
   children: React.ReactNode
 }) {
-  const jar = await cookies()
-  const token = jar.get('shenicest_token')?.value
-  if (!token) redirect('/login')
-
-  const user = await fetchCurrentUser()
-  if (!user || !user.roles?.includes(Role.Operator)) {
+  const user = await getSessionUser()
+  if (!user) redirect('/login')
+  if (!user.roles.includes(Role.Operator)) {
     redirect('/')
   }
 

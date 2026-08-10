@@ -28,8 +28,8 @@ export default async function FounderDashboardPage(
   const jar = await cookies()
   const token = jar.get('shenicest_token')?.value
 
-  // Unauthenticated users are redirected by middleware; this guard handles
-  // malformed or missing cookies in edge cases.
+  // Middleware only redirects logged-in users away from /login; this guard
+  // sends unauthenticated users to the login page.
   if (!token) {
     redirect('/login')
   }

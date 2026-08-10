@@ -1,24 +1,23 @@
-import { Elysia, t } from 'elysia'
+import { Elysia, status, t } from 'elysia'
 import { authPlugin } from '../../plugins/auth'
 import { verifyToken } from '../../lib/jwt'
 import { getCsrfToken, sendCode, verifyCode } from '../../lib/shenicest-client'
-import { ErrorResponse } from '../../common'
+import { ErrorCode, ErrorMessage, ErrorResponse } from '../../common'
+
+const unauthorized = () =>
+  status(401, { error: { code: ErrorCode.UNAUTHORIZED, message: ErrorMessage.UNAUTHORIZED } })
 
 export const authModule = new Elysia()
   .use(authPlugin)
 
-  .get('/me', async ({ cookie, set }) => {
+  .get('/me', async ({ cookie }) => {
     const token = cookie['shenicest_token'].value
-    if (!token || typeof token !== 'string') {
-      set.status = 401
-      return { error: 'Not authenticated' }
-    }
+    if (!token || typeof token !== 'string') return unauthorized()
     try {
       const user = await verifyToken(token)
       return { user }
     } catch {
-      set.status = 401
-      return { error: 'Invalid or expired token' }
+      return unauthorized()
     }
   }, {
     detail: {
@@ -26,6 +25,16 @@ export const authModule = new Elysia()
       description: 'Returns user info from the httpOnly cookie JWT.',
       tags: ['Auth'],
       operationId: 'auth.getCurrentUserCookie',
+    },
+    response: {
+      200: t.Object({
+        user: t.Object({
+          user_id: t.Number(),
+          email: t.Union([t.String(), t.Null()]),
+          role: t.String(),
+        }),
+      }),
+      401: ErrorResponse,
     },
   })
 
@@ -47,9 +56,9 @@ export const authModule = new Elysia()
     const { token: csrfToken, cookies } = await getCsrfToken()
     const result = await verifyCode(body.identifier, body.code, csrfToken, cookies)
 
-    if (result.success && result.token) {
+    if (result.success && typeof result.token === 'string') {
       cookie['shenicest_token'].set({
-        value: result.token as string,
+        value: result.token,
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
@@ -58,7 +67,8 @@ export const authModule = new Elysia()
       })
     }
 
-    return result
+    const { token: _token, ...rest } = result
+    return rest
   }, {
     body: t.Object({
       identifier: t.String({ minLength: 1 }),

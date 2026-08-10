@@ -15,6 +15,9 @@ function createApp() {
     .get('/protected', ({ user }) => ({ userId: user.userId }), {
       auth: true,
     })
+    .get('/optional', ({ user }) => ({ userId: user?.userId ?? null }), {
+      optionalAuth: true,
+    })
 }
 
 async function signToken(payload: Record<string, unknown>, secret = TEST_SECRET) {
@@ -96,5 +99,83 @@ describe('Auth plugin', () => {
       }),
     )
     expect(response.status).toBe(401)
+  })
+
+  it('protected route accepts valid cookie', async () => {
+    const token = await signToken({ user_id: 'user-123' })
+    const response = await app.handle(
+      new Request('http://localhost/protected', {
+        headers: { cookie: `shenicest_token=${token}` },
+      }),
+    )
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ userId: 'user-123' })
+  })
+
+  it('protected route returns 401 with invalid cookie', async () => {
+    const response = await app.handle(
+      new Request('http://localhost/protected', {
+        headers: { cookie: 'shenicest_token=not-a-jwt' },
+      }),
+    )
+    expect(response.status).toBe(401)
+  })
+
+  it('protected route falls back to cookie when bearer token is invalid', async () => {
+    const token = await signToken({ user_id: 'user-123' })
+    const response = await app.handle(
+      new Request('http://localhost/protected', {
+        headers: {
+          authorization: 'Bearer invalid-token',
+          cookie: `shenicest_token=${token}`,
+        },
+      }),
+    )
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ userId: 'user-123' })
+  })
+
+  it('optional route returns null user without credentials', async () => {
+    const response = await app.handle(new Request('http://localhost/optional'))
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ userId: null })
+  })
+
+  it('optional route resolves user from valid bearer token', async () => {
+    const token = await signToken({ user_id: 'user-123' })
+    const response = await app.handle(
+      new Request('http://localhost/optional', {
+        headers: { authorization: `Bearer ${token}` },
+      }),
+    )
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ userId: 'user-123' })
+  })
+
+  it('optional route falls back to cookie when bearer token is invalid', async () => {
+    const token = await signToken({ user_id: 'user-123' })
+    const response = await app.handle(
+      new Request('http://localhost/optional', {
+        headers: {
+          authorization: 'Bearer invalid-token',
+          cookie: `shenicest_token=${token}`,
+        },
+      }),
+    )
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ userId: 'user-123' })
+  })
+
+  it('optional route returns null user with invalid credentials', async () => {
+    const response = await app.handle(
+      new Request('http://localhost/optional', {
+        headers: {
+          authorization: 'Bearer invalid-token',
+          cookie: 'shenicest_token=also-invalid',
+        },
+      }),
+    )
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ userId: null })
   })
 })

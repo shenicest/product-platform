@@ -381,7 +381,7 @@ describe('Operator routes', () => {
     })
 
     it('filters by stage', async () => {
-      const project = await createDraft({ ...VALID_PROJECT, name: 'Stage Filter', stage: 1 })
+      const project = await createPending({ ...VALID_PROJECT, name: 'Stage Filter', stage: 1 })
       const res = await operatorGet('/projects?stage=1')
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -390,7 +390,7 @@ describe('Operator routes', () => {
     })
 
     it('filters by category', async () => {
-      const project = await createDraft({ ...VALID_PROJECT, name: 'Category Filter', categories: ['医疗健康'] })
+      const project = await createPending({ ...VALID_PROJECT, name: 'Category Filter', categories: ['医疗健康'] })
       const res = await operatorGet('/projects?category=医疗健康')
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -400,7 +400,7 @@ describe('Operator routes', () => {
 
     it('searches by name', async () => {
       const unique = `search-${crypto.randomUUID().slice(0, 8)}`
-      await createDraft({ name: `Findable ${unique}` })
+      await createPending({ ...VALID_PROJECT, name: `Findable ${unique}` })
       const res = await operatorGet(`/projects?q=${unique}`)
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -525,9 +525,17 @@ describe('Operator routes', () => {
       const before = await (await operatorGet('/stats')).json()
       await createLive({ ...VALID_PROJECT, name: 'Stats Live' })
       const after = await (await operatorGet('/stats')).json()
-      const liveBefore = before.byStatus[String(ProjectStatus.Live)] ?? 0
-      const liveAfter = after.byStatus[String(ProjectStatus.Live)] ?? 0
+      const liveBefore = before.byStatus['Live'] ?? 0
+      const liveAfter = after.byStatus['Live'] ?? 0
       expect(liveAfter).toBe(liveBefore + 1)
+    })
+
+    it('keys byStatus/byStage by enum name, not numeric value', async () => {
+      await createLive({ ...VALID_PROJECT, name: 'Stats Named Keys', stage: 1 })
+      const body = await (await operatorGet('/stats')).json()
+      expect(body.byStatus['Live']).toBeGreaterThanOrEqual(1)
+      expect(body.byStage['Growth']).toBeGreaterThanOrEqual(1)
+      expect(body.byStatus[String(ProjectStatus.Live)]).toBeUndefined()
     })
   })
 })

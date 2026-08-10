@@ -6,47 +6,41 @@ export interface AuthUser {
   userId: string
 }
 
+async function resolveUser(
+  headers: Record<string, string | undefined>,
+  cookieToken: string | undefined,
+): Promise<AuthUser | null> {
+  const authorization = headers.authorization
+  if (authorization?.startsWith('Bearer ')) {
+    try {
+      const user = await verifyToken(authorization.slice(7))
+      return { userId: String(user.user_id) }
+    } catch {}
+  }
+
+  if (cookieToken) {
+    try {
+      const user = await verifyToken(cookieToken)
+      return { userId: String(user.user_id) }
+    } catch {}
+  }
+
+  return null
+}
+
 export const authPlugin = new Elysia({ name: 'auth' })
   .macro('auth', {
     resolve: async ({ headers, cookie }) => {
-      const authorization = headers.authorization
-      if (authorization?.startsWith('Bearer ')) {
-        const token = authorization.slice(7)
-        try {
-          const user = await verifyToken(token)
-          return { user: { userId: String(user.user_id) } satisfies AuthUser }
-        } catch {}
-      }
-
       const cookieToken = cookie['shenicest_token'].value
-      if (cookieToken && typeof cookieToken === 'string') {
-        try {
-          const user = await verifyToken(cookieToken)
-          return { user: { userId: String(user.user_id) } satisfies AuthUser }
-        } catch {}
-      }
-      return status(401, { error: { code: ErrorCode.UNAUTHORIZED, message: ErrorMessage.UNAUTHORIZED } })
+      const user = await resolveUser(headers, typeof cookieToken === 'string' ? cookieToken : undefined)
+      if (!user) return status(401, { error: { code: ErrorCode.UNAUTHORIZED, message: ErrorMessage.UNAUTHORIZED } })
+      return { user }
     },
   })
   .macro('optionalAuth', {
     resolve: async ({ headers, cookie }) => {
-      try {
-        const authorization = headers.authorization
-        if (authorization?.startsWith('Bearer ')) {
-          const token = authorization.slice(7)
-          const user = await verifyToken(token)
-          return { user: { userId: String(user.user_id) } as AuthUser }
-        }
-
-        const cookieToken = cookie['shenicest_token'].value
-        if (cookieToken && typeof cookieToken === 'string') {
-          const user = await verifyToken(cookieToken)
-          return { user: { userId: String(user.user_id) } as AuthUser }
-        }
-
-        return { user: null as AuthUser | null }
-      } catch {
-        return { user: null as AuthUser | null }
-      }
+      const cookieToken = cookie['shenicest_token'].value
+      const user = await resolveUser(headers, typeof cookieToken === 'string' ? cookieToken : undefined)
+      return { user }
     },
   })

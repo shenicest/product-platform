@@ -65,7 +65,7 @@ export function sendLoginCode(identifier: string) {
 }
 
 export function verifyLoginCode(identifier: string, code: string) {
-  return request<{ success: boolean; token?: string; error?: string }>(
+  return request<{ success: boolean; error?: string }>(
     'POST',
     '/auth/verify-code',
     { identifier, code },

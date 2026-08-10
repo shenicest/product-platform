@@ -4,6 +4,7 @@
 
 - [CONTEXT.md](./CONTEXT.md) — 领域术语表，定义项目核心概念（Project、ProjectEditProposal、Comment 等）
 - [docs/spec-v1-backend-api.md](./docs/spec-v1-backend-api.md) — v1.0 后端 API 完整规格说明
+- [docs/auth.md](./docs/auth.md) — 鉴权体系：JWT 认证、角色/属主授权、前后端守卫
 - [docs/spec-v1-frontend.md](./docs/spec-v1-frontend.md) — v1.0 前端路由、页面与组件规格说明
 - [docs/adr/](./docs/adr/) — 架构决策记录，解释关键设计选择的原因
   - [0001-project-revision-separation.md](./docs/adr/0001-project-revision-separation.md) — _Superseded by 0004_
@@ -91,14 +92,14 @@ packages/
 ### API 调用
 
 - **Server 端**：使用 `@elysiajs/eden` 的 `treaty` 创建类型安全客户端（`src/lib/api.ts`），从 `@shenicest/api` 导入 `App` 类型
-- **Client 端**：使用 `fetch` 封装（`src/lib/client-api.ts`），通过 `localStorage` 存储的 JWT token 认证
+- **Client 端**：使用 `fetch` 封装（`src/lib/client-api.ts`），请求同源 `/api/*`（rewrite 代理到 API），浏览器自动携带 httpOnly cookie
 - Server 端数据获取函数统一放在 `src/server/` 下，用 `cache()` 去重
 
 ### Auth
 
-- JWT token 存储在 `localStorage`（key: `shenicest_token`）
+- JWT 由外部认证系统签发，存储在 httpOnly cookie（key: `shenicest_token`），详见 [docs/auth.md](../../docs/auth.md)
 - `AuthProvider`（Client Component）提供全局认证上下文，通过 `useAuth()` hook 访问
-- 页面组件不直接操作 token，通过 `AuthProvider` 的 `login`/`logout` 方法管理
+- 页面组件不直接操作 token，通过 `AuthProvider` 的 `refresh`/`logout` 方法管理
 
 ### Commands
 
@@ -180,9 +181,9 @@ export const SubmitBody = t.Intersect([
 
 ### Auth (JWT 解析)
 
-- 通过 `@elysiajs/jwt` 插件解析外部系统签发的 JWT
-- 封装为全局插件，在 `onBeforeHandle` 中解析 token 并 decorate 用户信息到 context
-- 需要认证的路由通过 guard 或 macro 控制
+- 外部系统签发的 JWT 由 `src/lib/jwt.ts`（基于 `jose`）验证，密钥为 `SHENICEST_JWT_SECRET`
+- 封装为 `authPlugin`（`auth`/`optionalAuth`）与 `roleGuardPlugin`（`operatorOnly`/`founderOnly`）两组 macro，支持 Bearer header 与 httpOnly cookie 双通道
+- 需要认证的路由通过路由选项上的 macro 控制（如 `auth: true`）
 
 ### Plugins
 
