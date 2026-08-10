@@ -220,7 +220,8 @@ export class OperatorService {
     }
     if (query.q) {
       const pattern = `%${query.q}%`
-      conditions.push(or(like(projects.name, pattern), like(projects.contactName, pattern), like(projects.teamName, pattern)))
+      const qCondition = or(like(projects.name, pattern), like(projects.contactName, pattern), like(projects.teamName, pattern))
+      if (qCondition) conditions.push(qCondition)
     }
     const where = conditions.length > 0 ? and(...conditions) : undefined
 
