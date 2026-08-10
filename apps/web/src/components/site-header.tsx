@@ -25,6 +25,12 @@ export function SiteHeader() {
             >
               提交
             </Link>
+            <a
+              href="/api/auth/sso-redirect"
+              className="transition-colors hover:text-primary"
+            >
+              黑客松专区
+            </a>
           </nav>
           <AuthNav />
           <p className="hidden items-center gap-2.5 font-mono text-xs sm:flex">

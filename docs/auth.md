@@ -33,6 +33,8 @@
 1. `Authorization: Bearer <token>` 请求头
 2. httpOnly Cookie `shenicest_token`（`maxAge` 30 天，`sameSite=lax`，生产环境 `secure`）
 
+设置环境变量 `COOKIE_DOMAIN`（生产为 `.shenicest.com`）后，该 cookie 会带上 `Domain` 属性，在整个 `shenicest.com` 注册域内共享——这是与主站（`shenicest.com/platform`）的跨站 SSO 基础，见 [1.1 与主站的 SSO](#11-与主站的-sso)。本地开发不设置该变量，cookie 保持 host-only。
+
 ### 登录流程（邮箱 OTP）
 
 认证模块 `apps/api/src/modules/auth/index.ts` 充当外部认证系统的**代理**（`apps/api/src/lib/shenicest-client.ts`）：
@@ -40,12 +42,22 @@
 | 端点 | 说明 |
 |------|------|
 | `POST /auth/send-code` | 先向外部取 CSRF token + session cookie，再调 `send-code.php` 发送验证码 |
-| `POST /auth/verify-code` | 校验验证码；成功时由 API `Set-Cookie: shenicest_token` 写入 JWT（响应 body 不含 token 明文） |
-| `POST /auth/logout` | 删除 Cookie |
+| `POST /auth/verify-code` | 校验验证码；成功时由 API `Set-Cookie: shenicest_token` 写入 JWT（响应 body 不含 token 明文）。设置了 `COOKIE_DOMAIN` 时 cookie 带 `Domain` 属性 |
+| `POST /auth/logout` | 删除 Cookie（同时清除 host-only 与域级两个变体） |
+| `GET /auth/sso-redirect` | 把既有登录态带到主站：校验 cookie 里的 JWT 有效后，将 token 升级为共享父域 cookie（删 host-only、写 `Domain=COOKIE_DOMAIN`），再 302 到 `MAIN_SITE_URL`。见 [1.1](#11-与主站的-sso) |
 | `GET /me` | Cookie 通道，返回完整用户信息 `{ user_id, email, role }` |
 | `GET /me/bearer` | Bearer 通道，返回 `{ userId }`（用于脚本/第三方调用） |
 
 注意：`shenicest-client` 中还有 `refreshToken()` 封装，目前无路由使用（见 [7.B3](#b3-无会话续期)）。
+
+### 1.1 与主站的 SSO
+
+本平台（`xxx.shenicest.com`）与主站（`shenicest.com/platform`）同属 `shenicest.com` 注册域，且 JWT 都由同一外部认证系统签发、共享 `SHENICEST_JWT_SECRET`。据此实现单点登录：
+
+- **共享 cookie**：设置 `COOKIE_DOMAIN=.shenicest.com` 后，`shenicest_token` 带 `Domain` 属性，浏览器对 `shenicest.com` 及其所有子域都会携带，主站无需额外请求即可读到同一登录态。
+- **登录态升级**：`COOKIE_DOMAIN` 上线前登录的用户持有的是 host-only cookie（只对 `xxx.shenicest.com` 有效）。顶部导航的"主站"入口指向 `/api/auth/sso-redirect`（web 透传代理到 API `GET /auth/sso-redirect`），命中时把 host-only cookie 升级为域级 cookie 再跳转，老会话无需重新登录。
+- **主站侧约定**（外部 PHP 系统配合）：未登录时读取 `$_COOKIE['shenicest_token']`，用相同密钥与 iss/aud 校验 JWT 后建立会话；主站自身登录/登出时也应按 `Domain=.shenicest.com` 写入/清除同名 cookie，使任一侧登出即全站失效。
+- **取舍**：cookie 对所有 `*.shenicest.com` 子域可见，这是父域 SSO 的标准代价。
 
 ## 2. 后端授权机制
 
@@ -98,7 +110,7 @@
 ### BFF 代理与 Cookie 流转
 
 - `next.config.ts` 的 rewrite 把 `/api/*` 代理到 `${API_URL}/*`，浏览器始终同源访问，Cookie 无跨域问题。
-- `app/api/auth/{send-code,verify-code,logout}/route.ts`：纯透传代理（`Set-Cookie` 随之落到 web 源）。
+- `app/api/auth/{send-code,verify-code,logout,sso-redirect}/route.ts`：纯透传代理（`Set-Cookie` 随之落到 web 源）。`sso-redirect` 用 `redirect: 'manual'` 让 302 回到浏览器执行，保证域级 cookie 先落在 web 源再跳走。
 - `app/api/me/route.ts`：**聚合端点**，先调 API `GET /me`，再带 Cookie 调 `GET /identity/roles`，合并为 `{ user: { ..., roles: number[] } }` 返回——这是客户端获取"用户 + 平台角色"的唯一入口（优化方向见 [7.C2](#c2-apime-聚合是两次串行上游调用)）。
 
 ### 客户端会话
@@ -132,6 +144,8 @@
 |------|----|------|
 | `SHENICEST_JWT_SECRET` | API | 验证外部 JWT 的 HS256 密钥 |
 | `SHENICEST_API_BASE` | API | 外部认证系统地址（OTP 代理目标） |
+| `COOKIE_DOMAIN` | API | 可选。设为 `.shenicest.com` 时 `shenicest_token` 带 `Domain` 属性，供主站 SSO 共享登录态；本地不设置 |
+| `MAIN_SITE_URL` | API | 可选。`GET /auth/sso-redirect` 的跳转目标，默认 `https://shenicest.com/platform` |
 | `API_URL` | Web | 后端地址（eden treaty、`/api/*` rewrite、`/api/me` 聚合） |
 
 ## 7. 已知优化项
@@ -162,7 +176,7 @@ A 类正确性 bug（登录死锁、optionalAuth 回退、operator 守卫、veri
 #### B4 CORS origin 过宽
 
 - 现状：CORS 允许 `/\.vercel\.app$/` 正则 + `credentials: true`，任意 Vercel 子域都在白名单内。
-- 说明：当前实际风险有限（cookie 设在 web 源且为 host-only，跨站请求不会携带），但白名单应精确。
+- 说明：当前实际风险有限（未设 `COOKIE_DOMAIN` 时 cookie 为 host-only，跨站请求不会携带；设置后也仅在 `shenicest.com` 注册域内共享），但白名单应精确。
 - 方向：收敛为实际生产/预览域名列表。
 - 位置：`apps/api/src/index.ts`
 
@@ -202,6 +216,6 @@ A 类正确性 bug（登录死锁、optionalAuth 回退、operator 守卫、veri
 
 #### D1 鉴权链路覆盖（部分完成）
 
-- 已完成：cookie 通道、Bearer→cookie 回退、`/me` 错误结构、verify-code token 剥离（`test/plugins/auth.test.ts`、`test/modules/auth.test.ts`）。
+- 已完成：cookie 通道、Bearer→cookie 回退、`/me` 错误结构、verify-code token 剥离、logout 双变体清除、sso-redirect cookie 升级（`test/plugins/auth.test.ts`、`test/modules/auth.test.ts`）。
 - `operatorOnly` / `founderOnly` 经模块路由测试间接覆盖（user-identity、founder 模块的 403 用例），无独立 plugin 级单测。
-- 缺口：`/auth/send-code`、`/auth/logout` 的分支测试；web 侧无测试基建，middleware 的 exp 判断与 `getSessionUser()` 无自动化验证。
+- 缺口：`/auth/send-code` 的分支测试；web 侧无测试基建，middleware 的 exp 判断与 `getSessionUser()` 无自动化验证。

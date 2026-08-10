@@ -7,6 +7,41 @@ import { ErrorCode, ErrorMessage, ErrorResponse } from '../../common'
 const unauthorized = () =>
   status(401, { error: { code: ErrorCode.UNAUTHORIZED, message: ErrorMessage.UNAUTHORIZED } })
 
+const TOKEN_COOKIE = 'shenicest_token'
+const TOKEN_COOKIE_MAX_AGE = 30 * 24 * 60 * 60
+
+// Optional; read lazily so tests can toggle it per case. When set (e.g.
+// `.shenicest.com` in production) the token cookie is shared across the whole
+// registrable domain, so shenicest.com/platform sees the same login state.
+// Leave unset on localhost where a parent domain does not exist.
+const getCookieDomain = () => process.env.COOKIE_DOMAIN || undefined
+const getMainSiteUrl = () => process.env.MAIN_SITE_URL || 'https://shenicest.com/platform'
+const isProduction = () => process.env.NODE_ENV === 'production'
+
+// Raw Set-Cookie strings are used wherever one response must touch both the
+// host-only and the domain-scoped variants of the cookie (Elysia's cookie jar
+// keeps a single entry per name). Attributes mirror the jar-based set in
+// /auth/verify-code.
+const serializeTokenCookie = (value: string, domain: string) => {
+  const parts = [
+    `${TOKEN_COOKIE}=${value}`,
+    `Domain=${domain}`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${TOKEN_COOKIE_MAX_AGE}`,
+  ]
+  if (isProduction()) parts.push('Secure')
+  return parts.join('; ')
+}
+
+const clearTokenCookieVariants = () => {
+  const deletions = [`${TOKEN_COOKIE}=; Max-Age=0; Path=/`]
+  const domain = getCookieDomain()
+  if (domain) deletions.push(`${TOKEN_COOKIE}=; Max-Age=0; Path=/; Domain=${domain}`)
+  return deletions
+}
+
 export const authModule = new Elysia()
   .use(authPlugin)
 
@@ -57,13 +92,15 @@ export const authModule = new Elysia()
     const result = await verifyCode(body.identifier, body.code, csrfToken, cookies)
 
     if (result.success && typeof result.token === 'string') {
-      cookie['shenicest_token'].set({
+      const domain = getCookieDomain()
+      cookie[TOKEN_COOKIE].set({
         value: result.token,
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProduction(),
         sameSite: 'lax',
         path: '/',
-        maxAge: 30 * 24 * 60 * 60,
+        maxAge: TOKEN_COOKIE_MAX_AGE,
+        ...(domain ? { domain } : {}),
       })
     }
 
@@ -82,8 +119,8 @@ export const authModule = new Elysia()
     },
   })
 
-  .post('/auth/logout', ({ cookie }) => {
-    cookie['shenicest_token'].remove()
+  .post('/auth/logout', ({ set }) => {
+    set.headers['set-cookie'] = clearTokenCookieVariants()
     return { success: true }
   }, {
     detail: {
@@ -91,6 +128,33 @@ export const authModule = new Elysia()
       description: 'Clears the authentication cookie.',
       tags: ['Auth'],
       operationId: 'auth.logout',
+    },
+  })
+
+  .get('/auth/sso-redirect', async ({ cookie, set }) => {
+    const domain = getCookieDomain()
+    const token = cookie[TOKEN_COOKIE].value
+    if (domain && token && typeof token === 'string') {
+      try {
+        await verifyToken(token)
+        set.headers['set-cookie'] = [
+          `${TOKEN_COOKIE}=; Max-Age=0; Path=/`,
+          serializeTokenCookie(token, domain),
+        ]
+      } catch {
+        // Expired or invalid token: redirect without upgrading the cookie.
+      }
+    }
+    set.status = 302
+    set.headers['location'] = getMainSiteUrl()
+    return ''
+  }, {
+    detail: {
+      summary: 'SSO redirect to the main site',
+      description:
+        'Upgrades the token cookie to the shared parent domain (when COOKIE_DOMAIN is set) and redirects to the main site, so an existing login here is carried over.',
+      tags: ['Auth'],
+      operationId: 'auth.ssoRedirect',
     },
   })
 
