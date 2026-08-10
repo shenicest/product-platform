@@ -128,7 +128,7 @@ Because the Project row IS the content row, `categories` and `stage` are already
 - **`projects` table**: `id`, `user_id`, `status` (tinyint 0-5), `name`, `tagline`, `description`, `cover_url`, `demo_images` (JSON), `demo_video_url`, `demo_link`, `stage` (tinyint 0-1), `categories` (JSON), `target_users`, `user_problem`, `progress`, `next_steps`, `message_to_users`, `is_open_for_beta`, `beta_description`, `contact_name`, `contact_phone`, `contact_email`, `contact_wechat`, `team_name`, `created_at`, `updated_at`. Index on `(user_id)`, `(status)`, `(stage)`, and a generated-column or JSON index on `categories` for filtering.
 - **`project_edit_proposals` table**: `id`, `project_id`, `changes` (JSON — partial diff of changed content fields and their new values), `status` (tinyint 0-3), `reason` (text, nullable — operator's reason on reject/require_revision), `reviewed_by` (varchar, nullable — operator `user_id`), `reviewed_at` (timestamp, nullable), `created_at`, `updated_at`. Unique constraint on `project_id` WHERE `status IN (0, 3)` (at most one pending/revision-required proposal per project — enforced at application level if the DB doesn't support partial unique indexes).
 - **`user_identities` table**: `id`, `user_id`, `role` (varchar), `created_at`. Unique constraint on `(user_id, role)`.
-- **`comments` table**: `id`, `project_id`, `user_id`, `comment_type` (varchar), `content` (text), `can_contact` (boolean), `contact_info` (varchar, nullable), `is_flagged` (boolean), `created_at`
+- **`comments` table** _(合约保留，v1.0 未实现；无迁移文件)_：`id`, `project_id`, `user_id`, `comment_type` (varchar), `content` (text), `can_contact` (boolean), `contact_info` (varchar, nullable), `is_flagged` (boolean), `created_at`
 - **`audit_records` table**: `id`, `project_id`, `operator_id`, `action` (varchar: approve, require_revision, reject, delist, restore), `proposal_id` (nullable, set only when the action targets a post-live edit proposal), `reason` (text, nullable), `created_at`
 
 ### API Contracts
@@ -173,7 +173,7 @@ Because the Project row IS the content row, `categories` and `stage` are already
   - `GET /operator/audit-records`: Query audit records (filter by project, time range).
   - `GET /operator/stats`: Aggregate statistics.
 
-- **Comments**:
+- **Comments** — _合约保留，v1.0 未实现（无 `comment` 模块与 `comments` 表；实际开发在 v2.0）_：
   - `POST /projects/:id/comments`: Submit comment (auth required, project must be `status=3`).
   - `GET /founder/projects/:id/comments`: Founder views comments on own project.
   - `GET /operator/projects/:id/comments`: Operator views comments on any project.
@@ -240,7 +240,7 @@ The following features are explicitly excluded from v1.0:
 - **Likes, votes, follows, shares**: No social interaction features.
 - **Beta applications**: No beta signup or management.
 - **Purchase/support**: No e-commerce or payment integration.
-- **Public comment display**: Comments are submitted but only visible to Founders and Operators.
+- **Comment system**: 合约（`comments` 表与 `/projects/:id/comments` 等路由）已在本文档保留，但 v1.0 未落地实现。v2.0 启用后：评论仅对 Founder 与 Operator 可见，前台暂不公开展示。
 - **Frontend UI spec**: This document defines backend API contracts only. Frontend implementation (Next.js App Router) exists in `apps/web/` but its page/routing spec is not covered here. See `docs/spec-v1-frontend.md` for frontend details.
 - **Project statistics counters**: No view_count, like_count, vote_count, share_count fields (deferred to 2.0).
 - **Project form field**: No "project form" (hardware/software/hybrid) field.

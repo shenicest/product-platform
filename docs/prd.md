@@ -25,204 +25,21 @@
 
 ### 2.功能模块目录
 
-<lark-table rows="14" cols="4" header-row="true" column-widths="80,130,594,100">
-
-  <lark-tr>
-    <lark-td>
-      章节
-    </lark-td>
-    <lark-td>
-      功能
-    </lark-td>
-    <lark-td>
-      目标
-    </lark-td>
-    <lark-td>
-      优先级
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      3.1
-    </lark-td>
-    <lark-td>
-      登录注册
-    </lark-td>
-    <lark-td>
-      用户用手机号验证码登录。用户在投票、申请内测、提交评论前必须登录。
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      3.6
-    </lark-td>
-    <lark-td>
-      首页/项目列表
-    </lark-td>
-    <lark-td>
-      展示平台内项目，支持按品类、阶段、活动筛选。
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      3.3
-    </lark-td>
-    <lark-td>
-      项目详情页
-    </lark-td>
-    <lark-td>
-      展示项目介绍、Demo、Founder信息、项目阶段、成长数据和用户参与入口。
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      3.2
-    </lark-td>
-    <lark-td>
-      项目提交
-    </lark-td>
-    <lark-td>
-      登录用户可以填写项目资料、上传Demo、选择项目阶段、保存草稿、提交审核。用户提交项目后，即成为该项目的 Founder。
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      3.4
-    </lark-td>
-    <lark-td>
-      用户互动
-    </lark-td>
-    <lark-td>
-      用户可以点赞、关注、投人气票、分享项目。
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      3.3
-    </lark-td>
-    <lark-td>
-      内测申请
-    </lark-td>
-    <lark-td>
-      用户可以对开放内测的项目申请内测，该项目 Founder 可以在后台查看申请。
-    </lark-td>
-    <lark-td>
-      P1
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      3.4
-    </lark-td>
-    <lark-td>
-      用户评论
-    </lark-td>
-    <lark-td>
-      用户可以向项目提交评论。~~1.0评论不公开展示，只给Founder和运营查看。~~
-    </lark-td>
-    <lark-td>
-      P1
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      3.6
-    </lark-td>
-    <lark-td>
-      黑客松活动专区
-    </lark-td>
-    <lark-td>
-      展示活动项目，支持人气票和榜单。
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      3.7
-    </lark-td>
-    <lark-td>
-      关注页面
-    </lark-td>
-    <lark-td>
-      展示用户所关注的项目、founder的作品更新
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      3.5
-    </lark-td>
-    <lark-td>
-      Founder管理页
-    </lark-td>
-    <lark-td>
-      项目提交人作为该项目 Founder，可以查看自己项目的状态、数据、内测申请和用户评论。
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      5.0
-    </lark-td>
-    <lark-td>
-      运营后台
-    </lark-td>
-    <lark-td>
-      运营可以管理项目、审核项目、配置活动、查看数据、处理异常。
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      5.0
-    </lark-td>
-    <lark-td>
-      项目审核/项目管理——运营后台
-    </lark-td>
-    <lark-td>
-      运营可以审核项目是否能上线，并审核是否允许显示购买/支持入口。项目阶段由提交人自行选择，运营不重点判断项目阶段。
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      成熟产品支持入口
-    </lark-td>
-    <lark-td>
-      通过购买审核的项目，可以显示外部购买链接或支持意向登记入口。
-      一期暂不支持购买申请。
-    </lark-td>
-    <lark-td>
-      P1
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 章节 | 功能 | 目标 | 优先级 |
+| --- | --- | --- | --- |
+| 3.1 | 登录注册 | 用户用手机号验证码登录。用户在投票、申请内测、提交评论前必须登录。 | P0 |
+| 3.6 | 首页/项目列表 | 展示平台内项目，支持按品类、阶段、活动筛选。 | P0 |
+| 3.3 | 项目详情页 | 展示项目介绍、Demo、Founder信息、项目阶段、成长数据和用户参与入口。 | P0 |
+| 3.2 | 项目提交 | 登录用户可以填写项目资料、上传Demo、选择项目阶段、保存草稿、提交审核。用户提交项目后，即成为该项目的 Founder。 | P0 |
+| 3.4 | 用户互动 | 用户可以点赞、关注、投人气票、分享项目。 | P0 |
+| 3.3 | 内测申请 | 用户可以对开放内测的项目申请内测，该项目 Founder 可以在后台查看申请。 | P1 |
+| 3.4 | 用户评论 | 用户可以向项目提交评论。~~1.0评论不公开展示，只给Founder和运营查看。~~ | P1 |
+| 3.6 | 黑客松活动专区 | 展示活动项目，支持人气票和榜单。 | P0 |
+| 3.7 | 关注页面 | 展示用户所关注的项目、founder的作品更新 |  |
+| 3.5 | Founder管理页 | 项目提交人作为该项目 Founder，可以查看自己项目的状态、数据、内测申请和用户评论。 | P0 |
+| 5.0 | 运营后台 | 运营可以管理项目、审核项目、配置活动、查看数据、处理异常。 | P0 |
+| 5.0 | 项目审核/项目管理——运营后台 | 运营可以审核项目是否能上线，并审核是否允许显示购买/支持入口。项目阶段由提交人自行选择，运营不重点判断项目阶段。 | P0 |
+|  | 成熟产品支持入口 | 通过购买审核的项目，可以显示外部购买链接或支持意向登记入口。一期暂不支持购买申请。 | P1 |
 
 ### 3.需求详情
 
@@ -238,289 +55,40 @@
 
 #### 涉及角色
 
-<lark-table rows="5" cols="3" column-widths="114,128,334">
-
-  <lark-tr>
-    <lark-td>
-      **角色** {align="center"}
-    </lark-td>
-    <lark-td>
-      **是否使用该模块** {align="center"}
-    </lark-td>
-    <lark-td>
-      **说明** {align="center"}
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      游客
-    </lark-td>
-    <lark-td>
-      是
-    </lark-td>
-    <lark-td>
-      游客触发需登录动作时，系统弹出登录弹窗
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td rowspan="2">
-      登录用户
-    </lark-td>
-    <lark-td rowspan="2">
-      是
-    </lark-td>
-    <lark-td>
-      登录后可投票、点赞、关注、申请内测、提交评论
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      登录后可提交项目、查看项目数据，此类用户又被称作“Founder”
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      运营管理员
-    </lark-td>
-    <lark-td>
-      否
-    </lark-td>
-    <lark-td>
-      运营后台登录可单独设计，不纳入本模块
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 角色 | 是否使用该模块 | 说明 |
+| --- | --- | --- |
+| 游客 | 是 | 游客触发需登录动作时，系统弹出登录弹窗 |
+| 登录用户 | 是 | 登录后可投票、点赞、关注、申请内测、提交评论 |
+| 登录用户 | 是 | 登录后可提交项目、查看项目数据，此类用户又被称作"Founder" |
+| 运营管理员 | 否 | 运营后台登录可单独设计，不纳入本模块 |
 
 #### 登录注册功能入口
 
 当用户为“未登录状态”下点击如下入口后生效
 
-<lark-table rows="3" cols="3" column-widths="184,222,311">
-
-  <lark-tr>
-    <lark-td>
-      **入口场景** {align="center"}
-    </lark-td>
-    <lark-td>
-      **触发方式** {align="center"}
-    </lark-td>
-    <lark-td>
-      **登录成功后去向** {align="center"}
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      顶部导航
-    </lark-td>
-    <lark-td>
-      用户点击“登录”
-    </lark-td>
-    <lark-td>
-      回到当前页面
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      其他需要登录才能使用的功能，当游客用户未登录点击后
-    </lark-td>
-    <lark-td>
-      用户点击“XX”时
-      <quote-container>
-      “XX”操作包括：点赞、关注、
-      </quote-container>
-    </lark-td>
-    <lark-td>
-      回到当前页面并完成对应的操作
-      <quote-container>
-      示例：游客用户点击“点赞”，弹出登录弹窗，用户成功登录后，自动完成点赞。
-      </quote-container>
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 入口场景 | 触发方式 | 登录成功后去向 |
+| --- | --- | --- |
+| 顶部导航 | 用户点击"登录" | 回到当前页面 |
+| 其他需要登录才能使用的功能，当游客用户未登录点击后 | 用户点击"XX"时（"XX"操作包括：点赞、关注、...） | 回到当前页面并完成对应的操作（示例：游客用户点击"点赞"，弹出登录弹窗，用户成功登录后，自动完成点赞） |
 
 #### 登录注册功能
 
 ##### 页面状态
 
-<lark-table rows="2" cols="2" header-row="true" column-widths="310,407">
-
-  <lark-tr>
-    <lark-td>
-      页面
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      <image token="CXHCbvMLkoISLnxfmSCcCQZYnVe" width="1686" height="1298" align="center"/>
-    </lark-td>
-    <lark-td>
-      - 登录注册采用弹窗形式。
-      - 弹窗居中显示。
-      - 弹窗打开后，页面背景变暗。
-      - 用户点击弹窗右上角关闭按钮，可以关闭登录弹窗。
-      - 用户点击弹窗外部区域，可以关闭登录弹窗。
-      - 用户关闭弹窗后，原本触发的动作（如点赞等操作）不执行。
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 页面 | 说明 |
+| --- | --- |
+| <image token="CXHCbvMLkoISLnxfmSCcCQZYnVe" width="1686" height="1298" align="center"/> | - 登录注册采用弹窗形式。<br>- 弹窗居中显示。<br>- 弹窗打开后，页面背景变暗。<br>- 用户点击弹窗右上角关闭按钮，可以关闭登录弹窗。<br>- 用户点击弹窗外部区域，可以关闭登录弹窗。<br>- 用户关闭弹窗后，原本触发的动作（如点赞等操作）不执行。 |
 
 ##### 页面字段说明
 
-<lark-table rows="7" cols="5" header-row="true" column-widths="133,78,78,513,298">
-
-  <lark-tr>
-    <lark-td>
-      **字段** {align="center"}
-    </lark-td>
-    <lark-td>
-      **类型** {align="center"}
-    </lark-td>
-    <lark-td>
-      **是否必填** {align="center"}
-    </lark-td>
-    <lark-td>
-      **规则** {align="center"}
-    </lark-td>
-    <lark-td>
-      **占位文案** {align="center"}
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      国家/地区码
-    </lark-td>
-    <lark-td>
-      选择项
-    </lark-td>
-    <lark-td>
-      是
-    </lark-td>
-    <lark-td>
-      1.0默认中国大陆+86，不开放切换
-      后续版本支持下拉框选择不同国家地区
-    </lark-td>
-    <lark-td>
-      +86
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      手机号
-    </lark-td>
-    <lark-td>
-      输入框
-    </lark-td>
-    <lark-td>
-      是
-    </lark-td>
-    <lark-td>
-      1. 手机号输入框仅允许输入数字。只允许唤醒数字键盘。
-      1. 手机号最多允许输入11位。手机号不足11位时，“获取验证码”按钮置灰。
-      1. 手机号不符合中国大陆手机号格式时，点击“获取验证码”后toast提示：`请输入正确的手机号`。
-    </lark-td>
-    <lark-td>
-      请输入手机号
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      验证码
-    </lark-td>
-    <lark-td>
-      输入框
-    </lark-td>
-    <lark-td>
-      是
-    </lark-td>
-    <lark-td>
-      **验证码发送规则**
-      1. 验证码为6位数字。
-      1. 验证码有效期为5分钟。
-      1. 同一手机号60秒内只能发送1次验证码。获取验证码的按钮显示60s倒计时。
-      1. 同一手机号1小时内最多发送5次验证码。
-      1. 用户重新发送验证码后，旧验证码立即失效。
-      1. 验证码仅用于登录注册。
-      1. 验证码短信文案为：
-      `你的验证码是123456，5分钟内有效。请勿转发给他人。`
-      **验证码校验规则**
-      1. 用户输入验证码后，系统不自动提交。
-      1. 用户点击“登录”后，系统开始校验验证码。
-      1. 当验证码正确且未过期时，登录成功。
-      1. 当验证码校验失败时，登录失败，系统提示：`手机号或验证码错误，请重新输入`。
-      1. 用户连续输错5次验证码后，当前设备锁定1小时。获取验证码的按钮显示60分钟倒计时。登录按钮置灰。
-      1. 用户更换手机号后，验证码错误次数按新手机号重新计算。
-    </lark-td>
-    <lark-td>
-      请输入6位验证码
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      获取验证码
-    </lark-td>
-    <lark-td>
-      按钮
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      1. 当手机号为空或不足11位时，“获取验证码”按钮置灰，按钮文案显示为：`获取验证码`。
-      1. 当手机号格式正确时，“获取验证码”按钮可点击，按钮文案显示为：`获取验证码`。
-      1. 当验证码发送中/成功后，按钮进入倒计时状态，按钮置灰，按钮文案显示为：`59s后重发`。
-      1. 当倒计时结束后，按钮恢复可点击状态，按钮文案显示为：`获取验证码`。
-      1. 当达到验证码发送上限时，按钮置灰，按钮文案显示为：
-        1. 倒计时大于1min，显示`60min后再试`。
-        1. 倒计时小于1min，显示`60s后再试`。
-    </lark-td>
-    <lark-td>
-      获取验证码
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      用户协议勾选
-    </lark-td>
-    <lark-td>
-      勾选框
-    </lark-td>
-    <lark-td>
-      是
-    </lark-td>
-    <lark-td>
-      未勾选时不能完成登录
-    </lark-td>
-    <lark-td>
-      我已阅读并同意《用户协议》和《隐私政策》
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      登录
-    </lark-td>
-    <lark-td>
-      按钮
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      1. 手机号、验证码、协议均满足后可点击。
-      1. 未注册过的手机号，点击登录后直接注册并登录。
-      1. 登录成功后，登录态保持30天。
-      1. 登录按钮状态
-        1. 手机号不足11位/验证码不足6位/未勾选协议，三者任一发生，则按钮置灰
-        1. 若验证码校验失败，则点击后弹toast`手机号或验证码错误，请重新输入`。
-        1. 网络异常/服务异常弹toast：网络异常，请稍后再试！/服务异常，请稍后再试！
-        1. 账号封禁弹toast：账号状态异常，请联系平台处理
-    </lark-td>
-    <lark-td>
-      登录
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 字段 | 类型 | 是否必填 | 规则 | 占位文案 |
+| --- | --- | --- | --- | --- |
+| 国家/地区码 | 选择项 | 是 | 1.0默认中国大陆+86，不开放切换；后续版本支持下拉框选择不同国家地区 | +86 |
+| 手机号 | 输入框 | 是 | 1. 手机号输入框仅允许输入数字。只允许唤醒数字键盘。<br>2. 手机号最多允许输入11位。手机号不足11位时，"获取验证码"按钮置灰。<br>3. 手机号不符合中国大陆手机号格式时，点击"获取验证码"后toast提示：`请输入正确的手机号`。 | 请输入手机号 |
+| 验证码 | 输入框 | 是 | **验证码发送规则**<br>1. 验证码为6位数字。<br>2. 验证码有效期为5分钟。<br>3. 同一手机号60秒内只能发送1次验证码。获取验证码的按钮显示60s倒计时。<br>4. 同一手机号1小时内最多发送5次验证码。<br>5. 用户重新发送验证码后，旧验证码立即失效。<br>6. 验证码仅用于登录注册。<br>7. 验证码短信文案为：`你的验证码是123456，5分钟内有效。请勿转发给他人。`<br>**验证码校验规则**<br>1. 用户输入验证码后，系统不自动提交。<br>2. 用户点击"登录"后，系统开始校验验证码。<br>3. 当验证码正确且未过期时，登录成功。<br>4. 当验证码校验失败时，登录失败，系统提示：`手机号或验证码错误，请重新输入`。<br>5. 用户连续输错5次验证码后，当前设备锁定1小时。获取验证码的按钮显示60分钟倒计时。登录按钮置灰。<br>6. 用户更换手机号后，验证码错误次数按新手机号重新计算。 | 请输入6位验证码 |
+| 获取验证码 | 按钮 | - | 1. 当手机号为空或不足11位时，"获取验证码"按钮置灰，按钮文案显示为：`获取验证码`。<br>2. 当手机号格式正确时，"获取验证码"按钮可点击，按钮文案显示为：`获取验证码`。<br>3. 当验证码发送中/成功后，按钮进入倒计时状态，按钮置灰，按钮文案显示为：`59s后重发`。<br>4. 当倒计时结束后，按钮恢复可点击状态，按钮文案显示为：`获取验证码`。<br>5. 当达到验证码发送上限时，按钮置灰，按钮文案显示为：<br>&nbsp;&nbsp;- 倒计时大于1min，显示 `60min后再试`。<br>&nbsp;&nbsp;- 倒计时小于1min，显示 `60s后再试`。 | 获取验证码 |
+| 用户协议勾选 | 勾选框 | 是 | 未勾选时不能完成登录 | 我已阅读并同意《用户协议》和《隐私政策》 |
+| 登录 | 按钮 | - | 1. 手机号、验证码、协议均满足后可点击。<br>2. 未注册过的手机号，点击登录后直接注册并登录。<br>3. 登录成功后，登录态保持30天。<br>4. 登录按钮状态：<br>&nbsp;&nbsp;- 手机号不足11位/验证码不足6位/未勾选协议，三者任一发生，则按钮置灰。<br>&nbsp;&nbsp;- 若验证码校验失败，则点击后弹toast `手机号或验证码错误，请重新输入`。<br>&nbsp;&nbsp;- 网络异常/服务异常弹toast：网络异常，请稍后再试！/服务异常，请稍后再试！<br>&nbsp;&nbsp;- 账号封禁弹toast：账号状态异常，请联系平台处理。 | 登录 |
 
 #### 退出登录功能
 
@@ -541,119 +109,17 @@
 
 登录注册模块需要记录以下数据：
 
-<lark-table rows="10" cols="3" column-widths="199,286,100">
-
-  <lark-tr>
-    <lark-td>
-      **数据项** {align="center"}
-    </lark-td>
-    <lark-td>
-      **说明** {align="center"}
-    </lark-td>
-    <lark-td>
-      优先级
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      user_id
-    </lark-td>
-    <lark-td>
-      用户唯一ID
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      phone
-    </lark-td>
-    <lark-td>
-      注册手机号
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      register_time
-    </lark-td>
-    <lark-td>
-      首次登录时间
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      last_login_time
-    </lark-td>
-    <lark-td>
-      最近登录时间
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      login_source
-    </lark-td>
-    <lark-td>
-      登录触发来源，如投票、内测、顶部导航
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      device_id
-    </lark-td>
-    <lark-td>
-      设备标识
-    </lark-td>
-    <lark-td>
-      P3
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      ip
-    </lark-td>
-    <lark-td>
-      登录IP
-    </lark-td>
-    <lark-td>
-      P3
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      login_fail_count
-    </lark-td>
-    <lark-td>
-      登录失败次数
-    </lark-td>
-    <lark-td>
-      P3
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      account_status
-    </lark-td>
-    <lark-td>
-      正常、封禁、注销（1.0没有注销）
-    </lark-td>
-    <lark-td>
-      P0
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 数据项 | 说明 | 优先级 |
+| --- | --- | --- |
+| user_id | 用户唯一ID | P0 |
+| phone | 注册手机号 | P0 |
+| register_time | 首次登录时间 | P0 |
+| last_login_time | 最近登录时间 | P0 |
+| login_source | 登录触发来源，如投票、内测、顶部导航 | P0 |
+| device_id | 设备标识 | P3 |
+| ip | 登录IP | P3 |
+| login_fail_count | 登录失败次数 | P3 |
+| account_status | 正常、封禁、注销（1.0没有注销） | P0 |
 
 ### 3.2项目提交模块
 
@@ -673,83 +139,20 @@
 
 #### 涉及角色
 
-<lark-table rows="4" cols="2" column-widths="114,522">
-
-  <lark-tr>
-    <lark-td>
-      **角色** {align="center"}
-    </lark-td>
-    <lark-td>
-      **说明** {align="center"}
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      游客
-    </lark-td>
-    <lark-td>
-      游客可以浏览平台内容，但不能提交项目。
-      当游客点击“提交项目”时，系统弹出登录弹窗。游客完成登录后，系统进入项目提交页。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td rowspan="2">
-      登录用户
-    </lark-td>
-    <lark-td>
-      登录用户可以提交项目、保存草稿、提交审核。
-      登录用户创建项目草稿后，系统将该用户绑定为该项目 Founder。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      用户提交项目后，成为该项目 Founder。Founder 可以查看、编辑和管理自己提交的项目，但不能直接修改项目审核状态。
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 角色 | 说明 |
+| --- | --- |
+| 游客 | 游客可以浏览平台内容，但不能提交项目。当游客点击"提交项目"时，系统弹出登录弹窗。游客完成登录后，系统进入项目提交页。 |
+| 登录用户 | 登录用户可以提交项目、保存草稿、提交审核。登录用户创建项目草稿后，系统将该用户绑定为该项目 Founder。 |
+| 登录用户 | 用户提交项目后，成为该项目 Founder。Founder 可以查看、编辑和管理自己提交的项目，但不能直接修改项目审核状态。 |
 
 #### 项目提交功能入口
 
-<lark-table rows="5" cols="2" header-row="true" column-widths="492,302">
-
-  <lark-tr>
-    <lark-td>
-      入口位置
-    </lark-td>
-    <lark-td>
-      原型参考
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      首页顶部导航栏展示“提交项目”入口。
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      ~~首页项目列表区域展示“提交项目”入口。~~
-    </lark-td>
-    <lark-td>
-      <text color="red" bgcolor="light-yellow">?</text>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      用户登录后的个人菜单中展示“我的项目”入口，进入后可继续提交新项目。
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      黑客松活动专区可展示“提交参赛项目”入口。
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 入口位置 | 原型参考 |
+| --- | --- |
+| 首页顶部导航栏展示"提交项目"入口。 |  |
+| ~~首页项目列表区域展示"提交项目"入口。~~ | <text color="red" bgcolor="light-yellow">?</text> |
+| 用户登录后的个人菜单中展示"我的项目"入口，进入后可继续提交新项目。 |  |
+| 黑客松活动专区可展示"提交参赛项目"入口。 |  |
 
 #### 项目提交功能
 
@@ -761,888 +164,77 @@
 
 ##### 页面字段说明
 
-<lark-table rows="33" cols="5" header-row="true" column-widths="117,145,137,385,256">
-
-  <lark-tr>
-    <lark-td>
-      区域
-    </lark-td>
-    <lark-td>
-      字段名称
-    </lark-td>
-    <lark-td>
-      填写要求
-    </lark-td>
-    <lark-td>
-      说明/限制
-    </lark-td>
-    <lark-td>
-      原型
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      **基础信息区**
-    </lark-td>
-    <lark-td>
-      项目名称
-    </lark-td>
-    <lark-td>
-      必填
-    </lark-td>
-    <lark-td>
-      长度限制：2-30个中文字符，或2-60个英文字符。
-      占位文案：`请输入项目名称`
-      - 项目名称长度不符合要求时，字段下方提示：`项目名称需为2-30个中文字符`。
-    </lark-td>
-    <lark-td rowspan="6">
-      <image token="Wv3obIZX7ots3Bxv1vQcBeVUnmg" width="996" height="284" align="center"/>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      一句话介绍
-    </lark-td>
-    <lark-td>
-      必填
-    </lark-td>
-    <lark-td>
-      用于项目卡片和详情页顶部展示。
-      长度限制：10-40个中文字符。
-      占位文案：`用一句话说明这个项目解决什么问题`
-      一句话介绍长度不符合要求时，字段下方提示：`一句话介绍需为10-40个中文字符`。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      项目品类
-    </lark-td>
-    <lark-td>
-      必填（可多选）
-    </lark-td>
-    <lark-td>
-      候选项：<text color="red" bgcolor="light-yellow">女性健康、</text><text color="red" bgcolor="light-yellow">~~AI硬件、AI软件~~</text><text color="red" bgcolor="light-yellow">、效率工具、教育、创作者工具、其他</text>。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      项目形态
-    </lark-td>
-    <lark-td>
-      必填（单选）
-    </lark-td>
-    <lark-td>
-      硬件、软件、软硬件结合
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      项目阶段
-    </lark-td>
-    <lark-td>
-      必填（单选）
-    </lark-td>
-    <lark-td>
-      候选项：MVP阶段、<text color="red" bgcolor="light-yellow">成长阶段</text>。
-      说明：MVP阶段表示早期验证；成长阶段表示已有测试版本、测试名额等。
-      仅用于前台展示，不决定购买/支持入口。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      所属活动
-    </lark-td>
-    <lark-td>
-      选填
-    </lark-td>
-    <lark-td>
-      **若从活动入口进入则系统默认带入，用户不可修改。**
-      页面提供当前活动选项，用户不填则为无。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      **展示资料区**
-    </lark-td>
-    <lark-td>
-      项目封面
-    </lark-td>
-    <lark-td>
-      必填
-    </lark-td>
-    <lark-td>
-      支持 jpg、png、webp，单张不超过<text color="red" bgcolor="light-yellow">5MB</text>，建议比例 <text color="red" bgcolor="light-yellow">16:9</text>。
-      用于**首页卡片、列表及详情页顶部**展示。
-      图片超过5MB或其他不符合要求，toast显示：`图片上传失败，请重新上传`。
-    </lark-td>
-    <lark-td rowspan="4">
-      <image token="UdgAbkWuAotEwLxNINIcFGEUn6c" width="994" height="398" align="center"/>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      Demo 图片
-    </lark-td>
-    <lark-td>
-      选填
-    </lark-td>
-    <lark-td>
-      最多上传<text color="red" bgcolor="light-yellow">X</text>张，单张不超过<text color="red" bgcolor="light-yellow">5MB</text>。
-      用于详情页展示界面、硬件、场景或效果图。
-      图片超过5MB或其他不符合要求，toast显示：`图片上传失败，请重新上传`。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      Demo 视频
-    </lark-td>
-    <lark-td>
-      选填
-    </lark-td>
-    <lark-td>
-      支持上传视频（单个≤<text color="red" bgcolor="light-yellow">200MB</text>）或填写视频链接（需为合法URL）。
-      视频超过200MB或其他不符合要求，toast显示：`视频上传失败，请重新上传`。
-      ~~链接格式错误时，字段下方显示：~~`~~请输入正确的链接~~`~~。~~
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      Demo 访问链接
-    </lark-td>
-    <lark-td>
-      选填
-    </lark-td>
-    <lark-td>
-      用于填写产品体验地址、原型地址、GitHub、Notion等链接。
-      无可访问Demo可不填。
-      链接格式错误时，字段下方显示：`请输入正确的链接`。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      **项目说明区**
-    </lark-td>
-    <lark-td>
-      项目介绍
-    </lark-td>
-    <lark-td>
-      必填
-    </lark-td>
-    <lark-td>
-      最少<text color="red" bgcolor="light-yellow">100字</text>，最多<text color="red" bgcolor="light-yellow">2000字。</text>
-      需说明项目是什么、解决什么问题、当前进度。
-      项目介绍字数不符合需求时，显示：`项目介绍至少100字，至多2000字`。
-    </lark-td>
-    <lark-td rowspan="5">
-      <image token="BjQObZfFHoSHE2xtVUucZIX3nUf" width="986" height="638" align="center"/>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      目标用户
-    </lark-td>
-    <lark-td>
-      必填
-    </lark-td>
-    <lark-td>
-      最少20字，最多500字。
-      需说明项目主要给谁用。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      用户问题
-    </lark-td>
-    <lark-td>
-      必填
-    </lark-td>
-    <lark-td>
-      最少20字，最多500字。
-      需说明目标用户现在遇到什么问题。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      当前进展
-    </lark-td>
-    <lark-td>
-      必填
-    </lark-td>
-    <lark-td>
-      最少20字，最多500字。
-      需说明项目目前状态（如已有原型/测试版/硬件样品等）。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      下一步计划
-    </lark-td>
-    <lark-td>
-      选填
-    </lark-td>
-    <lark-td>
-      最多500字。
-      用于说明项目接下来准备做什么。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      对用户说的话
-    </lark-td>
-    <lark-td>
-      必填
-    </lark-td>
-    <lark-td>
-      展示在项目详情，给Founder和潜在用户交流的机会。
-      Founder的广告位（bushi
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      **用户参与设置区**
-    </lark-td>
-    <lark-td>
-      是否开放内测
-    </lark-td>
-    <lark-td>
-      必填
-    </lark-td>
-    <lark-td>
-      默认值：否。
-      选择“是”且项目审核上线后，详情页会显示“申请内测”入口。
-    </lark-td>
-    <lark-td rowspan="3">
-      <image token="AKgjbOCUBonKtKxSI8PcO6zVnJf" width="1788" height="644" align="center"/>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      ~~内测名额~~
-    </lark-td>
-    <lark-td>
-      ~~条件必填~~
-    </lark-td>
-    <lark-td>
-      ~~当“是否开放内测”为“是”时必填。~~
-      ~~需为正整数，或选择“不限”。~~
-      ~~内测名额不是正整数时，字段下方提示：~~`~~请输入正确的内测名额~~`~~。~~
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      内测说明
-    </lark-td>
-    <lark-td>
-      条件必填
-    </lark-td>
-    <lark-td>
-      当“是否开放内测”为“是”时必填。
-      用于说明内测对象、测试方式、预计联系时间。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      <text color="red" bgcolor="light-yellow">**购买支持申请区**</text>
-      <text bgcolor="light-purple">1.0先不做购买支持，这部分可以先隐藏</text>
-    </lark-td>
-    <lark-td>
-      是否申请显示购买支持入口
-    </lark-td>
-    <lark-td>
-      必填
-    </lark-td>
-    <lark-td>
-      默认值：否。
-      选择“是”则需补充下方信息，且需运营单独审核。是否显示由运营审核结果决定。
-    </lark-td>
-    <lark-td rowspan="6">
-      <image token="NOtfbAqzQoLiQBxJ6PhcBcKjnQh" width="1632" height="704" align="center"/>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      *（以下字段在申请显示入口时出现）*
-    </lark-td>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      <text color="red" bgcolor="light-yellow">交付说明</text>
-    </lark-td>
-    <lark-td>
-      条件必填
-    </lark-td>
-    <lark-td>
-      需说明用户支持或购买后预计获得什么。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      <text color="red" bgcolor="light-yellow">预计交付时间</text>
-    </lark-td>
-    <lark-td>
-      条件必填
-    </lark-td>
-    <lark-td>
-      可填写具体日期或时间范围。
-      例如什么时候发货之类的。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      <text color="red" bgcolor="light-yellow">售后说明</text>
-    </lark-td>
-    <lark-td>
-      条件必填
-    </lark-td>
-    <lark-td>
-      需说明如何处理使用问题、售后咨询或交付异常。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      <text color="red" bgcolor="light-yellow">退款说明</text>
-    </lark-td>
-    <lark-td>
-      条件必填
-    </lark-td>
-    <lark-td>
-      需说明是否支持退款及退款条件。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      **联系信息区**
-    </lark-td>
-    <lark-td>
-      联系人姓名
-    </lark-td>
-    <lark-td>
-      必填
-    </lark-td>
-    <lark-td>
-      仅平台后台可见，前台不展示。
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      联系手机号
-    </lark-td>
-    <lark-td>
-      必填
-    </lark-td>
-    <lark-td>
-      默认带入登录手机号，可修改。仅平台后台可见。
-      联系手机号格式错误时，字段下方提示：`请输入正确的手机号`。
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      联系邮箱
-    </lark-td>
-    <lark-td>
-      选填
-    </lark-td>
-    <lark-td>
-      仅平台后台可见，前台不展示。
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      微信号
-    </lark-td>
-    <lark-td>
-      选填
-    </lark-td>
-    <lark-td>
-      仅平台后台可见，前台不展示。
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      团队名称
-    </lark-td>
-    <lark-td>
-      选填
-    </lark-td>
-    <lark-td>
-      若填写，可在项目详情页展示；不填则前台展示用户昵称或提交人名称。
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      **底部操作区**
-    </lark-td>
-    <lark-td>
-      保存草稿
-    </lark-td>
-    <lark-td>
-      点击触发
-    </lark-td>
-    <lark-td>
-      - 校验最小必填字段：项目名称。
-        - 若项目名称为空，系统不保存草稿，提示：`请先填写项目名称。`
-      - 保存成功后创建项目草稿，提示：`草稿已保存。`首次保存草稿将当前用户绑定为项目 Founder。
-        - 草稿状态不进入运营审核，不在前台展示
-        - Founder 可在"我的项目"中继续编辑草稿。
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      提交审核
-    </lark-td>
-    <lark-td>
-      点击触发
-    </lark-td>
-    <lark-td>
-      - 校验全部必填字段。
-        - 若有未填写字段，系统不提交审核，并定位到第一个未填写的必填字段，在字段下方显示错误提示：`请补全必填信息`
-      - 全部必填字段填写完成后可提交审核。提交成功后提示：`已提交审核，请等待平台处理`
-        - 提交成功后项目状态变为`待审核`，前台不展示。
-      Founder 可查看项目信息，但不能直接修改已提交内容。
-        - 如需修改，Founder 可撤回审核（**本期暂不支持撤回**）
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 区域 | 字段名称 | 填写要求 | 说明/限制 | 原型 |
+| --- | --- | --- | --- | --- |
+| **基础信息区** | 项目名称 | 必填 | 长度限制：2-30个中文字符，或2-60个英文字符。<br>占位文案：`请输入项目名称`<br>- 项目名称长度不符合要求时，字段下方提示：`项目名称需为2-30个中文字符`。 | <image token="Wv3obIZX7ots3Bxv1vQcBeVUnmg" width="996" height="284" align="center"/> |
+| **基础信息区** | 一句话介绍 | 必填 | 用于项目卡片和详情页顶部展示。<br>长度限制：10-40个中文字符。<br>占位文案：`用一句话说明这个项目解决什么问题`<br>一句话介绍长度不符合要求时，字段下方提示：`一句话介绍需为10-40个中文字符`。 | 同上 |
+| **基础信息区** | 项目品类 | 必填（可多选） | 候选项：<text color="red" bgcolor="light-yellow">女性健康、</text><text color="red" bgcolor="light-yellow">~~AI硬件、AI软件~~</text><text color="red" bgcolor="light-yellow">、效率工具、教育、创作者工具、其他</text>。 | 同上 |
+| **基础信息区** | 项目形态 | 必填（单选） | 硬件、软件、软硬件结合 | 同上 |
+| **基础信息区** | 项目阶段 | 必填（单选） | 候选项：MVP阶段、<text color="red" bgcolor="light-yellow">成长阶段</text>。<br>说明：MVP阶段表示早期验证；成长阶段表示已有测试版本、测试名额等。<br>仅用于前台展示，不决定购买/支持入口。 | 同上 |
+| **基础信息区** | 所属活动 | 选填 | **若从活动入口进入则系统默认带入，用户不可修改。**<br>页面提供当前活动选项，用户不填则为无。 | 同上 |
+| **展示资料区** | 项目封面 | 必填 | 支持 jpg、png、webp，单张不超过<text color="red" bgcolor="light-yellow">5MB</text>，建议比例 <text color="red" bgcolor="light-yellow">16:9</text>。<br>用于**首页卡片、列表及详情页顶部**展示。<br>图片超过5MB或其他不符合要求，toast显示：`图片上传失败，请重新上传`。 | <image token="UdgAbkWuAotEwLxNINIcFGEUn6c" width="994" height="398" align="center"/> |
+| **展示资料区** | Demo 图片 | 选填 | 最多上传<text color="red" bgcolor="light-yellow">X</text>张，单张不超过<text color="red" bgcolor="light-yellow">5MB</text>。<br>用于详情页展示界面、硬件、场景或效果图。<br>图片超过5MB或其他不符合要求，toast显示：`图片上传失败，请重新上传`。 | 同上 |
+| **展示资料区** | Demo 视频 | 选填 | 支持上传视频（单个≤<text color="red" bgcolor="light-yellow">200MB</text>）或填写视频链接（需为合法URL）。<br>视频超过200MB或其他不符合要求，toast显示：`视频上传失败，请重新上传`。<br>~~链接格式错误时，字段下方显示：~~`~~请输入正确的链接~~`~~。~~ | 同上 |
+| **展示资料区** | Demo 访问链接 | 选填 | 用于填写产品体验地址、原型地址、GitHub、Notion等链接。<br>无可访问Demo可不填。<br>链接格式错误时，字段下方显示：`请输入正确的链接`。 | 同上 |
+| **项目说明区** | 项目介绍 | 必填 | 最少<text color="red" bgcolor="light-yellow">100字</text>，最多<text color="red" bgcolor="light-yellow">2000字。</text><br>需说明项目是什么、解决什么问题、当前进度。<br>项目介绍字数不符合需求时，显示：`项目介绍至少100字，至多2000字`。 | <image token="BjQObZfFHoSHE2xtVUucZIX3nUf" width="986" height="638" align="center"/> |
+| **项目说明区** | 目标用户 | 必填 | 最少20字，最多500字。<br>需说明项目主要给谁用。 | 同上 |
+| **项目说明区** | 用户问题 | 必填 | 最少20字，最多500字。<br>需说明目标用户现在遇到什么问题。 | 同上 |
+| **项目说明区** | 当前进展 | 必填 | 最少20字，最多500字。<br>需说明项目目前状态（如已有原型/测试版/硬件样品等）。 | 同上 |
+| **项目说明区** | 下一步计划 | 选填 | 最多500字。<br>用于说明项目接下来准备做什么。 | 同上 |
+| **项目说明区** | 对用户说的话 | 必填 | 展示在项目详情，给Founder和潜在用户交流的机会。<br>Founder的广告位（bushi | |
+| **用户参与设置区** | 是否开放内测 | 必填 | 默认值：否。<br>选择"是"且项目审核上线后，详情页会显示"申请内测"入口。 | <image token="AKgjbOCUBonKtKxSI8PcO6zVnJf" width="1788" height="644" align="center"/> |
+| **用户参与设置区** | ~~内测名额~~ | ~~条件必填~~ | ~~当"是否开放内测"为"是"时必填。~~<br>~~需为正整数，或选择"不限"。~~<br>~~内测名额不是正整数时，字段下方提示：~~`~~请输入正确的内测名额~~`~~。~~ | 同上 |
+| **用户参与设置区** | 内测说明 | 条件必填 | 当"是否开放内测"为"是"时必填。<br>用于说明内测对象、测试方式、预计联系时间。 | 同上 |
+| <text color="red" bgcolor="light-yellow">**购买支持申请区**</text><br><text bgcolor="light-purple">1.0先不做购买支持，这部分可以先隐藏</text> | 是否申请显示购买支持入口 | 必填 | 默认值：否。<br>选择"是"则需补充下方信息，且需运营单独审核。是否显示由运营审核结果决定。 | <image token="NOtfbAqzQoLiQBxJ6PhcBcKjnQh" width="1632" height="704" align="center"/> |
+| **购买支持申请区** | *（以下字段在申请显示入口时出现）* |  |  | 同上 |
+| **购买支持申请区** | <text color="red" bgcolor="light-yellow">交付说明</text> | 条件必填 | 需说明用户支持或购买后预计获得什么。 | 同上 |
+| **购买支持申请区** | <text color="red" bgcolor="light-yellow">预计交付时间</text> | 条件必填 | 可填写具体日期或时间范围。<br>例如什么时候发货之类的。 | 同上 |
+| **购买支持申请区** | <text color="red" bgcolor="light-yellow">售后说明</text> | 条件必填 | 需说明如何处理使用问题、售后咨询或交付异常。 | 同上 |
+| **购买支持申请区** | <text color="red" bgcolor="light-yellow">退款说明</text> | 条件必填 | 需说明是否支持退款及退款条件。 | 同上 |
+| **联系信息区** | 联系人姓名 | 必填 | 仅平台后台可见，前台不展示。 | |
+| **联系信息区** | 联系手机号 | 必填 | 默认带入登录手机号，可修改。仅平台后台可见。<br>联系手机号格式错误时，字段下方提示：`请输入正确的手机号`。 | |
+| **联系信息区** | 联系邮箱 | 选填 | 仅平台后台可见，前台不展示。 | |
+| **联系信息区** | 微信号 | 选填 | 仅平台后台可见，前台不展示。 | |
+| **联系信息区** | 团队名称 | 选填 | 若填写，可在项目详情页展示；不填则前台展示用户昵称或提交人名称。 | |
+| **底部操作区** | 保存草稿 | 点击触发 | - 校验最小必填字段：项目名称。<br>&nbsp;&nbsp;- 若项目名称为空，系统不保存草稿，提示：`请先填写项目名称。`<br>- 保存成功后创建项目草稿，提示：`草稿已保存。`首次保存草稿将当前用户绑定为项目 Founder。<br>&nbsp;&nbsp;- 草稿状态不进入运营审核，不在前台展示。<br>&nbsp;&nbsp;- Founder 可在"我的项目"中继续编辑草稿。 | |
+| **底部操作区** | 提交审核 | 点击触发 | - 校验全部必填字段。<br>&nbsp;&nbsp;- 若有未填写字段，系统不提交审核，并定位到第一个未填写的必填字段，在字段下方显示错误提示：`请补全必填信息`。<br>- 全部必填字段填写完成后可提交审核。提交成功后提示：`已提交审核，请等待平台处理`。<br>&nbsp;&nbsp;- 提交成功后项目状态变为 `待审核`，前台不展示。<br>- Founder 可查看项目信息，但不能直接修改已提交内容。<br>&nbsp;&nbsp;- 如需修改，Founder 可撤回审核（**本期暂不支持撤回**） | |
 
 - 需求点：项目状态流转逻辑
 
-<lark-table rows="11" cols="6" header-row="true" column-widths="174,225,162,241,220,394">
-
-  <lark-tr>
-    <lark-td>
-      操作/事件
-    </lark-td>
-    <lark-td>
-      触发条件
-    </lark-td>
-    <lark-td>
-      触发后项目状态
-    </lark-td>
-    <lark-td>
-      按钮状态变化
-    </lark-td>
-    <lark-td>
-      Toast 提示
-    </lark-td>
-    <lark-td>
-      校验规则与错误提示
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      保存草稿
-    </lark-td>
-    <lark-td>
-      用户点击「保存草稿」
-    </lark-td>
-    <lark-td>
-      草稿
-    </lark-td>
-    <lark-td>
-      「保存草稿」按钮置灰；文案变为「保存中」；完成后恢复
-    </lark-td>
-    <lark-td>
-      成功则提示：草稿已保存
-    </lark-td>
-    <lark-td>
-      项目名称为空：不保存，提示「请先填写项目名称」
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      提交审核
-    </lark-td>
-    <lark-td>
-      用户点击「提交审核」
-    </lark-td>
-    <lark-td>
-      待审核
-    </lark-td>
-    <lark-td>
-      「提交审核」按钮置灰，文案变为「提交中」；完成后恢复
-    </lark-td>
-    <lark-td>
-      成功则提示：已提交审核，请等待平台处理
-    </lark-td>
-    <lark-td>
-      校验全部必填字段，未填写完整：提示「请补全必填信息」，并定位到首个未填写字段
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      运营要求修改
-    </lark-td>
-    <lark-td>
-      运营操作
-    </lark-td>
-    <lark-td>
-      需修改
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      Founder 修改后再次提交
-    </lark-td>
-    <lark-td>
-      用户点击「提交审核」
-    </lark-td>
-    <lark-td>
-      待审核
-    </lark-td>
-    <lark-td colspan="3">
-      **同"提交审核"事件**
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      运营审核通过
-    </lark-td>
-    <lark-td>
-      运营操作
-    </lark-td>
-    <lark-td>
-      已上线
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      运营拒绝
-    </lark-td>
-    <lark-td>
-      运营操作
-    </lark-td>
-    <lark-td>
-      已拒绝
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      运营下架项目
-    </lark-td>
-    <lark-td>
-      运营操作
-    </lark-td>
-    <lark-td>
-      已下架
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      项目审核中编辑
-    </lark-td>
-    <lark-td>
-      用户尝试编辑待审核项目
-    </lark-td>
-    <lark-td>
-      不变
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-    <lark-td>
-      项目审核中，暂时不能修改
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      网络异常
-    </lark-td>
-    <lark-td>
-      提交/保存时
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-    <lark-td>
-      按钮恢复原状态
-    </lark-td>
-    <lark-td>
-      网络异常，请稍后再试
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      服务异常
-    </lark-td>
-    <lark-td>
-      提交/保存时
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-    <lark-td>
-      按钮恢复原状态
-    </lark-td>
-    <lark-td>
-      服务异常，请稍后再试
-    </lark-td>
-    <lark-td>
-      —
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 操作/事件 | 触发条件 | 触发后项目状态 | 按钮状态变化 | Toast 提示 | 校验规则与错误提示 |
+| --- | --- | --- | --- | --- | --- |
+| 保存草稿 | 用户点击「保存草稿」 | 草稿 | 「保存草稿」按钮置灰；文案变为「保存中」；完成后恢复 | 成功则提示：草稿已保存 | 项目名称为空：不保存，提示「请先填写项目名称」 |
+| 提交审核 | 用户点击「提交审核」 | 待审核 | 「提交审核」按钮置灰，文案变为「提交中」；完成后恢复 | 成功则提示：已提交审核，请等待平台处理 | 校验全部必填字段，未填写完整：提示「请补全必填信息」，并定位到首个未填写字段 |
+| 运营要求修改 | 运营操作 | 需修改 | — | — | — |
+| Founder 修改后再次提交 | 用户点击「提交审核」 | 待审核 | **同"提交审核"事件** | **同"提交审核"事件** | **同"提交审核"事件** |
+| 运营审核通过 | 运营操作 | 已上线 | — | — | — |
+| 运营拒绝 | 运营操作 | 已拒绝 | — | — | — |
+| 运营下架项目 | 运营操作 | 已下架 | — | — | — |
+| 项目审核中编辑 | 用户尝试编辑待审核项目 | 不变 | — | 项目审核中，暂时不能修改 | — |
+| 网络异常 | 提交/保存时 | — | 按钮恢复原状态 | 网络异常，请稍后再试 | — |
+| 服务异常 | 提交/保存时 | — | 按钮恢复原状态 | 服务异常，请稍后再试 | — |
 
 #### 数据记录
 
-<lark-table rows="18" cols="2" header-row="true" column-widths="200,390">
-
-  <lark-tr>
-    <lark-td>
-      数据字段
-    </lark-td>
-    <lark-td>
-      说明
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      project_id
-    </lark-td>
-    <lark-td>
-      项目唯一ID
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      user_id
-    </lark-td>
-    <lark-td>
-      项目提交人用户ID
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      project_name
-    </lark-td>
-    <lark-td>
-      项目名称
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      project_stage
-    </lark-td>
-    <lark-td>
-      项目阶段，MVP阶段或成长阶段
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      category
-    </lark-td>
-    <lark-td>
-      项目品类
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      project_status
-    </lark-td>
-    <lark-td>
-      项目状态
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      cover_image_url
-    </lark-td>
-    <lark-td>
-      项目封面
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      demo_asset_urls
-    </lark-td>
-    <lark-td>
-      Demo图片或视频地址
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      demo_link
-    </lark-td>
-    <lark-td>
-      Demo访问链接
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      is_open_for_test
-    </lark-td>
-    <lark-td>
-      是否开放内测
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      is_feedback_enabled
-    </lark-td>
-    <lark-td>
-      是否允许用户评论
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      purchase_request_status
-    </lark-td>
-    <lark-td>
-      购买支持申请状态
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      contact_name
-    </lark-td>
-    <lark-td>
-      联系人姓名
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      contact_phone
-    </lark-td>
-    <lark-td>
-      联系人手机号
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      created_at
-    </lark-td>
-    <lark-td>
-      创建时间
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      updated_at
-    </lark-td>
-    <lark-td>
-      更新时间
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      submitted_at
-    </lark-td>
-    <lark-td>
-      提交审核时间
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 数据字段 | 说明 |
+| --- | --- |
+| project_id | 项目唯一ID |
+| user_id | 项目提交人用户ID |
+| project_name | 项目名称 |
+| project_stage | 项目阶段，MVP阶段或成长阶段 |
+| category | 项目品类 |
+| project_status | 项目状态 |
+| cover_image_url | 项目封面 |
+| demo_asset_urls | Demo图片或视频地址 |
+| demo_link | Demo访问链接 |
+| is_open_for_test | 是否开放内测 |
+| is_feedback_enabled | 是否允许用户评论 |
+| purchase_request_status | 购买支持申请状态 |
+| contact_name | 联系人姓名 |
+| contact_phone | 联系人手机号 |
+| created_at | 创建时间 |
+| updated_at | 更新时间 |
+| submitted_at | 提交审核时间 |
 
 ### 3.3项目详情模块
 
@@ -1663,40 +255,11 @@
 
 #### 涉及角色
 
-<lark-table rows="4" cols="2" column-widths="114,522">
-
-  <lark-tr>
-    <lark-td>
-      **角色** {align="center"}
-    </lark-td>
-    <lark-td>
-      **说明** {align="center"}
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      游客
-    </lark-td>
-    <lark-td>
-      游客可以浏览平台内容，但不能进行其他点击操作，点击将触发需登录动作时，系统弹出登录弹窗，登录完成后，对应的操作完成，并回到该页面。
-      游客可以点击分享按钮分享项目。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td rowspan="2">
-      登录用户
-    </lark-td>
-    <lark-td>
-      登录用户可以分享、点赞、关注（关注用户）、投票、评论、申请内测、购买等动作。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      Founder 可以分享、点赞、投票、购买、评论自己账号绑定的项目；但不能关注（自己账号）、申请内测。
-      Founder评论自己项目时，需要带上“Founder”标识，标注出这是这个作品的创作者。
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 角色 | 说明 |
+| --- | --- |
+| 游客 | 游客可以浏览平台内容，但不能进行其他点击操作，点击将触发需登录动作时，系统弹出登录弹窗，登录完成后，对应的操作完成，并回到该页面。<br>游客可以点击分享按钮分享项目。 |
+| 登录用户 | 登录用户可以分享、点赞、关注（关注用户）、投票、评论、申请内测、购买等动作。 |
+| 登录用户 | Founder 可以分享、点赞、投票、购买、评论自己账号绑定的项目；但不能关注（自己账号）、申请内测。<br>Founder评论自己项目时，需要带上"Founder"标识，标注出这是这个作品的创作者。 |
 
 #### 项目详情模块入口
 
@@ -1741,306 +304,21 @@
   - 获得的关注量
 - 按钮
 
-<lark-table rows="14" cols="6" header-row="true" column-widths="133,133,200,200,200,200">
-
-  <lark-tr>
-    <lark-td>
-      按钮类型
-    </lark-td>
-    <lark-td>
-      功能/按钮
-    </lark-td>
-    <lark-td>
-      展示条件
-    </lark-td>
-    <lark-td>
-      交互规则
-    </lark-td>
-    <lark-td>
-      字段/内容
-    </lark-td>
-    <lark-td>
-      异常/限制说明
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      通用按钮
-    </lark-td>
-    <lark-td>
-      点赞
-    </lark-td>
-    <lark-td>
-      所有已上线项目
-    </lark-td>
-    <lark-td>
-      未登录→弹出登录弹窗
-      登录后点击→已点赞状态，点赞数+1
-      再次点击→取消点赞，点赞数-1
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      通用按钮
-    </lark-td>
-    <lark-td>
-      关注
-    </lark-td>
-    <lark-td>
-      所有已上线项目
-    </lark-td>
-    <lark-td>
-      未登录→弹出登录弹窗
-      登录后点击→已关注状态，关注数+1
-      再次点击→取消关注，关注数-1
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      通用按钮
-    </lark-td>
-    <lark-td>
-      投票
-    </lark-td>
-    <lark-td>
-      所有已上线项目
-    </lark-td>
-    <lark-td>
-      未登录→弹出登录弹窗
-      登录后点击→投票数+1
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      同一用户同一项目仅可投票1次
-      已投票再次点击→toast提示"`你已经投过票了`"
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      通用按钮
-    </lark-td>
-    <lark-td>
-      人气
-    </lark-td>
-    <lark-td>
-      黑客松页面的活动项目
-    </lark-td>
-    <lark-td>
-      未登录→弹出登录弹窗
-      登录后点击→人气+1
-    </lark-td>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      通用按钮
-    </lark-td>
-    <lark-td>
-      分享
-    </lark-td>
-    <lark-td>
-      所有已上线项目
-    </lark-td>
-    <lark-td>
-      点击→复制当前详情页链接
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      分享成功→toast提示"`链接已复制`"
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      查看Demo
-    </lark-td>
-    <lark-td>
-      Founder填写了Demo链接
-    </lark-td>
-    <lark-td>
-      点击→新窗口打开Demo链接
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      Demo链接为空→不展示按钮
-      Demo链接无法打开→toast提示"`链接异常，暂时无法打开`"
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      提交评论
-    </lark-td>
-    <lark-td>
-      始终展示
-    </lark-td>
-    <lark-td>
-      未登录→弹出登录弹窗
-      登录后点击→打开反馈弹窗
-    </lark-td>
-    <lark-td>
-      <image token="K8SZbC33loThjTxxNQtcGi14nfb" width="880" height="1058" align="center"/>
-      反馈类型选择：问题反馈、功能建议、使用感受、其他
-      反馈内容：必填，最多500字
-      是否愿意被Founder联系：是/否【默认勾选否】
-      联系方式：上一选项填“是”时展示
-    </lark-td>
-    <lark-td>
-      提交成功→toast提示"`反馈已提交`"
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      申请内测
-    </lark-td>
-    <lark-td>
-      项目开启内测申请
-    </lark-td>
-    <lark-td>
-      未登录→弹出登录弹窗
-      登录后点击→打开内测申请弹窗
-    </lark-td>
-    <lark-td>
-      <image token="Ls4mbjW1SoR74nxF9YwcxfB8nie" width="556" height="522" align="center"/>
-      申请理由：<text color="red" bgcolor="light-yellow">选填</text>，最多300字联系方式：必填
-    </lark-td>
-    <lark-td>
-      项目未开启内测→不展示按钮
-      同一用户同一项目仅可提交1次
-      已申请再次点击→toast提示"`你已提交过内测申请`"
-      提交成功→toast提示"`内测申请已提交`"
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      购买支持
-      <text bgcolor="light-purple">1.0先不做购买支持，这部分逻辑后面再完善</text>
-    </lark-td>
-    <lark-td>
-      购买区
-    </lark-td>
-    <lark-td>
-      Founder开启购买并审核通过
-    </lark-td>
-    <lark-td>
-      点击立即支持→进入平台支付流程
-    </lark-td>
-    <lark-td>
-      支持项项目名称、价格、交付说明、售后说明、收货地址、收件人联系方式、立即支持按钮
-    </lark-td>
-    <lark-td>
-      Founder未开启→不展示购买区，不展示任何提示
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      购买支持
-    </lark-td>
-    <lark-td>
-      立即支持
-    </lark-td>
-    <lark-td>
-      购买区展示时
-    </lark-td>
-    <lark-td>
-      未登录→弹出登录弹窗
-      登录后点击→进入平台支付流程
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      支付成功→toast提示"`支持成功`"
-      支付失败→toast提示"`支付未完成，请重试`"
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      页面异常
-    </lark-td>
-    <lark-td>
-      用户未登录
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      可浏览项目详情
-      点击按钮时弹出登录弹窗
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      页面异常
-    </lark-td>
-    <lark-td>
-      项目已下架
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      普通用户不可继续查看
-    </lark-td>
-    <lark-td>
-      展示"项目暂不可查看"
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      页面异常
-    </lark-td>
-    <lark-td>
-      Demo链接无法打开
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      新窗口打开失败→toast提示"`链接异常，暂时无法打开`"
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 按钮类型 | 功能/按钮 | 展示条件 | 交互规则 | 字段/内容 | 异常/限制说明 |
+| --- | --- | --- | --- | --- | --- |
+| 通用按钮 | 点赞 | 所有已上线项目 | 未登录→弹出登录弹窗<br>登录后点击→已点赞状态，点赞数+1<br>再次点击→取消点赞，点赞数-1 | - | - |
+| 通用按钮 | 关注 | 所有已上线项目 | 未登录→弹出登录弹窗<br>登录后点击→已关注状态，关注数+1<br>再次点击→取消关注，关注数-1 | - | - |
+| 通用按钮 | 投票 | 所有已上线项目 | 未登录→弹出登录弹窗<br>登录后点击→投票数+1 | - | 同一用户同一项目仅可投票1次<br>已投票再次点击→toast提示 "`你已经投过票了`" |
+| 通用按钮 | 人气 | 黑客松页面的活动项目 | 未登录→弹出登录弹窗<br>登录后点击→人气+1 |  |  |
+| 通用按钮 | 分享 | 所有已上线项目 | 点击→复制当前详情页链接 | - | 分享成功→toast提示 "`链接已复制`" |
+|  | 查看Demo | Founder填写了Demo链接 | 点击→新窗口打开Demo链接 | - | Demo链接为空→不展示按钮<br>Demo链接无法打开→toast提示 "`链接异常，暂时无法打开`" |
+|  | 提交评论 | 始终展示 | 未登录→弹出登录弹窗<br>登录后点击→打开反馈弹窗 | <image token="K8SZbC33loThjTxxNQtcGi14nfb" width="880" height="1058" align="center"/><br>反馈类型选择：问题反馈、功能建议、使用感受、其他<br>反馈内容：必填，最多500字<br>是否愿意被Founder联系：是/否（默认勾选否）<br>联系方式：上一选项填"是"时展示 | 提交成功→toast提示 "`反馈已提交`" |
+|  | 申请内测 | 项目开启内测申请 | 未登录→弹出登录弹窗<br>登录后点击→打开内测申请弹窗 | <image token="Ls4mbjW1SoR74nxF9YwcxfB8nie" width="556" height="522" align="center"/><br>申请理由：<text color="red" bgcolor="light-yellow">选填</text>，最多300字<br>联系方式：必填 | 项目未开启内测→不展示按钮<br>同一用户同一项目仅可提交1次<br>已申请再次点击→toast提示 "`你已提交过内测申请`"<br>提交成功→toast提示 "`内测申请已提交`" |
+| 购买支持<br><text bgcolor="light-purple">1.0先不做购买支持，这部分逻辑后面再完善</text> | 购买区 | Founder开启购买并审核通过 | 点击立即支持→进入平台支付流程 | 支持项项目名称、价格、交付说明、售后说明、收货地址、收件人联系方式、立即支持按钮 | Founder未开启→不展示购买区，不展示任何提示 |
+| 购买支持 | 立即支持 | 购买区展示时 | 未登录→弹出登录弹窗<br>登录后点击→进入平台支付流程 | - | 支付成功→toast提示 "`支持成功`"<br>支付失败→toast提示 "`支付未完成，请重试`" |
+| 页面异常 | 用户未登录 | - | 可浏览项目详情<br>点击按钮时弹出登录弹窗 | - | - |
+| 页面异常 | 项目已下架 | - | 普通用户不可继续查看 | 展示"项目暂不可查看" | - |
+| 页面异常 | Demo链接无法打开 | - | - | - | 新窗口打开失败→toast提示 "`链接异常，暂时无法打开`" |
 
 ### 3.4用户互动模块
 
@@ -2050,364 +328,34 @@
 
 #### 用户互动入口
 
-<lark-table rows="4" cols="2" header-row="true" column-widths="232,200">
-
-  <lark-tr>
-    <lark-td>
-      页面
-    </lark-td>
-    <lark-td>
-      对应功能按钮
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      首页项目列表页/
-    </lark-td>
-    <lark-td>
-      点赞、关注、分享
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      活动（黑客松）专区项目卡片
-    </lark-td>
-    <lark-td>
-      投人气、关注、分享
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      项目详情页
-    </lark-td>
-    <lark-td>
-      点赞/投人气、关注、分享、提交反馈
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 页面 | 对应功能按钮 |
+| --- | --- |
+| 首页项目列表页 | 点赞、关注、分享 |
+| 活动（黑客松）专区项目卡片 | 投人气、关注、分享 |
+| 项目详情页 | 点赞/投人气、关注、分享、提交反馈 |
 
 #### 功能交互
 
-<lark-table rows="8" cols="8" header-row="true" column-widths="200,200,200,200,200,200,200,200">
-
-  <lark-tr>
-    <lark-td>
-      功能
-    </lark-td>
-    <lark-td>
-      页面范围
-    </lark-td>
-    <lark-td>
-      操作
-    </lark-td>
-    <lark-td>
-      状态变化
-    </lark-td>
-    <lark-td>
-      数量变化
-    </lark-td>
-    <lark-td>
-      Toast提示
-    </lark-td>
-    <lark-td>
-      特殊限制
-    </lark-td>
-    <lark-td>
-      补充规则
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      点赞
-    </lark-td>
-    <lark-td>
-      首页项目列表页/活动专区项目卡片
-      项目详情页
-    </lark-td>
-    <lark-td>
-      点击点赞
-    </lark-td>
-    <lark-td>
-      按钮变为"已点赞"
-    </lark-td>
-    <lark-td>
-      点赞数+1
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      同一用户同一项目最多1条有效点赞记录
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      点赞
-    </lark-td>
-    <lark-td>
-      首页项目列表页/活动专区项目卡片
-      项目详情页
-    </lark-td>
-    <lark-td>
-      再次点击已点赞
-    </lark-td>
-    <lark-td>
-      按钮恢复为"点赞"
-    </lark-td>
-    <lark-td>
-      点赞数-1
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      关注
-    </lark-td>
-    <lark-td>
-      首页项目列表页/活动专区项目卡片
-      项目详情页
-    </lark-td>
-    <lark-td>
-      点击关注
-    </lark-td>
-    <lark-td>
-      按钮变为"已关注"
-    </lark-td>
-    <lark-td>
-      关注数+1
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      同一用户同一项目最多1条有效关注记录
-    </lark-td>
-    <lark-td>
-      关注后可在"我的关注"中查看到所关注的用户
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      关注
-    </lark-td>
-    <lark-td>
-      首页项目列表页/活动专区项目卡片
-      项目详情页
-    </lark-td>
-    <lark-td>
-      再次点击已关注
-    </lark-td>
-    <lark-td>
-      按钮恢复为"关注"
-    </lark-td>
-    <lark-td>
-      关注数-1
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      投人气
-    </lark-td>
-    <lark-td>
-      首页项目列表页/活动专区项目卡片
-      项目详情页
-    </lark-td>
-    <lark-td>
-      点击按钮
-    </lark-td>
-    <lark-td>
-      按钮变为"已投"
-    </lark-td>
-    <lark-td>
-      人气+1
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      同一用户同一项目仅可投1次
-      票不可取消
-    </lark-td>
-    <lark-td>
-      已投票再次点击→toast提示"`你已经投过票了`"
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      分享
-    </lark-td>
-    <lark-td>
-      首页项目列表页/活动专区项目卡片
-      项目详情页
-    </lark-td>
-    <lark-td>
-      点击分享
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      统计分享次数
-    </lark-td>
-    <lark-td>
-      链接已复制
-    </lark-td>
-    <lark-td>
-      分享不强制登录
-      同一用户/设备多次分享可重复计数
-      分享不影响点赞、关注、人气票数据
-    </lark-td>
-    <lark-td>
-      **若浏览器不支持自动复制→显示分享弹窗，包含：项目链接、复制链接按钮**
-      <image token="IRwJbLmqvoJGzExsqHdcjNL3n6b" width="508" height="268" align="center"/>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      提交评论
-    </lark-td>
-    <lark-td>
-      项目详情页
-    </lark-td>
-    <lark-td>
-      点击提交反馈
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-      未登录→弹出登录弹窗，登录成功后打开反馈弹窗
-      用户可多次提交反馈
-      评论内容需要接入<text color="red">机器审核</text>，通过才可在前台展示。
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 功能 | 页面范围 | 操作 | 状态变化 | 数量变化 | Toast提示 | 特殊限制 | 补充规则 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 点赞 | 首页项目列表页/活动专区项目卡片<br>项目详情页 | 点击点赞 | 按钮变为"已点赞" | 点赞数+1 | - | 同一用户同一项目最多1条有效点赞记录 | - |
+| 点赞 | 首页项目列表页/活动专区项目卡片<br>项目详情页 | 再次点击已点赞 | 按钮恢复为"点赞" | 点赞数-1 | - | - | - |
+| 关注 | 首页项目列表页/活动专区项目卡片<br>项目详情页 | 点击关注 | 按钮变为"已关注" | 关注数+1 | - | 同一用户同一项目最多1条有效关注记录 | 关注后可在"我的关注"中查看到所关注的用户 |
+| 关注 | 首页项目列表页/活动专区项目卡片<br>项目详情页 | 再次点击已关注 | 按钮恢复为"关注" | 关注数-1 | - | - | - |
+| 投人气 | 首页项目列表页/活动专区项目卡片<br>项目详情页 | 点击按钮 | 按钮变为"已投" | 人气+1 | - | 同一用户同一项目仅可投1次<br>票不可取消 | 已投票再次点击→toast提示 "`你已经投过票了`" |
+| 分享 | 首页项目列表页/活动专区项目卡片<br>项目详情页 | 点击分享 | - | 统计分享次数 | 链接已复制 | 分享不强制登录<br>同一用户/设备多次分享可重复计数<br>分享不影响点赞、关注、人气票数据 | **若浏览器不支持自动复制→显示分享弹窗，包含：项目链接、复制链接按钮**<br><image token="IRwJbLmqvoJGzExsqHdcjNL3n6b" width="508" height="268" align="center"/> |
+| 提交评论 | 项目详情页 | 点击提交反馈 | - | - |  | 未登录→弹出登录弹窗，登录成功后打开反馈弹窗<br>用户可多次提交反馈<br>评论内容需要接入<text color="red">机器审核</text>，通过才可在前台展示。 | - |
 
 ~~评论提交弹窗字段~~
 
 <image token="FTPmbdFbaoUsKgxWhAbcL0WOnMb" width="880" height="1058" align="left"/>
 
-<lark-table rows="5" cols="5" header-row="true" column-widths="200,200,200,200,200">
-
-  <lark-tr>
-    <lark-td>
-      ~~字段名称~~
-    </lark-td>
-    <lark-td>
-      ~~字段名~~
-    </lark-td>
-    <lark-td>
-      ~~是否必填~~
-    </lark-td>
-    <lark-td>
-      ~~枚举值/限制~~
-    </lark-td>
-    <lark-td>
-      ~~异常提示~~
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      ~~评论类型~~
-    </lark-td>
-    <lark-td>
-      ~~comment_type~~
-    </lark-td>
-    <lark-td>
-      ~~必填~~
-    </lark-td>
-    <lark-td>
-      ~~问题反馈~~
-      ~~功能建议~~
-      ~~使用感受~~
-      ~~其他~~
-    </lark-td>
-    <lark-td>
-      ~~-~~
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      ~~评论内容~~
-    </lark-td>
-    <lark-td>
-      ~~comment_content~~
-    </lark-td>
-    <lark-td>
-      ~~必填~~
-    </lark-td>
-    <lark-td>
-      ~~最多500字~~
-    </lark-td>
-    <lark-td>
-      ~~为空时提示"请填写反馈内容"~~
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      ~~是否愿意被Founder联系~~
-    </lark-td>
-    <lark-td>
-      ~~can_contact~~
-    </lark-td>
-    <lark-td>
-      ~~非必填，默认"否"~~
-    </lark-td>
-    <lark-td>
-      ~~是~~
-      ~~否~~
-    </lark-td>
-    <lark-td>
-      ~~-~~
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      ~~联系方式~~
-    </lark-td>
-    <lark-td>
-      ~~contact_info~~
-    </lark-td>
-    <lark-td>
-      ~~条件展示（选"是"时展示）~~
-      ~~条件必填~~
-    </lark-td>
-    <lark-td>
-      ~~-~~
-    </lark-td>
-    <lark-td>
-      ~~为空时提示"请填写联系方式"~~
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| ~~字段名称~~ | ~~字段名~~ | ~~是否必填~~ | ~~枚举值/限制~~ | ~~异常提示~~ |
+| --- | --- | --- | --- | --- |
+| ~~评论类型~~ | ~~comment_type~~ | ~~必填~~ | ~~问题反馈 / 功能建议 / 使用感受 / 其他~~ | ~~-~~ |
+| ~~评论内容~~ | ~~comment_content~~ | ~~必填~~ | ~~最多500字~~ | ~~为空时提示"请填写反馈内容"~~ |
+| ~~是否愿意被Founder联系~~ | ~~can_contact~~ | ~~非必填，默认"否"~~ | ~~是 / 否~~ | ~~-~~ |
+| ~~联系方式~~ | ~~contact_info~~ | ~~条件展示（选"是"时展示） 条件必填~~ | ~~-~~ | ~~为空时提示"请填写联系方式"~~ |
 
 ### 3.5Founder后台模块（名字待定）
 
@@ -2457,433 +405,50 @@ Founder后台用于让项目提交者查看自己项目的状态、数据和待�
 
 ###### 项目卡片展示字段
 
-<lark-table rows="15" cols="2" header-row="true" column-widths="200,440">
-
-  <lark-tr>
-    <lark-td>
-      字段名称
-    </lark-td>
-    <lark-td>
-      说明
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      项目封面
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      项目名称
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      一句话介绍
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      项目阶段
-    </lark-td>
-    <lark-td>
-      枚举值：MVP阶段、成长阶段
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      项目状态
-    </lark-td>
-    <lark-td>
-      枚举值：草稿、待审核、需修改、已上线、已拒绝、已下架
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      **创建时间**
-    </lark-td>
-    <lark-td>
-      首次创建项目的时间
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      最近更新时间
-    </lark-td>
-    <lark-td>
-      最新修改/提交等操作的时间
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      点赞数
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      关注数
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      人气数
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      评论数
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      内测申请数
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      支持订单数
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      支持金额
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 字段名称 | 说明 |
+| --- | --- |
+| 项目封面 | - |
+| 项目名称 | - |
+| 一句话介绍 | - |
+| 项目阶段 | 枚举值：MVP阶段、成长阶段 |
+| 项目状态 | 枚举值：草稿、待审核、需修改、已上线、已拒绝、已下架 |
+| **创建时间** | 首次创建项目的时间 |
+| 最近更新时间 | 最新修改/提交等操作的时间 |
+| 点赞数 | - |
+| 关注数 | - |
+| 人气数 | - |
+| 评论数 | - |
+| 内测申请数 | - |
+| 支持订单数 | - |
+| 支持金额 | - |
 
 ###### 项目状态及按钮展示
 
-<lark-table rows="7" cols="7" header-row="true" column-widths="93,200,142,200,249,200,200">
-
-  <lark-tr>
-    <lark-td>
-      项目状态
-    </lark-td>
-    <lark-td>
-      含义
-    </lark-td>
-    <lark-td>
-      前台是否展示
-    </lark-td>
-    <lark-td>
-      Founder是否可编辑
-    </lark-td>
-    <lark-td>
-      主要按钮
-    </lark-td>
-    <lark-td>
-      状态提示文案
-    </lark-td>
-    <lark-td>
-      编辑权限说明
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      草稿
-    </lark-td>
-    <lark-td>
-      Founder已保存项目资料，但还没有提交审核
-    </lark-td>
-    <lark-td>
-      否
-    </lark-td>
-    <lark-td>
-      是
-    </lark-td>
-    <lark-td>
-      继续编辑——>进入编辑页面
-    </lark-td>
-    <lark-td>
-      项目还未提交审核，完善资料后可以提交。
-    </lark-td>
-    <lark-td>
-      可以编辑全部字段
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      待审核
-    </lark-td>
-    <lark-td>
-      Founder已提交项目，等待运营审核
-    </lark-td>
-    <lark-td>
-      否
-    </lark-td>
-    <lark-td>
-      否
-    </lark-td>
-    <lark-td>
-      查看项目——>进入编辑页面，但“提交审核”和“保存草稿”的按钮置灰，单击按钮后提示：`审核中暂不可修改`
-    </lark-td>
-    <lark-td>
-      项目正在审核中，审核完成后会更新状态。
-    </lark-td>
-    <lark-td>
-      不可编辑
-      1.0版本暂不支持撤回提交
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      需修改
-    </lark-td>
-    <lark-td>
-      运营认为资料不完整或不符合展示要求等，Founder需要修改后重新提交
-    </lark-td>
-    <lark-td>
-      否
-    </lark-td>
-    <lark-td>
-      是
-    </lark-td>
-    <lark-td>
-      查看修改意见
-      修改项目
-    </lark-td>
-    <lark-td>
-      项目需要修改后重新提交。
-    </lark-td>
-    <lark-td>
-      可以编辑全部字段
-      修改后需重新提交审核
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      已上线
-    </lark-td>
-    <lark-td>
-      项目已通过审核，正在前台展示
-    </lark-td>
-    <lark-td>
-      是
-    </lark-td>
-    <lark-td>
-      限制编辑
-    </lark-td>
-    <lark-td>
-      查看项目——>进入编辑页面
-      查看数据——>跳转tab项目数据
-      查看评论——>跳转tab用户评论
-      查看内测申请——>跳转tab内测申请
-      查看购买订单——>跳转tab购买订单
-    </lark-td>
-    <lark-td>
-      项目正在前台展示，用户可以浏览和互动。
-    </lark-td>
-    <lark-td>
-      1.0版本仅允许编辑：项目详细说明、Demo访问链接、内测说明、购买/支持说明
-      修改后需要运营重新审核
-      审核期间旧版本继续展示
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      已拒绝
-    </lark-td>
-    <lark-td>
-      项目未通过审核，暂不允许上线
-    </lark-td>
-    <lark-td>
-      否
-    </lark-td>
-    <lark-td>
-      否
-    </lark-td>
-    <lark-td>
-      查看拒绝原因
-    </lark-td>
-    <lark-td>
-      项目未通过审核，当前不能上线。
-    </lark-td>
-    <lark-td>
-      不可编辑
-      不允许重新提交
-      如需重新提交需新建项目
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      已下架
-    </lark-td>
-    <lark-td>
-      项目曾经上线，但当前不再前台展示
-    </lark-td>
-    <lark-td>
-      否
-    </lark-td>
-    <lark-td>
-      否
-    </lark-td>
-    <lark-td>
-      查看下架原因
-      查看历史数据
-    </lark-td>
-    <lark-td>
-      项目已下架，普通用户当前不可查看。
-    </lark-td>
-    <lark-td>
-      不可编辑
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 项目状态 | 含义 | 前台是否展示 | Founder是否可编辑 | 主要按钮 | 状态提示文案 | 编辑权限说明 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 草稿 | Founder已保存项目资料，但还没有提交审核 | 否 | 是 | 继续编辑——>进入编辑页面 | 项目还未提交审核，完善资料后可以提交。 | 可以编辑全部字段 |
+| 待审核 | Founder已提交项目，等待运营审核 | 否 | 否 | 查看项目——>进入编辑页面，但"提交审核"和"保存草稿"的按钮置灰，单击按钮后提示：`审核中暂不可修改` | 项目正在审核中，审核完成后会更新状态。 | 不可编辑<br>1.0版本暂不支持撤回提交 |
+| 需修改 | 运营认为资料不完整或不符合展示要求等，Founder需要修改后重新提交 | 否 | 是 | 查看修改意见<br>修改项目 | 项目需要修改后重新提交。 | 可以编辑全部字段<br>修改后需重新提交审核 |
+| 已上线 | 项目已通过审核，正在前台展示 | 是 | 限制编辑 | 查看项目——>进入编辑页面<br>查看数据——>跳转tab项目数据<br>查看评论——>跳转tab用户评论<br>查看内测申请——>跳转tab内测申请<br>查看购买订单——>跳转tab购买订单 | 项目正在前台展示，用户可以浏览和互动。 | 1.0版本仅允许编辑：项目详细说明、Demo访问链接、内测说明、购买/支持说明<br>修改后需要运营重新审核<br>审核期间旧版本继续展示 |
+| 已拒绝 | 项目未通过审核，暂不允许上线 | 否 | 否 | 查看拒绝原因 | 项目未通过审核，当前不能上线。 | 不可编辑<br>不允许重新提交<br>如需重新提交需新建项目 |
+| 已下架 | 项目曾经上线，但当前不再前台展示 | 否 | 否 | 查看下架原因<br>查看历史数据 | 项目已下架，普通用户当前不可查看。 | 不可编辑 |
 
 ###### 查看弹窗
 
 <image token="S2Ggb8KQwou3epxwIQqcjAYcngd" width="1046" height="350" align="left"/>
 
-<lark-table rows="4" cols="5" header-row="true" column-widths="200,200,200,220,200">
-
-  <lark-tr>
-    <lark-td>
-      按钮名称
-    </lark-td>
-    <lark-td>
-      弹窗标题
-    </lark-td>
-    <lark-td>
-      展示内容
-    </lark-td>
-    <lark-td>
-      置底提示
-    </lark-td>
-    <lark-td>
-      按钮
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      查看修改意见
-    </lark-td>
-    <lark-td>
-      修改意见
-    </lark-td>
-    <lark-td>
-      运营填写的原因
-    </lark-td>
-    <lark-td>
-      问题反馈联系邮箱
-    </lark-td>
-    <lark-td>
-      我知道了
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      查看拒绝原因
-    </lark-td>
-    <lark-td>
-      拒绝原因
-    </lark-td>
-    <lark-td>
-      运营填写的原因
-    </lark-td>
-    <lark-td>
-      问题反馈联系邮箱
-    </lark-td>
-    <lark-td>
-      我知道了
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      查看下架原因
-    </lark-td>
-    <lark-td>
-      下架原因
-    </lark-td>
-    <lark-td>
-      运营填写的原因
-    </lark-td>
-    <lark-td>
-      问题反馈联系邮箱
-    </lark-td>
-    <lark-td>
-      我知道了
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 按钮名称 | 弹窗标题 | 展示内容 | 置底提示 | 按钮 |
+| --- | --- | --- | --- | --- |
+| 查看修改意见 | 修改意见 | 运营填写的原因 | 问题反馈联系邮箱 | 我知道了 |
+| 查看拒绝原因 | 拒绝原因 | 运营填写的原因 | 问题反馈联系邮箱 | 我知道了 |
+| 查看下架原因 | 下架原因 | 运营填写的原因 | 问题反馈联系邮箱 | 我知道了 |
 
 ###### 空状态页面
 
-<lark-table rows="3" cols="4" header-row="true" column-widths="200,200,200,200">
-
-  <lark-tr>
-    <lark-td>
-      场景
-    </lark-td>
-    <lark-td>
-      标题
-    </lark-td>
-    <lark-td>
-      说明
-    </lark-td>
-    <lark-td>
-      按钮
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      当前用户没有提交过项目
-    </lark-td>
-    <lark-td>
-      你还没有提交项目
-    </lark-td>
-    <lark-td>
-      提交项目后，可以在这里查看审核状态、项目数据和用户反馈。
-    </lark-td>
-    <lark-td>
-      提交项目
-      返回首页
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      筛选后没有结果
-    </lark-td>
-    <lark-td>
-      没有符合条件的项目
-    </lark-td>
-    <lark-td>
-      可以调整筛选条件后再查看
-    </lark-td>
-    <lark-td>
-      清空筛选
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 场景 | 标题 | 说明 | 按钮 |
+| --- | --- | --- | --- |
+| 当前用户没有提交过项目 | 你还没有提交项目 | 提交项目后，可以在这里查看审核状态、项目数据和用户反馈。 | 提交项目 / 返回首页 |
+| 筛选后没有结果 | 没有符合条件的项目 | 可以调整筛选条件后再查看 | 清空筛选 |
 
 ### 3.6首页/项目列表页模块
 
@@ -2897,61 +462,12 @@ Founder后台用于让项目提交者查看自己项目的状态、数据和待�
 
 #### 涉及角色
 
-<lark-table rows="5" cols="3" header-row="true" column-widths="200,200,411">
-
-  <lark-tr>
-    <lark-td>
-      角色
-    </lark-td>
-    <lark-td>
-      是否使用该模块
-    </lark-td>
-    <lark-td>
-      说明
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      游客
-    </lark-td>
-    <lark-td>
-      是
-    </lark-td>
-    <lark-td>
-      可完整浏览首页内容；执行投票、关注、提交项目、进入Founder后台等操作时，触发登录弹窗。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td rowspan="2">
-      登录用户
-    </lark-td>
-    <lark-td>
-      是
-    </lark-td>
-    <lark-td>
-      除浏览外，可直接完成投票、关注、分享等互动；可提交项目，并进入Founder后台。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      是
-    </lark-td>
-    <lark-td>
-      登录用户提交项目后即成为Founder，可通过首页入口进入Founder后台。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      运营管理员
-    </lark-td>
-    <lark-td>
-      否
-    </lark-td>
-    <lark-td>
-      通过独立运营后台进行项目管理，但首页推荐位的配置由运营后台控制（1.0先不做，后续完善）。
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 角色 | 是否使用该模块 | 说明 |
+| --- | --- | --- |
+| 游客 | 是 | 可完整浏览首页内容；执行投票、关注、提交项目、进入Founder后台等操作时，触发登录弹窗。 |
+| 登录用户 | 是 | 除浏览外，可直接完成投票、关注、分享等互动；可提交项目，并进入Founder后台。 |
+| 登录用户 | 是 | 登录用户提交项目后即成为Founder，可通过首页入口进入Founder后台。 |
+| 运营管理员 | 否 | 通过独立运营后台进行项目管理，但首页推荐位的配置由运营后台控制（1.0先不做，后续完善）。 |
 
 #### 页面展示规则
 
@@ -3077,73 +593,15 @@ Founder后台用于让项目提交者查看自己项目的状态、数据和待�
 
 <text bgcolor="light-purple">**筛选项**</text>
 
-<lark-table rows="8" cols="2" header-row="true" column-widths="200,653">
-
-  <lark-tr>
-    <lark-td>
-      筛选项
-    </lark-td>
-    <lark-td>
-      可选值
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      项目阶段
-    </lark-td>
-    <lark-td>
-      全部、MVP阶段、成长阶段
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      项目品类
-    </lark-td>
-    <lark-td>
-      全部<text color="red" bgcolor="light-yellow">、AI软件、效率工具、女性健康、开发者工具、生活方式、教育学习、其他</text>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      活动
-    </lark-td>
-    <lark-td>
-      全部、当前正在进行的活动名称、历史活动名称
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      是否可内测
-    </lark-td>
-    <lark-td>
-      全部、可内测
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      是否支持购买
-    </lark-td>
-    <lark-td>
-      全部、支持购买
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      搜索
-    </lark-td>
-    <lark-td>
-      搜索框 ：支持搜索关键词匹配项目名称/founder
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      排序
-    </lark-td>
-    <lark-td>
-      最新上线、~~人气最高（点赞+票权重计算）~~、反馈最多、最近更新、点赞最多
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 筛选项 | 可选值 |
+| --- | --- |
+| 项目阶段 | 全部、MVP阶段、成长阶段 |
+| 项目品类 | 全部<text color="red" bgcolor="light-yellow">、效率工具、女性健康、开发者工具、生活方式、教育学习、其他</text> |
+| 活动 | 全部、当前正在进行的活动名称、历史活动名称 |
+| 是否可内测 | 全部、可内测 |
+| 是否支持购买 | 全部、支持购买 |
+| 搜索 | 搜索框：支持搜索关键词匹配项目名称/founder |
+| 排序 | 最新上线、~~人气最高（点赞+票权重计算）~~、反馈最多、最近更新、点赞最多 |
 
 <text bgcolor="light-purple">**筛选规则**</text>
 
@@ -3223,43 +681,10 @@ Founder后台用于让项目提交者查看自己项目的状态、数据和待�
 
 #### 涉及角色
 
-<lark-table rows="3" cols="3" header-row="true" column-widths="114,135,504">
-
-  <lark-tr>
-    <lark-td>
-      角色
-    </lark-td>
-    <lark-td>
-      是否使用该模块
-    </lark-td>
-    <lark-td>
-      说明
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      运营管理员
-    </lark-td>
-    <lark-td>
-      是
-    </lark-td>
-    <lark-td>
-      通过独立入口登录后台，执行项目审核、状态管理、查看审核记录等操作。
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      用户
-    </lark-td>
-    <lark-td>
-      否
-    </lark-td>
-    <lark-td>
-      感知不到运营后台的存在。
-      Founder用户也无法访问运营后台，但可通过前台查看审核结果与修改要求。
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 角色 | 是否使用该模块 | 说明 |
+| --- | --- | --- |
+| 运营管理员 | 是 | 通过独立入口登录后台，执行项目审核、状态管理、查看审核记录等操作。 |
+| 用户 | 否 | 感知不到运营后台的存在。<br>Founder用户也无法访问运营后台，但可通过前台查看审核结果与修改要求。 |
 
 #### 运营后台入口
 
@@ -3360,268 +785,20 @@ Founder后台用于让项目提交者查看自己项目的状态、数据和待�
 - 页面顶部标题：`审核记录`
 - 列表字段
 
-<lark-table rows="13" cols="6" header-row="true" column-widths="200,200,200,200,200,64">
-
-  <lark-tr>
-    <lark-td>
-      字段名称
-    </lark-td>
-    <lark-td>
-      字段名
-    </lark-td>
-    <lark-td>
-      字段说明
-    </lark-td>
-    <lark-td>
-      枚举值
-    </lark-td>
-    <lark-td>
-      示例
-    </lark-td>
-    <lark-td>
-      优先级
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      记录ID
-    </lark-td>
-    <lark-td>
-      audit_record_id
-    </lark-td>
-    <lark-td>
-      每条审核记录的唯一编号
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      项目ID
-    </lark-td>
-    <lark-td>
-      project_id
-    </lark-td>
-    <lark-td>
-      对应被审核的项目
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      项目名称
-    </lark-td>
-    <lark-td>
-      project_name
-    </lark-td>
-    <lark-td>
-      展示给运营看的项目名称
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      雌激素趋势日记
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      Founder用户ID
-    </lark-td>
-    <lark-td>
-      user_id
-    </lark-td>
-    <lark-td>
-      项目提交人的用户ID
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      Founder名称
-    </lark-td>
-    <lark-td>
-      founder_name
-    </lark-td>
-    <lark-td>
-      项目提交人的展示名称
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      Nina
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      审核类型
-    </lark-td>
-    <lark-td>
-      audit_type
-    </lark-td>
-    <lark-td>
-      这次审核处理的是哪类事项
-    </lark-td>
-    <lark-td>
-      项目上线审核
-      项目状态处理
-      资料修改审核
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      P5
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      审核动作
-    </lark-td>
-    <lark-td>
-      audit_action
-    </lark-td>
-    <lark-td>
-      运营本次具体做了什么
-    </lark-td>
-    <lark-td>
-      审核通过
-      要求修改
-      拒绝上线
-      恢复上线
-      下架项目
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      审核前项目状态
-    </lark-td>
-    <lark-td>
-      before_project_status
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      待审核
-      需修改
-      已上线
-      已下架
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      P5
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      审核后项目状态
-    </lark-td>
-    <lark-td>
-      after_project_status
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      需修改
-      已上线
-      已下架
-      已拒绝
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      审核原因
-    </lark-td>
-    <lark-td>
-      audit_reason
-    </lark-td>
-    <lark-td>
-      运营填写的原因
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      购买说明不清晰，请补充交付方式和售后说明
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      审核人
-    </lark-td>
-    <lark-td>
-      operator_name
-    </lark-td>
-    <lark-td>
-      执行审核操作的运营账号
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      admin
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-  <lark-tr>
-    <lark-td>
-      审核时间
-    </lark-td>
-    <lark-td>
-      audit_time
-    </lark-td>
-    <lark-td>
-      操作发生的时间
-    </lark-td>
-    <lark-td>
-      -
-    </lark-td>
-    <lark-td>
-      2026-06-28 14:35:20
-    </lark-td>
-    <lark-td>
-    </lark-td>
-  </lark-tr>
-</lark-table>
+| 字段名称 | 字段名 | 字段说明 | 枚举值 | 示例 | 优先级 |
+| --- | --- | --- | --- | --- | --- |
+| 记录ID | audit_record_id | 每条审核记录的唯一编号 | - |  |  |
+| 项目ID | project_id | 对应被审核的项目 | - |  |  |
+| 项目名称 | project_name | 展示给运营看的项目名称 | - | 雌激素趋势日记 |  |
+| Founder用户ID | user_id | 项目提交人的用户ID | - |  |  |
+| Founder名称 | founder_name | 项目提交人的展示名称 | - | Nina |  |
+| 审核类型 | audit_type | 这次审核处理的是哪类事项 | 项目上线审核 / 项目状态处理 / 资料修改审核 | - | P5 |
+| 审核动作 | audit_action | 运营本次具体做了什么 | 审核通过 / 要求修改 / 拒绝上线 / 恢复上线 / 下架项目 | - |  |
+| 审核前项目状态 | before_project_status | - | 待审核 / 需修改 / 已上线 / 已下架 | - | P5 |
+| 审核后项目状态 | after_project_status | - | 需修改 / 已上线 / 已下架 / 已拒绝 | - |  |
+| 审核原因 | audit_reason | 运营填写的原因 | - | 购买说明不清晰，请补充交付方式和售后说明 |  |
+| 审核人 | operator_name | 执行审核操作的运营账号 | - | admin |  |
+| 审核时间 | audit_time | 操作发生的时间 | - | 2026-06-28 14:35:20 |  |
 
 ###### 项目统计模块
 
