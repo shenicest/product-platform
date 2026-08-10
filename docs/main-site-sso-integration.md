@@ -18,7 +18,7 @@
 
 - 登录时的 `Set-Cookie` 带上 `Domain=.shenicest.com`
 - 登出时清除同名同域 cookie
-- 提供了一个 `GET /api/auth/sso-redirect` 端点：把老会话的 host-only cookie 升级成域级 cookie，然后 302 到 `https://shenicest.com/platform`
+- 提供了一个 `GET /api/auth/sso-redirect` 端点：把老会话的 host-only cookie 升级成域级 cookie，然后 302 到 `https://shenicest.com/platform/projects`（主站黑客松专区）
 
 **你要做的**：在主站 PHP 代码里读并写这张共享 cookie。
 

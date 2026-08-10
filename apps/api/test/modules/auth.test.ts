@@ -159,7 +159,7 @@ describe('GET /auth/sso-redirect', () => {
       }),
     )
     expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toBe('https://shenicest.com/platform')
+    expect(response.headers.get('location')).toBe('https://shenicest.com/platform/projects')
     expect(response.headers.getSetCookie()).toEqual([])
   })
 
@@ -184,7 +184,7 @@ describe('GET /auth/sso-redirect', () => {
         }),
       )
       expect(response.status).toBe(302)
-      expect(response.headers.get('location')).toBe('https://shenicest.com/platform')
+      expect(response.headers.get('location')).toBe('https://shenicest.com/platform/projects')
       expect(response.headers.getSetCookie()).toEqual([
         'shenicest_token=; Max-Age=0; Path=/',
         `shenicest_token=${token}; Domain=.shenicest.com; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000`,

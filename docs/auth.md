@@ -55,9 +55,11 @@
 本平台（`xxx.shenicest.com`）与主站（`shenicest.com/platform`）同属 `shenicest.com` 注册域，且 JWT 都由同一外部认证系统签发、共享 `SHENICEST_JWT_SECRET`。据此实现单点登录：
 
 - **共享 cookie**：设置 `COOKIE_DOMAIN=.shenicest.com` 后，`shenicest_token` 带 `Domain` 属性，浏览器对 `shenicest.com` 及其所有子域都会携带，主站无需额外请求即可读到同一登录态。
-- **登录态升级**：`COOKIE_DOMAIN` 上线前登录的用户持有的是 host-only cookie（只对 `xxx.shenicest.com` 有效）。顶部导航的"主站"入口指向 `/api/auth/sso-redirect`（web 透传代理到 API `GET /auth/sso-redirect`），命中时把 host-only cookie 升级为域级 cookie 再跳转，老会话无需重新登录。
+- **登录态升级**：`COOKIE_DOMAIN` 上线前登录的用户持有的是 host-only cookie（只对 `xxx.shenicest.com` 有效）。API `GET /auth/sso-redirect` + web 透传代理 `/api/auth/sso-redirect` 会把 host-only cookie 升级为域级 cookie 再 302 到 `MAIN_SITE_URL`，供老会话平滑迁移。
 - **主站侧约定**（外部 PHP 系统配合）：未登录时读取 `$_COOKIE['shenicest_token']`，用相同密钥与 iss/aud 校验 JWT 后建立会话；主站自身登录/登出时也应按 `Domain=.shenicest.com` 写入/清除同名 cookie，使任一侧登出即全站失效。
 - **取舍**：cookie 对所有 `*.shenicest.com` 子域可见，这是父域 SSO 的标准代价。
+
+> **TODO（上线前决策）**：当前顶部导航「黑客松专区」入口已改为**直链** `https://shenicest.com/platform/projects`，未使用 `sso-redirect`。前提是本站首次上线时就配好 `COOKIE_DOMAIN=.shenicest.com`——那样从第一次登录起写的就是域级 cookie，不存在需要升级的老会话。如果这个前提成立，`GET /auth/sso-redirect`、web 代理 `apps/web/src/app/api/auth/sso-redirect/route.ts`、`test/modules/auth.test.ts` 中的 4 个 sso-redirect 用例，以及本节「登录态升级」段落都可以一起删除。若上线前有内部测试用户在 `*.shenicest.com` 子域登录过，让他们重登一次即可，不必保留升级端点。
 
 ## 2. 后端授权机制
 
@@ -145,7 +147,7 @@
 | `SHENICEST_JWT_SECRET` | API | 验证外部 JWT 的 HS256 密钥 |
 | `SHENICEST_API_BASE` | API | 外部认证系统地址（OTP 代理目标） |
 | `COOKIE_DOMAIN` | API | 可选。设为 `.shenicest.com` 时 `shenicest_token` 带 `Domain` 属性，供主站 SSO 共享登录态；本地不设置 |
-| `MAIN_SITE_URL` | API | 可选。`GET /auth/sso-redirect` 的跳转目标，默认 `https://shenicest.com/platform` |
+| `MAIN_SITE_URL` | API | 可选。`GET /auth/sso-redirect` 的跳转目标，默认 `https://shenicest.com/platform/projects` |
 | `API_URL` | Web | 后端地址（eden treaty、`/api/*` rewrite、`/api/me` 聚合） |
 
 ## 7. 已知优化项

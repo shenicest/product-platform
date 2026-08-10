@@ -15,7 +15,7 @@ const TOKEN_COOKIE_MAX_AGE = 30 * 24 * 60 * 60
 // registrable domain, so shenicest.com/platform sees the same login state.
 // Leave unset on localhost where a parent domain does not exist.
 const getCookieDomain = () => process.env.COOKIE_DOMAIN || undefined
-const getMainSiteUrl = () => process.env.MAIN_SITE_URL || 'https://shenicest.com/platform'
+const getMainSiteUrl = () => process.env.MAIN_SITE_URL || 'https://shenicest.com/platform/projects'
 const isProduction = () => process.env.NODE_ENV === 'production'
 
 // Raw Set-Cookie strings are used wherever one response must touch both the

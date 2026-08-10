@@ -26,7 +26,7 @@ export function SiteHeader() {
               提交
             </Link>
             <a
-              href="/api/auth/sso-redirect"
+              href="https://shenicest.com/platform/projects"
               className="transition-colors hover:text-primary"
             >
               黑客松专区
