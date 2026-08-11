@@ -16,6 +16,18 @@ export const getLiveProjects = cache(async (query: ProjectListQuery = {}) => {
   return data
 })
 
+export const getFollowingProjects = cache(async (query: ProjectListQuery = {}) => {
+  const token = (await cookies()).get('shenicest_token')?.value
+  if (!token) throw new Error('Failed to load following projects')
+
+  const { data, error } = await api.me.following.projects.get({
+    query,
+    headers: { cookie: `shenicest_token=${token}` },
+  })
+  if (error || !data) throw new Error('Failed to load following projects')
+  return data
+})
+
 export type ProjectListResponse = Awaited<ReturnType<typeof getLiveProjects>>
 export type Project = ProjectListResponse['data'][number]
 

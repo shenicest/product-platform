@@ -83,4 +83,9 @@ describe('middleware — /login redirect', () => {
     const res = middleware(buildRequest('/', token))
     expect(res.headers.get('location')).toBeNull()
   })
+
+  it('does not middleware-block anonymous visitors to /following', () => {
+    const res = middleware(buildRequest('/following'))
+    expect(res.headers.get('location')).toBeNull()
+  })
 })

@@ -1,4 +1,4 @@
-import { and, count, desc, eq, like, or, sql } from 'drizzle-orm'
+import { and, count, desc, eq, inArray, like, or, sql } from 'drizzle-orm'
 import { follows, projects } from '../../db/schema'
 import type { Database } from '../../db'
 import { UserIdentityService } from '../user-identity/service'
@@ -70,7 +70,20 @@ export class ProjectService {
   }
 
   async listLiveProjects(query: ProjectListQuery) {
+    return this.listLiveProjectsForFounders(query)
+  }
+
+  async listFollowingLiveProjects(followerUserId: string, query: ProjectListQuery) {
+    const followedFounders = await this.db.select({ userId: follows.followeeUserId }).from(follows)
+      .where(eq(follows.followerUserId, followerUserId))
+    return this.listLiveProjectsForFounders(query, followedFounders.map(({ userId }) => userId))
+  }
+
+  private async listLiveProjectsForFounders(query: ProjectListQuery, founderUserIds?: string[]) {
+    if (founderUserIds?.length === 0) return { data: [], total: 0 }
+
     const conditions = [eq(projects.status, ProjectStatus.Live)]
+    if (founderUserIds) conditions.push(inArray(projects.userId, founderUserIds))
     if (query.stage !== undefined) conditions.push(eq(projects.stage, query.stage))
     if (query.category) {
       conditions.push(sql`JSON_CONTAINS(${projects.categories}, ${JSON.stringify(query.category)})`)

@@ -25,6 +25,12 @@ export function SiteHeader() {
             >
               提交
             </Link>
+            <Link
+              href="/following"
+              className="transition-colors hover:text-primary"
+            >
+              关注
+            </Link>
             <a
               href="https://shenicest.com/platform/projects"
               className="transition-colors hover:text-primary"

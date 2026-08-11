@@ -1,12 +1,17 @@
 'use client'
 
-import { useState, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useState, useCallback } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
 import { followFounder, likeProject, sendLoginCode, verifyLoginCode } from '@/lib/client-api'
 
 export default function LoginPage() {
+  return <Suspense><LoginForm /></Suspense>
+}
+
+function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { refresh } = useAuth()
   const [step, setStep] = useState<'email' | 'code'>('email')
   const [identifier, setIdentifier] = useState('')
@@ -77,7 +82,8 @@ export default function LoginPage() {
         await followFounder(pendingFollow)
       }
       await refresh()
-      router.push('/')
+      const returnTo = searchParams.get('returnTo')
+      router.push(returnTo?.startsWith('/') && !returnTo.startsWith('//') ? returnTo : '/')
     } catch {
       setError('网络错误')
     } finally {

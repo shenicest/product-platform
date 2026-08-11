@@ -1,4 +1,5 @@
 import { t } from 'elysia'
+import { ProjectListQuery, ProjectListResponse } from '../project/model'
 
 export const FounderUserIdParams = t.Object({
   userId: t.String({ minLength: 1, description: 'Founder user ID' }),
@@ -15,6 +16,12 @@ export const MyFollowsResponse = t.Object({
   followed_founder_user_ids: t.Array(t.String()),
 })
 export type MyFollowsResponse = typeof MyFollowsResponse.static
+
+export const FollowingProjectsQuery = ProjectListQuery
+export type FollowingProjectsQuery = typeof FollowingProjectsQuery.static
+
+export const FollowingProjectsResponse = ProjectListResponse
+export type FollowingProjectsResponse = typeof FollowingProjectsResponse.static
 
 export class CannotFollowSelfError extends Error {
   readonly code = 'CANNOT_FOLLOW_SELF'

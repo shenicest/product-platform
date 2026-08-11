@@ -77,6 +77,29 @@ describe('getLiveProjects', () => {
   })
 })
 
+describe('getFollowingProjects', () => {
+  it('forwards the session cookie and returns the API payload', async () => {
+    cookieValue = 'token-abc'
+    let captured: string | null = null
+    server.use(
+      http.get('*/me/following/projects', ({ request }) => {
+        captured = request.headers.get('cookie')
+        return HttpResponse.json({ data: [projectFixture], total: 1 })
+      })
+    )
+
+    const { getFollowingProjects } = await importFresh()
+    const result = await getFollowingProjects({ limit: 20, offset: 0 })
+    expect(result).toMatchObject({ total: 1, data: [{ id: 1, name: 'Nova' }] })
+    expect(captured).toContain('shenicest_token=token-abc')
+  })
+
+  it('throws when there is no authenticated session', async () => {
+    const { getFollowingProjects } = await importFresh()
+    await expect(getFollowingProjects()).rejects.toThrow(/Failed to load following projects/)
+  })
+})
+
 describe('getProject', () => {
   it('returns the project when it exists', async () => {
     server.use(http.get('*/projects/:id', () => HttpResponse.json(projectFixture)))
