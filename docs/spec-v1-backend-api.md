@@ -15,6 +15,7 @@ A backend API built with Elysia + Drizzle that implements:
 - **Role-based access**: Users, Founders, and Operators have different permissions and visibility
 - **Private feedback**: Comments are submitted but only visible to Founders and Operators (not publicly displayed in 1.0)
 - **Zero-JOIN filtering**: Because content lives directly on the Project row, homepage filtering by category/stage reads one table — no denormalized copy needed.
+- **User interactions (Like + Follow)**: Users like Projects and follow Founders (Users with the `founder` role). List/detail responses stay stateless with respect to the caller; per-user membership is served through two dedicated Set endpoints (`GET /me/likes`, `GET /me/follows`) that the frontend caches in a client-side Provider (see ADR-0009).
 
 The system uses an external auth service for JWT tokens, so this backend only consumes identity — it doesn't manage authentication.
 
@@ -80,6 +81,23 @@ The system uses an external auth service for JWT tokens, so this backend only co
 47. As a Founder, I want to see flagged comments, so that I'm aware of potentially problematic content
 48. As an operator, I want to view comments on any project, so that I can monitor feedback quality and handle issues
 
+### Likes & Follows
+
+54. As a logged-in user, I want to like a Live project, so that I can signal appreciation to the founder
+55. As a logged-in user, I want to unlike a project I previously liked, so that I can revise my endorsement
+56. As a logged-in user, I want repeated like/unlike clicks to be idempotent, so that double-clicks or retries don't cause errors
+57. As a logged-in user, I want to be prevented from liking a non-Live project, so that endorsements only apply to publicly available projects
+58. As a logged-in user, I want to see how many times a project has been liked, so that I can gauge platform interest
+59. As a logged-in user, I want to follow a Founder (a user with the `founder` role), so that I can keep track of all their projects with one action
+60. As a logged-in user, I want to unfollow a Founder, so that I can curate my follow list
+61. As a logged-in user, I want repeated follow/unfollow clicks to be idempotent
+62. As a logged-in user, I want to be prevented from following myself or a non-Founder user, so that follows always target a valid Founder identity
+63. As a logged-in user, I want to fetch the full list of my liked project IDs and followed Founder user IDs, so that the frontend can render every card with the right visual state on first paint
+64. As a logged-in user, I want to see all Live projects from Founders I follow on a dedicated page, so that I can catch up on the creators I care about
+65. As a visitor (no login), I want the interactive Sets to default to empty, so that the UI renders without any personalized state
+66. As a Founder, I want to see my follower count on my dashboard, so that I understand my reach
+67. As a Founder, I want my project detail page to show my follower count on the founder card, so that visitors can gauge interest in my work
+
 ### Identity & Access Control
 
 49. As a user, I want my first project submission to automatically grant me the Founder role, so that I don't need a separate registration step
@@ -102,7 +120,9 @@ The system uses an external auth service for JWT tokens, so this backend only co
 - **Project as content + lifecycle holder**: The Project row holds ALL displayable content fields AND the lifecycle `status` (tinyint 0-5). No separate content table. Pre-live edits modify the Project row directly; post-live edits go through a proposal.
 - **ProjectEditProposal as a diff record**: Holds only the changed fields as a JSON `changes` object (not a full snapshot). Status (tinyint 0-3): Pending Review / Approved / Rejected / Revision Required.
 - **Single status field on Project**: `status` captures the full lifecycle (Draft / Pending Review / Revision Required / Live / Delisted / Rejected). There is no `project_flag` and no derivation from a revision — `status` is the source of truth.
-- **No denormalized fields**: `categories` (JSON) and `stage` (tinyint) live directly on the Project row. Homepage filtering reads one table — no JOIN, no duplicated copy to keep in sync.
+- **No denormalized filter fields**: `categories` (JSON) and `stage` (tinyint) live directly on the Project row. Homepage filtering reads one table — no JOIN, no duplicated copy to keep in sync.
+- **Like on Project**: A `project_likes` row per `(user_id, project_id)` pair, unique. New likes only allowed on Live (`status=3`) projects; existing rows survive delisting. `projects.like_count` is a denormalized counter maintained on real state changes.
+- **Follow on User with `founder` role**: A `follows` row per `(follower_user_id, followee_user_id)` pair, unique. Target must currently hold `role=founder` in `user_identities`; existing rows survive role removal. No denormalized `follower_count` — counts are read on demand via `COUNT(*)` and batched for list endpoints (see ADR-0008).
 
 ### State Machine & Proposal Rules
 
@@ -125,9 +145,11 @@ Because the Project row IS the content row, `categories` and `stage` are already
 
 ### Schema Design
 
-- **`projects` table**: `id`, `user_id`, `status` (tinyint 0-5), `name`, `tagline`, `description`, `cover_url`, `demo_images` (JSON), `demo_video_url`, `demo_link`, `stage` (tinyint 0-1), `categories` (JSON), `target_users`, `user_problem`, `progress`, `next_steps`, `message_to_users`, `is_open_for_beta`, `beta_description`, `contact_name`, `contact_phone`, `contact_email`, `contact_wechat`, `team_name`, `created_at`, `updated_at`. Index on `(user_id)`, `(status)`, `(stage)`, and a generated-column or JSON index on `categories` for filtering.
+- **`projects` table**: `id`, `user_id`, `status` (tinyint 0-5), `name`, `tagline`, `description`, `cover_url`, `demo_images` (JSON), `demo_video_url`, `demo_link`, `stage` (tinyint 0-1), `categories` (JSON), `target_users`, `user_problem`, `progress`, `next_steps`, `message_to_users`, `is_open_for_beta`, `beta_description`, `contact_name`, `contact_phone`, `contact_email`, `contact_wechat`, `team_name`, `like_count` (int, default 0), `created_at`, `updated_at`. Index on `(user_id)`, `(status)`, `(stage)`, and a generated-column or JSON index on `categories` for filtering.
 - **`project_edit_proposals` table**: `id`, `project_id`, `changes` (JSON — partial diff of changed content fields and their new values), `status` (tinyint 0-3), `reason` (text, nullable — operator's reason on reject/require_revision), `reviewed_by` (varchar, nullable — operator `user_id`), `reviewed_at` (timestamp, nullable), `created_at`, `updated_at`. Unique constraint on `project_id` WHERE `status IN (0, 3)` (at most one pending/revision-required proposal per project — enforced at application level if the DB doesn't support partial unique indexes).
 - **`user_identities` table**: `id`, `user_id`, `role` (varchar), `created_at`. Unique constraint on `(user_id, role)`.
+- **`project_likes` table**: `id`, `user_id` (varchar), `project_id` (int), `created_at`. Unique constraint on `(user_id, project_id)`. Index on `(project_id)` and `(user_id)`.
+- **`follows` table**: `id`, `follower_user_id` (varchar), `followee_user_id` (varchar), `created_at`. Unique constraint on `(follower_user_id, followee_user_id)`. Index on `(followee_user_id)` and `(follower_user_id)`.
 - **`comments` table** _(合约保留，v1.0 未实现；无迁移文件)_：`id`, `project_id`, `user_id`, `comment_type` (varchar), `content` (text), `can_contact` (boolean), `contact_info` (varchar, nullable), `is_flagged` (boolean), `created_at`
 - **`audit_records` table**: `id`, `project_id`, `operator_id`, `action` (varchar: approve, require_revision, reject, delist, restore), `proposal_id` (nullable, set only when the action targets a post-live edit proposal), `reason` (text, nullable), `created_at`
 
@@ -145,10 +167,10 @@ Because the Project row IS the content row, `categories` and `stage` are already
   - `GET /projects/:id/proposals/:proposalId`: View a single proposal (founder on own project; operator on any).
 
 - **Project detail**:
-  - `GET /projects/:id`: Return the Project content directly, enriched with `founder` — the founder's public profile (`nickname`, `avatarUrl`) read from the shared users table, or `null` when the founder has no profile there. `status=3` → public. Non-Live → 404 for regular users, full content for founder/operator.
+  - `GET /projects/:id`: Return the Project content directly, enriched with `founder` — the founder's public profile (`userId`, `nickname`, `avatarUrl`, `followerCount`) read from the shared users table and local follows count, or `null` when the founder has no profile there. `status=3` → public. Non-Live → 404 for regular users, full content for founder/operator. The response does not include caller-specific `isLiked` or `isFollowing` fields.
 
 - **Project list**:
-  - `GET /projects`: Paginated list of `status=3` (Live) projects. Query params: `category`, `stage`, `q` (search), `sort`, `cursor`/`offset`, `limit`. Reads the `projects` table only — zero JOIN.
+  - `GET /projects`: Paginated list of `status=3` (Live) projects. Query params: `category`, `stage`, `q` (search), `sort`, `cursor`/`offset`, `limit`. Each item includes public Founder data and a batched follower count. The endpoint remains caller-stateless and does not include `isLiked` or `isFollowing`.
 
 - **Founder backend**:
   - `GET /founder/projects`: List own projects with filters (status, stage, search).
@@ -178,10 +200,21 @@ Because the Project row IS the content row, `categories` and `stage` are already
   - `GET /founder/projects/:id/comments`: Founder views comments on own project.
   - `GET /operator/projects/:id/comments`: Operator views comments on any project.
 
+- **Likes**:
+  - `POST /projects/:id/like`: Like a project. Idempotent — returns 200 whether or not a row already existed. Precondition: project `status=3` (Live). On any other status → 409 `NotLikable`. Response: `{ liked: true, likeCount }`.
+  - `DELETE /projects/:id/like`: Unlike a project. Idempotent — returns 200 whether or not a row existed. Allowed on any status (unliking a delisted project stays possible). Response: `{ liked: false, likeCount }`.
+  - `GET /me/likes`: Return the current user's full liked-project ID list. Response: `{ liked_project_ids: number[] }`. No pagination — v1.0 scale is small; see ADR-0009.
+
+- **Follows**:
+  - `POST /founders/:userId/follow`: Follow a User (must currently hold `role=founder`). Idempotent. On self-follow → 400 `CannotFollowSelf`; on target without `founder` role → 400 `NotAFounder`. Response: `{ following: true }`.
+  - `DELETE /founders/:userId/follow`: Unfollow a User. Idempotent. Allowed even if the target no longer holds `founder` role. Response: `{ following: false }`.
+  - `GET /me/follows`: Return the current user's full followed-founder user ID list. Response: `{ followed_founder_user_ids: string[] }`. No pagination.
+  - `GET /me/following/projects`: Paginated list of Live projects from Founders the current user follows. Query params mirror `GET /projects` (`sort`, `cursor`/`offset`, `limit`). Ordered by `submitted_at DESC` by default.
+
 ### Access Control
 
-- **Public routes**: `GET /projects`, `GET /projects/:id` (with conditional visibility), `POST /projects/:id/comments` requires auth.
-- **Auth required**: All POST/PUT routes, `GET /founder/*`, `GET /operator/*`.
+- **Public routes**: `GET /projects`, `GET /projects/:id` (with conditional visibility). `POST /projects/:id/comments` requires auth.
+- **Auth required**: All POST/PUT/DELETE routes, `GET /founder/*`, `GET /operator/*`, `GET /me/*`, `POST/DELETE /projects/:id/like`, `POST/DELETE /founders/:userId/follow`.
 - **Founder role**: `GET /founder/*`, `POST /projects`, `PUT /projects/:id/*` (draft/submit), `POST/PUT/GET /projects/:id/proposals` (own project).
 - **Operator role**: `GET /operator/*`, `POST /operator/*` (project-level and proposal-level review actions).
 
@@ -190,6 +223,8 @@ Because the Project row IS the content row, `categories` and `stage` are already
 - **Project submission**: All required fields validated on submit. Draft only requires `name`.
 - **Proposal submission**: `changes` must be a non-empty JSON object whose keys are valid editable content field names and whose values pass per-field validation. Empty `changes` or unknown keys are rejected.
 - **Comment submission**: `content` required (max 500 chars), `comment_type` must be valid enum, `contact_info` required when `can_contact=true`.
+- **Like**: target project must exist. Creating a like requires `status=3` (Live); unlike is allowed on any status.
+- **Follow**: target `userId` must exist and currently hold `role=founder` for creation. Self-follow (`follower_user_id == followee_user_id`) is rejected on both POST. Unfollow is allowed even if the target no longer holds `founder`.
 - **Operator actions**: `reason` required for `require-revision` and `reject` (both project-level and proposal-level) and `delist`.
 
 ### Error Handling
@@ -199,6 +234,7 @@ Because the Project row IS the content row, `categories` and `stage` are already
 - **Not found**: Return 404.
 - **Unauthorized**: Return 401 (missing/invalid JWT).
 - **Forbidden**: Return 403 (insufficient role, or founder accessing another founder's project/proposal).
+- **Like/Follow domain errors**: `POST /projects/:id/like` on non-Live → 409 `NotLikable`. `POST /founders/:userId/follow` on self → 400 `CannotFollowSelf`. `POST /founders/:userId/follow` on non-Founder → 400 `NotAFounder`.
 
 ## Testing Decisions
 
@@ -218,6 +254,10 @@ Because the Project row IS the content row, `categories` and `stage` are already
 - **Operator backend**: Project-level review actions (approve/require-revision/reject/delist/restore), proposal-level review actions, audit record creation, state transitions.
 - **Founder backend**: Project listing, stats, audit reason retrieval, own proposal listing.
 - **Comment API**: Submission, validation, visibility rules, flagged content.
+- **Like service**: like/unlike idempotency, `NotLikable` on non-Live target, existing likes surviving delisting, `like_count` counter integrity on real state changes.
+- **Follow service**: follow/unfollow idempotency, `CannotFollowSelf`, `NotAFounder` on target without `founder` role, existing follows surviving role removal, `GET /me/follows` returning all followed user IDs.
+- **Set endpoints**: `GET /me/likes` returns the caller's full liked project ID array; `GET /me/follows` returns the caller's full followed user ID array. Both return empty arrays without auth is not applicable (auth required).
+- **Following feed**: `GET /me/following/projects` returns only Live projects from followed founders, respecting standard list filters/sort/pagination; returns empty when the caller follows no one.
 
 ### Test Scenarios
 
@@ -237,12 +277,12 @@ Because the Project row IS the content row, `categories` and `stage` are already
 The following features are explicitly excluded from v1.0:
 
 - **Hackerathon/activity module**: No activity-specific pages, voting, or leaderboards.
-- **Likes, votes, follows, shares**: No social interaction features.
+- **Votes and shares**: No popularity vote tallies or share-count tracking. (Likes and Follows *are* included in v1.0 — see the Likes/Follows contract above.)
 - **Beta applications**: No beta signup or management.
 - **Purchase/support**: No e-commerce or payment integration.
 - **Comment system**: 合约（`comments` 表与 `/projects/:id/comments` 等路由）已在本文档保留，但 v1.0 未落地实现。v2.0 启用后：评论仅对 Founder 与 Operator 可见，前台暂不公开展示。
 - **Frontend UI spec**: This document defines backend API contracts only. Frontend implementation (Next.js App Router) exists in `apps/web/` but its page/routing spec is not covered here. See `docs/spec-v1-frontend.md` for frontend details.
-- **Project statistics counters**: No view_count, like_count, vote_count, share_count fields (deferred to 2.0).
+- **Non-like project counters**: No `view_count`, `vote_count`, or `share_count` fields (deferred to 2.0). `like_count` *is* present on Project in v1.0.
 - **Project form field**: No "project form" (hardware/software/hybrid) field.
 - **Activity association**: No "belonging to activity" field on projects.
 - **User profile management**: Backend consumes external auth, doesn't manage user profiles.
@@ -293,7 +333,7 @@ If a project is delisted while it has a pending/revision-required proposal, the 
 
 ### Future Considerations
 
-- **2.0+ features**: Likes, votes, follows, shares, public comments, beta applications, purchase support, activity module.
+- **2.0+ features**: Votes, shares, public comments, beta applications, purchase support, activity module. (Likes and Follows shipped in 1.0.)
 - **Full version history**: If reconstructing prior project versions becomes a requirement, add a `project_snapshots` table (full content at approval time) alongside the diff-based proposals.
 - **Performance**: If project count grows significantly, consider caching aggregate statistics instead of real-time COUNT.
 - **File uploads**: Current design stores URLs. May need to integrate with S3/OSS for file management.

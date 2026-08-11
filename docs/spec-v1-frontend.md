@@ -22,8 +22,9 @@ Next.js App Router 前端，对接后端 API（`@shenicest/api`）。Server 端�
 | `/submit` | Server + Client Form | 项目提交页（登录用户，多步骤表单） |
 | `/projects/[id]` | Server | 项目详情页（仅 `status=3` Live 公开可访问；Founder/Operator 可查看非 Live） |
 | `/projects/[id]/edit` | Server + Client Form | 项目编辑页（Founder，Draft/Pending/RevisionRequired 状态） |
-| `/founder/dashboard` | Server + Client UI | Founder 后台：我的项目列表、状态筛选、统计概览 |
+| `/founder/dashboard` | Server + Client UI | Founder 后台：我的项目列表、状态筛选、统计概览（含 follower 数） |
 | `/founder/projects/[id]` | Server + Client UI | Founder 单项目详情视图（含审核意见、提案历史入口） |
+| `/following` | Server + Client UI | 关注页：展示当前用户关注的 Founder 名下所有 Live 项目 |
 | `/operator` | Server | Operator 后台入口（默认聚合视图/统计） |
 | `/operator/projects` | Server + Client UI | Operator 项目管理：全状态列表、多维筛选、搜索、审核操作 |
 | `/operator/projects/[id]` | Server + Client UI | Operator 项目详情：项目级审核动作（approve / require-revision / reject / delist / restore） |
@@ -45,6 +46,7 @@ Next.js App Router 前端，对接后端 API（`@shenicest/api`）。Server 端�
   - 排序：latest、recently_updated
   - 分页：每页 20 条
   - 空状态：无筛选结果 vs 无项目
+- 每张卡片带 `LikeButton`（读 `useLikes()`，显示 `projects.like_count`）
 
 **组件**:
 - `HeroSection` — Server Component
@@ -85,9 +87,11 @@ Next.js App Router 前端，对接后端 API（`@shenicest/api`）。Server 端�
 
 **功能**:
 - 展示项目完整信息（基础信息、展示资料、项目说明、联系信息）
-- Founder 公开信息（从 shared users 表读取，可能为 `null`）
+- Founder 公开信息（从 shared users 表读取，可能为 `null`），通过 `FounderCard` 渲染，含 follower 数与 `FollowButton`
 - 项目阶段/分类 badges
 - Demo 媒体展示（图片/视频/链接）
+- 顶部/侧边 `LikeButton`，显示 `like_count`
+- 响应本身不含 `isLiked` / `isFollowing`；前端由 `UserInteractionProvider` 的 Set 决定（详见 ADR-0009）
 - 非 Live 项目对普通用户返回 404；Founder/Operator 可完整查看
 
 **SEO**:
@@ -123,6 +127,16 @@ Next.js App Router 前端，对接后端 API（`@shenicest/api`）。Server 端�
 **功能**:
 - Founder 视角的单项目详情（含状态、审核意见、提案历史入口）
 - 提供进入编辑页、创建提案（Live 状态下）等入口
+
+### 关注页 (`/following`)
+
+**数据获取**: Server Component，通过 `server/interactions.ts` 的 `getFollowingProjects()`（`GET /me/following/projects`）
+
+**功能**:
+- 未登录：展示登录空状态，不强制重定向；点击登录后回到 `/following`
+- 已登录：网格布局展示当前用户关注的所有 Founder 名下的 Live 项目
+- 排序：latest（Founder Live 项目按 `created_at desc`），分页每页 20 条
+- 空状态：未登录显示 `登录后查看你的关注`；已登录但没有关注 Founder 显示 `你还没有关注任何 Founder`；已关注但没有 Live 项目显示 `暂无可查看的作品`。均提供登录或 `去发现` CTA
 
 ### Operator 后台
 
@@ -176,12 +190,12 @@ Next.js App Router 前端，对接后端 API（`@shenicest/api`）。Server 端�
 ### Server Components（默认）
 
 - 所有 `page.tsx` 与 `layout.tsx`
-- 纯展示组件：`ProjectCard`、`ProjectDetail`、`HeroSection`、`FeaturedSection`、`Pagination`、`ProjectBadges`、`NotFoundShell`
-- 数据获取层：`server/projects.ts`、`server/founder.ts`、`server/operator.ts`、`server/auth.ts`
+- 纯展示组件：`ProjectCard`、`ProjectDetail`、`HeroSection`、`FeaturedSection`、`Pagination`、`ProjectBadges`、`NotFoundShell`、`FounderCard`
+- 数据获取层：`server/projects.ts`、`server/founder.ts`、`server/operator.ts`、`server/auth.ts`、`server/interactions.ts`（`getMyLikes` / `getMyFollows`）
 
 ### Client Components（`'use client'`）
 
-- 交互组件：`FilterBar`、`AuthProvider`、`AuthNav`
+- 交互组件：`FilterBar`、`AuthProvider`、`AuthNav`、`UserInteractionProvider`、`LikeButton`、`FollowButton`
 - 表单：`ProjectSubmissionForm`、`FormFields`、`ImageUploader`、`VideoUploader`
 - Dashboard：`FounderDashboard`、`OperatorDashboard`、`OperatorProjects`、`OperatorProjectDetail`、`OperatorProposals`、`OperatorProposalDetail`、`OperatorAuditRecords`
 
@@ -199,6 +213,10 @@ Next.js App Router 前端，对接后端 API（`@shenicest/api`）。Server 端�
 | `Pagination` | `components/pagination.tsx` | 分页 |
 | `ProjectBadges` | `components/project-badges.tsx` | 阶段/分类标签 |
 | `NotFoundShell` | `components/not-found-shell.tsx` | 404 兜底 |
+| `UserInteractionProvider` | `components/user-interaction-provider.tsx` | 持有 `Set<projectId>`（likes）与 `Set<userId>`（follows），提供 `useLikes()` / `useFollows()`；公共互动路由边界在有 cookie 时通过 SSR 传入可序列化的 `initialLikedProjectIds` / `initialFollowedFounderUserIds` 数组，Provider 内部转换为 Set |
+| `LikeButton` | `components/like-button.tsx` | 项目卡片/详情页的点赞按钮；从 `useLikes()` 读状态，POST/DELETE `/api/projects/:id/like` 乐观更新 |
+| `FollowButton` | `components/follow-button.tsx` | Founder 关注按钮；从 `useFollows()` 读状态，POST/DELETE `/api/founders/:userId/follow` 乐观更新；未持有 `founder` 角色时按钮禁用/隐藏 |
+| `FounderCard` | `components/founder-card.tsx` | 项目详情页的 Founder 信息卡，展示昵称/头像/follower 数 + `FollowButton` |
 
 ## Data Flow
 
@@ -226,7 +244,7 @@ Client Component → lib/client-api.ts → fetch('/api/...') → Next.js rewrite
 1. 用户在 `/login` 输入手机号/邮箱，`POST /api/auth/send-code` 请求验证码
 2. 输入验证码后 `POST /api/auth/verify-code`，后端 `Set-Cookie: shenicest_token=<jwt>; HttpOnly`
 3. `AuthProvider` 挂载时调用 `GET /api/me` 读取当前用户身份（含 `roles`），提供 `useAuth()` hook
-4. Server Component 通过 `server/auth.ts` 中 `getCurrentUser()`（从请求 cookie 转发到 API）判断身份，用于角色守卫与条件渲染
+4. Server Component 通过 `server/auth.ts` 中 `getCurrentUser()`（从请求 cookie 转发到 API）判断身份，用于角色守卫与条件渲染；需要首屏交互态的公共路由边界额外读取 token 并加载 likes/follows，根 layout 不读取请求 cookie
 5. `POST /api/auth/logout` 清除 cookie，前端 `AuthProvider.logout()` 同步本地状态并跳转 `/login`
 6. `middleware.ts` 对已登录用户访问 `/login` 做 UX 层重定向（仅解 exp、不做签名校验，安全边界仍在后端）
 
@@ -240,7 +258,7 @@ Client Component → lib/client-api.ts → fetch('/api/...') → Next.js rewrite
 
 ## Out of Scope (v1.0)
 
-- **用户互动**: 点赞、关注、投票、分享等 UI 与数据
+- **投票 / 分享**: 投人气票、分享（复制链接）等 UI 与数据
 - **评论系统**: 评论提交与展示 UI（后端预留合约但未实现）
 - **内测申请**: 内测申请弹窗与列表
 - **购买支持**: 购买/支持入口 UI 与支付流程
@@ -251,7 +269,7 @@ Client Component → lib/client-api.ts → fetch('/api/...') → Next.js rewrite
 ## Future Considerations
 
 - 评论系统（v2.0）：提交、公开展示、机器审核
-- 用户互动能力（点赞/关注/投票）与关注页
+- 投票、分享等剩余互动能力
 - 文件上传服务对接（S3 / OSS）
 - 活动模块与人气排行
 - 通知中心（in-app + 邮件）

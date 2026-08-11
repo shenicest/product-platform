@@ -14,6 +14,9 @@
   - [0004-content-on-project-with-edit-proposals.md](./docs/adr/0004-content-on-project-with-edit-proposals.md) — 内容放回 projects，用 proposal 记录 diff
   - [0005-single-status-field-on-project.md](./docs/adr/0005-single-status-field-on-project.md) — 单一 status 字段管理生命周期
   - [0006-no-denormalized-filter-fields.md](./docs/adr/0006-no-denormalized-filter-fields.md) — 内容已在 projects，无需冗余字段
+  - [0007-follow-targets-user-with-founder-role.md](./docs/adr/0007-follow-targets-user-with-founder-role.md) — Follow 挂在 User 上（须有 founder 角色），不挂在 Project
+  - [0008-no-denormalized-follower-count.md](./docs/adr/0008-no-denormalized-follower-count.md) — follower 数量按需 COUNT，不加冗余字段
+  - [0009-stateless-detail-with-user-interaction-sets.md](./docs/adr/0009-stateless-detail-with-user-interaction-sets.md) — 列表/详情响应无用户态；前端持有 like/follow Set
 
 修改领域模型前必须先阅读 CONTEXT.md。
 

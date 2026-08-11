@@ -73,3 +73,11 @@ _Avoid_: Tag, Label, Topic, ProjectCategory
 **AuditRecord**:
 A record of an operator's action on a Project. Only created when an operator performs an action (approve, reject, require_revision, delist, restore). Founder's own actions (submit, save draft, create/edit proposal) are NOT recorded. Captures `action`, `reason`, `operator_id`, and `proposal_id` (nullable — set only when the action targets a post-live edit proposal). No `revision_id` — revisions no longer exist.
 _Avoid_: AuditLog, ReviewLog, HistoryEntry
+
+**Like**:
+A User's endorsement of a specific Project. Targets Projects only (never Founders). A user may hold at most one Like per Project — uniquely keyed on `(user_id, project_id)`. POST/DELETE endpoints are idempotent (repeated calls return 200). Likes may only be **created** on Live (`status=3`) projects; if a Project is later delisted, existing Like records are **preserved** (kept for analytics and potential restoration), but no new likes may be added while the project is not Live. The `like_count` denormalized column on `projects` is incremented/decremented on real state changes (insert / delete), driven by DB `affectedRows` so idempotent no-ops don't double-count.
+_Avoid_: Vote, Star, Heart, Favorite, Reaction
+
+**Follow**:
+A directional relationship from a follower User to a followee User with the Founder role. The Follow is anchored on the **User** (not on any single Project), so if the same User later gains additional roles or publishes more projects, one Follow covers all their work. Targets must currently hold `role=founder` in UserIdentity — following a non-Founder returns 400 `NotAFounder`. Self-follow is disallowed (400 `CannotFollowSelf`). Uniquely keyed on `(follower_user_id, followee_user_id)`. POST/DELETE endpoints are idempotent. **No denormalized `follower_count` column** — follower counts are computed on demand via COUNT (see ADR-0008). If the target User's `founder` role were ever revoked, existing Follow rows are retained (analog to Like retention on delisted projects); new follows would be blocked by the role check.
+_Avoid_: Subscribe, Watch, Friend, Connection
