@@ -17,19 +17,13 @@ export function SiteHeader() {
               href="/#all-projects"
               className="transition-colors hover:text-primary"
             >
-              项目
-            </Link>
-            <Link
-              href="/submit"
-              className="transition-colors hover:text-primary"
-            >
-              提交
+              发现项目
             </Link>
             <Link
               href="/following"
               className="transition-colors hover:text-primary"
             >
-              关注
+              我的关注
             </Link>
             <a
               href="https://shenicest.com/platform/projects"
@@ -37,6 +31,12 @@ export function SiteHeader() {
             >
               黑客松专区
             </a>
+            <Link
+              href="/submit"
+              className="transition-colors hover:text-primary"
+            >
+              提交项目
+            </Link>
           </nav>
           <AuthNav />
           <p className="hidden items-center gap-2.5 font-mono text-xs sm:flex">
