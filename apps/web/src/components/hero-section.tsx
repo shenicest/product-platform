@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Project } from '@/server/projects'
 import { ProjectBadges } from '@/components/project-badges'
 import { projectIdLabel } from '@/lib/utils'
+import { LikeButton } from '@/components/like-button'
 
 function RecommendedProjectCard({ project }: { project: Project }) {
   return (
@@ -44,6 +45,9 @@ function RecommendedProjectCard({ project }: { project: Project }) {
         <span className="mt-3 font-mono text-[11px] text-muted-foreground">
           TRACKING: FEATURED PROJECT
         </span>
+        <div className="mt-3">
+          <LikeButton projectId={project.id} likeCount={project.likeCount} />
+        </div>
       </div>
     </Link>
   )

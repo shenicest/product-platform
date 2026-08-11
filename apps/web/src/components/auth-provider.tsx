@@ -32,7 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refresh = useCallback(async () => {
     const u = await fetchCurrentUser()
     setUser(u)
-  }, [])
+    router.refresh()
+  }, [router])
 
   const logout = useCallback(async () => {
     await logoutRequest()
@@ -51,4 +52,8 @@ export function useAuth(): AuthState {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx
+}
+
+export function useOptionalAuth(): AuthState | null {
+  return useContext(AuthContext)
 }

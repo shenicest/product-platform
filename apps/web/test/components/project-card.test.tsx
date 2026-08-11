@@ -1,8 +1,10 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { ProjectStage } from '@shenicest/shared'
 import { ProjectCard } from '@/components/project-card'
 import type { Project } from '@/server/projects'
+
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 // Fixture matching the shape of the API's public project payload. Fields the
 // component doesn't read are typed with reasonable defaults.

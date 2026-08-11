@@ -2,6 +2,7 @@ import Link from 'next/link'
 import type { Project } from '@/server/projects'
 import { ProjectBadges } from '@/components/project-badges'
 import { projectIdLabel } from '@/lib/utils'
+import { LikeButton } from '@/components/like-button'
 
 export function ProjectCard({ project }: { project: Project }) {
   return (
@@ -45,6 +46,9 @@ export function ProjectCard({ project }: { project: Project }) {
           categories={project.categories}
           className="mt-auto pt-2"
         />
+        <div className="mt-2 flex justify-end">
+          <LikeButton projectId={project.id} likeCount={project.likeCount} />
+        </div>
       </div>
     </Link>
   )

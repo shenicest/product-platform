@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
-import { sendLoginCode, verifyLoginCode } from '@/lib/client-api'
+import { likeProject, sendLoginCode, verifyLoginCode } from '@/lib/client-api'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -66,6 +66,12 @@ export default function LoginPage() {
         return
       }
       await refresh()
+      const pendingLike = window.sessionStorage.getItem('shenicest_pending_like')
+      if (pendingLike) {
+        const projectId = Number(pendingLike)
+        window.sessionStorage.removeItem('shenicest_pending_like')
+        if (Number.isSafeInteger(projectId) && projectId > 0) await likeProject(projectId)
+      }
       router.push('/')
     } catch {
       setError('网络错误')

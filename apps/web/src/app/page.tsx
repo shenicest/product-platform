@@ -9,6 +9,7 @@ import {
   hasActiveFilters,
   parseListParams,
 } from "@/lib/project-filters";
+import { PublicInteractionBoundary } from '@/components/public-interaction-boundary'
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,8 @@ export default async function HomePage(props: PageProps<"/">) {
   const filtered = hasActiveFilters({ category, stage, q, sort });
 
   return (
-    <div className="w-full">
+    <PublicInteractionBoundary>
+      <div className="w-full">
       <HeroSection project={featuredPool[0]} />
 
       <FeaturedSection projects={featuredPool.slice(1)} />
@@ -81,6 +83,7 @@ export default async function HomePage(props: PageProps<"/">) {
           </>
         )}
       </section>
-    </div>
+      </div>
+    </PublicInteractionBoundary>
   );
 }

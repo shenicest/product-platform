@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getProject } from "@/server/projects";
 import { ProjectDetail } from "@/components/project-detail";
+import { PublicInteractionBoundary } from '@/components/public-interaction-boundary'
 
 export const dynamic = "force-dynamic";
 
@@ -55,5 +56,5 @@ export default async function ProjectPage(props: PageProps<"/projects/[id]">) {
   const project = await loadProject(id);
   if (!project) notFound();
 
-  return <ProjectDetail project={project} />;
+  return <PublicInteractionBoundary><ProjectDetail project={project} /></PublicInteractionBoundary>;
 }

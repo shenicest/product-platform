@@ -8,6 +8,7 @@ import { proposalModule } from './modules/proposal'
 import { operatorModule } from './modules/operator'
 import { founderModule } from './modules/founder'
 import { uploadModule } from './modules/upload'
+import { likeModule } from './modules/like'
 
 export const app = new Elysia()
   .use(openapi({
@@ -52,6 +53,7 @@ export const app = new Elysia()
   .use(authModule)
   .use(userIdentityModule)
   .use(projectModule)
+  .use(likeModule)
   .use(proposalModule)
   .use(founderModule)
   .use(uploadModule)

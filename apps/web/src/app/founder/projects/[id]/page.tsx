@@ -69,7 +69,7 @@ export default async function FounderProjectPage(
         </h1>
       </header>
 
-      <ProjectDetail project={project} backHref="/founder/dashboard" />
+      <ProjectDetail project={project} backHref="/founder/dashboard" showLike={false} />
 
       <section className="mx-auto mt-10 max-w-3xl border border-border bg-card p-5">
         <h2 className="mb-4 font-mono text-xs tracking-[0.12em] text-primary">

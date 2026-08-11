@@ -3,6 +3,7 @@ import type { ProjectDetail } from '@/server/projects'
 import { ProjectBadges } from '@/components/project-badges'
 import { resolveDemoVideo } from '@/lib/demo-media'
 import { projectIdLabel } from '@/lib/utils'
+import { LikeButton } from '@/components/like-button'
 
 // Public display deliberately excludes all contact fields
 // (contactName / contactPhone / contactEmail / contactWechat).
@@ -114,7 +115,7 @@ function DemoAssets({ project }: { project: ProjectDetail }) {
   )
 }
 
-export function ProjectDetail({ project, backHref = '/' }: { project: ProjectDetail; backHref?: string }) {
+export function ProjectDetail({ project, backHref = '/', showLike = true }: { project: ProjectDetail; backHref?: string; showLike?: boolean }) {
   const coverUrl = nonEmpty(project.coverUrl)
   const tagline = nonEmpty(project.tagline)
   const description = nonEmpty(project.description)
@@ -166,6 +167,7 @@ export function ProjectDetail({ project, backHref = '/' }: { project: ProjectDet
               {tagline}
             </p>
           ) : null}
+          {showLike ? <div className="mt-5"><LikeButton projectId={project.id} likeCount={project.likeCount} /></div> : null}
 
           {founderNickname || founderAvatarUrl ? (
             <p className="mt-5 flex items-center gap-2.5 font-mono text-xs text-muted-foreground">

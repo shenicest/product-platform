@@ -33,6 +33,7 @@ export interface ProjectData {
   id: number
   userId: string
   status: number
+  likeCount: number
   name: string
   tagline: string | null
   description: string | null
@@ -90,4 +91,12 @@ export function submitForReview(projectId: number) {
 
 export function getProject(projectId: number) {
   return request<ProjectData>('GET', `/projects/${projectId}`)
+}
+
+export function likeProject(projectId: number) {
+  return request<{ liked: boolean; likeCount: number }>('POST', `/projects/${projectId}/like`)
+}
+
+export function unlikeProject(projectId: number) {
+  return request<{ liked: boolean; likeCount: number }>('DELETE', `/projects/${projectId}/like`)
 }
