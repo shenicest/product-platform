@@ -1,6 +1,6 @@
 import { t } from 'elysia'
 import { InsertProject, SelectProject } from '../../db/schema'
-import { PublicFounder } from '../user/model'
+import { PublicFounder, PublicProfile } from '../user/model'
 
 export const ProjectStatus = {
   Draft: 0,
@@ -124,7 +124,12 @@ export const ProjectListQuery = t.Object({
 export type ProjectListQuery = typeof ProjectListQuery.static
 
 export const ProjectListResponse = t.Object({
-  data: t.Array(SelectProject),
+  data: t.Array(t.Composite([
+    SelectProject,
+    t.Object({
+      founder: t.Union([PublicProfile, t.Null()], { description: 'Founder public profile for list cards; null when unavailable' }),
+    }),
+  ])),
   total: t.Number(),
 })
 export type ProjectListResponse = typeof ProjectListResponse.static

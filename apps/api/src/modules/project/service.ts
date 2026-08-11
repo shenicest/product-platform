@@ -20,6 +20,7 @@ type ProjectRow = typeof projects.$inferSelect
 type ProjectUpdate = Partial<typeof projects.$inferInsert>
 
 export type ProjectDetail = ProjectRow & { founder: PublicFounder | null }
+export type ProjectListItem = ProjectRow & { founder: Awaited<ReturnType<UserProfileService['getPublicProfile']>> }
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100
@@ -98,10 +99,14 @@ export class ProjectService {
     const limit = clampLimit(query.limit)
     const offset = query.offset ?? 0
 
-    const [data, totalRows] = await Promise.all([
+    const [projectsList, totalRows] = await Promise.all([
       this.db.select().from(projects).where(where).orderBy(desc(sortColumn)).limit(limit).offset(offset),
       this.db.select({ value: count() }).from(projects).where(where),
     ])
+    const data = await Promise.all(projectsList.map(async (project): Promise<ProjectListItem> => ({
+      ...project,
+      founder: await this.userProfile.getPublicProfile(project.userId),
+    })))
     return { data, total: totalRows[0]?.value ?? 0 }
   }
 

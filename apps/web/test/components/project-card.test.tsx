@@ -34,6 +34,7 @@ function makeProject(overrides: Partial<Project> = {}): Project {
     contactEmail: null,
     contactWechat: null,
     teamName: null,
+    founder: null,
     createdAt: '2025-01-01T00:00:00Z',
     updatedAt: '2025-01-01T00:00:00Z',
   }
@@ -80,5 +81,11 @@ describe('ProjectCard', () => {
     render(<ProjectCard project={makeProject()} />)
     expect(screen.getByText('MVP 阶段')).toBeInTheDocument()
     expect(screen.getByText('开发者工具')).toBeInTheDocument()
+  })
+
+  it('shows the founder and keeps the like control outside the project link', () => {
+    render(<ProjectCard project={makeProject({ founder: { nickname: '周澜', avatarUrl: null } })} />)
+    expect(screen.getByText('周澜')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '喜欢项目' }).closest('a')).toBeNull()
   })
 })

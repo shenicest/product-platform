@@ -10,6 +10,7 @@ import {
   parseListParams,
 } from "@/lib/project-filters";
 import { PublicInteractionBoundary } from '@/components/public-interaction-boundary'
+import Link from 'next/link'
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +72,11 @@ export default async function HomePage(props: PageProps<"/">) {
                 ? "没有符合筛选条件的项目，试试调整筛选条件"
                 : "暂无正在展示的项目"}
             </p>
+            {filtered ? (
+              <Link href="/" className="btn-hard btn-secondary mt-6">
+                清除筛选 <span aria-hidden>→</span>
+              </Link>
+            ) : null}
           </div>
         ) : (
           <>

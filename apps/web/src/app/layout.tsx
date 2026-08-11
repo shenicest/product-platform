@@ -47,11 +47,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="zh-CN"
       className={`${harmony.variable} ${monocraft.variable} ${dseg7.variable} h-full antialiased`}
-    >
-      <body className="flex min-h-full flex-col bg-background font-sans text-foreground">
-        <AuthProvider>
-          <SiteHeader />
-          <main className="flex-1">{children}</main>
+      >
+        <body className="flex min-h-full flex-col bg-background font-sans text-foreground">
+          <a
+            href="#main-content"
+            className="sr-only fixed left-4 top-4 z-[60] bg-primary px-4 py-2 font-bold text-primary-foreground focus:not-sr-only"
+          >
+            跳到主要内容
+          </a>
+          <AuthProvider>
+            <SiteHeader />
+            <main id="main-content" className="flex-1">{children}</main>
           <SiteFooter />
         </AuthProvider>
       </body>

@@ -6,11 +6,9 @@ import { LikeButton } from '@/components/like-button'
 
 function RecommendedProjectCard({ project }: { project: Project }) {
   return (
-    <Link
-      href={`/projects/${project.id}`}
-      className="scan-frame group flex flex-col border border-foreground/40 bg-card p-5 transition-[transform,box-shadow] duration-150 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_var(--secondary)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-    >
-      <span className="eyebrow">FEATURED / {projectIdLabel(project.id)}</span>
+    <article className="scan-frame group flex flex-col border border-foreground/40 bg-card p-5 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-primary/70 hover:shadow-[4px_4px_0_var(--secondary)]">
+      <Link href={`/projects/${project.id}`} className="flex flex-1 flex-col focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
+        <span className="eyebrow">FEATURED / {projectIdLabel(project.id)}</span>
 
       <div className="mt-4 aspect-video w-full overflow-hidden border border-border bg-muted">
         {project.coverUrl ? (
@@ -27,29 +25,34 @@ function RecommendedProjectCard({ project }: { project: Project }) {
         )}
       </div>
 
-      <div className="mt-4 flex flex-1 flex-col gap-2">
-        <h3 className="text-xl font-bold leading-snug transition-colors group-hover:text-primary">
-          {project.name}
-        </h3>
-        {project.tagline ? (
-          <p className="line-clamp-2 text-base leading-normal text-muted-foreground">
-            {project.tagline}
-          </p>
-        ) : null}
+        <div className="mt-4 flex flex-1 flex-col gap-2">
+          <h3 className="text-xl font-bold leading-snug transition-colors group-hover:text-primary">
+            {project.name}
+          </h3>
+          {project.tagline ? (
+            <p className="line-clamp-2 text-base leading-normal text-muted-foreground">
+              {project.tagline}
+            </p>
+          ) : null}
 
-        <ProjectBadges stage={project.stage} categories={project.categories} />
+          <ProjectBadges stage={project.stage} categories={project.categories} />
 
-        <span className="btn-hard btn-primary mt-4 w-fit">
-          项目详情 <span aria-hidden>→</span>
-        </span>
-        <span className="mt-3 font-mono text-[11px] text-muted-foreground">
-          TRACKING: FEATURED PROJECT
-        </span>
-        <div className="mt-3">
-          <LikeButton projectId={project.id} likeCount={project.likeCount} />
+          <span className="btn-hard btn-primary mt-4 w-fit">
+            项目详情 <span aria-hidden>→</span>
+          </span>
+          <span className="mt-3 font-mono text-[11px] text-muted-foreground">
+            TRACKING: FEATURED PROJECT
+          </span>
         </div>
-      </div>
-    </Link>
+      </Link>
+      <footer className="mt-4 flex items-end justify-between gap-3">
+        <p className="min-w-0 text-xs text-muted-foreground">
+          创建者
+          <span className="mt-0.5 block truncate font-medium text-foreground">{project.founder?.nickname ?? project.teamName ?? '匿名创始人'}</span>
+        </p>
+        <LikeButton projectId={project.id} likeCount={project.likeCount} />
+      </footer>
+    </article>
   )
 }
 
