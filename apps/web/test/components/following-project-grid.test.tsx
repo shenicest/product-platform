@@ -6,7 +6,6 @@ let following = new Set(['founder-1'])
 
 vi.mock('@/components/user-interaction-provider', () => ({ useUserInteraction: () => ({ following }) }))
 vi.mock('@/components/project-card', () => ({ ProjectCard: ({ project }: { project: Project }) => <div>{project.name}</div> }))
-vi.mock('@/components/follow-button', () => ({ FollowButton: ({ founderUserId }: { founderUserId: string }) => <button>{founderUserId}</button> }))
 
 import { FollowingProjectGrid } from '@/components/following-project-grid'
 
@@ -20,6 +19,7 @@ describe('FollowingProjectGrid', () => {
     const { rerender } = render(<FollowingProjectGrid projects={projects} />)
     expect(screen.getByText('Followed')).toBeInTheDocument()
     expect(screen.queryByText('Unfollowed')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button')).not.toBeInTheDocument()
 
     following = new Set()
     rerender(<FollowingProjectGrid projects={projects} />)

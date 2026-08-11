@@ -1,6 +1,5 @@
 'use client'
 
-import { FollowButton } from '@/components/follow-button'
 import { ProjectCard } from '@/components/project-card'
 import { useUserInteraction } from '@/components/user-interaction-provider'
 import type { Project } from '@/server/projects'
@@ -23,12 +22,7 @@ export function FollowingProjectGrid({ projects }: { projects: Project[] }) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {followedProjects.map((project) => (
-        <div key={project.id} className="relative">
-          <ProjectCard project={project} />
-          <div className="absolute right-4 top-4">
-            <FollowButton founderUserId={project.userId} />
-          </div>
-        </div>
+        <ProjectCard key={project.id} project={project} />
       ))}
     </div>
   )
