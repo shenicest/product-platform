@@ -2,11 +2,9 @@ import { describe, expect, it } from 'bun:test'
 import { Elysia } from 'elysia'
 import { SignJWT } from 'jose'
 import { authPlugin } from '../../src/plugins/auth'
+import { AUDIENCE, ISSUER, signToken } from '../fixtures/auth'
 
-const TEST_SECRET = process.env.SHENICEST_JWT_SECRET
-if (!TEST_SECRET) throw new Error('SHENICEST_JWT_SECRET must be set for tests')
-const ISSUER = 'shenicest.com'
-const AUDIENCE = 'shenicest.com'
+const TEST_SECRET = process.env.SHENICEST_JWT_SECRET!
 
 function createApp() {
   return new Elysia()
@@ -18,17 +16,6 @@ function createApp() {
     .get('/optional', ({ user }) => ({ userId: user?.userId ?? null }), {
       optionalAuth: true,
     })
-}
-
-async function signToken(payload: Record<string, unknown>, secret = TEST_SECRET) {
-  const encoder = new TextEncoder()
-  const jwt = await new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuer(ISSUER)
-    .setAudience(AUDIENCE)
-    .setIssuedAt()
-    .sign(encoder.encode(secret))
-  return jwt
 }
 
 describe('Auth plugin', () => {

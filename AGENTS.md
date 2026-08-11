@@ -27,7 +27,9 @@ bun run dev                # 启动后端开发服务器 (bun --watch)
 bun run dev:web            # 启动前端开发服务器 (Next.js)
 bun run build              # 构建全部（api + web）
 bun run start              # 启动后端生产服务器
-bun run test               # 运行后端测试
+bun run test               # 运行全部测试（api + web）
+bun run test:api           # 仅后端测试
+bun run test:web           # 仅前端测试
 bun run seed               # 初始化种子数据
 ```
 
@@ -107,6 +109,8 @@ packages/
 ```bash
 bun run dev:web            # 启动前端开发服务器
 bun run lint               # ESLint 检查（在 apps/web 目录下）
+bun run test               # Vitest 单元测试（在 apps/web 目录下）
+bun run test:watch         # Vitest watch 模式
 bun run build              # 构建前端（通过根目录 build 命令自动执行）
 ```
 
@@ -201,5 +205,34 @@ export const SubmitBody = t.Intersect([
 
 ## Testing
 
+### Backend (apps/api)
+
 - 使用 `bun test`，handler 函数可直接 `.handle(Request)` 测试
-- 测试文件放在 `apps/api/test/` 目录，路径镜像 `apps/api/src/`
+- **零配置运行**：`bun test` 无需 `.env` 文件即可运行。`apps/api/test/setup.ts` 通过 `bunfig.toml` 预加载，提供所有必需的环境变量默认值（JWT secret、COS 凭据等），并从 `DATABASE_URL` 自动推导 `TEST_DATABASE_ADMIN_URL`（如果未设置）。本地开发时 `.env` 中的真实值会覆盖默认值。
+- **测试数据库隔离**：每次运行前 drop + create 一个隔离的 MySQL 数据库（默认 `shenicest_test`），跑完 drizzle 迁移，并在同一个 DB 里建外部认证系统的 `users` 表镜像。运行结束 drop 整个 DB。
+- **测试结构**：
+  - `apps/api/test/modules/` — 单模块测试，路径镜像 `apps/api/src/modules/`
+  - `apps/api/test/plugins/` — 插件测试
+  - `apps/api/test/app/` — 组合根测试（跨模块流程、鉴权矩阵），通过真实的 `app` 实例测试
+  - `apps/api/test/fixtures/` — 共享测试工具（`auth.ts` 提供 `signToken`/`authHeaders`/`jsonHeaders`，`project.ts` 提供 `validProjectBody` 构建器）
+- **组合根拆分**：`src/app.ts` 导出纯组合的 `app` 实例（不 listen），`src/index.ts` 仅负责加载 `.env` 并启动服务器。这使得组合根测试可以导入 `app` 而不触发端口绑定。
+- 每个测试文件负责用 `afterAll` 清理自己写入的数据；测试内部不要依赖其它文件遗留的行。
+
+### Frontend (apps/web)
+
+- **技术栈**：Vitest + React Testing Library + jsdom + MSW（Node）；配置在 `apps/web/vitest.config.mts`
+- **命令**：`bun run test`（一次跑完）、`bun run test:watch`（watch 模式）；均需在 `apps/web` 目录下执行，或从根目录用 `bun run test:web`
+- **测试结构**：
+  - `apps/web/test/lib/` — 纯函数（filter 解析、URL 构造、client-api 封装）
+  - `apps/web/test/components/` — Client Component（`@testing-library/react` + `userEvent`）
+  - `apps/web/test/server/` — Server-only 数据获取层（`getSessionUser`、`getProject*`）；测试时用 `vi.mock('next/headers')` 桩掉 cookie 读取
+  - `apps/web/test/middleware.test.ts` — Next.js Edge middleware（token 解析与重定向）
+  - `apps/web/test/setup.ts` — 全局 setup：启动 MSW server、注册 jest-dom 匹配器
+  - `apps/web/test/msw/server.ts` — 空的 MSW 实例；每个测试用 `server.use(http.get(...))` 装载自己的 handlers
+- **MSW 策略**：每个测试文件负责声明它期望命中的 HTTP 路由；`setupServer` 在 `onUnhandledRequest: 'error'` 下运行，未打桩的请求会失败。
+- **不依赖 process.env**：读取 env 的模块（如 `src/lib/api-url.ts`）用 `vi.stubEnv` + `vi.resetModules()` 重新导入。
+- **不测试 Server Components 本身**：Next.js Server Component 的渲染依赖运行时（`cookies()`、`headers()`），改为测底层的 `src/server/*` 数据获取函数即可。
+
+### CI
+
+- CI（`.github/workflows/ci.yml`）用 GitHub Actions 起一个 mysql:8.0 service container，用 root 账号建/删测试库。每个 PR 跑 api typecheck + test 与 web lint + test + build。

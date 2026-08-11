@@ -1,6 +1,5 @@
 import { afterAll, describe, expect, it } from 'bun:test'
 import { Elysia } from 'elysia'
-import { SignJWT } from 'jose'
 import { inArray } from 'drizzle-orm'
 import { db } from '../../../src/db'
 import { projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
@@ -12,50 +11,16 @@ import { UserProfileService } from '../../../src/modules/user/service'
 import { Role } from '../../../src/modules/user-identity/model'
 import { ProjectStatus } from '../../../src/modules/project/model'
 import { ProposalStatus } from '../../../src/modules/proposal/model'
+import { authHeaders, jsonHeaders, signToken } from '../../fixtures/auth'
+import { validProjectBody } from '../../fixtures/project'
 
-const TEST_SECRET = process.env.SHENICEST_JWT_SECRET!
-const ISSUER = 'shenicest.com'
-const AUDIENCE = 'shenicest.com'
 const FOUNDER = `test-founder-${crypto.randomUUID()}`
 const OTHER_FOUNDER = `test-founder-${crypto.randomUUID()}`
 const OPERATOR = `test-operator-${crypto.randomUUID()}`
 const NONEXISTENT_ID = 2_000_000_000
 
-const VALID_BODY = {
-  name: 'Test Project',
-  tagline: 'original tagline',
-  categories: ['效率工具'],
-  stage: 0,
-  coverUrl: 'https://example.com/cover.png',
-  description: 'original description',
-  targetUsers: '目标用户说明，至少二十个字的内容。',
-  userProblem: '用户遇到的问题说明，至少二十个字。',
-  progress: '当前进展说明，至少二十个字的内容。',
-  messageToUsers: '对用户说的话',
-  isOpenForBeta: false,
-  contactName: 'Tester',
-  contactPhone: '13800138000',
-}
-
 function createApp() {
   return new Elysia().use(proposalModule)
-}
-
-async function signToken(payload: Record<string, unknown>) {
-  return new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuer(ISSUER)
-    .setAudience(AUDIENCE)
-    .setIssuedAt()
-    .sign(new TextEncoder().encode(TEST_SECRET))
-}
-
-function authHeaders(token: string) {
-  return { authorization: `Bearer ${token}` }
-}
-
-function jsonHeaders(token: string) {
-  return { ...authHeaders(token), 'content-type': 'application/json' }
 }
 
 describe('Proposal routes', () => {
@@ -69,7 +34,7 @@ describe('Proposal routes', () => {
   const userIds = [FOUNDER, OTHER_FOUNDER, OPERATOR]
 
   async function createLiveProject(userId: string) {
-    const project = await projectService.createProject(userId, VALID_BODY)
+    const project = await projectService.createProject(userId, validProjectBody())
     projectIds.push(project.id)
     await projectService.submitForReview(project.id)
     await operatorService.approveProject(OPERATOR, project.id)

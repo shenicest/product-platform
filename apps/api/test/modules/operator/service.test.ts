@@ -13,26 +13,11 @@ import {
   ProjectStatus,
 } from '../../../src/modules/project/model'
 import { ProposalNotFoundError, ProposalStatus } from '../../../src/modules/proposal/model'
+import { validProjectBody } from '../../fixtures/project'
 
 const TEST_FOUNDER = `test-founder-${crypto.randomUUID()}`
 const TEST_OPERATOR = `test-operator-${crypto.randomUUID()}`
 const NONEXISTENT_ID = 2_000_000_000
-
-const VALID_PROJECT: Record<string, unknown> = {
-  name: 'Test Project',
-  tagline: 'original tagline',
-  categories: ['效率工具'],
-  stage: 0,
-  coverUrl: 'https://example.com/cover.png',
-  description: 'original description',
-  targetUsers: '目标用户说明，至少二十个字的内容。',
-  userProblem: '用户遇到的问题说明，至少二十个字。',
-  progress: '当前进展说明，至少二十个字的内容。',
-  messageToUsers: '对用户说的话',
-  isOpenForBeta: false,
-  contactName: 'Tester',
-  contactPhone: '13800138000',
-}
 
 describe('OperatorService', () => {
   const userIdentity = new UserIdentityService(db)
@@ -49,14 +34,14 @@ describe('OperatorService', () => {
     return project
   }
 
-  async function createPending(data: Record<string, unknown> = VALID_PROJECT) {
+  async function createPending(data: Record<string, unknown> = validProjectBody()) {
     const project = await createDraft(data)
     await projectService.submitForReview(project.id)
     return (await projectService.getProject(project.id))!
   }
 
   async function createLive(overrides: Record<string, unknown> = {}) {
-    const project = await createPending({ ...VALID_PROJECT, ...overrides })
+    const project = await createPending(validProjectBody(overrides))
     await service.approveProject(TEST_OPERATOR, project.id)
     return (await projectService.getProject(project.id))!
   }

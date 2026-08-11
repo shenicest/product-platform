@@ -1,6 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import { Elysia } from 'elysia'
-import { SignJWT } from 'jose'
 import { eq, inArray } from 'drizzle-orm'
 import { db } from '../../../src/db'
 import { auditRecords, projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
@@ -12,50 +11,16 @@ import { UserIdentityService } from '../../../src/modules/user-identity/service'
 import { Role } from '../../../src/modules/user-identity/model'
 import { ProjectStatus } from '../../../src/modules/project/model'
 import { ProposalStatus } from '../../../src/modules/proposal/model'
+import { authHeaders, jsonHeaders, signToken } from '../../fixtures/auth'
+import { validProjectBody } from '../../fixtures/project'
 
-const TEST_SECRET = process.env.SHENICEST_JWT_SECRET!
-const ISSUER = 'shenicest.com'
-const AUDIENCE = 'shenicest.com'
 const OPERATOR = `test-operator-${crypto.randomUUID()}`
 const REGULAR_USER = `test-user-${crypto.randomUUID()}`
 const FOUNDER = `test-founder-${crypto.randomUUID()}`
 const NONEXISTENT_ID = 2_000_000_000
 
-const VALID_PROJECT: Record<string, unknown> = {
-  name: 'Operator Test Project',
-  tagline: 'original tagline',
-  categories: ['效率工具'],
-  stage: 0,
-  coverUrl: 'https://example.com/cover.png',
-  description: 'original description',
-  targetUsers: '目标用户说明，至少二十个字的内容。',
-  userProblem: '用户遇到的问题说明，至少二十个字。',
-  progress: '当前进展说明，至少二十个字的内容。',
-  messageToUsers: '对用户说的话',
-  isOpenForBeta: false,
-  contactName: 'Tester',
-  contactPhone: '13800138000',
-}
-
 function createApp() {
   return new Elysia().use(operatorModule)
-}
-
-async function signToken(payload: Record<string, unknown>) {
-  return new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuer(ISSUER)
-    .setAudience(AUDIENCE)
-    .setIssuedAt()
-    .sign(new TextEncoder().encode(TEST_SECRET))
-}
-
-function authHeaders(token: string) {
-  return { authorization: `Bearer ${token}` }
-}
-
-function jsonHeaders(token: string) {
-  return { ...authHeaders(token), 'content-type': 'application/json' }
 }
 
 describe('Operator routes', () => {
@@ -73,14 +38,14 @@ describe('Operator routes', () => {
     return project
   }
 
-  async function createPending(data: Record<string, unknown> = VALID_PROJECT) {
+  async function createPending(data: Record<string, unknown> = validProjectBody()) {
     const project = await createDraft(data)
     await projectService.submitForReview(project.id)
     return (await projectService.getProject(project.id))!
   }
 
   async function createLive(overrides: Record<string, unknown> = {}) {
-    const project = await createPending({ ...VALID_PROJECT, ...overrides })
+    const project = await createPending(validProjectBody(overrides))
     await operatorService.approveProject(OPERATOR, project.id)
     return (await projectService.getProject(project.id))!
   }
@@ -361,7 +326,7 @@ describe('Operator routes', () => {
 
   describe('GET /operator/projects', () => {
     it('lists projects with pagination', async () => {
-      await createPending({ ...VALID_PROJECT, name: 'List Test A' })
+      await createPending(validProjectBody({ name: 'List Test A' }))
       const res = await operatorGet('/projects?limit=5')
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -371,7 +336,7 @@ describe('Operator routes', () => {
     })
 
     it('filters by status', async () => {
-      const project = await createPending({ ...VALID_PROJECT, name: 'Status Filter' })
+      const project = await createPending(validProjectBody({ name: 'Status Filter' }))
       const res = await operatorGet(`/projects?status=${ProjectStatus.PendingReview}`)
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -381,7 +346,7 @@ describe('Operator routes', () => {
     })
 
     it('filters by stage', async () => {
-      const project = await createPending({ ...VALID_PROJECT, name: 'Stage Filter', stage: 1 })
+      const project = await createPending(validProjectBody({ name: 'Stage Filter', stage: 1 }))
       const res = await operatorGet('/projects?stage=1')
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -390,7 +355,7 @@ describe('Operator routes', () => {
     })
 
     it('filters by category', async () => {
-      const project = await createPending({ ...VALID_PROJECT, name: 'Category Filter', categories: ['医疗健康'] })
+      const project = await createPending(validProjectBody({ name: 'Category Filter', categories: ['医疗健康'] }))
       const res = await operatorGet('/projects?category=医疗健康')
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -400,7 +365,7 @@ describe('Operator routes', () => {
 
     it('searches by name', async () => {
       const unique = `search-${crypto.randomUUID().slice(0, 8)}`
-      await createPending({ ...VALID_PROJECT, name: `Findable ${unique}` })
+      await createPending(validProjectBody({ name: `Findable ${unique}` }))
       const res = await operatorGet(`/projects?q=${unique}`)
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -511,7 +476,7 @@ describe('Operator routes', () => {
 
   describe('GET /operator/stats', () => {
     it('returns aggregated counts', async () => {
-      await createPending({ ...VALID_PROJECT, name: 'Stats Project' })
+      await createPending(validProjectBody({ name: 'Stats Project' }))
       const res = await operatorGet('/stats')
       expect(res.status).toBe(200)
       const body = await res.json()
@@ -523,7 +488,7 @@ describe('Operator routes', () => {
 
     it('counts by status correctly', async () => {
       const before = await (await operatorGet('/stats')).json()
-      await createLive({ ...VALID_PROJECT, name: 'Stats Live' })
+      await createLive({ name: 'Stats Live' })
       const after = await (await operatorGet('/stats')).json()
       const liveBefore = before.byStatus['Live'] ?? 0
       const liveAfter = after.byStatus['Live'] ?? 0
@@ -531,7 +496,7 @@ describe('Operator routes', () => {
     })
 
     it('keys byStatus/byStage by enum name, not numeric value', async () => {
-      await createLive({ ...VALID_PROJECT, name: 'Stats Named Keys', stage: 1 })
+      await createLive({ name: 'Stats Named Keys', stage: 1 })
       const body = await (await operatorGet('/stats')).json()
       expect(body.byStatus['Live']).toBeGreaterThanOrEqual(1)
       expect(body.byStage['Growth']).toBeGreaterThanOrEqual(1)

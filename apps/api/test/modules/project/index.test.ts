@@ -1,6 +1,5 @@
 import { afterAll, describe, expect, it } from 'bun:test'
 import { Elysia } from 'elysia'
-import { SignJWT } from 'jose'
 import { eq, inArray, sql } from 'drizzle-orm'
 import { db } from '../../../src/db'
 import { auditRecords, projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
@@ -11,10 +10,9 @@ import { UserIdentityService } from '../../../src/modules/user-identity/service'
 import { Role } from '../../../src/modules/user-identity/model'
 import { ProjectStatus } from '../../../src/modules/project/model'
 import { SHARED_USERS_TABLE } from '../../../src/modules/user/service'
+import { authHeaders, jsonHeaders, signToken } from '../../fixtures/auth'
+import { validProjectBody } from '../../fixtures/project'
 
-const TEST_SECRET = process.env.SHENICEST_JWT_SECRET!
-const ISSUER = 'shenicest.com'
-const AUDIENCE = 'shenicest.com'
 const FOUNDER = `test-founder-${crypto.randomUUID()}`
 const OTHER_FOUNDER = `test-founder-${crypto.randomUUID()}`
 const OPERATOR = `test-operator-${crypto.randomUUID()}`
@@ -22,42 +20,8 @@ const OPERATOR = `test-operator-${crypto.randomUUID()}`
 const PROFILE_FOUNDER = '9999904'
 const NONEXISTENT_ID = 2_000_000_000
 
-// A complete project body that passes submitForReview's required-field validation.
-const VALID_BODY = {
-  name: 'Test Project',
-  tagline: 'original tagline',
-  categories: ['效率工具'],
-  stage: 0,
-  coverUrl: 'https://example.com/cover.png',
-  description: 'original description',
-  targetUsers: '目标用户说明，至少二十个字的内容。',
-  userProblem: '用户遇到的问题说明，至少二十个字。',
-  progress: '当前进展说明，至少二十个字的内容。',
-  messageToUsers: '对用户说的话',
-  isOpenForBeta: false,
-  contactName: 'Tester',
-  contactPhone: '13800138000',
-}
-
 function createApp() {
   return new Elysia().use(projectModule)
-}
-
-async function signToken(payload: Record<string, unknown>) {
-  return new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuer(ISSUER)
-    .setAudience(AUDIENCE)
-    .setIssuedAt()
-    .sign(new TextEncoder().encode(TEST_SECRET))
-}
-
-function authHeaders(token: string) {
-  return { authorization: `Bearer ${token}` }
-}
-
-function jsonHeaders(token: string) {
-  return { ...authHeaders(token), 'content-type': 'application/json' }
 }
 
 describe('Project routes', () => {
@@ -197,7 +161,7 @@ describe('Project routes', () => {
     })
 
     it('allows editing while Pending Review and keeps the status unchanged', async () => {
-      const created = await (await createProjectAs(FOUNDER, VALID_BODY)).json()
+      const created = await (await createProjectAs(FOUNDER, validProjectBody())).json()
       projectIds.push(created.id)
       const submitted = await submitAs(FOUNDER, created.id)
       expect(submitted.status).toBe(200)
@@ -211,7 +175,7 @@ describe('Project routes', () => {
     })
 
     it('returns 400 when editing after status leaves the editable set (e.g. Live)', async () => {
-      const created = await (await createProjectAs(FOUNDER, VALID_BODY)).json()
+      const created = await (await createProjectAs(FOUNDER, validProjectBody())).json()
       projectIds.push(created.id)
       await submitAs(FOUNDER, created.id)
       const approved = await operatorService.approveProject(OPERATOR, created.id)
@@ -231,7 +195,7 @@ describe('Project routes', () => {
     })
 
     it('submits a complete project, transitioning to Pending Review', async () => {
-      const created = await (await createProjectAs(FOUNDER, VALID_BODY)).json()
+      const created = await (await createProjectAs(FOUNDER, validProjectBody())).json()
       projectIds.push(created.id)
       const res = await submitAs(FOUNDER, created.id)
       expect(res.status).toBe(200)
@@ -249,7 +213,7 @@ describe('Project routes', () => {
     })
 
     it('returns 403 when submitting another founder\'s project', async () => {
-      const created = await (await createProjectAs(FOUNDER, VALID_BODY)).json()
+      const created = await (await createProjectAs(FOUNDER, validProjectBody())).json()
       projectIds.push(created.id)
       const res = await submitAs(OTHER_FOUNDER, created.id)
       expect(res.status).toBe(403)
@@ -263,7 +227,7 @@ describe('Project routes', () => {
 
   describe('GET /projects/:id', () => {
     async function createLiveProject(userId: string) {
-      const created = await (await createProjectAs(userId, VALID_BODY)).json()
+      const created = await (await createProjectAs(userId, validProjectBody())).json()
       projectIds.push(created.id)
       await submitAs(userId, created.id)
       await operatorService.approveProject(OPERATOR, created.id)
@@ -279,7 +243,7 @@ describe('Project routes', () => {
       const body = await res.json()
       expect(body.id).toBe(created.id)
       expect(body.status).toBe(ProjectStatus.Live)
-      expect(body.name).toBe(VALID_BODY.name)
+      expect(body.name).toBe('Test Project')
     })
 
     it('includes the founder public profile from the shared users table', async () => {
@@ -369,7 +333,7 @@ describe('Project routes', () => {
 
   describe('GET /projects', () => {
     async function createLiveProject(userId: string, overrides: Record<string, unknown> = {}) {
-      const body = { ...VALID_BODY, ...overrides }
+      const body = validProjectBody(overrides)
       const created = await (await createProjectAs(userId, body)).json()
       projectIds.push(created.id)
       await submitAs(userId, created.id)

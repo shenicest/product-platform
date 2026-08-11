@@ -1,0 +1,93 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: api (lint · typecheck · test)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_ROOT_HOST: '%'
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -uroot -proot --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      # The only test env var CI must provide: admin DB connection for
+      # apps/api/test/setup.ts (no database segment — setup drops+recreates
+      # the test DB each run). Root here so setup can CREATE/DROP freely.
+      # Every other variable (DATABASE_URL, JWT secret, COS dummies, ...) is
+      # owned by setup.ts — see its header comment.
+      TEST_DATABASE_ADMIN_URL: mysql://root:root@127.0.0.1:3306
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.13
+
+      - name: Wait for MySQL
+        run: |
+          for i in {1..30}; do
+            if mysqladmin ping -h 127.0.0.1 -P 3306 -uroot -proot --silent; then
+              echo "MySQL ready"; exit 0
+            fi
+            echo "waiting for mysql ($i)"; sleep 2
+          done
+          echo "MySQL did not become ready" >&2; exit 1
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck (api)
+        run: bunx tsc --noEmit
+        working-directory: apps/api
+
+      - name: Test (api)
+        run: bun test
+        working-directory: apps/api
+
+  web:
+    name: web (lint · typecheck · build)
+    runs-on: ubuntu-latest
+    # No env needed: web's only import of @shenicest/api is `import type`,
+    # erased at compile time — the Next build never evaluates api code.
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.13
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint (web)
+        run: bun run lint
+        working-directory: apps/web
+
+      - name: Test (web)
+        run: bun run test
+        working-directory: apps/web
+
+      - name: Build (web)
+        run: bun run build
+        working-directory: apps/web

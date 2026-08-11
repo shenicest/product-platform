@@ -1,20 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
-import { SignJWT } from 'jose'
 import { authModule } from '../../src/modules/auth'
-
-const TEST_SECRET = process.env.SHENICEST_JWT_SECRET
-if (!TEST_SECRET) throw new Error('SHENICEST_JWT_SECRET must be set for tests')
-const ISSUER = 'shenicest.com'
-const AUDIENCE = 'shenicest.com'
-
-async function signToken(payload: Record<string, unknown>) {
-  return new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuer(ISSUER)
-    .setAudience(AUDIENCE)
-    .setIssuedAt()
-    .sign(new TextEncoder().encode(TEST_SECRET))
-}
+import { signToken } from '../fixtures/auth'
 
 describe('GET /me', () => {
   it('returns 401 with standard error shape when cookie is missing', async () => {

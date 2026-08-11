@@ -13,27 +13,11 @@ import {
   ProjectNotFoundError,
   ProjectStatus,
 } from '../../../src/modules/project/model'
+import { validProjectBody } from '../../fixtures/project'
 
 const TEST_FOUNDER = `test-founder-${crypto.randomUUID()}`
 const TEST_OPERATOR = `test-operator-${crypto.randomUUID()}`
 const NONEXISTENT_ID = 2_000_000_000
-
-// A complete project that passes submitForReview's required-field validation.
-const VALID_PROJECT: Record<string, unknown> = {
-  name: 'Test Project',
-  tagline: 'original tagline',
-  categories: ['效率工具'],
-  stage: 0,
-  coverUrl: 'https://example.com/cover.png',
-  description: 'original description',
-  targetUsers: '目标用户说明，至少二十个字的内容。',
-  userProblem: '用户遇到的问题说明，至少二十个字。',
-  progress: '当前进展说明，至少二十个字的内容。',
-  messageToUsers: '对用户说的话',
-  isOpenForBeta: false,
-  contactName: 'Tester',
-  contactPhone: '13800138000',
-}
 
 describe('ProjectService', () => {
   const userIdentity = new UserIdentityService(db)
@@ -49,14 +33,14 @@ describe('ProjectService', () => {
     return project
   }
 
-  async function createPending(data: Record<string, unknown> = VALID_PROJECT) {
+  async function createPending(data: Record<string, unknown> = validProjectBody()) {
     const project = await createDraft(data)
     await service.submitForReview(project.id)
     return (await service.getProject(project.id))!
   }
 
   async function createLive(overrides: Record<string, unknown> = {}) {
-    const project = await createPending({ ...VALID_PROJECT, ...overrides })
+    const project = await createPending(validProjectBody(overrides))
     await operatorService.approveProject(TEST_OPERATOR, project.id)
     return (await service.getProject(project.id))!
   }
@@ -116,7 +100,7 @@ describe('ProjectService', () => {
 
   describe('founder status transitions', () => {
     it('0 → 1: submit a draft for review', async () => {
-      const project = await createDraft(VALID_PROJECT)
+      const project = await createDraft(validProjectBody())
       const result = await service.submitForReview(project.id)
       expect(result).not.toBeInstanceOf(InvalidTransitionError)
       expect(result).not.toBeInstanceOf(MissingRequiredFieldError)
@@ -217,14 +201,14 @@ describe('ProjectService', () => {
     })
 
     it('reports the first missing field in form-display order', async () => {
-      const project = await createDraft({ ...VALID_PROJECT, categories: [] })
+      const project = await createDraft(validProjectBody({ categories: [] }))
       const result = await service.submitForReview(project.id)
       expect(result).toBeInstanceOf(MissingRequiredFieldError)
       expect((result as MissingRequiredFieldError).field).toBe('categories')
     })
 
     it('treats whitespace-only strings as empty', async () => {
-      const project = await createDraft({ ...VALID_PROJECT, description: '   ' })
+      const project = await createDraft(validProjectBody({ description: '   ' }))
       const result = await service.submitForReview(project.id)
       expect(result).toBeInstanceOf(MissingRequiredFieldError)
       expect((result as MissingRequiredFieldError).field).toBe('description')
@@ -238,20 +222,20 @@ describe('ProjectService', () => {
     })
 
     it('requires betaDescription when open for beta', async () => {
-      const project = await createDraft({ ...VALID_PROJECT, isOpenForBeta: true })
+      const project = await createDraft(validProjectBody({ isOpenForBeta: true }))
       const result = await service.submitForReview(project.id)
       expect(result).toBeInstanceOf(MissingRequiredFieldError)
       expect((result as MissingRequiredFieldError).field).toBe('betaDescription')
     })
 
     it('submits when open for beta with betaDescription filled', async () => {
-      const project = await createDraft({ ...VALID_PROJECT, isOpenForBeta: true, betaDescription: 'beta details' })
+      const project = await createDraft(validProjectBody({ isOpenForBeta: true, betaDescription: 'beta details' }))
       const result = await service.submitForReview(project.id)
       expect((result as { status: number }).status).toBe(ProjectStatus.PendingReview)
     })
 
     it('submits a fully valid project', async () => {
-      const project = await createDraft(VALID_PROJECT)
+      const project = await createDraft(validProjectBody())
       const result = await service.submitForReview(project.id)
       expect((result as { status: number }).status).toBe(ProjectStatus.PendingReview)
     })

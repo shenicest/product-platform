@@ -1,30 +1,14 @@
 import { describe, expect, it } from 'bun:test'
 import { Elysia } from 'elysia'
-import { SignJWT } from 'jose'
 import { uploadModule } from '../../../src/modules/upload'
+import { jsonHeaders, signToken } from '../../fixtures/auth'
 
-const TEST_SECRET = process.env.SHENICEST_JWT_SECRET!
-const ISSUER = 'shenicest.com'
-const AUDIENCE = 'shenicest.com'
 const USER_ID = `test-uploader-${crypto.randomUUID()}`
 const PREFIX = (process.env.COS_UPLOAD_PREFIX ?? 'projects/').replace(/\/+$/, '') + '/'
 const PUBLIC_BASE = process.env.COS_PUBLIC_BASE_URL!.replace(/\/+$/, '')
 
 function createApp() {
   return new Elysia().use(uploadModule)
-}
-
-async function signToken(payload: Record<string, unknown>) {
-  return new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuer(ISSUER)
-    .setAudience(AUDIENCE)
-    .setIssuedAt()
-    .sign(new TextEncoder().encode(TEST_SECRET))
-}
-
-function jsonHeaders(token: string) {
-  return { authorization: `Bearer ${token}`, 'content-type': 'application/json' }
 }
 
 describe('Upload routes', () => {

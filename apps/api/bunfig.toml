@@ -1,0 +1,5 @@
+[test]
+# Provision an isolated MySQL database + shared users table per `bun test` run.
+# Must run before any source module that reads DATABASE_URL / SHARED_USERS_TABLE
+# at import time.
+preload = ["./test/setup.ts"]

@@ -1,34 +1,18 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import { Elysia } from 'elysia'
-import { SignJWT } from 'jose'
 import { eq } from 'drizzle-orm'
 import { db } from '../../../src/db'
 import { userIdentities } from '../../../src/db/schema'
 import { userIdentityModule } from '../../../src/modules/user-identity'
 import { UserIdentityService } from '../../../src/modules/user-identity/service'
 import { Role } from '../../../src/modules/user-identity/model'
+import { authHeaders, signToken } from '../../fixtures/auth'
 
-const TEST_SECRET = process.env.SHENICEST_JWT_SECRET!
-const ISSUER = 'shenicest.com'
-const AUDIENCE = 'shenicest.com'
 const OPERATOR_USER = `test-operator-${crypto.randomUUID()}`
 const REGULAR_USER = `test-regular-${crypto.randomUUID()}`
 
 function createApp() {
   return new Elysia().use(userIdentityModule)
-}
-
-async function signToken(payload: Record<string, unknown>) {
-  return new SignJWT(payload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuer(ISSUER)
-    .setAudience(AUDIENCE)
-    .setIssuedAt()
-    .sign(new TextEncoder().encode(TEST_SECRET))
-}
-
-function authHeaders(token: string) {
-  return { authorization: `Bearer ${token}` }
 }
 
 describe('UserIdentity routes', () => {
