@@ -11,7 +11,7 @@ const push = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push, refresh: vi.fn() }) }))
 
 function renderButton() {
-  return render(<AuthProvider><UserInteractionProvider initialLikedProjectIds={[]}><LikeButton projectId={7} likeCount={0} /></UserInteractionProvider></AuthProvider>)
+  return render(<AuthProvider><UserInteractionProvider initialLikedProjectIds={[]} initialFollowedFounderUserIds={[]}><LikeButton projectId={7} likeCount={0} /></UserInteractionProvider></AuthProvider>)
 }
 
 describe('LikeButton', () => {

@@ -1,7 +1,7 @@
-import { getMyLikes } from '@/server/interactions'
+import { getMyFollows, getMyLikes } from '@/server/interactions'
 import { UserInteractionProvider } from '@/components/user-interaction-provider'
 
 export async function PublicInteractionBoundary({ children }: { children: React.ReactNode }) {
-  const initialLikedProjectIds = await getMyLikes()
-  return <UserInteractionProvider initialLikedProjectIds={initialLikedProjectIds}>{children}</UserInteractionProvider>
+  const [initialLikedProjectIds, initialFollowedFounderUserIds] = await Promise.all([getMyLikes(), getMyFollows()])
+  return <UserInteractionProvider initialLikedProjectIds={initialLikedProjectIds} initialFollowedFounderUserIds={initialFollowedFounderUserIds}>{children}</UserInteractionProvider>
 }

@@ -137,7 +137,7 @@ export const projectModule = new Elysia()
     optionalAuth: true,
     detail: {
       summary: 'Get project detail',
-      description: 'Returns the full project content plus the founder\'s public profile (`founder`: nickname and avatarUrl from the shared users table, null when unavailable). Live projects (status=3) are public. Non-Live projects return 404 for anonymous users and non-owners; the owning founder or an operator sees full content.',
+      description: 'Returns the full project content plus the founder\'s public profile (`founder`: userId, nickname, avatarUrl, and on-demand followerCount; null when unavailable). Live projects (status=3) are public. Non-Live projects return 404 for anonymous users and non-owners; the owning founder or an operator sees full content.',
       tags: ['Project'],
       operationId: 'project.getDetail',
       security: [{ bearerAuth: [] }, {}],

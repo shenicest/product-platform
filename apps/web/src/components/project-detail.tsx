@@ -4,6 +4,7 @@ import { ProjectBadges } from '@/components/project-badges'
 import { resolveDemoVideo } from '@/lib/demo-media'
 import { projectIdLabel } from '@/lib/utils'
 import { LikeButton } from '@/components/like-button'
+import { FounderCard } from '@/components/founder-card'
 
 // Public display deliberately excludes all contact fields
 // (contactName / contactPhone / contactEmail / contactWechat).
@@ -120,8 +121,6 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
   const tagline = nonEmpty(project.tagline)
   const description = nonEmpty(project.description)
   const teamName = nonEmpty(project.teamName)
-  const founderNickname = nonEmpty(project.founder?.nickname)
-  const founderAvatarUrl = nonEmpty(project.founder?.avatarUrl)
 
   const sections = [
     { title: '产品介绍', content: description },
@@ -169,20 +168,7 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
           ) : null}
           {showLike ? <div className="mt-5"><LikeButton projectId={project.id} likeCount={project.likeCount} /></div> : null}
 
-          {founderNickname || founderAvatarUrl ? (
-            <p className="mt-5 flex items-center gap-2.5 font-mono text-xs text-muted-foreground">
-              {founderAvatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={founderAvatarUrl}
-                  alt={founderNickname ?? `${project.name} 创始人`}
-                  className="size-8 border border-border bg-muted object-cover"
-                />
-              ) : null}
-              FOUNDER:
-              <b className="font-normal text-foreground">{founderNickname}</b>
-            </p>
-          ) : null}
+          {project.founder ? <FounderCard founder={project.founder} projectName={project.name} /> : null}
 
           {project.stage !== null ||
           project.categories?.length ||

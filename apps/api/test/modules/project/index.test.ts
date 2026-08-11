@@ -2,7 +2,7 @@ import { afterAll, describe, expect, it } from 'bun:test'
 import { Elysia } from 'elysia'
 import { eq, inArray, sql } from 'drizzle-orm'
 import { db } from '../../../src/db'
-import { auditRecords, projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
+import { auditRecords, follows, projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
 import { projectModule } from '../../../src/modules/project'
 import { proposalService } from '../../../src/modules/proposal'
 import { OperatorService } from '../../../src/modules/operator/service'
@@ -66,6 +66,7 @@ describe('Project routes', () => {
   }
 
   afterAll(async () => {
+    await db.delete(follows).where(eq(follows.followeeUserId, PROFILE_FOUNDER))
     if (proposalIds.length > 0) {
       await db.delete(projectEditProposals).where(inArray(projectEditProposals.id, proposalIds))
     }
@@ -251,14 +252,17 @@ describe('Project routes', () => {
         VALUES (${PROFILE_FOUNDER}, '路由测试创始人', 'https://example.com/avatar.png')`)
       sharedUserIds.push(PROFILE_FOUNDER)
       const created = await createLiveProject(PROFILE_FOUNDER)
+      await db.insert(follows).values({ followerUserId: FOUNDER, followeeUserId: PROFILE_FOUNDER })
       const res = await app.handle(
         new Request(`http://localhost/projects/${created.id}`),
       )
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body.founder).toEqual({
+        userId: PROFILE_FOUNDER,
         nickname: '路由测试创始人',
         avatarUrl: 'https://example.com/avatar.png',
+        followerCount: 1,
       })
     })
 

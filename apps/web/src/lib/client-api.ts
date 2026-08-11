@@ -100,3 +100,11 @@ export function likeProject(projectId: number) {
 export function unlikeProject(projectId: number) {
   return request<{ liked: boolean; likeCount: number }>('DELETE', `/projects/${projectId}/like`)
 }
+
+export function followFounder(userId: string) {
+  return request<{ followed: boolean; followerCount: number }>('POST', `/founders/${userId}/follow`)
+}
+
+export function unfollowFounder(userId: string) {
+  return request<{ followed: boolean; followerCount: number }>('DELETE', `/founders/${userId}/follow`)
+}

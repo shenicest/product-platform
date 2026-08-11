@@ -7,3 +7,12 @@ export const PublicProfile = t.Object({
   avatarUrl: t.Union([t.String(), t.Null()], { description: 'Founder public avatar URL' }),
 })
 export type PublicProfile = typeof PublicProfile.static
+
+export const PublicFounder = t.Composite([
+  PublicProfile,
+  t.Object({
+    userId: t.String(),
+    followerCount: t.Number(),
+  }),
+])
+export type PublicFounder = typeof PublicFounder.static

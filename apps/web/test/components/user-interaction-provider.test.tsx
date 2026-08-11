@@ -9,9 +9,10 @@ import { server } from '../msw/server'
 vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }))
 
 function Probe() {
-  const { liked, unlike, likeCounts, registerLikeCount } = useUserInteraction()
+  const { liked, following, unlike, likeCounts, registerLikeCount } = useUserInteraction()
   return <div>
     <span data-testid="liked">{liked.has(7) ? 'yes' : 'no'}</span>
+    <span data-testid="following">{following.has('9') ? 'yes' : 'no'}</span>
     <span data-testid="count">{likeCounts.get(7) ?? '-'}</span>
     <button onClick={() => registerLikeCount(7, 2)}>register</button>
     <button onClick={() => unlike(7)}>unlike</button>
@@ -19,7 +20,7 @@ function Probe() {
 }
 
 function renderProvider() {
-  return render(<AuthProvider><UserInteractionProvider initialLikedProjectIds={[7]}><Probe /></UserInteractionProvider></AuthProvider>)
+  return render(<AuthProvider><UserInteractionProvider initialLikedProjectIds={[7]} initialFollowedFounderUserIds={['9']}><Probe /></UserInteractionProvider></AuthProvider>)
 }
 
 beforeEach(() => {
@@ -34,6 +35,7 @@ describe('UserInteractionProvider', () => {
     const user = userEvent.setup()
     renderProvider()
     await waitFor(() => expect(screen.getByTestId('liked')).toHaveTextContent('yes'))
+    expect(screen.getByTestId('following')).toHaveTextContent('yes')
     await user.click(screen.getByRole('button', { name: 'register' }))
     await user.click(screen.getByRole('button', { name: 'unlike' }))
     expect(screen.getByTestId('liked')).toHaveTextContent('no')

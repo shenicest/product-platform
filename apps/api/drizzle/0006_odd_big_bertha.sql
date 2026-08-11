@@ -1,0 +1,1 @@
+CREATE INDEX `idx_follows_follower_user_id` ON `follows` (`follower_user_id`);

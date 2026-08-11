@@ -1,10 +1,10 @@
 import { and, count, desc, eq, like, or, sql } from 'drizzle-orm'
-import { projects } from '../../db/schema'
+import { follows, projects } from '../../db/schema'
 import type { Database } from '../../db'
 import { UserIdentityService } from '../user-identity/service'
 import { Role } from '../user-identity/model'
 import { UserProfileService } from '../user/service'
-import type { PublicProfile } from '../user/model'
+import type { PublicFounder } from '../user/model'
 import {
   EDITABLE_PROJECT_FIELD_SET,
   InvalidTransitionError,
@@ -19,7 +19,7 @@ import {
 type ProjectRow = typeof projects.$inferSelect
 type ProjectUpdate = Partial<typeof projects.$inferInsert>
 
-export type ProjectDetail = ProjectRow & { founder: PublicProfile | null }
+export type ProjectDetail = ProjectRow & { founder: PublicFounder | null }
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100
@@ -106,7 +106,11 @@ export class ProjectService {
   async getProjectDetail(userId: string | null, projectId: number): Promise<ProjectDetail | ProjectNotFoundError> {
     const project = await this.getVisibleProject(userId, projectId)
     if (project instanceof ProjectNotFoundError) return project
-    const founder = await this.userProfile.getPublicProfile(project.userId)
+    const [profile, followerRows] = await Promise.all([
+      this.userProfile.getPublicProfile(project.userId),
+      this.db.select({ value: count() }).from(follows).where(eq(follows.followeeUserId, project.userId)),
+    ])
+    const founder = profile ? { ...profile, userId: project.userId, followerCount: followerRows[0]?.value ?? 0 } : null
     return { ...project, founder }
   }
 

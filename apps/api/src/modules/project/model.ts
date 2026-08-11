@@ -1,6 +1,6 @@
 import { t } from 'elysia'
 import { InsertProject, SelectProject } from '../../db/schema'
-import { PublicProfile } from '../user/model'
+import { PublicFounder } from '../user/model'
 
 export const ProjectStatus = {
   Draft: 0,
@@ -99,7 +99,7 @@ export type ProjectResponse = typeof ProjectResponse.static
 export const ProjectDetailResponse = t.Composite([
   SelectProject,
   t.Object({
-    founder: t.Union([PublicProfile, t.Null()], { description: 'Founder public profile; null when unavailable' }),
+    founder: t.Union([PublicFounder, t.Null()], { description: 'Founder public profile; null when unavailable' }),
   }),
 ])
 export type ProjectDetailResponse = typeof ProjectDetailResponse.static
