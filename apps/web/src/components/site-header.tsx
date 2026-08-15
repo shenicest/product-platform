@@ -25,12 +25,12 @@ export function SiteHeader() {
             >
               我的关注
             </Link>
-            <a
-              href="https://shenicest.com/platform/projects"
+            <Link
+              href="/hackathon"
               className="transition-colors hover:text-primary"
             >
               黑客松专区
-            </a>
+            </Link>
             <Link
               href="/submit"
               className="transition-colors hover:text-primary"
