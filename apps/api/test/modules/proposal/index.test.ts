@@ -43,7 +43,7 @@ describe('Proposal routes', () => {
 
   async function createLiveProjectWithProposal(userId: string) {
     const project = await createLiveProject(userId)
-    const proposal = await proposalService.createProposal(project.id, { name: 'Updated Name' })
+    const proposal = await proposalService.createProposal(project.id, { demoLink: 'https://example.com/updated' })
     if ('id' in proposal) proposalIds.push(proposal.id)
     return { project, proposal }
   }
@@ -80,7 +80,7 @@ describe('Proposal routes', () => {
         new Request(`http://localhost/projects/${project.id}/proposals`, {
           method: 'POST',
           headers: jsonHeaders(token),
-          body: JSON.stringify({ changes: { description: 'proposed change' } }),
+          body: JSON.stringify({ changes: { demoLink: 'https://example.com/proposed' } }),
         }),
       )
       expect(res.status).toBe(200)
@@ -88,7 +88,7 @@ describe('Proposal routes', () => {
       proposalIds.push(body.id)
       expect(body.status).toBe(ProposalStatus.Pending)
       expect(body.projectId).toBe(project.id)
-      expect(body.changes).toEqual({ description: 'proposed change' })
+      expect(body.changes).toEqual({ demoLink: 'https://example.com/proposed' })
     })
 
     it('returns 403 when creating a proposal on another founder\'s project', async () => {
@@ -150,7 +150,7 @@ describe('Proposal routes', () => {
         new Request(`http://localhost/projects/${project.id}/proposals`, {
           method: 'POST',
           headers: jsonHeaders(token),
-          body: JSON.stringify({ changes: { name: 'first' } }),
+          body: JSON.stringify({ changes: { demoLink: 'https://example.com/first' } }),
         }),
       )
       expect(first.status).toBe(200)
@@ -160,7 +160,7 @@ describe('Proposal routes', () => {
         new Request(`http://localhost/projects/${project.id}/proposals`, {
           method: 'POST',
           headers: jsonHeaders(token),
-          body: JSON.stringify({ changes: { name: 'second' } }),
+          body: JSON.stringify({ changes: { demoLink: 'https://example.com/second' } }),
         }),
       )
       expect(second.status).toBe(409)
@@ -174,7 +174,7 @@ describe('Proposal routes', () => {
         new Request(`http://localhost/projects/${project.id}/proposals/${(proposal as { id: number }).id}`, {
           method: 'PUT',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ changes: { name: 'X' } }),
+          body: JSON.stringify({ changes: { demoLink: 'https://example.com/x' } }),
         }),
       )
       expect(res.status).toBe(401)
@@ -190,13 +190,13 @@ describe('Proposal routes', () => {
         new Request(`http://localhost/projects/${project.id}/proposals/${proposalId}`, {
           method: 'PUT',
           headers: jsonHeaders(token),
-          body: JSON.stringify({ changes: { name: 'Revised Name' } }),
+          body: JSON.stringify({ changes: { demoLink: 'https://example.com/revised' } }),
         }),
       )
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body.status).toBe(ProposalStatus.Pending)
-      expect(body.changes).toEqual({ name: 'Revised Name' })
+      expect(body.changes).toEqual({ demoLink: 'https://example.com/revised' })
     })
 
     it('returns 400 when the proposal is not Revision Required', async () => {
@@ -207,7 +207,7 @@ describe('Proposal routes', () => {
         new Request(`http://localhost/projects/${project.id}/proposals/${proposalId}`, {
           method: 'PUT',
           headers: jsonHeaders(token),
-          body: JSON.stringify({ changes: { name: 'X' } }),
+          body: JSON.stringify({ changes: { demoLink: 'https://example.com/x' } }),
         }),
       )
       expect(res.status).toBe(400)
@@ -223,7 +223,7 @@ describe('Proposal routes', () => {
         new Request(`http://localhost/projects/${project.id}/proposals/${proposalId}`, {
           method: 'PUT',
           headers: jsonHeaders(token),
-          body: JSON.stringify({ changes: { name: 'hijack' } }),
+          body: JSON.stringify({ changes: { demoLink: 'https://example.com/hijack' } }),
         }),
       )
       expect(res.status).toBe(403)
@@ -236,7 +236,7 @@ describe('Proposal routes', () => {
         new Request(`http://localhost/projects/${project.id}/proposals/${NONEXISTENT_ID}`, {
           method: 'PUT',
           headers: jsonHeaders(token),
-          body: JSON.stringify({ changes: { name: 'X' } }),
+          body: JSON.stringify({ changes: { demoLink: 'https://example.com/x' } }),
         }),
       )
       expect(res.status).toBe(404)
@@ -252,7 +252,7 @@ describe('Proposal routes', () => {
         new Request(`http://localhost/projects/${otherProject.id}/proposals/${proposalId}`, {
           method: 'PUT',
           headers: jsonHeaders(token),
-          body: JSON.stringify({ changes: { name: 'X' } }),
+          body: JSON.stringify({ changes: { demoLink: 'https://example.com/x' } }),
         }),
       )
       expect(res.status).toBe(404)
@@ -280,7 +280,7 @@ describe('Proposal routes', () => {
       const body = await res.json()
       expect(body.total).toBe(1)
       expect(body.data[0].id).toBe((proposal as { id: number }).id)
-      expect(body.data[0].changes).toEqual({ name: 'Updated Name' })
+      expect(body.data[0].changes).toEqual({ demoLink: 'https://example.com/updated' })
     })
 
     it('returns proposals to an operator', async () => {
@@ -340,7 +340,7 @@ describe('Proposal routes', () => {
       expect(res.status).toBe(200)
       const body = await res.json()
       expect(body.id).toBe(proposalId)
-      expect(body.changes).toEqual({ name: 'Updated Name' })
+      expect(body.changes).toEqual({ demoLink: 'https://example.com/updated' })
       expect(body.status).toBe(ProposalStatus.Pending)
     })
 

@@ -42,6 +42,7 @@ export function TextInput({
   required,
   type = 'text',
   error,
+  maxLength,
 }: {
   id: string
   name: string
@@ -51,6 +52,7 @@ export function TextInput({
   required?: boolean
   type?: string
   error?: string
+  maxLength?: number
 }) {
   return (
     <input
@@ -61,6 +63,7 @@ export function TextInput({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       required={required}
+      maxLength={maxLength}
       className={cn(fieldBase, error && 'border-destructive focus:border-destructive')}
     />
   )
@@ -75,6 +78,7 @@ export function TextArea({
   required,
   rows = 4,
   error,
+  maxLength,
 }: {
   id: string
   name: string
@@ -84,6 +88,7 @@ export function TextArea({
   required?: boolean
   rows?: number
   error?: string
+  maxLength?: number
 }) {
   return (
     <textarea
@@ -94,6 +99,7 @@ export function TextArea({
       placeholder={placeholder}
       required={required}
       rows={rows}
+      maxLength={maxLength}
       className={cn(fieldBase, 'resize-y', error && 'border-destructive focus:border-destructive')}
     />
   )

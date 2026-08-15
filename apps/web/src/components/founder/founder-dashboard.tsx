@@ -58,7 +58,6 @@ function StatusBadge({ status }: { status: number }) {
 function FounderProjectCard({ project }: { project: FounderProject }) {
   const isEditable =
     project.status === ProjectStatus.Draft ||
-    project.status === ProjectStatus.PendingReview ||
     project.status === ProjectStatus.RevisionRequired
   const isPending = project.status === ProjectStatus.PendingReview
   const isLive = project.status === ProjectStatus.Live
@@ -110,7 +109,15 @@ function FounderProjectCard({ project }: { project: FounderProject }) {
               href={`/projects/${project.id}/edit`}
               className="btn-hard btn-primary px-3 py-1.5 text-xs"
             >
-              {isPending ? '修改' : '编辑'}
+              编辑
+            </Link>
+          ) : null}
+          {isPending ? (
+            <Link
+              href={`/founder/projects/${project.id}`}
+              className="btn-hard btn-secondary px-3 py-1.5 text-xs"
+            >
+              查看项目
             </Link>
           ) : null}
           {isLive ? (

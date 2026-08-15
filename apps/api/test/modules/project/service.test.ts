@@ -170,12 +170,10 @@ describe('ProjectService', () => {
       expect((result as { description: string }).description).toBe('reworked')
     })
 
-    it('allows editing while Pending Review', async () => {
+    it('rejects editing while Pending Review', async () => {
       const project = await createPending()
       const result = await service.saveDraft(project.id, { description: 'x' })
-      expect(result).not.toBeInstanceOf(InvalidTransitionError)
-      expect((result as { description: string }).description).toBe('x')
-      expect((result as { status: number }).status).toBe(ProjectStatus.PendingReview)
+      expect(result).toBeInstanceOf(InvalidTransitionError)
     })
 
     it('rejects editing a live project', async () => {
@@ -238,6 +236,34 @@ describe('ProjectService', () => {
       const project = await createDraft(validProjectBody())
       const result = await service.submitForReview(project.id)
       expect((result as { status: number }).status).toBe(ProjectStatus.PendingReview)
+    })
+
+    it('rejects a tagline shorter than 10 characters', async () => {
+      const project = await createDraft(validProjectBody({ tagline: '太短' }))
+      const result = await service.submitForReview(project.id)
+      expect(result).toBeInstanceOf(MissingRequiredFieldError)
+      expect((result as MissingRequiredFieldError).field).toBe('tagline')
+    })
+
+    it('rejects an invalid contact phone', async () => {
+      const project = await createDraft(validProjectBody({ contactPhone: '12345' }))
+      const result = await service.submitForReview(project.id)
+      expect(result).toBeInstanceOf(MissingRequiredFieldError)
+      expect((result as MissingRequiredFieldError).field).toBe('contactPhone')
+    })
+
+    it('rejects an unknown project stage', async () => {
+      const project = await createDraft(validProjectBody({ stage: 7 }))
+      const result = await service.submitForReview(project.id)
+      expect(result).toBeInstanceOf(MissingRequiredFieldError)
+      expect((result as MissingRequiredFieldError).field).toBe('stage')
+    })
+
+    it('rejects an unknown category', async () => {
+      const project = await createDraft(validProjectBody({ categories: ['未知品类'] }))
+      const result = await service.submitForReview(project.id)
+      expect(result).toBeInstanceOf(MissingRequiredFieldError)
+      expect((result as MissingRequiredFieldError).field).toBe('categories')
     })
   })
 

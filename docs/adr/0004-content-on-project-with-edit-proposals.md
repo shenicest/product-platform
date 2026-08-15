@@ -17,7 +17,7 @@ After shipping reflection, the team wants to simplify:
 
 Fold all displayable content back onto the `projects` row. Replace `project_revisions` with a `project_edit_proposals` table that records a **JSON diff of changed fields only** — not a full snapshot.
 
-- **Pre-live edits** (Draft / Pending Review / Revision Required): the Founder edits the `projects` row directly. No proposal is involved.
+- **Pre-live edits** (Draft / Revision Required): the Founder edits the `projects` row directly. Pending Review is read-only. No proposal is involved.
 - **Post-live edits** (project is `status=3` Live): the Founder creates a `project_edit_proposals` row with a `changes` JSON object containing only the fields to modify and their new values. The `projects` row is **not touched** while the proposal is under review, so the old version stays publicly visible. On approval, the diff is applied as a partial PATCH to the `projects` row; on rejection, the `projects` row is left unchanged.
 
 ### Schema

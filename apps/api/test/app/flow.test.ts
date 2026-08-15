@@ -135,14 +135,14 @@ describe('Composed app flows', () => {
         new Request(`http://localhost/projects/${draft.id}/proposals`, {
           method: 'POST',
           headers: jsonHeaders(founderToken),
-          body: JSON.stringify({ changes: { tagline: 'Updated tagline' } }),
+          body: JSON.stringify({ changes: { demoLink: 'https://example.com/v1' } }),
         }),
       )
       expect(proposalRes.status).toBe(200)
       const proposal = await proposalRes.json()
       proposalIds.push(proposal.id)
       expect(proposal.status).toBe(ProposalStatus.Pending)
-      expect(proposal.changes.tagline).toBe('Updated tagline')
+      expect(proposal.changes.demoLink).toBe('https://example.com/v1')
 
       const revisionRes = await app.handle(
         new Request(`http://localhost/operator/proposals/${proposal.id}/require-revision`, {
@@ -159,12 +159,12 @@ describe('Composed app flows', () => {
         new Request(`http://localhost/projects/${draft.id}/proposals/${proposal.id}`, {
           method: 'PUT',
           headers: jsonHeaders(founderToken),
-          body: JSON.stringify({ changes: { tagline: 'Updated tagline v2' } }),
+          body: JSON.stringify({ changes: { demoLink: 'https://example.com/v2' } }),
         }),
       )
       expect(updateRes.status).toBe(200)
       const updated = await updateRes.json()
-      expect(updated.changes.tagline).toBe('Updated tagline v2')
+      expect(updated.changes.demoLink).toBe('https://example.com/v2')
 
       const approveProposalRes = await app.handle(
         new Request(`http://localhost/operator/proposals/${proposal.id}/approve`, {
@@ -181,7 +181,7 @@ describe('Composed app flows', () => {
       )
       expect(projectRes.status).toBe(200)
       const project = await projectRes.json()
-      expect(project.tagline).toBe('Updated tagline v2')
+      expect(project.demoLink).toBe('https://example.com/v2')
     })
   })
 

@@ -104,7 +104,7 @@ Next.js App Router 前端，对接后端 API（`@shenicest/api`）。Server 端�
 
 **功能**:
 - 加载项目数据填充表单
-- 仅允许 `status=0` (Draft)、`status=1` (Pending Review)、`status=2` (Revision Required) 编辑
+- 仅允许 `status=0` (Draft)、`status=2` (Revision Required) 编辑；Pending Review 只读
 - 草稿/需修改：保存草稿 / 提交审核
 - 审核中：仅保存修改（隐藏提交按钮），保存后运营看到的是更新后的内容
 - Revision Required 顶部展示运营最新修改意见

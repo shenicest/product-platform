@@ -3,9 +3,19 @@
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { CATEGORIES, ProjectStage, ProjectStatus } from '@shenicest/shared'
+import { CATEGORIES, ProjectStage } from '@shenicest/shared'
 import { useAuth } from '@/components/auth-provider'
-import { createProject, saveDraft, submitForReview } from '@/lib/client-api'
+import {
+  createProject,
+  saveDraft,
+  submitForReview,
+} from '@/lib/client-api'
+import {
+  firstProjectFormError,
+  validateProjectForm,
+  type ProjectFormErrors,
+  type ProjectFormValues,
+} from '@/lib/project-form-validation'
 import { ImageUploader } from './image-uploader'
 import { VideoUploader } from './video-uploader'
 import {
@@ -17,29 +27,7 @@ import {
   TextInput,
 } from './form-fields'
 
-interface FormState {
-  name: string
-  tagline: string
-  teamName: string
-  categories: string[]
-  stage: string
-  description: string
-  coverUrl: string
-  demoImages: string[]
-  demoVideoUrl: string
-  demoLink: string
-  targetUsers: string
-  userProblem: string
-  progress: string
-  nextSteps: string
-  messageToUsers: string
-  isOpenForBeta: boolean
-  betaDescription: string
-  contactName: string
-  contactPhone: string
-  contactEmail: string
-  contactWechat: string
-}
+type FormState = ProjectFormValues
 
 const EMPTY_FORM: FormState = {
   name: '',
@@ -65,31 +53,13 @@ const EMPTY_FORM: FormState = {
   contactWechat: '',
 }
 
-type FormErrors = Partial<Record<keyof FormState, string>>
+type FormErrors = ProjectFormErrors
 
 function toApiBody(form: FormState): Record<string, unknown> {
-  const body: Record<string, unknown> = { name: form.name }
-  if (form.tagline) body.tagline = form.tagline
-  if (form.teamName) body.teamName = form.teamName
-  if (form.categories.length > 0) body.categories = form.categories
-  if (form.stage !== '') body.stage = Number(form.stage)
-  if (form.description) body.description = form.description
-  if (form.coverUrl) body.coverUrl = form.coverUrl
-  if (form.demoImages.length > 0) body.demoImages = form.demoImages
-  if (form.demoVideoUrl) body.demoVideoUrl = form.demoVideoUrl
-  if (form.demoLink) body.demoLink = form.demoLink
-  if (form.targetUsers) body.targetUsers = form.targetUsers
-  if (form.userProblem) body.userProblem = form.userProblem
-  if (form.progress) body.progress = form.progress
-  if (form.nextSteps) body.nextSteps = form.nextSteps
-  if (form.messageToUsers) body.messageToUsers = form.messageToUsers
-  body.isOpenForBeta = form.isOpenForBeta
-  if (form.betaDescription) body.betaDescription = form.betaDescription
-  if (form.contactName) body.contactName = form.contactName
-  if (form.contactPhone) body.contactPhone = form.contactPhone
-  if (form.contactEmail) body.contactEmail = form.contactEmail
-  if (form.contactWechat) body.contactWechat = form.contactWechat
-  return body
+  return {
+    ...form,
+    stage: form.stage === '' ? null : Number(form.stage),
+  }
 }
 
 function fromProjectData(project: Record<string, unknown>): FormState {
@@ -129,6 +99,12 @@ const STAGE_OPTIONS = [
   { value: String(ProjectStage.Growth), label: '成长阶段' },
 ]
 
+function focusFirstError(errors: FormErrors) {
+  const field = firstProjectFormError(errors)
+  if (!field) return
+  requestAnimationFrame(() => document.getElementById(field)?.focus())
+}
+
 export function ProjectSubmissionForm({
   projectId,
   initialData,
@@ -138,12 +114,8 @@ export function ProjectSubmissionForm({
 }) {
   const router = useRouter()
   const { isAuthenticated } = useAuth()
-  // A project already in Pending Review can still be edited in place, but it
-  // is already in the review queue — so there is nothing to (re)submit.
-  const isPendingReview = initialData?.status === ProjectStatus.PendingReview
-  const [form, setForm] = useState<FormState>(
-    initialData ? fromProjectData(initialData) : EMPTY_FORM,
-  )
+  const initialForm = initialData ? fromProjectData(initialData) : EMPTY_FORM
+  const [form, setForm] = useState<FormState>(initialForm)
   const [errors, setErrors] = useState<FormErrors>({})
   const [serverError, setServerError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -161,7 +133,9 @@ export function ProjectSubmissionForm({
 
   const handleSaveDraft = useCallback(async () => {
     if (!form.name.trim()) {
-      setErrors({ name: '项目名称不能为空' })
+      const error = '请先填写项目名称'
+      setErrors({ name: error })
+      focusFirstError({ name: error })
       return
     }
     setSaving(true)
@@ -192,6 +166,12 @@ export function ProjectSubmissionForm({
   }, [form, savedProjectId, router])
 
   const handleSubmit = useCallback(async () => {
+    const clientErrors = validateProjectForm(form)
+    if (Object.keys(clientErrors).length > 0) {
+      setErrors(clientErrors)
+      focusFirstError(clientErrors)
+      return
+    }
     setSubmitting(true)
     setServerError(null)
     try {
@@ -201,7 +181,9 @@ export function ProjectSubmissionForm({
         const { data, error } = await createProject(body)
         if (error) {
           if (error.body.error.field) {
-            setErrors({ [error.body.error.field as keyof FormState]: error.body.error.message })
+            const fieldErrors = { [error.body.error.field as keyof FormState]: error.body.error.message }
+            setErrors(fieldErrors)
+            focusFirstError(fieldErrors)
           } else {
             setServerError(error.body.error.message)
           }
@@ -220,7 +202,9 @@ export function ProjectSubmissionForm({
       const { data, error } = await submitForReview(id)
       if (error) {
         if (error.status === 422 && error.body.error.field) {
-          setErrors({ [error.body.error.field as keyof FormState]: error.body.error.message })
+          const fieldErrors = { [error.body.error.field as keyof FormState]: error.body.error.message }
+          setErrors(fieldErrors)
+          focusFirstError(fieldErrors)
         } else {
           setServerError(error.body.error.message)
         }
@@ -267,6 +251,7 @@ export function ProjectSubmissionForm({
             onChange={(v) => update('name', v)}
             placeholder="给你的项目起个名字"
             required
+            maxLength={60}
             error={errors.name}
           />
         </FormField>
@@ -278,6 +263,7 @@ export function ProjectSubmissionForm({
             onChange={(v) => update('tagline', v)}
             placeholder="用一句话描述你的项目"
             required
+            maxLength={40}
             error={errors.tagline}
           />
         </FormField>
@@ -294,7 +280,7 @@ export function ProjectSubmissionForm({
 
       <FormSection index={2} title="产品分类">
         <FormField label="分类" htmlFor="categories" required error={errors.categories}>
-          <div className="flex flex-wrap gap-2">
+          <div id="categories" tabIndex={-1} className="flex flex-wrap gap-2">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
@@ -333,6 +319,7 @@ export function ProjectSubmissionForm({
             onChange={(v) => update('description', v)}
             placeholder="详细介绍你的项目是什么、做什么"
             rows={6}
+            maxLength={2000}
             required
             error={errors.description}
           />
@@ -384,6 +371,7 @@ export function ProjectSubmissionForm({
             onChange={(v) => update('targetUsers', v)}
             placeholder="描述你的目标用户是谁"
             rows={3}
+            maxLength={500}
             required
             error={errors.targetUsers}
           />
@@ -396,6 +384,7 @@ export function ProjectSubmissionForm({
             onChange={(v) => update('userProblem', v)}
             placeholder="用户遇到了什么问题？你的项目如何解决？"
             rows={3}
+            maxLength={500}
             required
             error={errors.userProblem}
           />
@@ -408,6 +397,7 @@ export function ProjectSubmissionForm({
             onChange={(v) => update('progress', v)}
             placeholder="目前项目进展到了什么阶段？"
             rows={3}
+            maxLength={500}
             required
             error={errors.progress}
           />
@@ -420,6 +410,7 @@ export function ProjectSubmissionForm({
             onChange={(v) => update('nextSteps', v)}
             placeholder="接下来打算做什么？"
             rows={3}
+            maxLength={500}
           />
         </FormField>
         <FormField label="想对用户说的话" htmlFor="messageToUsers" required error={errors.messageToUsers}>
@@ -506,22 +497,7 @@ export function ProjectSubmissionForm({
       </FormSection>
 
       <div className="flex flex-wrap items-center gap-3 border-t border-border pt-6">
-        {isPendingReview ? (
-          <>
-            <button
-              type="button"
-              onClick={handleSaveDraft}
-              disabled={saving || submitting}
-              className="btn-hard btn-primary"
-            >
-              {saving ? '保存中...' : '保存修改'}
-            </button>
-            <span className="font-mono text-[11px] text-muted-foreground">
-              项目正在审核中，保存后将继续审核更新后的内容
-            </span>
-          </>
-        ) : (
-          <>
+        <>
             <button
               type="button"
               onClick={handleSaveDraft}
@@ -538,8 +514,7 @@ export function ProjectSubmissionForm({
             >
               {submitting ? '提交中...' : '提交审核'} <span aria-hidden>→</span>
             </button>
-          </>
-        )}
+        </>
         {savedProjectId ? (
           <span className="font-mono text-[11px] text-muted-foreground">
             DRAFT ID: P-{String(savedProjectId).padStart(3, '0')}
@@ -549,4 +524,3 @@ export function ProjectSubmissionForm({
     </div>
   )
 }
-

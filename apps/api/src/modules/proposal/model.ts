@@ -1,6 +1,6 @@
 import { t } from 'elysia'
 import { InsertProject, SelectProject, SelectProjectEditProposal } from '../../db/schema'
-import { DomainError, EDITABLE_PROJECT_FIELDS } from '../project/model'
+import { DomainError, PROPOSAL_EDITABLE_PROJECT_FIELDS } from '../project/model'
 
 export const ProposalStatus = {
   Pending: 0,
@@ -10,8 +10,8 @@ export const ProposalStatus = {
 } as const
 export type ProposalStatus = (typeof ProposalStatus)[keyof typeof ProposalStatus]
 
-export const ProjectChanges = t.Partial(t.Pick(InsertProject, [...EDITABLE_PROJECT_FIELDS]))
-export type ProjectChanges = Partial<Pick<SelectProject, (typeof EDITABLE_PROJECT_FIELDS)[number]>>
+export const ProjectChanges = t.Partial(t.Pick(InsertProject, [...PROPOSAL_EDITABLE_PROJECT_FIELDS]))
+export type ProjectChanges = Partial<Pick<SelectProject, (typeof PROPOSAL_EDITABLE_PROJECT_FIELDS)[number]>>
 
 export const ProposalBody = t.Object({
   changes: ProjectChanges,

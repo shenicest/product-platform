@@ -3,6 +3,7 @@ import { follows, projects } from '../../db/schema'
 import type { Database } from '../../db'
 import { UserIdentityService } from '../user-identity/service'
 import { Role } from '../user-identity/model'
+import { CATEGORIES, ProjectStage } from '@shenicest/shared'
 import { UserProfileService } from '../user/service'
 import type { PublicFounder } from '../user/model'
 import {
@@ -47,14 +48,67 @@ function isFieldEmpty(value: unknown): boolean {
   return false
 }
 
+function lengthOf(value: unknown): number {
+  return typeof value === 'string' ? [...value.trim()].length : 0
+}
+
+function isValidUrl(value: unknown): boolean {
+  if (isFieldEmpty(value)) return true
+  try {
+    const url = new URL(String(value))
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function invalidField(field: string, message: string) {
+  return new MissingRequiredFieldError(field, message, 'INVALID_FIELD')
+}
+
 // Returns the first required field that is empty (in form-display order), or null
 // when the project is complete enough to submit. `betaDescription` is only required
 // when the project is open for beta.
-function findMissingRequiredField(project: ProjectRow): SubmissionRequiredField | 'betaDescription' | null {
+export function validateProjectForSubmission(project: ProjectRow): MissingRequiredFieldError | null {
   for (const field of SUBMISSION_REQUIRED_FIELDS) {
-    if (isFieldEmpty(project[field])) return field
+    if (isFieldEmpty(project[field])) return new MissingRequiredFieldError(field)
   }
-  if (project.isOpenForBeta === true && isFieldEmpty(project.betaDescription)) return 'betaDescription'
+
+  const nameLength = lengthOf(project.name)
+  const nameMax = /\p{Script=Han}/u.test(project.name) ? 30 : 60
+  if (nameLength < 2 || nameLength > nameMax) return invalidField('name', '项目名称长度不符合要求')
+  if (lengthOf(project.tagline) < 10 || lengthOf(project.tagline) > 40) {
+    return invalidField('tagline', '一句话介绍需为10-40个字符')
+  }
+  if (project.stage !== ProjectStage.MVP && project.stage !== ProjectStage.Growth) {
+    return invalidField('stage', '请选择正确的项目阶段')
+  }
+  if (!project.categories?.every((category) => CATEGORIES.includes(category as typeof CATEGORIES[number]))) {
+    return invalidField('categories', '请选择正确的项目品类')
+  }
+  if (lengthOf(project.description) < 100 || lengthOf(project.description) > 2000) {
+    return invalidField('description', '项目介绍至少100字，至多2000字')
+  }
+  for (const field of ['targetUsers', 'userProblem', 'progress'] as const) {
+    const length = lengthOf(project[field])
+    if (length < 20 || length > 500) return invalidField(field, '内容需为20-500字')
+  }
+  if (lengthOf(project.nextSteps) > 500) return invalidField('nextSteps', '下一步计划最多500字')
+  if (!/^1[3-9]\d{9}$/.test(project.contactPhone?.trim() ?? '')) {
+    return invalidField('contactPhone', '请输入正确的手机号')
+  }
+  for (const field of ['coverUrl', 'demoVideoUrl', 'demoLink'] as const) {
+    if (!isValidUrl(project[field])) return invalidField(field, '请输入正确的链接')
+  }
+  if (project.demoImages && (project.demoImages.length > 5 || project.demoImages.some((url) => !isValidUrl(url)))) {
+    return invalidField('demoImages', 'Demo图片最多上传5张，且地址必须有效')
+  }
+  if (project.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(project.contactEmail)) {
+    return invalidField('contactEmail', '请输入正确的邮箱')
+  }
+  if (project.isOpenForBeta === true && isFieldEmpty(project.betaDescription)) {
+    return new MissingRequiredFieldError('betaDescription')
+  }
   return null
 }
 
@@ -147,8 +201,8 @@ export class ProjectService {
   async saveDraft(projectId: number, data: Record<string, unknown>): Promise<ProjectRow | ProjectNotFoundError | InvalidTransitionError> {
     const project = await this.getProject(projectId)
     if (!project) return new ProjectNotFoundError(projectId)
-    if (project.status !== ProjectStatus.Draft && project.status !== ProjectStatus.PendingReview && project.status !== ProjectStatus.RevisionRequired) {
-      return new InvalidTransitionError(`Cannot edit draft: project is in status ${project.status}, expected Draft, Pending Review, or Revision Required`)
+    if (project.status !== ProjectStatus.Draft && project.status !== ProjectStatus.RevisionRequired) {
+      return new InvalidTransitionError(`Cannot edit draft: project is in status ${project.status}, expected Draft or Revision Required`)
     }
     const updates = pickEditable(data)
     if (Object.keys(updates).length > 0) {
@@ -163,8 +217,8 @@ export class ProjectService {
     if (project.status !== ProjectStatus.Draft && project.status !== ProjectStatus.RevisionRequired) {
       return new InvalidTransitionError(`Cannot submit: project is in status ${project.status}, expected Draft or Revision Required`)
     }
-    const missing = findMissingRequiredField(project)
-    if (missing) return new MissingRequiredFieldError(missing)
+    const validationError = validateProjectForSubmission(project)
+    if (validationError) return validationError
     await this.db.update(projects).set({ status: ProjectStatus.PendingReview }).where(eq(projects.id, projectId))
     return (await this.getProject(projectId))!
   }

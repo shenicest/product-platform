@@ -86,7 +86,7 @@ export const projectModule = new Elysia()
     auth: true,
     detail: {
       summary: 'Save draft',
-      description: 'Updates the project row in place. Allowed while status is Draft (0), Pending Review (1), or Revision Required (2). Only the project owner may call this.',
+      description: 'Updates the project row in place. Allowed while status is Draft (0) or Revision Required (2). Pending Review projects are read-only. Only the project owner may call this.',
       tags: ['Project'],
       operationId: 'project.saveDraft',
     },

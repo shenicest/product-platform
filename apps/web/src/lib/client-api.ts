@@ -59,6 +59,18 @@ export interface ProjectData {
   updatedAt: string
 }
 
+export interface ProposalData {
+  id: number
+  projectId: number
+  changes: Record<string, unknown>
+  status: number
+  reason: string | null
+  reviewedBy: string | null
+  reviewedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export function sendLoginCode(identifier: string) {
   return request<{ success: boolean; error?: string }>('POST', '/auth/send-code', {
     identifier,
@@ -87,6 +99,14 @@ export function saveDraft(projectId: number, body: Record<string, unknown>) {
 
 export function submitForReview(projectId: number) {
   return request<ProjectData>('PUT', `/projects/${projectId}/submit`)
+}
+
+export function createProjectProposal(projectId: number, changes: Record<string, unknown>) {
+  return request<ProposalData>('POST', `/projects/${projectId}/proposals`, { changes })
+}
+
+export function updateProjectProposal(projectId: number, proposalId: number, changes: Record<string, unknown>) {
+  return request<ProposalData>('PUT', `/projects/${projectId}/proposals/${proposalId}`, { changes })
 }
 
 export function getProject(projectId: number) {

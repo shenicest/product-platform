@@ -116,6 +116,16 @@ describe('Project routes', () => {
       )
       expect(res.status).toBe(422)
     })
+
+    it('rejects an unknown stage or category', async () => {
+      const token = await signToken({ user_id: FOUNDER })
+      const res = await app.handle(new Request('http://localhost/projects', {
+        method: 'POST',
+        headers: jsonHeaders(token),
+        body: JSON.stringify({ name: 'Invalid enums', stage: 7, categories: ['未知品类'] }),
+      }))
+      expect(res.status).toBe(422)
+    })
   })
 
   describe('PUT /projects/:id/draft', () => {
@@ -161,7 +171,7 @@ describe('Project routes', () => {
       expect(res.status).toBe(404)
     })
 
-    it('allows editing while Pending Review and keeps the status unchanged', async () => {
+    it('returns 400 when editing while Pending Review', async () => {
       const created = await (await createProjectAs(FOUNDER, validProjectBody())).json()
       projectIds.push(created.id)
       const submitted = await submitAs(FOUNDER, created.id)
@@ -169,10 +179,7 @@ describe('Project routes', () => {
       expect((await submitted.json()).status).toBe(ProjectStatus.PendingReview)
 
       const res = await draftAs(FOUNDER, created.id, { name: 'still editable' })
-      expect(res.status).toBe(200)
-      const body = await res.json()
-      expect(body.status).toBe(ProjectStatus.PendingReview)
-      expect(body.name).toBe('still editable')
+      expect(res.status).toBe(400)
     })
 
     it('returns 400 when editing after status leaves the editable set (e.g. Live)', async () => {
@@ -369,15 +376,15 @@ describe('Project routes', () => {
     })
 
     it('filters by category', async () => {
-      const unique = `cat-${crypto.randomUUID().slice(0, 8)}`
-      await createLiveProject(FOUNDER, { name: 'Cat Filter', categories: [unique] })
+      const category = '开发者工具'
+      await createLiveProject(FOUNDER, { name: 'Cat Filter', categories: [category] })
       await createLiveProject(FOUNDER, { name: 'No Cat', categories: ['其他'] })
 
-      const res = await app.handle(new Request(`http://localhost/projects?category=${unique}`))
+      const res = await app.handle(new Request(`http://localhost/projects?category=${category}`))
       const body = await res.json()
       expect(body.data.length).toBeGreaterThanOrEqual(1)
       for (const p of body.data) {
-        expect(p.categories).toContain(unique)
+        expect(p.categories).toContain(category)
       }
     })
 
@@ -425,8 +432,8 @@ describe('Project routes', () => {
 
     it('combines filters with AND logic', async () => {
       const unique = `combo-${crypto.randomUUID().slice(0, 8)}`
-      await createLiveProject(FOUNDER, { name: `Combo ${unique}`, stage: 1, categories: [unique] })
-      await createLiveProject(FOUNDER, { name: `Combo Other ${unique}`, stage: 0, categories: [unique] })
+      await createLiveProject(FOUNDER, { name: `Combo ${unique}`, stage: 1, categories: ['开发者工具'] })
+      await createLiveProject(FOUNDER, { name: `Combo Other ${unique}`, stage: 0, categories: ['开发者工具'] })
 
       const res = await app.handle(new Request(`http://localhost/projects?q=${unique}&stage=1`))
       const body = await res.json()
@@ -451,7 +458,7 @@ describe('Project routes', () => {
 
     it('sorts by recently_updated', async () => {
       const project = await createLiveProject(FOUNDER, { name: 'Updated Sort' })
-      const proposal = await proposalService.createProposal(project.id, { tagline: 'updated tagline' })
+      const proposal = await proposalService.createProposal(project.id, { demoLink: 'https://example.com/updated' })
       expect(proposal).not.toBeInstanceOf(Error)
       proposalIds.push((proposal as { id: number }).id)
       await operatorService.approveProposal(OPERATOR, (proposal as { id: number }).id)
@@ -493,7 +500,7 @@ describe('Project routes', () => {
     it('includes expected fields in each list item', async () => {
       await createLiveProject(FOUNDER, {
         name: 'Fields Check',
-        tagline: 'a tagline',
+        tagline: 'a valid project tagline',
         coverUrl: 'https://example.com/cover.png',
         stage: 0,
         categories: ['效率工具'],
@@ -506,7 +513,7 @@ describe('Project routes', () => {
       const item = body.data.find((p: { name: string }) => p.name === 'Fields Check')
       expect(item).toBeDefined()
       expect(item.coverUrl).toBe('https://example.com/cover.png')
-      expect(item.tagline).toBe('a tagline')
+      expect(item.tagline).toBe('a valid project tagline')
       expect(item.stage).toBe(0)
       expect(item.categories).toContain('效率工具')
       expect(item.contactName).toBe('Founder Nick')

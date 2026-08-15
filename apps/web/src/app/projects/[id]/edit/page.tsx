@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { ProjectStatus } from '@shenicest/shared'
 import { getProjectWithAuth } from '@/server/projects'
 import { getFounderProjectAuditReason } from '@/server/founder'
@@ -8,15 +8,12 @@ export const dynamic = 'force-dynamic'
 
 const EDITABLE_STATUSES: number[] = [
   ProjectStatus.Draft,
-  ProjectStatus.PendingReview,
   ProjectStatus.RevisionRequired,
 ]
 
 const PAGE_DESCRIPTIONS: Record<number, string> = {
   [ProjectStatus.Draft]:
     '继续完善你的项目信息。保存草稿后可以随时回来编辑，确认无误后提交审核。',
-  [ProjectStatus.PendingReview]:
-    '项目正在审核中，你仍然可以修改内容。保存后运营将继续审核更新后的内容。',
   [ProjectStatus.RevisionRequired]:
     '运营要求修改你的项目。请根据下方的修改意见调整内容，确认后重新提交审核。',
 }
@@ -33,7 +30,9 @@ export default async function EditDraftPage(props: PageProps<'/projects/[id]/edi
   if (projectId === null) notFound()
 
   const project = await getProjectWithAuth(projectId)
-  if (!project || !EDITABLE_STATUSES.includes(project.status)) notFound()
+  if (!project) notFound()
+  if (project.status === ProjectStatus.PendingReview) redirect(`/founder/projects/${projectId}`)
+  if (!EDITABLE_STATUSES.includes(project.status)) notFound()
 
   const auditReason =
     project.status === ProjectStatus.RevisionRequired

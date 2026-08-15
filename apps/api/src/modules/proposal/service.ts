@@ -4,7 +4,7 @@ import type { Database } from '../../db'
 import { UserIdentityService } from '../user-identity/service'
 import { Role } from '../user-identity/model'
 import {
-  EDITABLE_PROJECT_FIELD_SET,
+  PROPOSAL_EDITABLE_PROJECT_FIELD_SET,
   ForbiddenError,
   InvalidTransitionError,
   ProjectNotFoundError,
@@ -22,8 +22,23 @@ type ProposalRow = typeof projectEditProposals.$inferSelect
 function validateChanges(changes: Record<string, unknown>): ValidationError | null {
   const keys = Object.keys(changes)
   if (keys.length === 0) return new ValidationError('changes must not be empty')
-  const unknown = keys.filter((key) => !EDITABLE_PROJECT_FIELD_SET.has(key))
+  const unknown = keys.filter((key) => !PROPOSAL_EDITABLE_PROJECT_FIELD_SET.has(key))
   if (unknown.length > 0) return new ValidationError(`Unknown field(s) in changes: ${unknown.join(', ')}`)
+  if ('description' in changes) {
+    const length = typeof changes.description === 'string' ? [...changes.description.trim()].length : 0
+    if (length < 100 || length > 2000) return new ValidationError('项目介绍至少100字，至多2000字')
+  }
+  if ('demoLink' in changes && changes.demoLink !== null && changes.demoLink !== '') {
+    try {
+      const url = new URL(String(changes.demoLink))
+      if (url.protocol !== 'http:' && url.protocol !== 'https:') return new ValidationError('请输入正确的链接')
+    } catch {
+      return new ValidationError('请输入正确的链接')
+    }
+  }
+  if ('betaDescription' in changes && typeof changes.betaDescription !== 'string') {
+    return new ValidationError('内测说明格式不正确')
+  }
   return null
 }
 

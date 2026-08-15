@@ -25,7 +25,7 @@ A User who has submitted at least one Project. Identity is explicitly granted (n
 _Avoid_: Creator, author, submitter, owner
 
 **Project**:
-A product submitted by a Founder for review and public display. The Project holds BOTH the lifecycle state AND the source-of-truth content directly — `id`, `user_id`, `status` (tinyint 0-5), all displayable content fields (name, tagline, description, cover, demo assets, stage, categories, contact info, etc.), and timestamps. No separate content table. Pre-live edits (draft, pending review, revision-required rework) modify the Project row directly — editing a Pending Review project keeps it in the review queue. Post-live edits go through a ProjectEditProposal. Only `status=3` (Live) projects appear in public listings.
+A product submitted by a Founder for review and public display. The Project holds BOTH the lifecycle state AND the source-of-truth content directly — `id`, `user_id`, `status` (tinyint 0-5), all displayable content fields (name, tagline, description, cover, demo assets, stage, categories, contact info, etc.), and timestamps. No separate content table. Draft and revision-required edits modify the Project row directly. A Pending Review Project is read-only until the Operator acts. Post-live edits go through a ProjectEditProposal. Only `status=3` (Live) projects appear in public listings.
 _Avoid_: Submission, entry, listing, Version, Snapshot, Revision
 
 **Project Status** (tinyint, single stored field on Project):
@@ -50,12 +50,13 @@ Only one Pending/Revision-Required proposal may exist per Project at a time. Cre
 _Avoid_: Revision, Version, Snapshot, Edit, ChangeRequest, PullRequest
 
 **Proposal creation rules**:
-- Pre-live Project (status 0/1/2): no proposals. Founder edits the Project row directly. Submit transitions status to `1` (Pending Review).
+- Pre-live Project (status 0/2): no proposals. Founder edits the Project row directly. Submit transitions status to `1` (Pending Review). A Project already in status 1 is read-only.
 - Post-live edit (status=3): Founder creates a proposal (status=0) with a `changes` diff. Project row is untouched.
 - Approve proposal: apply the diff to the Project row (partial PATCH of changed fields); proposal status → `1` (Approved). Project stays `status=3` (Live).
 - Reject proposal: proposal status → `2` (Rejected). Project row unchanged.
 - Require revision on proposal: proposal status → `3` (Revision Required). Founder edits the proposal's `changes` diff and resubmits (status back to `0`). No new proposal is created.
 - Constraint: at most one proposal in status `0` or `3` per Project at any time.
+- In 1.0, post-live proposals may change only `description`, `demoLink`, and `betaDescription`.
 
 **Comment**:
 A user's feedback on a Project. In 1.0, comments are NOT publicly displayed — only visible to the Founder and operators in their respective dashboards. No approval gate — submitted comments are immediately visible to Founder/operators. Machine-based content review runs asynchronously and sets `is_flagged` on violations. A user can submit multiple comments on the same project. Comments can only be submitted on Live (`status=3`) projects.

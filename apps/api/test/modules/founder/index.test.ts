@@ -274,7 +274,7 @@ describe('Founder routes', () => {
       const project = await createPending(validProjectBody({ name: 'Reason Latest' }))
       await operatorService.requireProjectRevision(OPERATOR, project.id, 'first reason')
       // Founder reworks and resubmits, operator requires revision again.
-      await projectService.saveDraft(project.id, { description: 'improved description' })
+      await projectService.saveDraft(project.id, { description: validProjectBody().description })
       await projectService.submitForReview(project.id)
       await operatorService.requireProjectRevision(OPERATOR, project.id, 'second reason')
 
@@ -320,8 +320,9 @@ describe('Founder routes', () => {
 
   describe('GET /founder/projects/:id/proposals', () => {
     it('lists the founder\'s own proposals with status, changes, reason, reviewed_at', async () => {
-      const project = await createLive({ name: 'Proposal List', description: 'original description' })
-      const proposal = await proposalService.createProposal(project.id, { description: 'updated' })
+      const originalDescription = validProjectBody().description as string
+      const project = await createLive({ name: 'Proposal List', description: originalDescription })
+      const proposal = await proposalService.createProposal(project.id, { demoLink: 'https://example.com/updated' })
       const proposalId = (proposal as { id: number }).id
       await operatorService.approveProposal(OPERATOR, proposalId)
 
@@ -331,13 +332,13 @@ describe('Founder routes', () => {
       expect(body.total).toBe(1)
       expect(body.data[0].id).toBe(proposalId)
       expect(body.data[0].status).toBe(ProposalStatus.Approved)
-      expect(body.data[0].changes).toEqual({ description: 'updated' })
+      expect(body.data[0].changes).toEqual({ demoLink: 'https://example.com/updated' })
       expect(body.data[0].reviewedAt).toBeDefined()
     })
 
     it('returns 403 for another founder\'s project', async () => {
       const project = await createLive({ name: 'Proposal Owned' })
-      await proposalService.createProposal(project.id, { description: 'x' })
+      await proposalService.createProposal(project.id, { demoLink: 'https://example.com/x' })
       const res = await founderGet(`/projects/${project.id}/proposals`, otherToken)
       expect(res.status).toBe(403)
     })

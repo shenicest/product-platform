@@ -1,7 +1,8 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { redirect, notFound } from 'next/navigation'
-import { ProjectStatus } from '@shenicest/shared'
+import { ProjectStatus, ProposalStatus } from '@shenicest/shared'
 import { getProjectWithAuth } from '@/server/projects'
 import {
   getFounderProjectAuditReason,
@@ -57,6 +58,10 @@ export default async function FounderProjectPage(
     getFounderProjectProposals(projectId),
     needsAuditReason ? getFounderProjectAuditReason(projectId) : Promise.resolve(null),
   ])
+  const activeProposal = proposals?.data.find((proposal) =>
+    proposal.status === ProposalStatus.Pending ||
+    proposal.status === ProposalStatus.RevisionRequired
+  )
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
@@ -67,6 +72,22 @@ export default async function FounderProjectPage(
         <h1 className="mt-3 text-[clamp(28px,4vw,40px)] font-bold leading-[1.1]">
           {project.name}
         </h1>
+        {project.status === ProjectStatus.Live ? (
+          <div className="mt-5">
+            {activeProposal?.status === ProposalStatus.Pending ? (
+              <span className="font-mono text-xs text-muted-foreground">
+                修改提案正在审核中，暂时不能再次提交
+              </span>
+            ) : (
+              <Link
+                href={`/founder/projects/${projectId}/proposal`}
+                className="btn-hard btn-primary inline-flex"
+              >
+                {activeProposal?.status === ProposalStatus.RevisionRequired ? '修改提案并重新提交' : '修改已上线项目'}
+              </Link>
+            )}
+          </div>
+        ) : null}
       </header>
 
       <ProjectDetail project={project} backHref="/founder/dashboard" showLike={false} />

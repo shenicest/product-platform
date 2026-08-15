@@ -1,6 +1,7 @@
 import { t } from 'elysia'
 import { InsertProject, SelectProject } from '../../db/schema'
 import { PublicFounder, PublicProfile } from '../user/model'
+import { CATEGORIES } from '@shenicest/shared'
 
 export const ProjectStatus = {
   Draft: 0,
@@ -57,6 +58,13 @@ export type EditableProjectField = (typeof EDITABLE_PROJECT_FIELDS)[number]
 
 export const EDITABLE_PROJECT_FIELD_SET = new Set<string>(EDITABLE_PROJECT_FIELDS)
 
+export const PROPOSAL_EDITABLE_PROJECT_FIELDS = [
+  'description',
+  'demoLink',
+  'betaDescription',
+] as const
+export const PROPOSAL_EDITABLE_PROJECT_FIELD_SET = new Set<string>(PROPOSAL_EDITABLE_PROJECT_FIELDS)
+
 // Fields that must be filled before a Project can be submitted for review, ordered
 // as the submission form displays them so the first missing field reported matches
 // what the Founder sees. `betaDescription` is conditionally required when
@@ -66,8 +74,8 @@ export const SUBMISSION_REQUIRED_FIELDS = [
   'tagline',
   'categories',
   'stage',
-  'coverUrl',
   'description',
+  'coverUrl',
   'targetUsers',
   'userProblem',
   'progress',
@@ -81,7 +89,17 @@ export type SubmissionRequiredField = (typeof SUBMISSION_REQUIRED_FIELDS)[number
 // Create + save-draft body: `name` is required (the minimum field), every other
 // editable field is optional so a Founder can fill the project in incrementally.
 // `name` stays required because InsertProject marks the not-null column required.
-export const ProjectDraftBody = t.Pick(InsertProject, [...EDITABLE_PROJECT_FIELDS])
+const ProjectDraftBase = t.Omit(t.Pick(InsertProject, [...EDITABLE_PROJECT_FIELDS]), ['stage', 'categories'])
+export const ProjectDraftBody = t.Intersect([
+  ProjectDraftBase,
+  t.Object({
+    stage: t.Optional(t.Union([t.Literal(ProjectStage.MVP), t.Literal(ProjectStage.Growth), t.Null()])),
+    categories: t.Optional(t.Union([
+      t.Array(t.Union(CATEGORIES.map((category) => t.Literal(category))), { uniqueItems: true }),
+      t.Null(),
+    ])),
+  }),
+])
 export type ProjectDraftBody = typeof ProjectDraftBody.static
 
 export const ProjectIdParams = t.Object({
@@ -165,8 +183,8 @@ export class ForbiddenError extends DomainError {
 export class MissingRequiredFieldError extends DomainError {
   readonly field: string
 
-  constructor(field: string) {
-    super('MISSING_REQUIRED_FIELD', `Missing required field: ${field}`)
+  constructor(field: string, message = `Missing required field: ${field}`, code = 'MISSING_REQUIRED_FIELD') {
+    super(code, message)
     this.field = field
   }
 }

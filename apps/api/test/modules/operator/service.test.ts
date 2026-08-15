@@ -148,34 +148,35 @@ describe('OperatorService', () => {
   describe('proposal transitions', () => {
     it('approve applies the diff and keeps the project Live (0 → 1)', async () => {
       const project = await createLive()
-      const proposal = await proposalService.createProposal(project.id, { description: 'updated' })
+      const proposal = await proposalService.createProposal(project.id, { demoLink: 'https://example.com/updated' })
       const result = await service.approveProposal(TEST_OPERATOR, (proposal as { id: number }).id)
       expect((result as { status: number }).status).toBe(ProposalStatus.Approved)
       const updatedProject = await projectService.getProject(project.id)
       expect(updatedProject!.status).toBe(ProjectStatus.Live)
-      expect(updatedProject!.description).toBe('updated')
+      expect(updatedProject!.demoLink).toBe('https://example.com/updated')
     })
 
     it('reject leaves the project row unchanged (0 → 2)', async () => {
       const project = await createLive()
-      const proposal = await proposalService.createProposal(project.id, { description: 'updated' })
+      const originalDescription = project.description
+      const proposal = await proposalService.createProposal(project.id, { demoLink: 'https://example.com/updated' })
       const result = await service.rejectProposal(TEST_OPERATOR, (proposal as { id: number }).id, 'no thanks')
       expect((result as { status: number }).status).toBe(ProposalStatus.Rejected)
       const unchanged = await projectService.getProject(project.id)
-      expect(unchanged!.description).toBe('original description')
+      expect(unchanged!.description).toBe(originalDescription)
       expect(unchanged!.status).toBe(ProjectStatus.Live)
     })
 
     it('require-revision moves the proposal to Revision Required (0 → 3)', async () => {
       const project = await createLive()
-      const proposal = await proposalService.createProposal(project.id, { description: 'updated' })
+      const proposal = await proposalService.createProposal(project.id, { demoLink: 'https://example.com/updated' })
       const result = await service.requireProposalRevision(TEST_OPERATOR, (proposal as { id: number }).id, 'clarify')
       expect((result as { status: number }).status).toBe(ProposalStatus.RevisionRequired)
     })
 
     it('rejects approving an already-approved proposal', async () => {
       const project = await createLive()
-      const proposal = await proposalService.createProposal(project.id, { description: 'updated' })
+      const proposal = await proposalService.createProposal(project.id, { demoLink: 'https://example.com/updated' })
       const proposalId = (proposal as { id: number }).id
       await service.approveProposal(TEST_OPERATOR, proposalId)
       const result = await service.approveProposal(TEST_OPERATOR, proposalId)
@@ -184,7 +185,7 @@ describe('OperatorService', () => {
 
     it('rejects rejecting an already-rejected proposal', async () => {
       const project = await createLive()
-      const proposal = await proposalService.createProposal(project.id, { description: 'x' })
+      const proposal = await proposalService.createProposal(project.id, { demoLink: 'https://example.com/x' })
       const proposalId = (proposal as { id: number }).id
       await service.rejectProposal(TEST_OPERATOR, proposalId, 'no')
       const result = await service.rejectProposal(TEST_OPERATOR, proposalId, 'no again')
@@ -193,7 +194,7 @@ describe('OperatorService', () => {
 
     it('rejects requiring revision on an approved proposal', async () => {
       const project = await createLive()
-      const proposal = await proposalService.createProposal(project.id, { description: 'x' })
+      const proposal = await proposalService.createProposal(project.id, { demoLink: 'https://example.com/x' })
       const proposalId = (proposal as { id: number }).id
       await service.approveProposal(TEST_OPERATOR, proposalId)
       const result = await service.requireProposalRevision(TEST_OPERATOR, proposalId, 'x')
@@ -205,14 +206,14 @@ describe('OperatorService', () => {
     it('overwrites only the changed fields, preserving the rest', async () => {
       const project = await createLive({
         name: 'Product',
-        description: 'original description',
-        tagline: 'original tagline',
+        tagline: 'original valid tagline',
       })
-      const proposal = await proposalService.createProposal(project.id, { description: 'only this changes' })
+      const changedDescription = `${validProjectBody().description} 补充修改。`
+      const proposal = await proposalService.createProposal(project.id, { description: changedDescription })
       await service.approveProposal(TEST_OPERATOR, (proposal as { id: number }).id)
       const updated = await projectService.getProject(project.id)
-      expect(updated!.description).toBe('only this changes')
-      expect(updated!.tagline).toBe('original tagline')
+      expect(updated!.description).toBe(changedDescription)
+      expect(updated!.tagline).toBe('original valid tagline')
       expect(updated!.name).toBe('Product')
     })
   })
@@ -267,7 +268,7 @@ describe('OperatorService', () => {
 
     it('proposal-level approve sets proposalId', async () => {
       const project = await createLive()
-      const proposal = await proposalService.createProposal(project.id, { description: 'x' })
+      const proposal = await proposalService.createProposal(project.id, { demoLink: 'https://example.com/x' })
       const proposalId = (proposal as { id: number }).id
       await service.approveProposal(TEST_OPERATOR, proposalId)
       const rows = await auditRowsFor(project.id)
@@ -278,7 +279,7 @@ describe('OperatorService', () => {
 
     it('proposal-level reject records reason and proposalId', async () => {
       const project = await createLive()
-      const proposal = await proposalService.createProposal(project.id, { description: 'x' })
+      const proposal = await proposalService.createProposal(project.id, { demoLink: 'https://example.com/x' })
       const proposalId = (proposal as { id: number }).id
       await service.rejectProposal(TEST_OPERATOR, proposalId, 'nope')
       const rows = await auditRowsFor(project.id)
@@ -289,7 +290,7 @@ describe('OperatorService', () => {
 
     it('proposal-level require-revision records reason and proposalId', async () => {
       const project = await createLive()
-      const proposal = await proposalService.createProposal(project.id, { description: 'x' })
+      const proposal = await proposalService.createProposal(project.id, { demoLink: 'https://example.com/x' })
       const proposalId = (proposal as { id: number }).id
       await service.requireProposalRevision(TEST_OPERATOR, proposalId, 'clarify')
       const rows = await auditRowsFor(project.id)
