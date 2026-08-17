@@ -82,3 +82,33 @@ _Avoid_: Vote, Star, Heart, Favorite, Reaction
 **Follow**:
 A directional relationship from a follower User to a followee User with the Founder role. The Follow is anchored on the **User** (not on any single Project), so if the same User later gains additional roles or publishes more projects, one Follow covers all their work. Targets must currently hold `role=founder` in UserIdentity — following a non-Founder returns 400 `NotAFounder`. Self-follow is disallowed (400 `CannotFollowSelf`). Uniquely keyed on `(follower_user_id, followee_user_id)`. POST/DELETE endpoints are idempotent. **No denormalized `follower_count` column** — follower counts are computed on demand via COUNT (see ADR-0008). If the target User's `founder` role were ever revoked, existing Follow rows are retained (analog to Like retention on delisted projects); new follows would be blocked by the role check.
 _Avoid_: Subscribe, Watch, Friend, Connection
+
+**TalentProfile**:
+A User's structured public profile in Talent Plaza. A User has at most one TalentProfile. It is independent of Founder identity: creating one does not grant the Founder role. `Published` profiles are discoverable; `Paused` profiles are hidden from discovery but the User may still initiate connections and process Pending requests received while Published; `Suspended` profiles are removed by an Operator and cannot participate in connection operations. A TalentProfile state describes the profile, not a general ban on the User. P0 does not provide self-service deletion; a User pauses the profile to stop public discovery.
+_Avoid_: Resume, CV, MemberProfile
+
+**ConnectionRequest**:
+A User's cooperation request to another User who has a Published TalentProfile. The sender must be authenticated but does not need a TalentProfile; if the sender has one, it must not be Suspended. The request may optionally reference a Live Project owned by the sender. The receiver's Published status is required when the request is created. A request carries the sender's locked, per-request contact authorization and, after acceptance, the receiver's locked contact authorization.
+_Avoid_: Connection, Invitation, Follow
+
+ConnectionRequest does not require a TalentProfile from the sender. A referenced Project is valid only when it is Live and owned by the sender at request creation time; TalentProfile and Project ownership remain separate concerns.
+
+ConnectionRequest reads the current public TalentProfile and shared User identity when displaying participants; it does not snapshot TalentProfile fields. A missing sender TalentProfile is displayed explicitly rather than represented by fabricated profile fields. Referenced Project information is also read from the current Project state; a delisted Project is shown as unavailable without cancelling the request.
+
+Each side authorizes at least one contact method per request; each side may provide at most one WeChat ID and one email address. The sender authorizes when creating the request, and the receiver authorizes when accepting it. These per-request authorizations are locked after the relevant operation and cannot be edited or withdrawn in P0.
+
+Once either direction between two Users is `Accepted`, the pair is considered connected and neither direction may create another ConnectionRequest. The request itself remains directional, while the established connection is mutual.
+
+An `Ignored` request may be followed by a new request immediately; P0 has no ignore cooldown. At most one Pending request may exist for a User pair at a time, and an Accepted request in either direction blocks future requests.
+
+**Talent matching**:
+P0 matching is a detail-page aid, not a list-ranking mechanism. A match score and readable reasons are shown only when both the viewer and candidate have Published TalentProfiles. They are hidden for visitors, users without a TalentProfile, and either profile in another state. A score of zero is shown as “暂无明显匹配” rather than as a numeric score.
+
+**Skill catalog**:
+P0 uses a fixed standard skill list. Talent Plaza does not provide Operator skill enable/disable/add management or user-created skills in P0.
+
+P0 TalentProfile creation has no server-side Draft state. Before first publication, edits are temporary browser-local data only. The first successful publish creates the TalentProfile; subsequent edits update the existing profile directly.
+
+`Suspended` is terminal in P0. There is no Operator restore or appeal workflow in Talent Plaza; the profile owner is directed to contact operations.
+
+P0 Operator capabilities for Talent Plaza are limited to searching/viewing TalentProfiles, suspending a profile with a reason, and viewing the suspension audit record. P0 has no skill-catalog management, User-level connection ban, in-product report inbox, contact-method access, or profile restoration.

@@ -128,3 +128,19 @@ export function followFounder(userId: string) {
 export function unfollowFounder(userId: string) {
   return request<{ followed: boolean; followerCount: number }>('DELETE', `/founders/${userId}/follow`)
 }
+
+import type { TalentBody, TalentConnection, TalentManagement, TalentProfile } from '@/lib/talent'
+export function listTalents(query: Record<string, string | number | undefined>) { return request<{ data: TalentProfile[]; total: number }>('GET', `/talents?${new URLSearchParams(Object.entries(query).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)]))}`) }
+export function getTalent(userId: string) { return request<TalentProfile>('GET', `/talents/${encodeURIComponent(userId)}`) }
+export function getMyTalent() { return request<TalentManagement>('GET', '/talents/me') }
+export function saveTalent(body: TalentBody, mode: 'publish' | 'update' | 'resume' = 'publish') { return request<TalentManagement>(mode === 'update' ? 'PUT' : 'POST', mode === 'resume' ? '/talents/me/resume' : '/talents/me', body) }
+export function pauseTalent() { return request<TalentManagement>('POST', '/talents/me/pause') }
+export function getConnections() { return request<{ data: TalentConnection[]; total: number; pendingReceived: number }>('GET', '/talents/connections') }
+export function sendTalentConnection(body: { receiverUserId: string; projectId?: number; purpose: string; message: string; wechat?: string; email?: string }) { return request<TalentConnection>('POST', '/talents/connections', body) }
+export function acceptTalentConnection(id: number, body: { wechat?: string; email?: string }) { return request<TalentConnection>('POST', `/talents/connections/${id}/accept`, body) }
+export function ignoreTalentConnection(id: number) { return request<TalentConnection>('POST', `/talents/connections/${id}/ignore`) }
+export function getTalentContacts(id: number) { return request<TalentConnection['contacts']>('GET', `/talents/connections/${id}/contacts`) }
+export function listOperatorTalents(query: Record<string, string | number | undefined>) { return request<TalentManagement[]>('GET', `/operator/talents?${new URLSearchParams(Object.entries(query).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)]))}`) }
+export function getOperatorTalent(userId: string) { return request<TalentManagement>('GET', `/operator/talents/${encodeURIComponent(userId)}`) }
+export function getTalentAudit(userId: string) { return request<Array<Record<string, unknown>>>('GET', `/operator/talents/${encodeURIComponent(userId)}/suspension-audit`) }
+export function suspendTalent(userId: string, reason: string) { return request<TalentManagement>('POST', `/operator/talents/${encodeURIComponent(userId)}/suspend`, { reason }) }

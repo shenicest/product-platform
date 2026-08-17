@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>SHE NICEST / 人才广场示意图</title>
+    <style>
+      :root { --void:#08080b; --surface:#15141a; --surface-2:#1c1a21; --pink:#ff2da6; --deep:#91245f; --white:#f7f7f4; --muted:#a8a5ae; --line:#3d3740; --green:#a6e3b0; }
+      * { box-sizing:border-box; }
+      html { background:var(--void); color:var(--white); font-family: "HarmonyOS Sans SC", "PingFang SC", Arial, sans-serif; }
+      body { margin:0; min-width:320px; background:radial-gradient(circle at 78% 4%, rgba(112,35,99,.24), transparent 28%), var(--void); }
+      body:before { content:""; position:fixed; inset:0; pointer-events:none; opacity:.11; background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,45,166,.025) 1px,transparent 1px); background-size:4px 4px; }
+      a { color:inherit; text-decoration:none; }
+      button, input, select { font:inherit; }
+      button { cursor:pointer; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .topline { height:8px; background:repeating-linear-gradient(55deg,var(--deep) 0 15px,transparent 15px 29px); }
+      header { position:sticky; top:0; z-index:5; border-bottom:1px solid var(--line); background:rgba(8,8,11,.9); backdrop-filter:blur(12px); }
+      .nav { max-width:1180px; height:64px; margin:auto; padding:0 22px; display:flex; align-items:center; justify-content:space-between; gap:20px; }
+      .brand { font-size:21px; letter-spacing:.02em; white-space:nowrap; }
+      .brand b { color:var(--pink); }
+      nav { display:flex; gap:26px; color:var(--muted); font-size:14px; }
+      nav a:hover, nav a.active { color:var(--pink); }
+      .status { color:var(--muted); font-size:11px; white-space:nowrap; }
+      .status i { display:inline-block; width:7px; height:7px; margin-right:7px; background:var(--pink); box-shadow:0 0 10px var(--pink); }
+      main { max-width:1180px; margin:auto; padding:58px 22px 90px; }
+      .hero { display:grid; grid-template-columns:1.2fr .8fr; gap:42px; align-items:end; padding-bottom:42px; border-bottom:1px solid var(--line); }
+      .eyebrow { color:var(--pink); font-size:11px; letter-spacing:.16em; text-transform:uppercase; }
+      h1 { margin:14px 0 15px; max-width:640px; font-size:clamp(42px,7vw,78px); line-height:.94; letter-spacing:-.055em; }
+      .hero p { max-width:570px; margin:0; color:var(--muted); font-size:16px; line-height:1.7; }
+      .profile-signal { border:1px solid var(--line); background:var(--surface); padding:20px; position:relative; }
+      .profile-signal:before { content:""; position:absolute; left:-2px; top:-2px; width:30px; height:30px; border-left:3px solid var(--pink); border-top:3px solid var(--pink); }
+      .signal-head { display:flex; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line); padding-bottom:16px; }
+      .signal-name { font-weight:700; font-size:18px; }
+      .signal-score { color:var(--pink); font-size:34px; line-height:1; }
+      .signal-meta { color:var(--muted); font-size:12px; margin-top:5px; }
+      .skill-bars { display:grid; gap:10px; margin-top:17px; }
+      .bar-row { display:grid; grid-template-columns:82px 1fr 33px; gap:9px; align-items:center; font-size:12px; }
+      .bar { height:5px; background:#342f39; } .bar span { display:block; height:100%; background:var(--pink); }
+      .layout { display:grid; grid-template-columns:220px 1fr; gap:32px; padding-top:34px; }
+      aside { border-right:1px solid var(--line); padding-right:25px; }
+      .filter-title { margin-bottom:17px; font-size:12px; color:var(--muted); letter-spacing:.12em; }
+      label { display:block; color:var(--muted); font-size:12px; margin:18px 0 7px; }
+      input, select { width:100%; border:1px solid var(--line); border-radius:0; padding:10px 11px; background:var(--surface); color:var(--white); outline:none; }
+      input:focus, select:focus { border-color:var(--pink); }
+      .check { display:flex; align-items:center; gap:8px; margin:11px 0; color:var(--muted); font-size:13px; }
+      .check input { width:auto; accent-color:var(--pink); }
+      .reset { width:100%; border:1px solid var(--line); padding:10px; color:var(--muted); background:transparent; margin-top:18px; }
+      .reset:hover { color:var(--pink); border-color:var(--pink); }
+      .results-head { display:flex; align-items:end; justify-content:space-between; gap:15px; margin-bottom:18px; }
+      h2 { margin:0; font-size:28px; letter-spacing:-.04em; }
+      .result-count { color:var(--muted); font-size:12px; }
+      .result-count strong { color:var(--pink); font-size:18px; }
+      .sort { width:145px; padding:8px; font-size:12px; }
+      .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+      .people { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+      .person { min-height:300px; border:1px solid var(--line); background:rgba(21,20,26,.9); padding:18px; display:flex; flex-direction:column; transition:transform .16s,border-color .16s; }
+      .person:hover { transform:translateY(-3px); border-color:var(--pink); }
+      .person-top { display:flex; justify-content:space-between; gap:14px; }
+      .identity { display:flex; gap:12px; min-width:0; }
+      .avatar { width:46px; height:46px; display:grid; place-items:center; flex:none; background:var(--deep); color:var(--white); border:1px solid var(--pink); font-weight:800; }
+      .person h3 { margin:1px 0 3px; font-size:17px; }
+      .role { color:var(--muted); font-size:12px; }
+      .match { text-align:right; color:var(--pink); font-size:27px; line-height:1; }
+      .match small { display:block; margin-top:5px; color:var(--muted); font-size:10px; letter-spacing:.08em; }
+      .bio { min-height:48px; margin:18px 0 14px; color:var(--muted); font-size:13px; line-height:1.6; }
+      .tags { display:flex; flex-wrap:wrap; gap:6px; }
+      .tag { border:1px solid var(--line); padding:5px 7px; color:var(--white); font-size:11px; }
+      .tag.good { color:var(--green); border-color:#40664b; }
+      .why { border-top:1px solid var(--line); margin-top:18px; padding-top:12px; color:var(--muted); font-size:11px; }
+      .why b { color:var(--pink); font-weight:400; }
+      .card-actions { display:flex; gap:8px; margin-top:auto; padding-top:17px; }
+      .action { flex:1; border:1px solid var(--pink); background:transparent; color:var(--pink); padding:10px 8px; font-size:12px; }
+      .action.primary { background:var(--pink); color:var(--void); font-weight:700; }
+      .action:hover { transform:translate(-1px,-1px); box-shadow:3px 3px 0 var(--deep); }
+      .empty { display:none; grid-column:1/-1; border:1px dashed var(--line); padding:50px 20px; text-align:center; color:var(--muted); }
+      .toast { position:fixed; right:22px; bottom:22px; z-index:9; display:none; border:1px solid var(--pink); background:var(--surface); padding:13px 16px; color:var(--white); font-size:13px; box-shadow:5px 5px 0 var(--deep); }
+      @media (max-width:800px) { nav { display:none; } .hero { grid-template-columns:1fr; gap:28px; } .layout { grid-template-columns:1fr; } aside { border-right:0; border-bottom:1px solid var(--line); padding:0 0 22px; } .filter-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 12px; } .filter-grid label:first-child { grid-column:1/-1; } }
+      @media (max-width:560px) { main { padding:38px 16px 70px; } .nav { padding:0 16px; } .status { display:none; } h1 { font-size:48px; } .people { grid-template-columns:1fr; } .filter-grid { display:block; } .results-head { align-items:start; flex-direction:column; } .sort { width:100%; } }
+    </style>
+  </head>
+  <body>
+    <div class="topline"></div>
+    <header>
+      <div class="nav">
+        <a class="brand mono" href="#">SHE<span><b>NICEST</b>:</span></a>
+        <nav><a href="#">发现项目</a><a class="active" href="#plaza">人才广场</a><a href="#">我的关注</a><a href="#">黑客松专区</a></nav>
+        <div class="status mono"><i></i>SYSTEM ONLINE&nbsp;&nbsp;2026</div>
+      </div>
+    </header>
+    <main id="plaza">
+      <section class="hero">
+        <div>
+          <div class="eyebrow mono">PEOPLE / 01 &nbsp;·&nbsp; TALENT SIGNAL</div>
+          <h1>找到下一位<br /><span style="color:var(--pink)">合作者。</span></h1>
+          <p>从技能、项目和合作方式出发，发现与你真正互补的人。每一个匹配，都告诉你为什么。</p>
+        </div>
+        <div class="profile-signal">
+          <div class="signal-head"><div><div class="signal-name">你的技能画像</div><div class="signal-meta mono">PROFILE / ACTIVE</div></div><div class="signal-score mono">07</div></div>
+          <div class="skill-bars"><div class="bar-row"><span>产品策略</span><div class="bar"><span style="width:88%"></span></div><b>88</b></div><div class="bar-row"><span>用户研究</span><div class="bar"><span style="width:76%"></span></div><b>76</b></div><div class="bar-row"><span>内容增长</span><div class="bar"><span style="width:62%"></span></div><b>62</b></div></div>
+          <div class="signal-meta" style="margin-top:18px">已找到 <b style="color:var(--pink)">24</b> 位潜在合作者</div>
+        </div>
+      </section>
+      <div class="layout">
+        <aside>
+          <div class="filter-title mono">FILTER / 筛选人才</div>
+          <div class="filter-grid">
+            <label for="search">关键词</label><input id="search" placeholder="搜索姓名、技能或项目" />
+            <label for="role">角色</label><select id="role"><option value="">全部角色</option><option>产品 / 运营</option><option>设计</option><option>工程</option><option>增长 / 内容</option></select>
+            <label for="mode">合作方式</label><select id="mode"><option value="">不限</option><option>远程</option><option>线下</option><option>短期项目</option></select>
+          </div>
+          <label class="check"><input type="checkbox" id="online" /> 近期活跃</label>
+          <label class="check"><input type="checkbox" id="compatible" /> 只看互补技能</label>
+          <button class="reset" id="reset">重置筛选</button>
+        </aside>
+        <section>
+          <div class="results-head"><div><h2>推荐人才</h2><div class="result-count mono">MATCHED <strong id="count">06</strong> PROFILES</div></div><label class="sr-only" for="sort">排序方式</label><select class="sort" id="sort"><option value="match">按匹配度</option><option value="active">最近活跃</option><option value="new">最新加入</option></select></div>
+          <div class="people" id="people">
+            <article class="person" data-search="林默 产品策略 用户研究 web3 远程" data-role="产品 / 运营" data-match="94" data-compatible="true"><div class="person-top"><div class="identity"><div class="avatar">LM</div><div><h3>林默</h3><div class="role">产品策略 · 创业者</div></div></div><div class="match mono">94<small>MATCH</small></div></div><div class="bio">擅长把模糊的想法拆成可以验证的产品路径，正在寻找懂工程的长期伙伴。</div><div class="tags"><span class="tag good">产品策略</span><span class="tag good">用户研究</span><span class="tag">Web3</span></div><div class="why">匹配原因：<b>3 项互补技能</b> · 共同关注早期项目</div><div class="card-actions"><button class="action" data-profile="林默">查看档案</button><button class="action primary" data-connect="林默">发起连接</button></div></article>
+            <article class="person" data-search="周子晴 品牌设计 视觉设计 内容增长 远程" data-role="设计" data-match="89" data-compatible="true"><div class="person-top"><div class="identity"><div class="avatar">ZQ</div><div><h3>周子晴</h3><div class="role">品牌设计 · 视觉顾问</div></div></div><div class="match mono">89<small>MATCH</small></div></div><div class="bio">帮助早期团队建立清晰的品牌表达，也喜欢参与产品定义和用户体验讨论。</div><div class="tags"><span class="tag good">品牌设计</span><span class="tag good">视觉系统</span><span class="tag">内容增长</span></div><div class="why">匹配原因：<b>共同关注独立产品</b> · 接受短期合作</div><div class="card-actions"><button class="action" data-profile="周子晴">查看档案</button><button class="action primary" data-connect="周子晴">发起连接</button></div></article>
+            <article class="person" data-search="陈一鸣 全栈开发 工程 AI 工具 线下" data-role="工程" data-match="86" data-compatible="true"><div class="person-top"><div class="identity"><div class="avatar">CY</div><div><h3>陈一鸣</h3><div class="role">全栈工程师 · Builder</div></div></div><div class="match mono">86<small>MATCH</small></div></div><div class="bio">从 0 到 1 做过多次工具产品，偏好快速原型和小团队协作，周末可投入。</div><div class="tags"><span class="tag good">全栈开发</span><span class="tag good">AI 工具</span><span class="tag">原型</span></div><div class="why">匹配原因：<b>技能高度互补</b> · 都接受小团队协作</div><div class="card-actions"><button class="action" data-profile="陈一鸣">查看档案</button><button class="action primary" data-connect="陈一鸣">发起连接</button></div></article>
+            <article class="person" data-search="许安 内容增长 社区运营 播客 远程" data-role="增长 / 内容" data-match="78" data-compatible="false"><div class="person-top"><div class="identity"><div class="avatar">XA</div><div><h3>许安</h3><div class="role">内容增长 · 社区主理人</div></div></div><div class="match mono">78<small>MATCH</small></div></div><div class="bio">关注有长期价值的产品和社区，擅长把用户故事变成可持续的内容栏目。</div><div class="tags"><span class="tag">内容增长</span><span class="tag">社区运营</span><span class="tag">播客</span></div><div class="why">匹配原因：<b>共同关注创作者工具</b> · 近 7 天活跃</div><div class="card-actions"><button class="action" data-profile="许安">查看档案</button><button class="action primary" data-connect="许安">发起连接</button></div></article>
+            <article class="person" data-search="苏禾 UX 交互设计 用户研究 远程" data-role="设计" data-match="74" data-compatible="true"><div class="person-top"><div class="identity"><div class="avatar">SH</div><div><h3>苏禾</h3><div class="role">UX 设计师 · 研究者</div></div></div><div class="match mono">74<small>MATCH</small></div></div><div class="bio">用研究和原型帮助团队减少猜测，目前希望参与有真实用户的产品。</div><div class="tags"><span class="tag good">UX</span><span class="tag good">用户研究</span><span class="tag">交互设计</span></div><div class="why">匹配原因：<b>2 项共同技能</b> · 接受远程合作</div><div class="card-actions"><button class="action" data-profile="苏禾">查看档案</button><button class="action primary" data-connect="苏禾">发起连接</button></div></article>
+            <article class="person" data-search="何川 数据分析 增长策略 SaaS 线下" data-role="增长 / 内容" data-match="68" data-compatible="false"><div class="person-top"><div class="identity"><div class="avatar">HC</div><div><h3>何川</h3><div class="role">增长策略 · 数据分析</div></div></div><div class="match mono">68<small>MATCH</small></div></div><div class="bio">关注产品增长中的真实数据和实验设计，喜欢和产品团队一起复盘。</div><div class="tags"><span class="tag">数据分析</span><span class="tag">增长策略</span><span class="tag">SaaS</span></div><div class="why">匹配原因：<b>共同关注 SaaS</b> · 可参与项目复盘</div><div class="card-actions"><button class="action" data-profile="何川">查看档案</button><button class="action primary" data-connect="何川">发起连接</button></div></article>
+            <div class="empty" id="empty">NO SIGNAL<br /><span style="display:block;margin-top:9px">没有符合条件的人才，试试放宽筛选条件。</span></div>
+          </div>
+        </section>
+      </div>
+    </main>
+    <div class="toast" id="toast"></div>
+    <script>
+      const cards=[...document.querySelectorAll('.person')], search=document.querySelector('#search'), role=document.querySelector('#role'), mode=document.querySelector('#mode'), online=document.querySelector('#online'), compatible=document.querySelector('#compatible'), count=document.querySelector('#count'), empty=document.querySelector('#empty'), toast=document.querySelector('#toast');
+      function filter(){ const q=search.value.trim().toLowerCase(); let shown=0; cards.forEach(card=>{ const ok=(!q||card.dataset.search.includes(q))&&(!role.value||card.dataset.role===role.value)&&(!mode.value||card.dataset.search.includes(mode.value==='短期项目'?'短期':mode.value))&&(!compatible.checked||card.dataset.compatible==='true')&&(!online.checked||Number(card.dataset.match)>=78); card.style.display=ok?'flex':'none'; if(ok) shown++; }); count.textContent=String(shown).padStart(2,'0'); empty.style.display=shown?'none':'block'; }
+      [search,role,mode,online,compatible].forEach(el=>el.addEventListener('input',filter));
+      document.querySelector('#reset').addEventListener('click',()=>{search.value='';role.value='';mode.value='';online.checked=false;compatible.checked=false;filter();});
+      document.querySelector('#sort').addEventListener('change',e=>{ const list=document.querySelector('#people'); cards.sort((a,b)=>e.target.value==='match'?Number(b.dataset.match)-Number(a.dataset.match):0).forEach(c=>list.appendChild(c)); });
+      document.addEventListener('click',e=>{const button=e.target.closest('button'); if(!button)return; const name=button.dataset.connect||button.dataset.profile; if(name){toast.textContent=button.dataset.connect?'已向 '+name+' 发出连接请求':'正在打开 '+name+' 的公开档案'; toast.style.display='block'; setTimeout(()=>toast.style.display='none',2200);}});
+    </script>
+  </body>
+</html>

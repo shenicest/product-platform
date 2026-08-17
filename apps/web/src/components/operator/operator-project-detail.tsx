@@ -121,6 +121,7 @@ export function OperatorProjectDetail({
   const isPendingReview = project.status === ProjectStatus.PendingReview
   const isLive = project.status === ProjectStatus.Live
   const isDelisted = project.status === ProjectStatus.Delisted
+  const demoImages = (project.demoImages ?? []).filter((src) => typeof src === 'string' && src.trim())
 
   return (
     <div className="space-y-8">
@@ -147,6 +148,17 @@ export function OperatorProjectDetail({
           </span>
           <ProjectBadges stage={project.stage} categories={project.categories} />
         </div>
+
+        {project.coverUrl ? (
+          <div className="mt-5 overflow-hidden border border-border bg-muted">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={project.coverUrl}
+              alt={`${project.name}封面`}
+              className="aspect-video w-full object-cover"
+            />
+          </div>
+        ) : null}
 
         {project.tagline ? (
           <p className="mt-4 text-lg text-muted-foreground">{project.tagline}</p>
@@ -186,7 +198,56 @@ export function OperatorProjectDetail({
               <dd className="mt-1">{project.nextSteps}</dd>
             </div>
           ) : null}
+          {project.messageToUsers ? (
+            <div>
+              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">想对用户说的话</dt>
+              <dd className="mt-1 whitespace-pre-line">{project.messageToUsers}</dd>
+            </div>
+          ) : null}
+          {project.isOpenForBeta !== null ? (
+            <div>
+              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">内测状态</dt>
+              <dd className="mt-1">{project.isOpenForBeta ? '正在开放内测' : '暂未开放内测'}</dd>
+            </div>
+          ) : null}
+          {project.betaDescription ? (
+            <div>
+              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">内测说明</dt>
+              <dd className="mt-1 whitespace-pre-line">{project.betaDescription}</dd>
+            </div>
+          ) : null}
         </div>
+
+        {project.demoLink || project.demoVideoUrl || demoImages.length > 0 ? (
+          <section className="mt-6 border border-border p-4">
+            <h3 className="font-mono text-[10px] tracking-[0.12em] text-primary">DEMO MATERIALS</h3>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {project.demoLink ? (
+                <a href={project.demoLink} target="_blank" rel="noopener noreferrer" className="btn-hard btn-secondary px-3 py-2 text-xs">
+                  访问产品链接
+                </a>
+              ) : null}
+              {project.demoVideoUrl ? (
+                <a href={project.demoVideoUrl} target="_blank" rel="noopener noreferrer" className="btn-hard btn-secondary px-3 py-2 text-xs">
+                  观看演示视频
+                </a>
+              ) : null}
+            </div>
+            {demoImages.length > 0 ? (
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {demoImages.map((src, index) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={`${src}-${index}`}
+                    src={src}
+                    alt={`${project.name}演示图 ${index + 1}`}
+                    className="aspect-video w-full border border-border bg-muted object-cover"
+                  />
+                ))}
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         <div className="mt-6 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           {project.contactName ? (

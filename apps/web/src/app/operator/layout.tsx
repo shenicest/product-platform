@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: '/operator/projects', label: '项目' },
   { href: '/operator/proposals', label: '提案' },
   { href: '/operator/audit-records', label: '审计' },
+  { href: '/operator/talents', label: '人才' },
 ]
 
 export default async function OperatorLayout({

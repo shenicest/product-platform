@@ -10,6 +10,7 @@ import { founderModule } from './modules/founder'
 import { uploadModule } from './modules/upload'
 import { likeModule } from './modules/like'
 import { followModule } from './modules/follow'
+import { talentModule, talentOperatorModule } from './modules/talent'
 
 export const app = new Elysia()
   .use(openapi({
@@ -29,6 +30,7 @@ export const app = new Elysia()
         { name: 'Founder', description: 'Founder dashboard — own projects, stats, audit reasons, and proposals' },
         { name: 'Operator', description: 'Operator review actions, management lists, audit records, and platform statistics' },
         { name: 'Upload', description: 'Pre-signed COS image upload for project assets' },
+        { name: 'Talent', description: 'Talent Plaza profiles, discovery, matching, and connection requests' },
       ],
       security: [{ bearerAuth: [] }],
       components: {
@@ -56,6 +58,8 @@ export const app = new Elysia()
   .use(projectModule)
   .use(likeModule)
   .use(followModule)
+  .use(talentModule)
+  .use(talentOperatorModule)
   .use(proposalModule)
   .use(founderModule)
   .use(uploadModule)

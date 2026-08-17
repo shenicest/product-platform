@@ -121,6 +121,7 @@ export function ProjectSubmissionForm({
   const [saving, setSaving] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [savedProjectId, setSavedProjectId] = useState<number | null>(projectId ?? null)
+  const [submittedProjectId, setSubmittedProjectId] = useState<number | null>(null)
 
   const update = useCallback(
     <K extends keyof FormState>(key: K, value: FormState[K]) => {
@@ -210,11 +211,11 @@ export function ProjectSubmissionForm({
         }
         return
       }
-      if (data) router.push(`/projects/${data.id}`)
+      if (data) setSubmittedProjectId(data.id)
     } finally {
       setSubmitting(false)
     }
-  }, [form, savedProjectId, router])
+  }, [form, savedProjectId])
 
   if (!isAuthenticated) {
     return (
@@ -228,6 +229,23 @@ export function ProjectSubmissionForm({
             去登录
           </Link>
         </div>
+      </div>
+    )
+  }
+
+  if (submittedProjectId) {
+    return (
+      <div className="border border-border bg-card p-8 text-center sm:p-12">
+        <p className="eyebrow">SUBMISSION / PENDING REVIEW</p>
+        <h2 className="mt-3 text-[clamp(28px,4vw,40px)] font-bold leading-[1.1]">
+          正在审核中
+        </h2>
+        <p className="mx-auto mt-4 max-w-[48ch] text-base leading-[1.7] text-muted-foreground">
+          你的项目已提交审核。审核通过后将在平台公开展示，我们会尽快处理。
+        </p>
+        <Link href="/founder/dashboard" className="btn-hard btn-primary mt-8 inline-flex">
+          查看我的项目 <span aria-hidden>→</span>
+        </Link>
       </div>
     )
   }
@@ -249,7 +267,7 @@ export function ProjectSubmissionForm({
             name="name"
             value={form.name}
             onChange={(v) => update('name', v)}
-            placeholder="给你的项目起个名字"
+            placeholder="项目名称（2-30 个汉字，或 2-60 个字符）"
             required
             maxLength={60}
             error={errors.name}
@@ -261,7 +279,7 @@ export function ProjectSubmissionForm({
             name="tagline"
             value={form.tagline}
             onChange={(v) => update('tagline', v)}
-            placeholder="用一句话描述你的项目"
+            placeholder="用一句话描述项目（10-40 个字符）"
             required
             maxLength={40}
             error={errors.tagline}
@@ -317,7 +335,7 @@ export function ProjectSubmissionForm({
             name="description"
             value={form.description}
             onChange={(v) => update('description', v)}
-            placeholder="详细介绍你的项目是什么、做什么"
+            placeholder="详细介绍项目是什么、做什么（100-2000 字）"
             rows={6}
             maxLength={2000}
             required
@@ -356,7 +374,7 @@ export function ProjectSubmissionForm({
             name="demoLink"
             value={form.demoLink}
             onChange={(v) => update('demoLink', v)}
-            placeholder="https://your-product.com"
+            placeholder="产品链接（须为 http:// 或 https:// 地址）"
             type="url"
           />
         </FormField>
@@ -369,7 +387,7 @@ export function ProjectSubmissionForm({
             name="targetUsers"
             value={form.targetUsers}
             onChange={(v) => update('targetUsers', v)}
-            placeholder="描述你的目标用户是谁"
+            placeholder="描述目标用户是谁（20-500 字）"
             rows={3}
             maxLength={500}
             required
@@ -382,7 +400,7 @@ export function ProjectSubmissionForm({
             name="userProblem"
             value={form.userProblem}
             onChange={(v) => update('userProblem', v)}
-            placeholder="用户遇到了什么问题？你的项目如何解决？"
+            placeholder="用户遇到的问题及解决方式（20-500 字）"
             rows={3}
             maxLength={500}
             required
@@ -395,7 +413,7 @@ export function ProjectSubmissionForm({
             name="progress"
             value={form.progress}
             onChange={(v) => update('progress', v)}
-            placeholder="目前项目进展到了什么阶段？"
+            placeholder="目前项目进展到了什么阶段？（20-500 字）"
             rows={3}
             maxLength={500}
             required
@@ -408,7 +426,7 @@ export function ProjectSubmissionForm({
             name="nextSteps"
             value={form.nextSteps}
             onChange={(v) => update('nextSteps', v)}
-            placeholder="接下来打算做什么？"
+            placeholder="接下来打算做什么？（最多 500 字）"
             rows={3}
             maxLength={500}
           />
@@ -470,7 +488,7 @@ export function ProjectSubmissionForm({
             name="contactPhone"
             value={form.contactPhone}
             onChange={(v) => update('contactPhone', v)}
-            placeholder="13800138000"
+            placeholder="11 位中国大陆手机号，例如 13800138000"
             required
             error={errors.contactPhone}
           />
@@ -481,7 +499,7 @@ export function ProjectSubmissionForm({
             name="contactEmail"
             value={form.contactEmail}
             onChange={(v) => update('contactEmail', v)}
-            placeholder="you@example.com"
+            placeholder="有效邮箱地址，例如 you@example.com"
             type="email"
           />
         </FormField>

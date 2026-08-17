@@ -135,6 +135,7 @@ process.env.COS_REGION ??= 'ap-shanghai'
 process.env.COS_ENDPOINT ??= 'https://cos.ap-shanghai.myqcloud.com'
 process.env.COS_PUBLIC_BASE_URL ??= 'https://assets.shenicest.test'
 process.env.COS_UPLOAD_PREFIX ??= 'projects/'
+process.env.SHENICEST_CONTACT_ENCRYPTION_KEY ??= 'test-contact-encryption-key-at-least-32-chars'
 
 // Apply drizzle migrations against the freshly created app DB.
 const migrationPool = mysql.createPool(buildUrl(APP_DB))
