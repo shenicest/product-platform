@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import {
   CATEGORIES,
   COLLABORATION_DURATIONS,
@@ -421,15 +422,25 @@ export function TalentDetail({
           </h2>
           <div className="mt-4 space-y-3">
             {profile.projects.map((project) => (
-              <div
+              <Link
                 key={project.id}
-                className="border border-border bg-card p-4"
+                href={`/projects/${project.id}`}
+                className="group flex items-center justify-between gap-4 border border-border bg-card p-4 transition-colors hover:border-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
               >
-                <b>{project.name}</b>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {project.tagline}
-                </p>
-              </div>
+                <div>
+                  <b className="transition-colors group-hover:text-primary">
+                    {project.name}
+                  </b>
+                  {project.tagline ? (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {project.tagline}
+                    </p>
+                  ) : null}
+                </div>
+                <span className="shrink-0 font-mono text-xs text-primary">
+                  查看项目 →
+                </span>
+              </Link>
             ))}
           </div>
         </main>
@@ -578,24 +589,71 @@ function Field({
   value,
   onChange,
   area,
+  hint,
+  placeholder,
+  maxLength,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   area?: boolean;
+  hint?: string;
+  placeholder?: string;
+  maxLength?: number;
 }) {
   const Tag = area ? "textarea" : "input";
   return (
     <label className="block text-sm">
-      <span className="mb-1 block font-mono text-xs text-muted-foreground">
-        {label}
+      <span className="flex items-end justify-between gap-3">
+        <span className="font-bold text-foreground">{label}</span>
+        {maxLength ? (
+          <span className="font-mono text-[10px] text-muted-foreground">
+            {value.length} / {maxLength}
+          </span>
+        ) : null}
       </span>
+      {hint ? (
+        <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
+          {hint}
+        </span>
+      ) : null}
       <Tag
         value={value}
+        placeholder={placeholder}
+        maxLength={maxLength}
         onChange={(event) => onChange(event.target.value)}
-        className="min-h-11 w-full border border-input bg-background px-3 py-2 outline-none focus:border-primary"
+        className={`mt-3 w-full border border-input bg-background px-4 py-3 outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary ${area ? "min-h-36 resize-y leading-relaxed" : "min-h-12"}`}
       />
     </label>
+  );
+}
+
+function EditorSection({
+  id,
+  number,
+  title,
+  description,
+  children,
+}: {
+  id: string;
+  number: string;
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <section id={id} className="scroll-mt-24 border border-border bg-card">
+      <header className="grid gap-3 border-b border-border bg-muted/35 p-5 sm:grid-cols-[64px_1fr] sm:p-6">
+        <span className="font-digits text-3xl text-primary">{number}</span>
+        <div>
+          <h2 className="text-xl font-black">{title}</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            {description}
+          </p>
+        </div>
+      </header>
+      <div className="p-5 sm:p-6">{children}</div>
+    </section>
   );
 }
 export function TalentEditor({
@@ -654,6 +712,18 @@ export function TalentEditor({
   const suspensionReason = initial?.suspensionAudit?.find(
     (record) => typeof record.reason === "string",
   )?.reason;
+  const requirements = [
+    body.headline.trim().length >= 2,
+    body.bio.trim().length >= 30,
+    body.roles.length >= 1,
+    body.skills.length >= 3,
+    body.domains.length >= 1,
+    body.durations.length >= 1,
+  ];
+  const completedRequirements = requirements.filter(Boolean).length;
+  const completion = Math.round(
+    (completedRequirements / requirements.length) * 100,
+  );
   if (status === TalentProfileStatus.Suspended)
     return (
       <section className="mx-auto max-w-3xl px-4 py-20">
@@ -678,137 +748,239 @@ export function TalentEditor({
       </section>
     );
   return (
-    <section className="mx-auto max-w-4xl px-4 py-14 sm:px-6">
-      <div>
-        <p className="eyebrow">PEOPLE / PROFILE EDITOR</p>
-        <h1 className="mt-3 text-4xl font-black">
-          {initial ? "编辑我的档案" : "介绍你能做什么"}
-        </h1>
-      </div>
-      <div className="scan-frame mt-8 flex flex-col justify-between gap-5 border border-primary/50 bg-primary/5 p-5 sm:flex-row sm:items-center">
+    <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+      <header className="grid gap-8 border-b border-border pb-10 lg:grid-cols-[1fr_340px] lg:items-end">
         <div>
-          <p className="font-bold">让做过的产品替你说话</p>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            你提交并成功上线的项目，会自动展示在公开人才档案中，让其他人更直接地了解你的产品和实践经历。
+          <Link
+            href="/talents"
+            className="font-mono text-xs text-muted-foreground transition-colors hover:text-primary"
+          >
+            ← PEOPLE / 人才广场
+          </Link>
+          <p className="eyebrow mt-8">PROFILE / SIGNAL BUILDER</p>
+          <h1 className="mt-3 max-w-3xl text-[clamp(40px,7vw,72px)] font-black leading-[.95] tracking-[-0.04em] text-balance">
+            {initial ? "让合适的人，更快看懂你。" : "告诉大家，你擅长做什么。"}
+          </h1>
+          <p className="mt-5 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            一份清晰的人才档案，会出现在人才广场中。别人可以根据你的能力、关注方向和合作方式，判断是否值得发起连接。
           </p>
         </div>
-        <Link href="/submit" className="btn-hard btn-ghost shrink-0">
-          去提交项目 <span aria-hidden>→</span>
-        </Link>
-      </div>
-      <div className="mt-10 grid gap-4 border border-border bg-card p-5 sm:grid-cols-2">
-        <Field
-           label="一句话介绍（2-30字）"
-          value={body.headline}
-          onChange={(v) => update("headline", v)}
-        />
-        <Field
-          label="城市（可选）"
-          value={body.city || ""}
-          onChange={(v) => update("city", v)}
-        />
-        <div className="sm:col-span-2">
-          <Field
-             label="关于我（30-500字）"
-            area
-            value={body.bio}
-            onChange={(v) => update("bio", v)}
-          />
+        <div className="scan-frame border border-primary/50 bg-primary/5 p-5">
+          <p className="font-mono text-xs text-primary">PUBLIC PROFILE</p>
+          <p className="mt-3 font-bold">这里填写的内容会公开展示</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            联系方式不会公开，只有你接受连接请求后，对方才能看到你授权的信息。
+          </p>
         </div>
-        <fieldset className="sm:col-span-2">
-          <legend className="mb-2 flex w-full items-center justify-between gap-3 font-mono text-xs text-muted-foreground">
-            <span>方向（至少 1 个）</span>
-            <span className="text-primary">已选 {body.roles.length} / 3</span>
-          </legend>
-          <Chips
-            values={TALENT_ROLES}
-            selected={body.roles}
-            onChange={(v) => update("roles", v)}
-            max={3}
-          />
-        </fieldset>
-        <fieldset className="sm:col-span-2">
-          <legend className="mb-2 flex w-full items-center justify-between gap-3 font-mono text-xs text-muted-foreground">
-            <span>技能（至少 3 项）</span>
-            <span className="text-primary">已选 {body.skills.length} / 10</span>
-          </legend>
-          <SkillGroups
-            selected={body.skills}
-            onChange={(v) => update("skills", v)}
-            max={10}
-          />
-        </fieldset>
-        <fieldset className="sm:col-span-2">
-          <legend className="mb-2 flex w-full items-center justify-between gap-3 font-mono text-xs text-muted-foreground">
-            <span>希望一起做什么</span>
-            <span className="text-primary">已选 {(body.seekingSkills || []).length} / 5</span>
-          </legend>
-          <SkillGroups
-            selected={body.seekingSkills || []}
-            onChange={(v) => update("seekingSkills", v)}
-            max={5}
-          />
-        </fieldset>
-        <fieldset>
-          <legend className="mb-2 flex w-full items-center justify-between gap-3 font-mono text-xs text-muted-foreground">
-            <span>关注领域（至少 1 个）</span>
-            <span className="text-primary">已选 {body.domains.length} / 3</span>
-          </legend>
-          <Chips
-            values={CATEGORIES}
-            selected={body.domains}
-            onChange={(v) => update("domains", v)}
-            max={3}
-          />
-        </fieldset>
-        <fieldset>
-          <legend className="mb-2 flex w-full items-center justify-between gap-3 font-mono text-xs text-muted-foreground">
-            <span>合作方式（至少 1 个）</span>
-            <span className="text-primary">已选 {body.durations.length} / 3</span>
-          </legend>
-          <Chips
-            values={COLLABORATION_DURATIONS}
-            selected={body.durations}
-            onChange={(v) => update("durations", v)}
-            max={3}
-          />
-        </fieldset>
-      </div>
-      {error && <p className="mt-4 text-sm text-primary">{error}</p>}
-      <div className="mt-5 flex flex-wrap gap-3">
-        <button
-          disabled={saving}
-          onClick={() =>
-            submit(
-              initial
-                ? status === TalentProfileStatus.Paused
-                  ? "resume"
-                  : "update"
-                : "publish",
-            )
-          }
-          className="btn-hard btn-primary"
-        >
-          {status === TalentProfileStatus.Paused
-             ? "保存并重新公开"
-            : initial
-              ? "保存更新"
-               : "公开档案"}
-        </button>
-        {status === TalentProfileStatus.Published && (
-          <button
-            disabled={saving}
-            onClick={async () => {
-              const result = await pauseTalent();
-              if (!result.error) setStatus(TalentProfileStatus.Paused);
-            }}
-            className="btn-hard btn-ghost"
+      </header>
+
+      <div className="mt-10 grid items-start gap-8 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <aside className="border border-border bg-card lg:sticky lg:top-24">
+          <div className="border-b border-border p-5">
+            <div className="flex items-end justify-between gap-3">
+              <span className="font-bold">档案完成度</span>
+              <span className="font-digits text-2xl text-primary">{completion}%</span>
+            </div>
+            <div className="mt-3 h-1 bg-muted" aria-hidden="true">
+              <div
+                className="h-full bg-primary transition-[width] duration-300"
+                style={{ width: `${completion}%` }}
+              />
+            </div>
+            <p className="mt-2 font-mono text-[10px] text-muted-foreground">
+              {completedRequirements} / {requirements.length} REQUIRED ITEMS
+            </p>
+          </div>
+          <nav aria-label="档案填写进度" className="p-3">
+            {[
+              { href: "#profile-basic", label: "01 基础介绍", done: requirements[0] && requirements[1] },
+              { href: "#profile-capability", label: "02 我的能力", done: requirements[2] && requirements[3] },
+              { href: "#profile-collaboration", label: "03 合作意向", done: requirements[4] && requirements[5] },
+            ].map((item) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className="flex items-center justify-between border-b border-border/60 px-2 py-3 text-sm transition-colors last:border-0 hover:text-primary"
+              >
+                <span>{item.label}</span>
+                <span
+                  className={item.done ? "text-primary" : "text-muted-foreground"}
+                  aria-label={item.done ? "已完成" : "未完成"}
+                >
+                  {item.done ? "●" : "○"}
+                </span>
+              </a>
+            ))}
+          </nav>
+        </aside>
+
+        <div className="space-y-6">
+          <EditorSection
+            id="profile-basic"
+            number="01"
+            title="先让别人快速认识你"
+            description="用一句清楚的定位抓住注意力，再用具体经历说明你做过什么、擅长解决什么问题。"
           >
-             暂时隐藏
-          </button>
-        )}
+            <div className="grid gap-7 sm:grid-cols-2">
+              <Field
+                label="一句话介绍"
+                hint="2-30 字，建议使用「角色 + 擅长方向」"
+                placeholder="例如：擅长从 0 到 1 的 AI 产品经理"
+                maxLength={30}
+                value={body.headline}
+                onChange={(v) => update("headline", v)}
+              />
+              <Field
+                label="所在城市（可选）"
+                hint="远程协作也可以直接填写「远程」"
+                placeholder="例如：上海 / 远程"
+                value={body.city || ""}
+                onChange={(v) => update("city", v)}
+              />
+              <div className="sm:col-span-2">
+                <Field
+                  label="关于我"
+                  hint="30-500 字。写出你的经验、代表成果和想做的事，比泛泛的自我评价更有说服力。"
+                  placeholder="例如：过去 4 年负责开发者工具产品，从用户研究到商业化落地都深度参与……"
+                  maxLength={500}
+                  area
+                  value={body.bio}
+                  onChange={(v) => update("bio", v)}
+                />
+              </div>
+            </div>
+          </EditorSection>
+
+          <EditorSection
+            id="profile-capability"
+            number="02"
+            title="标记你真正能交付的能力"
+            description="方向决定别人如何找到你，技能帮助对方理解你能在项目中承担什么。少而准确，比全部选满更有效。"
+          >
+            <div className="space-y-9">
+              <fieldset>
+                <legend className="mb-3 flex w-full items-center justify-between gap-3 text-sm font-bold">
+                  <span>方向（至少 1 个）</span>
+                  <span className="font-mono text-xs font-normal text-primary">已选 {body.roles.length} / 3</span>
+                </legend>
+                <p className="mb-4 text-xs text-muted-foreground">选择你希望在合作中承担的主要角色。</p>
+                <Chips values={TALENT_ROLES} selected={body.roles} onChange={(v) => update("roles", v)} max={3} />
+              </fieldset>
+              <fieldset>
+                <legend className="mb-3 flex w-full items-center justify-between gap-3 text-sm font-bold">
+                  <span>技能（至少 3 项）</span>
+                  <span className="font-mono text-xs font-normal text-primary">已选 {body.skills.length} / 10</span>
+                </legend>
+                <p className="mb-4 text-xs text-muted-foreground">优先选择你有实际项目经验、可以独立完成的技能。</p>
+                <SkillGroups selected={body.skills} onChange={(v) => update("skills", v)} max={10} />
+              </fieldset>
+            </div>
+          </EditorSection>
+
+          <EditorSection
+            id="profile-collaboration"
+            number="03"
+            title="说明你想遇见怎样的合作"
+            description="让别人知道你关注什么、缺少什么，以及你愿意投入多长时间，减少无效沟通。"
+          >
+            <div className="space-y-9">
+              <fieldset>
+                <legend className="mb-3 flex w-full items-center justify-between gap-3 text-sm font-bold">
+                  <span>希望一起做什么（可选）</span>
+                  <span className="font-mono text-xs font-normal text-primary">已选 {(body.seekingSkills || []).length} / 5</span>
+                </legend>
+                <p className="mb-4 text-xs text-muted-foreground">选择你希望在未来合作中补齐或遇见的能力。</p>
+                <SkillGroups selected={body.seekingSkills || []} onChange={(v) => update("seekingSkills", v)} max={5} />
+              </fieldset>
+              <div className="grid gap-8 border-t border-border pt-8 sm:grid-cols-2">
+                <fieldset>
+                  <legend className="mb-3 flex w-full items-center justify-between gap-3 text-sm font-bold">
+                    <span>关注领域（至少 1 个）</span>
+                    <span className="font-mono text-xs font-normal text-primary">已选 {body.domains.length} / 3</span>
+                  </legend>
+                  <p className="mb-4 text-xs text-muted-foreground">你最想参与或持续探索的产品领域。</p>
+                  <Chips values={CATEGORIES} selected={body.domains} onChange={(v) => update("domains", v)} max={3} />
+                </fieldset>
+                <fieldset>
+                  <legend className="mb-3 flex w-full items-center justify-between gap-3 text-sm font-bold">
+                    <span>合作方式（至少 1 个）</span>
+                    <span className="font-mono text-xs font-normal text-primary">已选 {body.durations.length} / 3</span>
+                  </legend>
+                  <p className="mb-4 text-xs text-muted-foreground">选择你目前真实可投入的合作周期。</p>
+                  <Chips values={COLLABORATION_DURATIONS} selected={body.durations} onChange={(v) => update("durations", v)} max={3} />
+                </fieldset>
+              </div>
+            </div>
+          </EditorSection>
+
+          <div className="scan-frame flex flex-col justify-between gap-5 border border-primary/50 bg-primary/5 p-5 sm:flex-row sm:items-center">
+            <div>
+              <p className="font-bold">让做过的产品替你说话</p>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+                你提交并成功上线的项目，会自动展示在公开人才档案中，让其他人更直接地了解你的产品和实践经历。
+              </p>
+            </div>
+            <Link href="/submit" className="btn-hard btn-ghost shrink-0">
+              去提交项目 <span aria-hidden>→</span>
+            </Link>
+          </div>
+
+          <footer className="border border-border bg-card p-5 sm:flex sm:items-center sm:justify-between sm:gap-6">
+            <div>
+              <p className="font-bold">
+                {initial ? "保存后，公开档案将立即更新" : "准备好后，公开你的档案"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {initial ? "你可以随时回来修改或暂时隐藏。" : "未完成时会自动保存在当前浏览器。"}
+              </p>
+              {error ? (
+                <p
+                  role="status"
+                  className={`mt-3 text-sm ${error === "已保存" ? "text-primary" : "text-destructive"}`}
+                >
+                  {error}
+                </p>
+              ) : null}
+            </div>
+            <div className="mt-5 flex flex-col gap-3 sm:mt-0 sm:flex-row">
+              <button
+                disabled={saving}
+                onClick={() =>
+                  submit(
+                    initial
+                      ? status === TalentProfileStatus.Paused
+                        ? "resume"
+                        : "update"
+                      : "publish",
+                  )
+                }
+                className="btn-hard btn-primary"
+              >
+                {saving
+                  ? "保存中..."
+                  : status === TalentProfileStatus.Paused
+                    ? "保存并重新公开"
+                    : initial
+                      ? "保存更新"
+                      : "公开档案"}
+              </button>
+              {status === TalentProfileStatus.Published && (
+                <button
+                  disabled={saving}
+                  onClick={async () => {
+                    const result = await pauseTalent();
+                    if (!result.error) setStatus(TalentProfileStatus.Paused);
+                  }}
+                  className="btn-hard btn-ghost"
+                >
+                  暂时隐藏
+                </button>
+              )}
+            </div>
+          </footer>
+        </div>
       </div>
-    </section>
+    </main>
   );
 }
 

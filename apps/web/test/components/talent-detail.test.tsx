@@ -47,6 +47,22 @@ describe("TalentDetail connection dialog", () => {
     });
   });
 
+  it("links each Live project to its project detail page", () => {
+    render(
+      <TalentDetail
+        profile={{
+          ...profile,
+          projects: [{ id: 568, name: "公开项目", tagline: "项目简介" }],
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: /公开项目/ })).toHaveAttribute(
+      "href",
+      "/projects/568",
+    );
+  });
+
   it("submits the selected sender-owned Live project ID", async () => {
     const user = userEvent.setup();
     render(
