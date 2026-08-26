@@ -2,6 +2,7 @@ import { t } from 'elysia'
 
 export const BathSlotsQuery = t.Object({
   date: t.String({ pattern: '^\\d{4}-\\d{2}-\\d{2}$', description: 'YYYY-MM-DD' }),
+  gender: t.Optional(t.Union([t.Literal('male'), t.Literal('female')])),
 })
 export type BathSlotsQuery = typeof BathSlotsQuery.static
 
@@ -47,6 +48,7 @@ export type BathConfigBody = typeof BathConfigBody.static
 export const BathBookBody = t.Object({
   date: t.String({ pattern: '^\\d{4}-\\d{2}-\\d{2}$' }),
   timeSlot: t.String({ pattern: '^\\d{2}:\\d{2}$' }),
+  gender: t.Optional(t.Union([t.Literal('male'), t.Literal('female')])),
 })
 export type BathBookBody = typeof BathBookBody.static
 
@@ -130,5 +132,12 @@ export class InvalidTimeConfigError extends Error {
   readonly code = 'INVALID_TIME_CONFIG'
   constructor() {
     super('开放时间需为整点或半点，且开始时间需早于结束时间')
+  }
+}
+
+export class InvalidGenderError extends Error {
+  readonly code = 'INVALID_GENDER'
+  constructor() {
+    super('请选择浴室（男/女）')
   }
 }

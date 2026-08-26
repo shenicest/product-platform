@@ -55,6 +55,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [gender, setGender] = useState<'male' | 'female' | undefined>(isAdmin ? 'male' : undefined)
 
   const [editStart, setEditStart] = useState('')
   const [editEnd, setEditEnd] = useState('')
@@ -66,7 +67,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
   const fetchSlots = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const { data: slotsData, error: err } = await getBathSlots(today)
+    const { data: slotsData, error: err } = await getBathSlots(today, isAdmin ? gender : undefined)
     if (err) {
       setError(err.body?.error?.message ?? '加载失败')
       setData(null)
@@ -75,7 +76,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
       setConfig({ eventStart: slotsData.eventStart, eventEnd: slotsData.eventEnd, dailyStart: slotsData.dailyStart, dailyEnd: slotsData.dailyEnd })
     }
     setLoading(false)
-  }, [today])
+  }, [today, isAdmin, gender])
 
   useEffect(() => {
     let cancelled = false
@@ -98,7 +99,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
   const handleBook = async (timeSlot: string) => {
     setActionLoading(timeSlot)
     setError(null)
-    const { error: err } = await bookBathSlot(today, timeSlot)
+    const { error: err } = await bookBathSlot(today, timeSlot, isAdmin ? gender : undefined)
     if (err) {
       setError(err.body?.error?.message ?? '预约失败')
     }
@@ -143,6 +144,24 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
       <p className="mb-4 font-mono text-sm">
         日期：<span className="font-medium text-primary">{formatDate(today)}</span>
       </p>
+
+      {isAdmin && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="text-sm text-muted-foreground">浴室：</span>
+          <button
+            onClick={() => setGender('male')}
+            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${gender === 'male' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+          >
+            ♂ 男浴室
+          </button>
+          <button
+            onClick={() => setGender('female')}
+            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${gender === 'female' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
+          >
+            ♀ 女浴室
+          </button>
+        </div>
+      )}
 
       {isAdmin && (
         <div className="mb-6 rounded-lg border border-primary/40 bg-primary/5 px-4 py-4">

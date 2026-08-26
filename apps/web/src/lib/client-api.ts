@@ -129,8 +129,10 @@ export function unfollowFounder(userId: string) {
   return request<{ followed: boolean; followerCount: number }>('DELETE', `/founders/${userId}/follow`)
 }
 
-export function getBathSlots(date: string) {
-  return request<{ date: string; gender: 'male' | 'female'; eventStart: string; eventEnd: string; dailyStart: string; dailyEnd: string; myBooking: { id: number; timeSlot: string } | null; slots: Array<{ timeSlot: string; booked: boolean; name?: string; bookingId?: number; isMine?: boolean }> }>('GET', `/bath/slots?date=${date}`)
+export function getBathSlots(date: string, gender?: 'male' | 'female') {
+  const params = new URLSearchParams({ date })
+  if (gender) params.set('gender', gender)
+  return request<{ date: string; gender: 'male' | 'female'; eventStart: string; eventEnd: string; dailyStart: string; dailyEnd: string; myBooking: { id: number; timeSlot: string } | null; slots: Array<{ timeSlot: string; booked: boolean; name?: string; bookingId?: number; isMine?: boolean }> }>('GET', `/bath/slots?${params}`)
 }
 
 export function getBathConfig() {
@@ -141,8 +143,8 @@ export function updateBathConfig(body: { eventStart: string; eventEnd: string; d
   return request<{ eventStart: string; eventEnd: string; dailyStart: string; dailyEnd: string }>('PUT', '/bath/config', body)
 }
 
-export function bookBathSlot(date: string, timeSlot: string) {
-  return request<{ id: number; date: string; timeSlot: string; gender: string }>('POST', '/bath/bookings', { date, timeSlot })
+export function bookBathSlot(date: string, timeSlot: string, gender?: 'male' | 'female') {
+  return request<{ id: number; date: string; timeSlot: string; gender: string }>('POST', '/bath/bookings', { date, timeSlot, ...(gender ? { gender } : {}) })
 }
 
 export function cancelBathSlot(bookingId: number) {

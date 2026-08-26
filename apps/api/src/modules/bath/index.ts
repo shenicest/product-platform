@@ -50,7 +50,7 @@ export const bathModule = new Elysia()
     response: { 200: 'Bath.BathConfigResponse', 400: ErrorResponse, 401: ErrorResponse, 403: ErrorResponse },
   })
   .get('/bath/slots', async ({ user, query }) => {
-    const result = await bathService.getSlots(user.userId, query.date)
+    const result = await bathService.getSlots(user.userId, user.email, query.date, query.gender)
     if (result.error) return errorResponse(result.error)
     return result
   }, {
@@ -59,7 +59,7 @@ export const bathModule = new Elysia()
     response: { 200: 'Bath.BathSlotsResponse', 400: ErrorResponse, 401: ErrorResponse },
   })
   .post('/bath/bookings', async ({ user, body }) => {
-    const result = await bathService.book(user.userId, body.date, body.timeSlot)
+    const result = await bathService.book(user.userId, user.email, body.date, body.timeSlot, body.gender)
     if (result.error) return errorResponse(result.error)
     return result.data
   }, {

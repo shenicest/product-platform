@@ -1,7 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { bathBookings, bathConfig } from '../../db/schema'
 import type { Database } from '../../db'
-import { AlreadyBookedTodayError, BookingNotFoundError, InvalidConfigError, InvalidDateError, InvalidSlotError, InvalidTimeConfigError, NotAdminError, NotBookingOwnerError, NotCheckedInError, SlotTakenError } from './model'
+import { AlreadyBookedTodayError, BookingNotFoundError, InvalidConfigError, InvalidDateError, InvalidGenderError, InvalidSlotError, InvalidTimeConfigError, NotAdminError, NotBookingOwnerError, NotCheckedInError, SlotTakenError } from './model'
 
 const APPLICATION_TABLE = 'event_management.applications'
 const EVENT_ID = 4
@@ -123,17 +123,30 @@ export class BathService {
     }
   }
 
+  // Admins (@shenicest.cn) are exempt from the check-in requirement: they may
+  // pass an explicit gender to choose a bathroom when their application record
+  // is absent or not checked in. Non-admins always use the application gender.
+  async resolveGender(userId: string, email: string | null, fallbackGender?: 'male' | 'female'): Promise<'male' | 'female' | NotCheckedInError | InvalidGenderError> {
+    const isAdmin = this.isAdmin(email)
+    if (isAdmin && fallbackGender) return fallbackGender
+
+    const appGender = await this.getUserGender(userId)
+    if (appGender) return appGender
+    if (isAdmin) return new InvalidGenderError()
+    return new NotCheckedInError()
+  }
+
   async isCheckedIn(userId: string): Promise<boolean> {
     const gender = await this.getUserGender(userId)
     return gender !== null
   }
 
-  async getSlots(userId: string, date: string) {
+  async getSlots(userId: string, email: string | null, date: string, fallbackGender?: 'male' | 'female') {
     const config = await this.getConfig()
     if (!(date >= config.eventStart && date <= config.eventEnd)) return { error: new InvalidDateError() }
 
-    const gender = await this.getUserGender(userId)
-    if (!gender) return { error: new NotCheckedInError() }
+    const gender = await this.resolveGender(userId, email, fallbackGender)
+    if (gender instanceof NotCheckedInError || gender instanceof InvalidGenderError) return { error: gender }
 
     const slotsList = generateSlots(config.dailyStart, config.dailyEnd)
 
@@ -187,13 +200,13 @@ export class BathService {
     }
   }
 
-  async book(userId: string, date: string, timeSlot: string) {
+  async book(userId: string, email: string | null, date: string, timeSlot: string, fallbackGender?: 'male' | 'female') {
     const config = await this.getConfig()
     if (!(date >= config.eventStart && date <= config.eventEnd)) return { error: new InvalidDateError() }
     if (!generateSlots(config.dailyStart, config.dailyEnd).includes(timeSlot)) return { error: new InvalidSlotError() }
 
-    const gender = await this.getUserGender(userId)
-    if (!gender) return { error: new NotCheckedInError() }
+    const gender = await this.resolveGender(userId, email, fallbackGender)
+    if (gender instanceof NotCheckedInError || gender instanceof InvalidGenderError) return { error: gender }
 
     const existing = await this.db
       .select()
