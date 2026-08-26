@@ -78,6 +78,13 @@
       "when": 1787755869535,
       "tag": "0010_bath_bookings",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "5",
+      "when": 1787763435246,
+      "tag": "0011_bath_config",
+      "breakpoints": true
     }
   ]
 }

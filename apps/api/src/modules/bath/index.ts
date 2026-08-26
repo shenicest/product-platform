@@ -7,10 +7,14 @@ import {
   AlreadyBookedTodayError,
   BathBookBody,
   BathBookResponse,
+  BathConfigBody,
+  BathConfigResponse,
   BathSlotsQuery,
   BathSlotsResponse,
   BookingNotFoundError,
+  InvalidConfigError,
   InvalidSlotError,
+  NotAdminError,
   NotBookingOwnerError,
   NotCheckedInError,
   SlotTakenError,
@@ -21,7 +25,8 @@ const bathService = new BathService(db)
 
 const errorResponse = (err: unknown) => {
   if (err instanceof Error && 'code' in err) {
-    return status(400 as any, { error: { code: (err as any).code, message: err.message } })
+    const statusCode = err.code === 'FORBIDDEN' ? 403 : 400
+    return status(statusCode as any, { error: { code: (err as any).code, message: err.message } })
   }
   return status(500 as any, { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } })
 }
@@ -29,8 +34,21 @@ const errorResponse = (err: unknown) => {
 export const bathModule = new Elysia()
   .use(dbPlugin)
   .use(authPlugin)
-  .model({ BathSlotsQuery, BathSlotsResponse, BathBookBody, BathBookResponse })
+  .model({ BathSlotsQuery, BathSlotsResponse, BathBookBody, BathBookResponse, BathConfigBody, BathConfigResponse })
   .prefix('model', 'Bath.')
+  .get('/bath/config', async () => bathService.getConfig(), {
+    auth: true,
+    response: { 200: 'Bath.BathConfigResponse', 401: ErrorResponse },
+  })
+  .put('/bath/config', async ({ user, body }) => {
+    const result = await bathService.updateConfig(user.email, body.eventStart, body.eventEnd)
+    if (result.error) return errorResponse(result.error)
+    return result.data
+  }, {
+    auth: true,
+    body: 'Bath.BathConfigBody',
+    response: { 200: 'Bath.BathConfigResponse', 400: ErrorResponse, 401: ErrorResponse, 403: ErrorResponse },
+  })
   .get('/bath/slots', async ({ user, query }) => {
     const result = await bathService.getSlots(user.userId, query.date)
     if (result.error) return errorResponse(result.error)

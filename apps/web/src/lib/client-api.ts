@@ -130,7 +130,15 @@ export function unfollowFounder(userId: string) {
 }
 
 export function getBathSlots(date: string) {
-  return request<{ date: string; gender: 'male' | 'female'; myBooking: { id: number; timeSlot: string } | null; slots: Array<{ timeSlot: string; booked: boolean; name?: string; bookingId?: number; isMine?: boolean }> }>('GET', `/bath/slots?date=${date}`)
+  return request<{ date: string; gender: 'male' | 'female'; eventStart: string; eventEnd: string; myBooking: { id: number; timeSlot: string } | null; slots: Array<{ timeSlot: string; booked: boolean; name?: string; bookingId?: number; isMine?: boolean }> }>('GET', `/bath/slots?date=${date}`)
+}
+
+export function getBathConfig() {
+  return request<{ eventStart: string; eventEnd: string }>('GET', '/bath/config')
+}
+
+export function updateBathConfig(eventStart: string, eventEnd: string) {
+  return request<{ eventStart: string; eventEnd: string }>('PUT', '/bath/config', { eventStart, eventEnd })
 }
 
 export function bookBathSlot(date: string, timeSlot: string) {

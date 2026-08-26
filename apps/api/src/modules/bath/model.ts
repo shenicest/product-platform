@@ -16,6 +16,8 @@ export const BathSlot = t.Object({
 export const BathSlotsResponse = t.Object({
   date: t.String(),
   gender: t.Union([t.Literal('male'), t.Literal('female')]),
+  eventStart: t.String(),
+  eventEnd: t.String(),
   myBooking: t.Nullable(t.Object({
     id: t.Number(),
     timeSlot: t.String(),
@@ -23,6 +25,18 @@ export const BathSlotsResponse = t.Object({
   slots: t.Array(BathSlot),
 })
 export type BathSlotsResponse = typeof BathSlotsResponse.static
+
+export const BathConfigResponse = t.Object({
+  eventStart: t.String(),
+  eventEnd: t.String(),
+})
+export type BathConfigResponse = typeof BathConfigResponse.static
+
+export const BathConfigBody = t.Object({
+  eventStart: t.String({ pattern: '^\\d{4}-\\d{2}-\\d{2}$' }),
+  eventEnd: t.String({ pattern: '^\\d{4}-\\d{2}-\\d{2}$' }),
+})
+export type BathConfigBody = typeof BathConfigBody.static
 
 export const BathBookBody = t.Object({
   date: t.String({ pattern: '^\\d{4}-\\d{2}-\\d{2}$' }),
@@ -89,5 +103,19 @@ export class InvalidDateError extends Error {
   readonly code = 'INVALID_DATE'
   constructor() {
     super('预约开放日期为 8/27 - 8/30')
+  }
+}
+
+export class NotAdminError extends Error {
+  readonly code = 'FORBIDDEN'
+  constructor() {
+    super('无管理员权限')
+  }
+}
+
+export class InvalidConfigError extends Error {
+  readonly code = 'INVALID_CONFIG'
+  constructor() {
+    super('结束日期不能早于开始日期')
   }
 }

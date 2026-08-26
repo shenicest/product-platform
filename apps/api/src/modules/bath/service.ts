@@ -1,24 +1,13 @@
 import { and, eq, sql } from 'drizzle-orm'
-import { bathBookings } from '../../db/schema'
+import { bathBookings, bathConfig } from '../../db/schema'
 import type { Database } from '../../db'
-import { AlreadyBookedTodayError, BookingNotFoundError, InvalidDateError, InvalidSlotError, NotBookingOwnerError, NotCheckedInError, SlotTakenError } from './model'
+import { AlreadyBookedTodayError, BookingNotFoundError, InvalidConfigError, InvalidDateError, InvalidSlotError, NotAdminError, NotBookingOwnerError, NotCheckedInError, SlotTakenError } from './model'
 
 const APPLICATION_TABLE = 'event_management.applications'
 const EVENT_ID = 4
-const EVENT_START = '2026-08-27'
-const EVENT_END = '2026-08-30'
-
-function getTodayStr(): string {
-  const now = new Date()
-  const y = now.getFullYear()
-  const m = String(now.getMonth() + 1).padStart(2, '0')
-  const d = String(now.getDate()).padStart(2, '0')
-  return `${y}-${m}-${d}`
-}
-
-function isEventDate(date: string): boolean {
-  return date >= EVENT_START && date <= EVENT_END
-}
+const DEFAULT_EVENT_START = '2026-08-27'
+const DEFAULT_EVENT_END = '2026-08-30'
+const ADMIN_EMAIL_SUFFIX = '@shenicest.cn'
 
 const ALL_SLOTS = Array.from({ length: 24 }, (_, i) => {
   const h = Math.floor(i / 2) + 9
@@ -31,16 +20,42 @@ type AppRow = {
   form_data: string | null
 }
 
-type BookingRow = {
-  id: number
-  userId: string
-  date: string
-  timeSlot: string
-  gender: string
+function getTodayStr(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
 export class BathService {
   constructor(private db: Database) {}
+
+  isAdmin(email: string | null): boolean {
+    return !!email && email.toLowerCase().endsWith(ADMIN_EMAIL_SUFFIX)
+  }
+
+  async getConfig(): Promise<{ eventStart: string; eventEnd: string }> {
+    const [row] = await this.db.select().from(bathConfig).limit(1)
+    if (!row) return { eventStart: DEFAULT_EVENT_START, eventEnd: DEFAULT_EVENT_END }
+    return { eventStart: row.eventStart, eventEnd: row.eventEnd }
+  }
+
+  async updateConfig(email: string | null, eventStart: string, eventEnd: string) {
+    if (!this.isAdmin(email)) return { error: new NotAdminError() }
+    if (eventEnd < eventStart) return { error: new InvalidConfigError() }
+
+    const existing = await this.db.select({ id: bathConfig.id }).from(bathConfig).limit(1)
+    if (existing.length > 0) {
+      await this.db.update(bathConfig)
+        .set({ eventStart, eventEnd, updatedBy: email ?? null })
+        .where(eq(bathConfig.id, existing[0].id))
+    } else {
+      await this.db.insert(bathConfig).values({ eventStart, eventEnd, updatedBy: email ?? null })
+    }
+
+    return { data: { eventStart, eventEnd } }
+  }
 
   async getUserGender(userId: string): Promise<'male' | 'female' | null> {
     if (!/^\d+$/.test(userId)) return null
@@ -86,7 +101,8 @@ export class BathService {
   }
 
   async getSlots(userId: string, date: string) {
-    if (!isEventDate(date)) return { error: new InvalidDateError() }
+    const config = await this.getConfig()
+    if (!(date >= config.eventStart && date <= config.eventEnd)) return { error: new InvalidDateError() }
 
     const gender = await this.getUserGender(userId)
     if (!gender) return { error: new NotCheckedInError() }
@@ -132,13 +148,16 @@ export class BathService {
     return {
       date,
       gender,
+      eventStart: config.eventStart,
+      eventEnd: config.eventEnd,
       myBooking: myBooking ? { id: myBooking.id, timeSlot: myBooking.timeSlot } : null,
       slots,
     }
   }
 
   async book(userId: string, date: string, timeSlot: string) {
-    if (!isEventDate(date)) return { error: new InvalidDateError() }
+    const config = await this.getConfig()
+    if (!(date >= config.eventStart && date <= config.eventEnd)) return { error: new InvalidDateError() }
     if (!ALL_SLOTS.includes(timeSlot)) return { error: new InvalidSlotError() }
 
     const gender = await this.getUserGender(userId)

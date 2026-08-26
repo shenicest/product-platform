@@ -4,6 +4,7 @@ import { ErrorCode, ErrorMessage } from '../common'
 
 export interface AuthUser {
   userId: string
+  email: string | null
 }
 
 async function resolveUser(
@@ -14,14 +15,14 @@ async function resolveUser(
   if (authorization?.startsWith('Bearer ')) {
     try {
       const user = await verifyToken(authorization.slice(7))
-      return { userId: String(user.user_id) }
+      return { userId: String(user.user_id), email: user.email }
     } catch {}
   }
 
   if (cookieToken) {
     try {
       const user = await verifyToken(cookieToken)
-      return { userId: String(user.user_id) }
+      return { userId: String(user.user_id), email: user.email }
     } catch {}
   }
 

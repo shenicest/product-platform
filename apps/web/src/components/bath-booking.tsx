@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { getBathSlots, bookBathSlot, cancelBathSlot } from '@/lib/client-api'
+import { getBathSlots, bookBathSlot, cancelBathSlot, getBathConfig, updateBathConfig } from '@/lib/client-api'
 
 interface BathSlot {
   timeSlot: string
@@ -14,6 +14,8 @@ interface BathSlot {
 interface SlotsData {
   date: string
   gender: 'male' | 'female'
+  eventStart: string
+  eventEnd: string
   myBooking: { id: number; timeSlot: string } | null
   slots: BathSlot[]
 }
@@ -26,22 +28,28 @@ function getTodayStr() {
   return `${y}-${m}-${d}`
 }
 
-const EVENT_START = '2026-08-27'
-const EVENT_END = '2026-08-30'
-
 function formatDate(dateStr: string) {
   const [, m, d] = dateStr.split('-')
   const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][new Date(`${dateStr}T00:00:00`).getDay()]
   return `${Number(m)}/${Number(d)} ${weekday}`
 }
 
-export function BathBooking({ userId: _userId }: { userId: string }) {
+export function BathBooking({ userId: _userId, email }: { userId: string; email: string | null }) {
   const today = getTodayStr()
-  const isEventDay = today >= EVENT_START && today <= EVENT_END
+  const isAdmin = !!email && email.toLowerCase().endsWith('@shenicest.cn')
+
   const [data, setData] = useState<SlotsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  const [config, setConfig] = useState<{ eventStart: string; eventEnd: string } | null>(null)
+  const [editStart, setEditStart] = useState('')
+  const [editEnd, setEditEnd] = useState('')
+  const [configSaving, setConfigSaving] = useState(false)
+  const [configMsg, setConfigMsg] = useState<string | null>(null)
+
+  const isEventDay = config ? today >= config.eventStart && today <= config.eventEnd : false
 
   const fetchSlots = useCallback(async () => {
     setLoading(true)
@@ -50,16 +58,27 @@ export function BathBooking({ userId: _userId }: { userId: string }) {
     if (err) {
       setError(err.body?.error?.message ?? '加载失败')
       setData(null)
-    } else {
+    } else if (slotsData) {
       setData(slotsData)
+      setConfig({ eventStart: slotsData.eventStart, eventEnd: slotsData.eventEnd })
     }
     setLoading(false)
   }, [today])
+
+  const loadConfig = useCallback(async () => {
+    const { data: configData } = await getBathConfig()
+    if (configData) {
+      setConfig(configData)
+      setEditStart(configData.eventStart)
+      setEditEnd(configData.eventEnd)
+    }
+  }, [])
 
   // Initial load on mount
   const [initialized, setInitialized] = useState(false)
   if (!initialized) {
     setInitialized(true)
+    loadConfig()
     if (isEventDay) fetchSlots()
     else setLoading(false)
   }
@@ -86,6 +105,21 @@ export function BathBooking({ userId: _userId }: { userId: string }) {
     setActionLoading(null)
   }
 
+  const handleSaveConfig = async () => {
+    if (!editStart || !editEnd) return
+    setConfigSaving(true)
+    setConfigMsg(null)
+    const { data: newConfig, error: err } = await updateBathConfig(editStart, editEnd)
+    if (err) {
+      setConfigMsg(err.body?.error?.message ?? '保存失败')
+    } else if (newConfig) {
+      setConfig(newConfig)
+      setConfigMsg('已保存')
+      await fetchSlots()
+    }
+    setConfigSaving(false)
+  }
+
   const genderLabel = data?.gender === 'male' ? '♂ 男浴室' : data?.gender === 'female' ? '♀ 女浴室' : ''
 
   return (
@@ -97,6 +131,37 @@ export function BathBooking({ userId: _userId }: { userId: string }) {
       <p className="mb-4 font-mono text-sm">
         日期：<span className="font-medium text-primary">{formatDate(today)}</span>
       </p>
+
+      {isAdmin && (
+        <div className="mb-6 rounded-lg border border-primary/40 bg-primary/5 px-4 py-4">
+          <h2 className="mb-3 text-sm font-semibold">管理员设置 — 预约开放时间</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="text-sm text-muted-foreground">开始</label>
+            <input
+              type="date"
+              value={editStart}
+              onChange={(e) => setEditStart(e.target.value)}
+              className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+            />
+            <label className="text-sm text-muted-foreground">结束</label>
+            <input
+              type="date"
+              value={editEnd}
+              onChange={(e) => setEditEnd(e.target.value)}
+              className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+            />
+            <button
+              onClick={handleSaveConfig}
+              disabled={configSaving}
+              className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+            >
+              {configSaving ? '保存中...' : '保存'}
+            </button>
+          </div>
+          {configMsg && <p className="mt-2 text-xs text-muted-foreground">{configMsg}</p>}
+          <p className="mt-2 text-xs text-muted-foreground/70">当前开放范围：{config?.eventStart ?? '-'} 至 {config?.eventEnd ?? '-'}</p>
+        </div>
+      )}
 
       <div className="mb-6 rounded-lg border border-border bg-muted/30 px-4 py-4">
         <h2 className="mb-2 text-sm font-semibold">预约须知</h2>
@@ -112,7 +177,7 @@ export function BathBooking({ userId: _userId }: { userId: string }) {
       {!isEventDay ? (
         <div className="py-16 text-center">
           <p className="text-lg font-medium text-muted-foreground">当前不在预约开放时间内</p>
-          <p className="mt-2 text-sm text-muted-foreground/70">预约开放日期：8/27 - 8/30</p>
+          {config && <p className="mt-2 text-sm text-muted-foreground/70">预约开放日期：{formatDate(config.eventStart)} - {formatDate(config.eventEnd)}</p>}
         </div>
       ) : (
         <>
