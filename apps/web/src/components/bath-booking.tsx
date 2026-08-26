@@ -164,6 +164,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
         <ul className="space-y-1.5 text-sm text-muted-foreground">
           <li>· 按时间段预约，尽量准时到达</li>
           <li>· 洗漱不要超过自己的时段</li>
+          <li>· 大家要自行带洗漱用品、浴巾</li>
           <li>· 在北辰奥运村宾馆 C 座前台找到志愿者</li>
           <li>· 通过选手牌换房卡钥匙，留下姓名和电话</li>
           <li>· 洗漱完后归还房卡</li>
