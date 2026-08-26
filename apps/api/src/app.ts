@@ -11,6 +11,7 @@ import { uploadModule } from './modules/upload'
 import { likeModule } from './modules/like'
 import { followModule } from './modules/follow'
 import { talentModule, talentOperatorModule } from './modules/talent'
+import { bathModule } from './modules/bath'
 
 export const app = new Elysia()
   .use(openapi({
@@ -63,6 +64,7 @@ export const app = new Elysia()
   .use(proposalModule)
   .use(founderModule)
   .use(uploadModule)
+  .use(bathModule)
   .use(operatorModule)
   .get('/health', () => ({ status: 'ok' as const, env: process.env.NODE_ENV }), {
     detail: {
