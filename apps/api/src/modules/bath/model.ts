@@ -18,6 +18,8 @@ export const BathSlotsResponse = t.Object({
   gender: t.Union([t.Literal('male'), t.Literal('female')]),
   eventStart: t.String(),
   eventEnd: t.String(),
+  dailyStart: t.String(),
+  dailyEnd: t.String(),
   myBooking: t.Nullable(t.Object({
     id: t.Number(),
     timeSlot: t.String(),
@@ -29,12 +31,16 @@ export type BathSlotsResponse = typeof BathSlotsResponse.static
 export const BathConfigResponse = t.Object({
   eventStart: t.String(),
   eventEnd: t.String(),
+  dailyStart: t.String(),
+  dailyEnd: t.String(),
 })
 export type BathConfigResponse = typeof BathConfigResponse.static
 
 export const BathConfigBody = t.Object({
   eventStart: t.String({ pattern: '^\\d{4}-\\d{2}-\\d{2}$' }),
   eventEnd: t.String({ pattern: '^\\d{4}-\\d{2}-\\d{2}$' }),
+  dailyStart: t.String({ pattern: '^\\d{2}:\\d{2}$' }),
+  dailyEnd: t.String({ pattern: '^\\d{2}:\\d{2}$' }),
 })
 export type BathConfigBody = typeof BathConfigBody.static
 
@@ -117,5 +123,12 @@ export class InvalidConfigError extends Error {
   readonly code = 'INVALID_CONFIG'
   constructor() {
     super('结束日期不能早于开始日期')
+  }
+}
+
+export class InvalidTimeConfigError extends Error {
+  readonly code = 'INVALID_TIME_CONFIG'
+  constructor() {
+    super('开放时间需为整点或半点，且开始时间需早于结束时间')
   }
 }

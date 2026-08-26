@@ -1,19 +1,15 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { bathBookings, bathConfig } from '../../db/schema'
 import type { Database } from '../../db'
-import { AlreadyBookedTodayError, BookingNotFoundError, InvalidConfigError, InvalidDateError, InvalidSlotError, NotAdminError, NotBookingOwnerError, NotCheckedInError, SlotTakenError } from './model'
+import { AlreadyBookedTodayError, BookingNotFoundError, InvalidConfigError, InvalidDateError, InvalidSlotError, InvalidTimeConfigError, NotAdminError, NotBookingOwnerError, NotCheckedInError, SlotTakenError } from './model'
 
 const APPLICATION_TABLE = 'event_management.applications'
 const EVENT_ID = 4
 const DEFAULT_EVENT_START = '2026-08-27'
 const DEFAULT_EVENT_END = '2026-08-30'
+const DEFAULT_DAILY_START = '09:00'
+const DEFAULT_DAILY_END = '21:00'
 const ADMIN_EMAIL_SUFFIX = '@shenicest.cn'
-
-const ALL_SLOTS = Array.from({ length: 24 }, (_, i) => {
-  const h = Math.floor(i / 2) + 9
-  const m = (i % 2) * 30
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
-})
 
 type AppRow = {
   user_id: number
@@ -28,6 +24,30 @@ function getTodayStr(): string {
   return `${y}-${m}-${d}`
 }
 
+function add30Min(time: string): string {
+  const [h, m] = time.split(':').map(Number)
+  const totalMin = h * 60 + m + 30
+  const nh = Math.floor(totalMin / 60)
+  const nm = totalMin % 60
+  return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`
+}
+
+function isValidTime(t: string): boolean {
+  if (!/^\d{2}:\d{2}$/.test(t)) return false
+  const [h, m] = t.split(':').map(Number)
+  return h >= 0 && h <= 23 && (m === 0 || m === 30)
+}
+
+function generateSlots(dailyStart: string, dailyEnd: string): string[] {
+  const slots: string[] = []
+  let cur = dailyStart
+  while (cur < dailyEnd) {
+    slots.push(cur)
+    cur = add30Min(cur)
+  }
+  return slots
+}
+
 export class BathService {
   constructor(private db: Database) {}
 
@@ -35,26 +55,34 @@ export class BathService {
     return !!email && email.toLowerCase().endsWith(ADMIN_EMAIL_SUFFIX)
   }
 
-  async getConfig(): Promise<{ eventStart: string; eventEnd: string }> {
+  async getConfig(): Promise<{ eventStart: string; eventEnd: string; dailyStart: string; dailyEnd: string }> {
     const [row] = await this.db.select().from(bathConfig).limit(1)
-    if (!row) return { eventStart: DEFAULT_EVENT_START, eventEnd: DEFAULT_EVENT_END }
-    return { eventStart: row.eventStart, eventEnd: row.eventEnd }
+    if (!row) {
+      return {
+        eventStart: DEFAULT_EVENT_START,
+        eventEnd: DEFAULT_EVENT_END,
+        dailyStart: DEFAULT_DAILY_START,
+        dailyEnd: DEFAULT_DAILY_END,
+      }
+    }
+    return { eventStart: row.eventStart, eventEnd: row.eventEnd, dailyStart: row.dailyStart, dailyEnd: row.dailyEnd }
   }
 
-  async updateConfig(email: string | null, eventStart: string, eventEnd: string) {
+  async updateConfig(email: string | null, eventStart: string, eventEnd: string, dailyStart: string, dailyEnd: string) {
     if (!this.isAdmin(email)) return { error: new NotAdminError() }
     if (eventEnd < eventStart) return { error: new InvalidConfigError() }
+    if (!isValidTime(dailyStart) || !isValidTime(dailyEnd) || dailyStart >= dailyEnd) return { error: new InvalidTimeConfigError() }
 
     const existing = await this.db.select({ id: bathConfig.id }).from(bathConfig).limit(1)
     if (existing.length > 0) {
       await this.db.update(bathConfig)
-        .set({ eventStart, eventEnd, updatedBy: email ?? null })
+        .set({ eventStart, eventEnd, dailyStart, dailyEnd, updatedBy: email ?? null })
         .where(eq(bathConfig.id, existing[0].id))
     } else {
-      await this.db.insert(bathConfig).values({ eventStart, eventEnd, updatedBy: email ?? null })
+      await this.db.insert(bathConfig).values({ eventStart, eventEnd, dailyStart, dailyEnd, updatedBy: email ?? null })
     }
 
-    return { data: { eventStart, eventEnd } }
+    return { data: { eventStart, eventEnd, dailyStart, dailyEnd } }
   }
 
   async getUserGender(userId: string): Promise<'male' | 'female' | null> {
@@ -107,6 +135,8 @@ export class BathService {
     const gender = await this.getUserGender(userId)
     if (!gender) return { error: new NotCheckedInError() }
 
+    const slotsList = generateSlots(config.dailyStart, config.dailyEnd)
+
     const todayBookings = await this.db
       .select()
       .from(bathBookings)
@@ -129,7 +159,7 @@ export class BathService {
     }
 
     const slots = await Promise.all(
-      ALL_SLOTS.map(async (slot) => {
+      slotsList.map(async (slot) => {
         const booking = bookingsBySlot.get(slot)
         if (!booking) {
           return { timeSlot: slot, booked: false }
@@ -150,6 +180,8 @@ export class BathService {
       gender,
       eventStart: config.eventStart,
       eventEnd: config.eventEnd,
+      dailyStart: config.dailyStart,
+      dailyEnd: config.dailyEnd,
       myBooking: myBooking ? { id: myBooking.id, timeSlot: myBooking.timeSlot } : null,
       slots,
     }
@@ -158,7 +190,7 @@ export class BathService {
   async book(userId: string, date: string, timeSlot: string) {
     const config = await this.getConfig()
     if (!(date >= config.eventStart && date <= config.eventEnd)) return { error: new InvalidDateError() }
-    if (!ALL_SLOTS.includes(timeSlot)) return { error: new InvalidSlotError() }
+    if (!generateSlots(config.dailyStart, config.dailyEnd).includes(timeSlot)) return { error: new InvalidSlotError() }
 
     const gender = await this.getUserGender(userId)
     if (!gender) return { error: new NotCheckedInError() }

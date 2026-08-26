@@ -41,7 +41,7 @@ export const bathModule = new Elysia()
     response: { 200: 'Bath.BathConfigResponse', 401: ErrorResponse },
   })
   .put('/bath/config', async ({ user, body }) => {
-    const result = await bathService.updateConfig(user.email, body.eventStart, body.eventEnd)
+    const result = await bathService.updateConfig(user.email, body.eventStart, body.eventEnd, body.dailyStart, body.dailyEnd)
     if (result.error) return errorResponse(result.error)
     return result.data
   }, {

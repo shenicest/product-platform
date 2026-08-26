@@ -16,6 +16,8 @@ interface SlotsData {
   gender: 'male' | 'female'
   eventStart: string
   eventEnd: string
+  dailyStart: string
+  dailyEnd: string
   myBooking: { id: number; timeSlot: string } | null
   slots: BathSlot[]
 }
@@ -34,11 +36,21 @@ function formatDate(dateStr: string) {
   return `${Number(m)}/${Number(d)} ${weekday}`
 }
 
+function timeOptions() {
+  const options: string[] = []
+  for (let h = 0; h < 24; h++) {
+    options.push(`${String(h).padStart(2, '0')}:00`)
+    options.push(`${String(h).padStart(2, '0')}:30`)
+  }
+  return options
+}
+
 export function BathBooking({ userId: _userId, email }: { userId: string; email: string | null }) {
   const today = getTodayStr()
   const isAdmin = !!email && email.toLowerCase().endsWith('@shenicest.cn')
+  const TIME_OPTIONS = timeOptions()
 
-  const [config, setConfig] = useState<{ eventStart: string; eventEnd: string } | null>(null)
+  const [config, setConfig] = useState<{ eventStart: string; eventEnd: string; dailyStart: string; dailyEnd: string } | null>(null)
   const [data, setData] = useState<SlotsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -46,6 +58,8 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
 
   const [editStart, setEditStart] = useState('')
   const [editEnd, setEditEnd] = useState('')
+  const [editDailyStart, setEditDailyStart] = useState('09:00')
+  const [editDailyEnd, setEditDailyEnd] = useState('21:00')
   const [configSaving, setConfigSaving] = useState(false)
   const [configMsg, setConfigMsg] = useState<string | null>(null)
 
@@ -58,7 +72,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
       setData(null)
     } else if (slotsData) {
       setData(slotsData)
-      setConfig({ eventStart: slotsData.eventStart, eventEnd: slotsData.eventEnd })
+      setConfig({ eventStart: slotsData.eventStart, eventEnd: slotsData.eventEnd, dailyStart: slotsData.dailyStart, dailyEnd: slotsData.dailyEnd })
     }
     setLoading(false)
   }, [today])
@@ -72,6 +86,8 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
         setConfig(cfg)
         setEditStart(cfg.eventStart)
         setEditEnd(cfg.eventEnd)
+        setEditDailyStart(cfg.dailyStart)
+        setEditDailyEnd(cfg.dailyEnd)
       }
       await fetchSlots()
     }
@@ -102,10 +118,10 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
   }
 
   const handleSaveConfig = async () => {
-    if (!editStart || !editEnd) return
+    if (!editStart || !editEnd || !editDailyStart || !editDailyEnd) return
     setConfigSaving(true)
     setConfigMsg(null)
-    const { data: newConfig, error: err } = await updateBathConfig(editStart, editEnd)
+    const { data: newConfig, error: err } = await updateBathConfig({ eventStart: editStart, eventEnd: editEnd, dailyStart: editDailyStart, dailyEnd: editDailyEnd })
     if (err) {
       setConfigMsg(err.body?.error?.message ?? '保存失败')
     } else if (newConfig) {
@@ -146,6 +162,25 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
               onChange={(e) => setEditEnd(e.target.value)}
               className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
             />
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <label className="text-sm text-muted-foreground">每天</label>
+            <select
+              value={editDailyStart}
+              onChange={(e) => setEditDailyStart(e.target.value)}
+              className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+            >
+              {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <label className="text-sm text-muted-foreground">至</label>
+            <select
+              value={editDailyEnd}
+              onChange={(e) => setEditDailyEnd(e.target.value)}
+              className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+            >
+              {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <label className="text-sm text-muted-foreground">（整点/半点）</label>
             <button
               onClick={handleSaveConfig}
               disabled={configSaving}
@@ -155,7 +190,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
             </button>
           </div>
           {configMsg && <p className="mt-2 text-xs text-muted-foreground">{configMsg}</p>}
-          <p className="mt-2 text-xs text-muted-foreground/70">当前开放范围：{config?.eventStart ?? '-'} 至 {config?.eventEnd ?? '-'}</p>
+          <p className="mt-2 text-xs text-muted-foreground/70">当前开放范围：{config?.eventStart ?? '-'} 至 {config?.eventEnd ?? '-'}，每天 {config?.dailyStart ?? '-'} - {config?.dailyEnd ?? '-'}</p>
         </div>
       )}
 
