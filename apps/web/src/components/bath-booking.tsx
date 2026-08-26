@@ -80,9 +80,20 @@ export function BathBooking({ userId: _userId }: { userId: string }) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="mb-2 text-2xl font-bold">🚿 洗澡间预约</h1>
-      <p className="mb-6 text-sm text-muted-foreground">
+      <p className="mb-4 text-sm text-muted-foreground">
         每人每天仅限预约 1 个时段（30 分钟），仅可预约当天。
       </p>
+
+      <div className="mb-6 rounded-lg border border-border bg-muted/30 px-4 py-4">
+        <h2 className="mb-2 text-sm font-semibold">预约须知</h2>
+        <ul className="space-y-1.5 text-sm text-muted-foreground">
+          <li>· 按时间段预约，尽量准时到达</li>
+          <li>· 洗漱不要超过自己的时段</li>
+          <li>· 在北辰奥运村宾馆 C 座前台找到志愿者</li>
+          <li>· 通过选手牌换房卡钥匙，留下姓名和电话</li>
+          <li>· 洗漱完后归还房卡</li>
+        </ul>
+      </div>
 
       {error && (
         <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
