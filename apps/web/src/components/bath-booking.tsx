@@ -18,13 +18,6 @@ interface SlotsData {
   slots: BathSlot[]
 }
 
-const DATES = [
-  { label: '8/27 周四', value: '2026-08-27' },
-  { label: '8/28 周五', value: '2026-08-28' },
-  { label: '8/29 周六', value: '2026-08-29' },
-  { label: '8/30 周日', value: '2026-08-30' },
-]
-
 function getTodayStr() {
   const now = new Date()
   const y = now.getFullYear()
@@ -35,17 +28,15 @@ function getTodayStr() {
 
 export function BathBooking({ userId: _userId }: { userId: string }) {
   const today = getTodayStr()
-  const todayOption = DATES.find((d) => d.value === today)
-  const [selectedDate, setSelectedDate] = useState(todayOption?.value ?? today)
   const [data, setData] = useState<SlotsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchSlots = useCallback(async (date: string) => {
+  const fetchSlots = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const { data: slotsData, error: err } = await getBathSlots(date)
+    const { data: slotsData, error: err } = await getBathSlots(today)
     if (err) {
       setError(err.body?.error?.message ?? '加载失败')
       setData(null)
@@ -53,28 +44,23 @@ export function BathBooking({ userId: _userId }: { userId: string }) {
       setData(slotsData)
     }
     setLoading(false)
-  }, [])
-
-  const loadDate = useCallback(async (date: string) => {
-    setSelectedDate(date)
-    await fetchSlots(date)
-  }, [fetchSlots])
+  }, [today])
 
   // Initial load on mount
   const [initialized, setInitialized] = useState(false)
   if (!initialized) {
     setInitialized(true)
-    fetchSlots(selectedDate)
+    fetchSlots()
   }
 
   const handleBook = async (timeSlot: string) => {
     setActionLoading(timeSlot)
     setError(null)
-    const { error: err } = await bookBathSlot(selectedDate, timeSlot)
+    const { error: err } = await bookBathSlot(today, timeSlot)
     if (err) {
       setError(err.body?.error?.message ?? '预约失败')
     }
-    await fetchSlots(selectedDate)
+    await fetchSlots()
     setActionLoading(null)
   }
 
@@ -85,7 +71,7 @@ export function BathBooking({ userId: _userId }: { userId: string }) {
     if (err) {
       setError(err.body?.error?.message ?? '取消失败')
     }
-    await fetchSlots(selectedDate)
+    await fetchSlots()
     setActionLoading(null)
   }
 
@@ -95,32 +81,8 @@ export function BathBooking({ userId: _userId }: { userId: string }) {
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="mb-2 text-2xl font-bold">🚿 洗澡间预约</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        每人每天仅限预约 1 个时段（30 分钟），预约后不可再预约其他时段。
+        每人每天仅限预约 1 个时段（30 分钟），仅可预约当天。
       </p>
-
-      <div className="mb-6 flex flex-wrap gap-2">
-        {DATES.map((d) => {
-          const isToday = d.value === today
-          const isPast = d.value < today
-          return (
-            <button
-              key={d.value}
-              onClick={() => !isPast && loadDate(d.value)}
-              disabled={isPast}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                selectedDate === d.value
-                  ? 'bg-primary text-primary-foreground'
-                  : isPast
-                    ? 'cursor-not-allowed bg-muted text-muted-foreground/50'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              {d.label}
-              {isToday && <span className="ml-1 text-xs">（今天）</span>}
-            </button>
-          )
-        })}
-      </div>
 
       {error && (
         <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">

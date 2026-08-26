@@ -1,10 +1,18 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { bathBookings } from '../../db/schema'
 import type { Database } from '../../db'
-import { AlreadyBookedTodayError, BookingNotFoundError, InvalidSlotError, NotBookingOwnerError, NotCheckedInError, SlotTakenError } from './model'
+import { AlreadyBookedTodayError, BookingNotFoundError, InvalidDateError, InvalidSlotError, NotBookingOwnerError, NotCheckedInError, SlotTakenError } from './model'
 
 const APPLICATION_TABLE = 'event_management.applications'
 const EVENT_ID = 4
+
+function getTodayStr(): string {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = String(now.getMonth() + 1).padStart(2, '0')
+  const d = String(now.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
 
 const ALL_SLOTS = Array.from({ length: 24 }, (_, i) => {
   const h = Math.floor(i / 2) + 9
@@ -72,6 +80,8 @@ export class BathService {
   }
 
   async getSlots(userId: string, date: string) {
+    if (date !== getTodayStr()) return { error: new InvalidDateError() }
+
     const gender = await this.getUserGender(userId)
     if (!gender) return { error: new NotCheckedInError() }
 
@@ -122,6 +132,7 @@ export class BathService {
   }
 
   async book(userId: string, date: string, timeSlot: string) {
+    if (date !== getTodayStr()) return { error: new InvalidDateError() }
     if (!ALL_SLOTS.includes(timeSlot)) return { error: new InvalidSlotError() }
 
     const gender = await this.getUserGender(userId)

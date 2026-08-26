@@ -84,3 +84,10 @@ export class InvalidSlotError extends Error {
     super('无效的时段')
   }
 }
+
+export class InvalidDateError extends Error {
+  readonly code = 'INVALID_DATE'
+  constructor() {
+    super('只能预约当天的时段')
+  }
+}
