@@ -3,7 +3,7 @@ import { bathBookings } from '../../db/schema'
 import type { Database } from '../../db'
 import { AlreadyBookedTodayError, BookingNotFoundError, InvalidSlotError, NotBookingOwnerError, NotCheckedInError, SlotTakenError } from './model'
 
-const APPLICATION_TABLE = 'event_management.application'
+const APPLICATION_TABLE = 'event_management.applications'
 const EVENT_ID = 4
 
 const ALL_SLOTS = Array.from({ length: 24 }, (_, i) => {
