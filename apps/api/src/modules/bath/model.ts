@@ -88,6 +88,6 @@ export class InvalidSlotError extends Error {
 export class InvalidDateError extends Error {
   readonly code = 'INVALID_DATE'
   constructor() {
-    super('只能预约当天的时段')
+    super('预约开放日期为 8/27 - 8/30')
   }
 }

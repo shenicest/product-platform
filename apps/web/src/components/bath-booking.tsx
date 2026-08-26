@@ -26,8 +26,18 @@ function getTodayStr() {
   return `${y}-${m}-${d}`
 }
 
+const EVENT_START = '2026-08-27'
+const EVENT_END = '2026-08-30'
+
+function formatDate(dateStr: string) {
+  const [, m, d] = dateStr.split('-')
+  const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][new Date(`${dateStr}T00:00:00`).getDay()]
+  return `${Number(m)}/${Number(d)} ${weekday}`
+}
+
 export function BathBooking({ userId: _userId }: { userId: string }) {
   const today = getTodayStr()
+  const isEventDay = today >= EVENT_START && today <= EVENT_END
   const [data, setData] = useState<SlotsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
@@ -50,7 +60,8 @@ export function BathBooking({ userId: _userId }: { userId: string }) {
   const [initialized, setInitialized] = useState(false)
   if (!initialized) {
     setInitialized(true)
-    fetchSlots()
+    if (isEventDay) fetchSlots()
+    else setLoading(false)
   }
 
   const handleBook = async (timeSlot: string) => {
@@ -80,8 +91,11 @@ export function BathBooking({ userId: _userId }: { userId: string }) {
   return (
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="mb-2 text-2xl font-bold">🚿 洗澡间预约</h1>
-      <p className="mb-4 text-sm text-muted-foreground">
+      <p className="mb-1 text-sm text-muted-foreground">
         每人每天仅限预约 1 个时段（30 分钟），仅可预约当天。
+      </p>
+      <p className="mb-4 font-mono text-sm">
+        日期：<span className="font-medium text-primary">{formatDate(today)}</span>
       </p>
 
       <div className="mb-6 rounded-lg border border-border bg-muted/30 px-4 py-4">
@@ -95,81 +109,90 @@ export function BathBooking({ userId: _userId }: { userId: string }) {
         </ul>
       </div>
 
-      {error && (
-        <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
+      {!isEventDay ? (
+        <div className="py-16 text-center">
+          <p className="text-lg font-medium text-muted-foreground">当前不在预约开放时间内</p>
+          <p className="mt-2 text-sm text-muted-foreground/70">预约开放日期：8/27 - 8/30</p>
         </div>
-      )}
-
-      {loading ? (
-        <div className="py-16 text-center text-muted-foreground">加载中...</div>
-      ) : !data ? (
-        <div className="py-16 text-center text-muted-foreground">无法加载数据</div>
       ) : (
         <>
-          <h2 className="mb-4 text-lg font-semibold">{genderLabel}</h2>
-
-          {data.myBooking && (
-            <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
-              <p className="text-sm">
-                您今天已预约：<span className="font-medium">{data.myBooking.timeSlot} - {add30Min(data.myBooking.timeSlot)}</span>
-              </p>
+          {error && (
+            <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
             </div>
           )}
 
-          <div className="space-y-2">
-            {data.slots.map((slot) => {
-              const end_time = add30Min(slot.timeSlot)
-              const isDisabled = (data.myBooking && !slot.isMine) || actionLoading !== null
-              const isMySlot = slot.isMine
+          {loading ? (
+            <div className="py-16 text-center text-muted-foreground">加载中...</div>
+          ) : !data ? (
+            <div className="py-16 text-center text-muted-foreground">无法加载数据</div>
+          ) : (
+            <>
+              <h2 className="mb-4 text-lg font-semibold">{genderLabel}</h2>
 
-              return (
-                <div
-                  key={slot.timeSlot}
-                  className={`flex items-center justify-between rounded-lg border px-4 py-3 transition-colors ${
-                    slot.booked
-                      ? isMySlot
-                        ? 'border-primary/40 bg-primary/5'
-                        : 'border-border bg-muted/30'
-                      : 'border-border hover:border-primary/30 hover:bg-muted/20'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-24 font-mono text-sm font-medium">
-                      {slot.timeSlot} - {end_time}
-                    </span>
-                    {slot.booked ? (
-                      <span className={`text-sm ${isMySlot ? 'font-medium text-primary' : 'text-muted-foreground'}`}>
-                        {isMySlot ? '我的预约' : slot.name}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">可预约</span>
-                    )}
-                  </div>
-
-                  <div>
-                    {slot.booked && isMySlot ? (
-                      <button
-                        onClick={() => slot.bookingId && handleCancel(slot.bookingId)}
-                        disabled={actionLoading === 'cancel'}
-                        className="rounded-md border border-destructive/30 px-3 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
-                      >
-                        {actionLoading === 'cancel' ? '取消中...' : '取消'}
-                      </button>
-                    ) : !slot.booked ? (
-                      <button
-                        onClick={() => handleBook(slot.timeSlot)}
-                        disabled={isDisabled}
-                        className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-                      >
-                        {actionLoading === slot.timeSlot ? '预约中...' : '预约'}
-                      </button>
-                    ) : null}
-                  </div>
+              {data.myBooking && (
+                <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
+                  <p className="text-sm">
+                    您今天已预约：<span className="font-medium">{data.myBooking.timeSlot} - {add30Min(data.myBooking.timeSlot)}</span>
+                  </p>
                 </div>
-              )
-            })}
-          </div>
+              )}
+
+              <div className="space-y-2">
+                {data.slots.map((slot) => {
+                  const end_time = add30Min(slot.timeSlot)
+                  const isDisabled = (data.myBooking && !slot.isMine) || actionLoading !== null
+                  const isMySlot = slot.isMine
+
+                  return (
+                    <div
+                      key={slot.timeSlot}
+                      className={`flex items-center justify-between rounded-lg border px-4 py-3 transition-colors ${
+                        slot.booked
+                          ? isMySlot
+                            ? 'border-primary/40 bg-primary/5'
+                            : 'border-border bg-muted/30'
+                          : 'border-border hover:border-primary/30 hover:bg-muted/20'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="w-24 font-mono text-sm font-medium">
+                          {slot.timeSlot} - {end_time}
+                        </span>
+                        {slot.booked ? (
+                          <span className={`text-sm ${isMySlot ? 'font-medium text-primary' : 'text-muted-foreground'}`}>
+                            {isMySlot ? '我的预约' : slot.name}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">可预约</span>
+                        )}
+                      </div>
+
+                      <div>
+                        {slot.booked && isMySlot ? (
+                          <button
+                            onClick={() => slot.bookingId && handleCancel(slot.bookingId)}
+                            disabled={actionLoading === 'cancel'}
+                            className="rounded-md border border-destructive/30 px-3 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                          >
+                            {actionLoading === 'cancel' ? '取消中...' : '取消'}
+                          </button>
+                        ) : !slot.booked ? (
+                          <button
+                            onClick={() => handleBook(slot.timeSlot)}
+                            disabled={isDisabled}
+                            className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                          >
+                            {actionLoading === slot.timeSlot ? '预约中...' : '预约'}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </>
+          )}
         </>
       )}
     </div>

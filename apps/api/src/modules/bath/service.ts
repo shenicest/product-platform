@@ -5,6 +5,8 @@ import { AlreadyBookedTodayError, BookingNotFoundError, InvalidDateError, Invali
 
 const APPLICATION_TABLE = 'event_management.applications'
 const EVENT_ID = 4
+const EVENT_START = '2026-08-27'
+const EVENT_END = '2026-08-30'
 
 function getTodayStr(): string {
   const now = new Date()
@@ -12,6 +14,10 @@ function getTodayStr(): string {
   const m = String(now.getMonth() + 1).padStart(2, '0')
   const d = String(now.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
+}
+
+function isEventDate(date: string): boolean {
+  return date >= EVENT_START && date <= EVENT_END
 }
 
 const ALL_SLOTS = Array.from({ length: 24 }, (_, i) => {
@@ -80,7 +86,7 @@ export class BathService {
   }
 
   async getSlots(userId: string, date: string) {
-    if (date !== getTodayStr()) return { error: new InvalidDateError() }
+    if (!isEventDate(date)) return { error: new InvalidDateError() }
 
     const gender = await this.getUserGender(userId)
     if (!gender) return { error: new NotCheckedInError() }
@@ -132,7 +138,7 @@ export class BathService {
   }
 
   async book(userId: string, date: string, timeSlot: string) {
-    if (date !== getTodayStr()) return { error: new InvalidDateError() }
+    if (!isEventDate(date)) return { error: new InvalidDateError() }
     if (!ALL_SLOTS.includes(timeSlot)) return { error: new InvalidSlotError() }
 
     const gender = await this.getUserGender(userId)
