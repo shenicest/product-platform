@@ -22,6 +22,28 @@ interface SlotsData {
   slots: BathSlot[]
 }
 
+// Hardcoded display names for pre-seeded occupied slots (seed_* user_ids do not
+// resolve to a real application record). Key: `${date}|${gender}|${timeSlot}`.
+const OCCUPIED_SLOT_NAMES: Record<string, string> = {
+  '2026-08-27|female|12:00': '范心怡',
+  '2026-08-27|female|18:30': '张艾佳',
+  '2026-08-27|female|19:00': '罗晨菲',
+  '2026-08-27|female|19:30': '邓思涵',
+  '2026-08-27|female|20:00': '王佳音',
+  '2026-08-27|female|20:30': '范晓君',
+  '2026-08-27|female|21:00': '廖思怡',
+  '2026-08-28|female|20:30': '廖思怡',
+  '2026-08-28|female|21:00': '张艾佳',
+  '2026-08-29|female|20:30': '廖思怡',
+  '2026-08-27|male|10:00': '聂宇杰',
+  '2026-08-27|male|19:00': '王志宇',
+  '2026-08-27|male|20:30': 'Alexandru',
+}
+
+function occupiedSlotName(date: string, gender: string, timeSlot: string): string | undefined {
+  return OCCUPIED_SLOT_NAMES[`${date}|${gender}|${timeSlot}`]
+}
+
 function getTodayStr() {
   const now = new Date()
   const y = now.getFullYear()
@@ -270,7 +292,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
                     </span>
                     {slot.booked ? (
                       <span className={`text-sm ${isMySlot ? 'font-medium text-primary' : 'text-muted-foreground'}`}>
-                        {isMySlot ? '我的预约' : slot.name}
+                        {isMySlot ? '我的预约' : (occupiedSlotName(data.date, data.gender, slot.timeSlot) ?? slot.name)}
                       </span>
                     ) : (
                       <span className="text-sm text-muted-foreground">可预约</span>

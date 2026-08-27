@@ -1,25 +1,42 @@
+import { like } from 'drizzle-orm'
 import { db } from './index'
 import { bathBookings } from './schema'
 
-// Pre-seeded bookings for Aug 27 — these slots are already occupied.
-// user_ids are placeholder values; replace with real user_ids from event_management.applications if needed.
+// Pre-seeded bookings from the signup sheet — these slots are already occupied.
+// user_ids are placeholder values (`seed_*`) so they never collide with real
+// numeric user ids and cannot be cancelled by mistake. The participant name is
+// displayed via a hardcoded map in the frontend (apps/web/src/components/bath-booking.tsx),
+// because placeholder user_ids do not resolve to a real application record.
 const SEED_BOOKINGS = [
-  // ♀ Female
-  { userId: 'seed_female_1', date: '2026-08-27', timeSlot: '11:30', gender: 'female' },
-  { userId: 'seed_female_2', date: '2026-08-27', timeSlot: '12:00', gender: 'female' },
-  { userId: 'seed_female_3', date: '2026-08-27', timeSlot: '13:00', gender: 'female' },
-  { userId: 'seed_female_4', date: '2026-08-27', timeSlot: '13:30', gender: 'female' },
-  // ♂ Male
-  { userId: 'seed_male_1', date: '2026-08-27', timeSlot: '11:30', gender: 'male' },
-  { userId: 'seed_male_2', date: '2026-08-27', timeSlot: '12:30', gender: 'male' },
-  { userId: 'seed_male_3', date: '2026-08-27', timeSlot: '13:00', gender: 'male' },
+  // ♀ Female — 8/27
+  { userId: 'seed_范心怡', date: '2026-08-27', timeSlot: '12:00', gender: 'female' },
+  { userId: 'seed_张艾佳', date: '2026-08-27', timeSlot: '18:30', gender: 'female' },
+  { userId: 'seed_罗晨菲', date: '2026-08-27', timeSlot: '19:00', gender: 'female' },
+  { userId: 'seed_邓思涵', date: '2026-08-27', timeSlot: '19:30', gender: 'female' },
+  { userId: 'seed_王佳音', date: '2026-08-27', timeSlot: '20:00', gender: 'female' },
+  { userId: 'seed_范晓君', date: '2026-08-27', timeSlot: '20:30', gender: 'female' },
+  { userId: 'seed_廖思怡', date: '2026-08-27', timeSlot: '21:00', gender: 'female' },
+  // ♀ Female — 8/28
+  { userId: 'seed_廖思怡', date: '2026-08-28', timeSlot: '20:30', gender: 'female' },
+  { userId: 'seed_张艾佳', date: '2026-08-28', timeSlot: '21:00', gender: 'female' },
+  // ♀ Female — 8/29
+  { userId: 'seed_廖思怡', date: '2026-08-29', timeSlot: '20:30', gender: 'female' },
+  // ♂ Male — 8/27
+  { userId: 'seed_聂宇杰', date: '2026-08-27', timeSlot: '10:00', gender: 'male' },
+  { userId: 'seed_王志宇', date: '2026-08-27', timeSlot: '19:00', gender: 'male' },
+  { userId: 'seed_Alexandru', date: '2026-08-27', timeSlot: '20:30', gender: 'male' },
 ]
 
 async function main() {
-  console.log('Seeding bath bookings for 2026-08-27...')
+  console.log('Seeding occupied bath bookings...')
+
+  // Clear previously seeded placeholder bookings first so the script is idempotent.
+  const cleaned = await db.delete(bathBookings).where(like(bathBookings.userId, 'seed_%'))
+  console.log(`  Cleaned ${cleaned[0].affectedRows} placeholder booking(s)`)
+
   for (const booking of SEED_BOOKINGS) {
     await db.insert(bathBookings).values(booking).execute()
-    console.log(`  ✓ ${booking.gender} ${booking.timeSlot}`)
+    console.log(`  ✓ ${booking.date} ${booking.gender} ${booking.timeSlot}`)
   }
   console.log('Done.')
 }
