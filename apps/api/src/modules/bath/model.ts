@@ -24,6 +24,7 @@ export const BathSlotsResponse = t.Object({
   myBooking: t.Nullable(t.Object({
     id: t.Number(),
     timeSlot: t.String(),
+    checkedOutAt: t.Nullable(t.String()),
   })),
   slots: t.Array(BathSlot),
 })
@@ -65,6 +66,12 @@ export const BathCancelParams = t.Object({
 })
 export type BathCancelParams = typeof BathCancelParams.static
 
+export const BathCheckoutResponse = t.Object({
+  success: t.Boolean(),
+  checkedOutAt: t.String(),
+})
+export type BathCheckoutResponse = typeof BathCheckoutResponse.static
+
 export class NotCheckedInError extends Error {
   readonly code = 'NOT_CHECKED_IN'
   constructor() {
@@ -96,7 +103,42 @@ export class BookingNotFoundError extends Error {
 export class NotBookingOwnerError extends Error {
   readonly code = 'NOT_BOOKING_OWNER'
   constructor() {
-    super('只能取消自己的预约')
+    super('只能操作自己的预约')
+  }
+}
+
+export class BathBookingBannedError extends Error {
+  readonly code = 'BATH_BOOKING_BANNED'
+  constructor() {
+    super('您曾未在预约结束后 3 分钟内签退，已无法再次预约洗澡')
+  }
+}
+
+export class AlreadyCheckedOutError extends Error {
+  readonly code = 'ALREADY_CHECKED_OUT'
+  constructor() {
+    super('该预约已签退')
+  }
+}
+
+export class CheckoutNotStartedError extends Error {
+  readonly code = 'CHECKOUT_NOT_STARTED'
+  constructor() {
+    super('预约开始后才能签退')
+  }
+}
+
+export class CheckoutExpiredError extends Error {
+  readonly code = 'CHECKOUT_EXPIRED'
+  constructor() {
+    super('已超过预约结束后 3 分钟的签退期限，您将无法再次预约洗澡')
+  }
+}
+
+export class CancellationClosedError extends Error {
+  readonly code = 'CANCELLATION_CLOSED'
+  constructor() {
+    super('预约已开始，不能取消，请完成签退')
   }
 }
 

@@ -1,0 +1,1 @@
+ALTER TABLE `bath_bookings` ADD `checkout_deadline` timestamp;

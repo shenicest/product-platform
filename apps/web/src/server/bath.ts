@@ -13,7 +13,7 @@ export interface BathSlot {
 export interface BathSlotsData {
   date: string
   gender: 'male' | 'female'
-  myBooking: { id: number; timeSlot: string } | null
+  myBooking: { id: number; timeSlot: string; checkedOutAt: string | null } | null
   slots: BathSlot[]
 }
 

@@ -7,6 +7,7 @@ import {
   AlreadyBookedTodayError,
   BathBookBody,
   BathBookResponse,
+  BathCheckoutResponse,
   BathConfigBody,
   BathConfigResponse,
   BathSlotsQuery,
@@ -34,7 +35,7 @@ const errorResponse = (err: unknown) => {
 export const bathModule = new Elysia()
   .use(dbPlugin)
   .use(authPlugin)
-  .model({ BathSlotsQuery, BathSlotsResponse, BathBookBody, BathBookResponse, BathConfigBody, BathConfigResponse })
+  .model({ BathSlotsQuery, BathSlotsResponse, BathBookBody, BathBookResponse, BathCheckoutResponse, BathConfigBody, BathConfigResponse })
   .prefix('model', 'Bath.')
   .get('/bath/config', async () => bathService.getConfig(), {
     auth: true,
@@ -66,6 +67,17 @@ export const bathModule = new Elysia()
     auth: true,
     body: 'Bath.BathBookBody',
     response: { 200: 'Bath.BathBookResponse', 400: ErrorResponse, 401: ErrorResponse },
+  })
+  .post('/bath/bookings/:id/checkout', async ({ user, params }) => {
+    const id = Number(params.id)
+    if (isNaN(id)) return errorResponse(new InvalidSlotError())
+    const result = await bathService.checkout(user.userId, id)
+    if (result.error) return errorResponse(result.error)
+    return result.data
+  }, {
+    auth: true,
+    params: t.Object({ id: t.String() }),
+    response: { 200: 'Bath.BathCheckoutResponse', 400: ErrorResponse, 401: ErrorResponse },
   })
   .delete('/bath/bookings/:id', async ({ user, params }) => {
     const id = Number(params.id)

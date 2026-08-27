@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { getBathSlots, bookBathSlot, cancelBathSlot, getBathConfig, updateBathConfig } from '@/lib/client-api'
+import { getBathSlots, bookBathSlot, cancelBathSlot, checkoutBathSlot, getBathConfig, updateBathConfig } from '@/lib/client-api'
 
 interface BathSlot {
   timeSlot: string
@@ -18,7 +18,7 @@ interface SlotsData {
   eventEnd: string
   dailyStart: string
   dailyEnd: string
-  myBooking: { id: number; timeSlot: string } | null
+  myBooking: { id: number; timeSlot: string; checkedOutAt: string | null } | null
   slots: BathSlot[]
 }
 
@@ -71,6 +71,13 @@ function isPastSlot(dateStr: string, timeSlot: string): boolean {
   return new Date(`${dateStr}T${timeSlot}:00`) < new Date()
 }
 
+function hasStarted(dateStr: string, timeSlot: string, now: Date): boolean {
+  const [hours, minutes] = timeSlot.split(':').map(Number)
+  const endMinutes = hours * 60 + minutes + 30
+  const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`
+  return now >= new Date(`${dateStr}T${endTime}:00`)
+}
+
 export function BathBooking({ userId: _userId, email }: { userId: string; email: string | null }) {
   const today = getTodayStr()
   const isAdmin = !!email && email.toLowerCase().endsWith('@shenicest.cn')
@@ -80,6 +87,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
   const [data, setData] = useState<SlotsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [now, setNow] = useState(() => new Date())
   const [error, setError] = useState<string | null>(null)
   const [gender, setGender] = useState<'male' | 'female' | undefined>(isAdmin ? 'male' : undefined)
 
@@ -122,6 +130,11 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
     return () => { cancelled = true }
   }, [fetchSlots])
 
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 30_000)
+    return () => window.clearInterval(interval)
+  }, [])
+
   const handleBook = async (timeSlot: string) => {
     setActionLoading(timeSlot)
     setError(null)
@@ -139,6 +152,17 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
     const { error: err } = await cancelBathSlot(bookingId)
     if (err) {
       setError(err.body?.error?.message ?? '取消失败')
+    }
+    await fetchSlots()
+    setActionLoading(null)
+  }
+
+  const handleCheckout = async (bookingId: number) => {
+    setActionLoading('checkout')
+    setError(null)
+    const { error: err } = await checkoutBathSlot(bookingId)
+    if (err) {
+      setError(err.body?.error?.message ?? '签退失败')
     }
     await fetchSlots()
     setActionLoading(null)
@@ -244,6 +268,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
         <ul className="space-y-1.5 text-sm text-muted-foreground">
           <li>· 按时间段预约，尽量准时到达</li>
           <li>· 洗漱不要超过自己的时段</li>
+          <li>· 请在预约结束后 3 分钟内签退，逾期未签退将永久无法再次预约</li>
           <li>· 大家要自行带洗漱用品、浴巾</li>
           <li>· 直接去 C 座前台报&quot;黑克松女生&quot;&quot;黑客松男生&quot;进对应的房间，前台会登记信息，然后帮我们开门。（记得带身份证）</li>
           <li>· 酒店地址：北辰汇园酒店 C 座（酒店距离 1.7km）</li>
@@ -269,6 +294,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
               <p className="text-sm">
                 您今天已预约：<span className="font-medium">{data.myBooking.timeSlot} - {add30Min(data.myBooking.timeSlot)}</span>
               </p>
+              {data.myBooking.checkedOutAt && <p className="mt-1 text-xs text-muted-foreground">已签退</p>}
             </div>
           )}
 
@@ -278,6 +304,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
               const isDisabled = (data.myBooking && !slot.isMine) || actionLoading !== null
               const isMySlot = slot.isMine
               const isPast = !slot.booked && isPastSlot(data.date, slot.timeSlot)
+              const started = hasStarted(data.date, slot.timeSlot, now)
 
               return (
                 <div
@@ -309,13 +336,25 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
 
                   <div>
                     {slot.booked && isMySlot ? (
-                      <button
-                        onClick={() => slot.bookingId && handleCancel(slot.bookingId)}
-                        disabled={actionLoading === 'cancel'}
-                        className="rounded-md border border-destructive/30 px-3 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
-                      >
-                        {actionLoading === 'cancel' ? '取消中...' : '取消'}
-                      </button>
+                      data.myBooking?.checkedOutAt ? (
+                        <span className="text-xs text-muted-foreground">已签退</span>
+                      ) : started ? (
+                        <button
+                          onClick={() => slot.bookingId && handleCheckout(slot.bookingId)}
+                          disabled={actionLoading === 'checkout'}
+                          className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
+                        >
+                          {actionLoading === 'checkout' ? '签退中...' : '签退'}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => slot.bookingId && handleCancel(slot.bookingId)}
+                          disabled={actionLoading === 'cancel'}
+                          className="rounded-md border border-destructive/30 px-3 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+                        >
+                          {actionLoading === 'cancel' ? '取消中...' : '取消'}
+                        </button>
+                      )
                     ) : !slot.booked && !isPast ? (
                       <button
                         onClick={() => handleBook(slot.timeSlot)}

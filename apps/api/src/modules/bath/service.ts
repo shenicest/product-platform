@@ -1,7 +1,7 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import { bathBookings, bathConfig } from '../../db/schema'
 import type { Database } from '../../db'
-import { AlreadyBookedTodayError, BookingNotFoundError, InvalidConfigError, InvalidDateError, InvalidGenderError, InvalidSlotError, InvalidTimeConfigError, NotAdminError, NotBookingOwnerError, NotCheckedInError, SlotTakenError } from './model'
+import { AlreadyBookedTodayError, AlreadyCheckedOutError, BathBookingBannedError, BookingNotFoundError, CancellationClosedError, CheckoutExpiredError, CheckoutNotStartedError, InvalidConfigError, InvalidDateError, InvalidGenderError, InvalidSlotError, InvalidTimeConfigError, NotAdminError, NotBookingOwnerError, NotCheckedInError, SlotTakenError } from './model'
 
 const APPLICATION_TABLE = 'event_management.applications'
 const EVENT_ID = 4
@@ -10,6 +10,8 @@ const DEFAULT_EVENT_END = '2026-08-30'
 const DEFAULT_DAILY_START = '09:00'
 const DEFAULT_DAILY_END = '21:00'
 const ADMIN_EMAIL_SUFFIX = '@shenicest.cn'
+const SLOT_DURATION_MINUTES = 30
+const CHECKOUT_GRACE_MINUTES = 3
 
 type AppRow = {
   user_id: number
@@ -32,6 +34,18 @@ function add30Min(time: string): string {
   return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`
 }
 
+function bookingStart(date: string, time: string): Date {
+  return new Date(`${date}T${time}:00+08:00`)
+}
+
+function calculateCheckoutDeadline(date: string, time: string): Date {
+  return new Date(bookingStart(date, time).getTime() + (SLOT_DURATION_MINUTES + CHECKOUT_GRACE_MINUTES) * 60_000)
+}
+
+function bookingEnd(date: string, time: string): Date {
+  return new Date(bookingStart(date, time).getTime() + SLOT_DURATION_MINUTES * 60_000)
+}
+
 function isValidTime(t: string): boolean {
   if (!/^\d{2}:\d{2}$/.test(t)) return false
   const [h, m] = t.split(':').map(Number)
@@ -49,7 +63,24 @@ function generateSlots(dailyStart: string, dailyEnd: string): string[] {
 }
 
 export class BathService {
-  constructor(private db: Database) {}
+  constructor(private db: Database, private now: () => Date = () => new Date()) {}
+
+  async hasMissedCheckout(userId: string): Promise<boolean> {
+    const uncheckedBookings = await this.db
+      .select({
+        date: bathBookings.date,
+        timeSlot: bathBookings.timeSlot,
+        checkoutDeadline: bathBookings.checkoutDeadline,
+      })
+      .from(bathBookings)
+      .where(and(eq(bathBookings.userId, userId), isNull(bathBookings.checkedOutAt)))
+
+    const now = this.now()
+    return uncheckedBookings.some((booking) => {
+      const deadline = booking.checkoutDeadline ?? calculateCheckoutDeadline(booking.date, booking.timeSlot)
+      return now > deadline
+    })
+  }
 
   isAdmin(email: string | null): boolean {
     return !!email && email.toLowerCase().endsWith(ADMIN_EMAIL_SUFFIX)
@@ -195,12 +226,18 @@ export class BathService {
       eventEnd: config.eventEnd,
       dailyStart: config.dailyStart,
       dailyEnd: config.dailyEnd,
-      myBooking: myBooking ? { id: myBooking.id, timeSlot: myBooking.timeSlot } : null,
+      myBooking: myBooking ? {
+        id: myBooking.id,
+        timeSlot: myBooking.timeSlot,
+        checkedOutAt: myBooking.checkedOutAt?.toISOString() ?? null,
+      } : null,
       slots,
     }
   }
 
   async book(userId: string, email: string | null, date: string, timeSlot: string, fallbackGender?: 'male' | 'female') {
+    if (await this.hasMissedCheckout(userId)) return { error: new BathBookingBannedError() }
+
     const config = await this.getConfig()
     if (!(date >= config.eventStart && date <= config.eventEnd)) return { error: new InvalidDateError() }
     if (!generateSlots(config.dailyStart, config.dailyEnd).includes(timeSlot)) return { error: new InvalidSlotError() }
@@ -218,7 +255,13 @@ export class BathService {
     try {
       const [result] = await this.db
         .insert(bathBookings)
-        .values({ userId, date, timeSlot, gender })
+        .values({
+          userId,
+          date,
+          timeSlot,
+          gender,
+          checkoutDeadline: calculateCheckoutDeadline(date, timeSlot),
+        })
         .execute()
       return {
         data: {
@@ -242,8 +285,32 @@ export class BathService {
 
     if (!booking) return { error: new BookingNotFoundError() }
     if (booking.userId !== userId) return { error: new NotBookingOwnerError() }
+    if (this.now() >= bookingStart(booking.date, booking.timeSlot)) return { error: new CancellationClosedError() }
 
     await this.db.delete(bathBookings).where(eq(bathBookings.id, bookingId))
     return { data: { success: true } }
+  }
+
+  async checkout(userId: string, bookingId: number) {
+    const [booking] = await this.db
+      .select()
+      .from(bathBookings)
+      .where(eq(bathBookings.id, bookingId))
+      .limit(1)
+
+    if (!booking) return { error: new BookingNotFoundError() }
+    if (booking.userId !== userId) return { error: new NotBookingOwnerError() }
+    if (booking.checkedOutAt) return { error: new AlreadyCheckedOutError() }
+
+    const now = this.now()
+    if (now < bookingEnd(booking.date, booking.timeSlot)) return { error: new CheckoutNotStartedError() }
+    const deadline = booking.checkoutDeadline ?? calculateCheckoutDeadline(booking.date, booking.timeSlot)
+    if (now > deadline) return { error: new CheckoutExpiredError() }
+
+    const result = await this.db.update(bathBookings)
+      .set({ checkedOutAt: now })
+      .where(and(eq(bathBookings.id, bookingId), isNull(bathBookings.checkedOutAt)))
+    if (result[0].affectedRows === 0) return { error: new AlreadyCheckedOutError() }
+    return { data: { success: true, checkedOutAt: now.toISOString() } }
   }
 }

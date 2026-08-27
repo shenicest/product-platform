@@ -1,0 +1,1 @@
+ALTER TABLE `bath_bookings` ADD `checked_out_at` timestamp;

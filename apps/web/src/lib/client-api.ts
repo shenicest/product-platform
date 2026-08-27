@@ -132,7 +132,7 @@ export function unfollowFounder(userId: string) {
 export function getBathSlots(date: string, gender?: 'male' | 'female') {
   const params = new URLSearchParams({ date })
   if (gender) params.set('gender', gender)
-  return request<{ date: string; gender: 'male' | 'female'; eventStart: string; eventEnd: string; dailyStart: string; dailyEnd: string; myBooking: { id: number; timeSlot: string } | null; slots: Array<{ timeSlot: string; booked: boolean; name?: string; bookingId?: number; isMine?: boolean }> }>('GET', `/bath/slots?${params}`)
+  return request<{ date: string; gender: 'male' | 'female'; eventStart: string; eventEnd: string; dailyStart: string; dailyEnd: string; myBooking: { id: number; timeSlot: string; checkedOutAt: string | null } | null; slots: Array<{ timeSlot: string; booked: boolean; name?: string; bookingId?: number; isMine?: boolean }> }>('GET', `/bath/slots?${params}`)
 }
 
 export function getBathConfig() {
@@ -149,6 +149,10 @@ export function bookBathSlot(date: string, timeSlot: string, gender?: 'male' | '
 
 export function cancelBathSlot(bookingId: number) {
   return request<{ success: boolean }>('DELETE', `/bath/bookings/${bookingId}`)
+}
+
+export function checkoutBathSlot(bookingId: number) {
+  return request<{ success: boolean; checkedOutAt: string }>('POST', `/bath/bookings/${bookingId}/checkout`)
 }
 
 import type { TalentBody, TalentConnection, TalentManagement, TalentProfile } from '@/lib/talent'
