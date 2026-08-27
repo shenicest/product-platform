@@ -245,9 +245,8 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
           <li>· 按时间段预约，尽量准时到达</li>
           <li>· 洗漱不要超过自己的时段</li>
           <li>· 大家要自行带洗漱用品、浴巾</li>
-          <li>· 在北辰奥运村宾馆 C 座前台找到志愿者</li>
-          <li>· 通过选手牌换房卡钥匙，留下姓名和电话</li>
-          <li>· 洗漱完后归还房卡</li>
+          <li>· 直接去 C 座前台报&quot;黑克松女生&quot;&quot;黑客松男生&quot;进对应的房间，前台会登记信息，然后帮我们开门。（记得带身份证）</li>
+          <li>· 酒店地址：北辰汇园酒店 C 座（酒店距离 1.7km）</li>
         </ul>
       </div>
 
