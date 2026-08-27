@@ -5,6 +5,7 @@ export const bathBookings = mysqlTable('bath_bookings', {
   userId: varchar('user_id', { length: 255 }).notNull(),
   date: varchar('date', { length: 10 }).notNull(),
   timeSlot: varchar('time_slot', { length: 5 }).notNull(),
+  durationSlots: int('duration_slots').notNull().default(1),
   gender: varchar('gender', { length: 10 }).notNull(),
   checkoutDeadline: timestamp('checkout_deadline'),
   checkedOutAt: timestamp('checked_out_at'),

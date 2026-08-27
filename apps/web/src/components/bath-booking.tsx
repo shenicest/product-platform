@@ -18,7 +18,7 @@ interface SlotsData {
   eventEnd: string
   dailyStart: string
   dailyEnd: string
-  myBooking: { id: number; timeSlot: string; checkedOutAt: string | null } | null
+  myBooking: { id: number; timeSlot: string; durationSlots: 1 | 2; checkedOutAt: string | null } | null
   slots: BathSlot[]
 }
 
@@ -85,6 +85,8 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
 
   const [config, setConfig] = useState<{ eventStart: string; eventEnd: string; dailyStart: string; dailyEnd: string } | null>(null)
   const [data, setData] = useState<SlotsData | null>(null)
+  const [selectedDate, setSelectedDate] = useState(today)
+  const [durationSlots, setDurationSlots] = useState<1 | 2>(1)
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [now, setNow] = useState(() => new Date())
@@ -101,7 +103,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
   const fetchSlots = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const { data: slotsData, error: err } = await getBathSlots(today, isAdmin ? gender : undefined)
+    const { data: slotsData, error: err } = await getBathSlots(selectedDate, isAdmin ? gender : undefined)
     if (err) {
       setError(err.body?.error?.message ?? '加载失败')
       setData(null)
@@ -110,7 +112,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
       setConfig({ eventStart: slotsData.eventStart, eventEnd: slotsData.eventEnd, dailyStart: slotsData.dailyStart, dailyEnd: slotsData.dailyEnd })
     }
     setLoading(false)
-  }, [today, isAdmin, gender])
+  }, [selectedDate, isAdmin, gender])
 
   useEffect(() => {
     let cancelled = false
@@ -138,7 +140,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
   const handleBook = async (timeSlot: string) => {
     setActionLoading(timeSlot)
     setError(null)
-    const { error: err } = await bookBathSlot(today, timeSlot, isAdmin ? gender : undefined)
+    const { error: err } = await bookBathSlot(selectedDate, timeSlot, durationSlots, isAdmin ? gender : undefined)
     if (err) {
       setError(err.body?.error?.message ?? '预约失败')
     }
@@ -189,10 +191,11 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
     <div className="mx-auto max-w-2xl px-4 py-8">
       <h1 className="mb-2 text-2xl font-bold">🚿 洗澡间预约</h1>
       <p className="mb-1 text-sm text-muted-foreground">
-        每人每天仅限预约 1 个时段（30 分钟），仅可预约当天。
+         每人每天仅限预约 1 次，可选择 30 分钟或连续 60 分钟。
       </p>
       <p className="mb-4 font-mono text-sm">
-        日期：<span className="font-medium text-primary">{formatDate(today)}</span>
+         日期：
+         <input type="date" min={config?.eventStart} max={config?.eventEnd} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="rounded-md border border-border bg-background px-2 py-1 font-medium text-primary" />
       </p>
 
       {isAdmin && (
@@ -292,7 +295,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
           {data.myBooking && (
             <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
               <p className="text-sm">
-                您今天已预约：<span className="font-medium">{data.myBooking.timeSlot} - {add30Min(data.myBooking.timeSlot)}</span>
+                您当天已预约：<span className="font-medium">{data.myBooking.timeSlot} - {addMinutes(data.myBooking.timeSlot, data.myBooking.durationSlots * 30)}</span>
               </p>
               {data.myBooking.checkedOutAt && <p className="mt-1 text-xs text-muted-foreground">已签退</p>}
             </div>
@@ -303,6 +306,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
               const end_time = add30Min(slot.timeSlot)
               const isDisabled = (data.myBooking && !slot.isMine) || actionLoading !== null
               const isMySlot = slot.isMine
+              const isMyBookingStart = isMySlot && data.myBooking?.timeSlot === slot.timeSlot
               const isPast = !slot.booked && isPastSlot(data.date, slot.timeSlot)
               const started = hasStarted(data.date, slot.timeSlot, now)
 
@@ -335,11 +339,11 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
                   </div>
 
                   <div>
-                    {slot.booked && isMySlot ? (
+                    {slot.booked && isMyBookingStart ? (
                       data.myBooking?.checkedOutAt ? (
                         <span className="text-xs text-muted-foreground">已签退</span>
                       ) : started ? (
-                        <button
+                       <button
                           onClick={() => slot.bookingId && handleCheckout(slot.bookingId)}
                           disabled={actionLoading === 'checkout'}
                           className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
@@ -361,10 +365,15 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
                         disabled={isDisabled}
                         className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                       >
-                        {actionLoading === slot.timeSlot ? '预约中...' : '预约'}
+                         {actionLoading === slot.timeSlot ? '预约中...' : durationSlots === 2 ? '预约 60 分钟' : '预约 30 分钟'}
                       </button>
                     ) : null}
-                  </div>
+           </div>
+           {!data.myBooking && <div className="mt-4 flex items-center gap-2 text-sm">
+             <span className="text-muted-foreground">预约时长：</span>
+             <button onClick={() => setDurationSlots(1)} className={`rounded-md px-3 py-1 ${durationSlots === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>30 分钟</button>
+             <button onClick={() => setDurationSlots(2)} className={`rounded-md px-3 py-1 ${durationSlots === 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>连续 60 分钟</button>
+           </div>}
                 </div>
               )
             })}
@@ -381,4 +390,10 @@ function add30Min(time: string): string {
   const nh = Math.floor(totalMin / 60)
   const nm = totalMin % 60
   return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`
+}
+
+function addMinutes(time: string, minutes: number): string {
+  const [h, m] = time.split(':').map(Number)
+  const totalMin = h * 60 + m + minutes
+  return `${String(Math.floor(totalMin / 60)).padStart(2, '0')}:${String(totalMin % 60).padStart(2, '0')}`
 }

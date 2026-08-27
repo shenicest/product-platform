@@ -1,0 +1,1 @@
+ALTER TABLE `bath_bookings` ADD `duration_slots` int DEFAULT 1 NOT NULL;

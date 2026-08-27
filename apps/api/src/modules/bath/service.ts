@@ -38,12 +38,12 @@ function bookingStart(date: string, time: string): Date {
   return new Date(`${date}T${time}:00+08:00`)
 }
 
-function calculateCheckoutDeadline(date: string, time: string): Date {
-  return new Date(bookingStart(date, time).getTime() + (SLOT_DURATION_MINUTES + CHECKOUT_GRACE_MINUTES) * 60_000)
+function calculateCheckoutDeadline(date: string, time: string, durationSlots: number): Date {
+  return new Date(bookingStart(date, time).getTime() + (durationSlots * SLOT_DURATION_MINUTES + CHECKOUT_GRACE_MINUTES) * 60_000)
 }
 
-function bookingEnd(date: string, time: string): Date {
-  return new Date(bookingStart(date, time).getTime() + SLOT_DURATION_MINUTES * 60_000)
+function bookingEnd(date: string, time: string, durationSlots: number): Date {
+  return new Date(bookingStart(date, time).getTime() + durationSlots * SLOT_DURATION_MINUTES * 60_000)
 }
 
 function isValidTime(t: string): boolean {
@@ -70,6 +70,7 @@ export class BathService {
       .select({
         date: bathBookings.date,
         timeSlot: bathBookings.timeSlot,
+        durationSlots: bathBookings.durationSlots,
         checkoutDeadline: bathBookings.checkoutDeadline,
       })
       .from(bathBookings)
@@ -77,7 +78,7 @@ export class BathService {
 
     const now = this.now()
     return uncheckedBookings.some((booking) => {
-      const deadline = booking.checkoutDeadline ?? calculateCheckoutDeadline(booking.date, booking.timeSlot)
+      const deadline = booking.checkoutDeadline ?? calculateCheckoutDeadline(booking.date, booking.timeSlot, booking.durationSlots)
       return now > deadline
     })
   }
@@ -191,6 +192,7 @@ export class BathService {
     const bookingsBySlot = new Map<string, { userId: string; id: number }>()
     for (const b of todayBookings) {
       bookingsBySlot.set(b.timeSlot, { userId: b.userId, id: b.id })
+      if (b.durationSlots === 2) bookingsBySlot.set(add30Min(b.timeSlot), { userId: b.userId, id: b.id })
     }
 
     const nameCache = new Map<string, string>()
@@ -229,18 +231,21 @@ export class BathService {
       myBooking: myBooking ? {
         id: myBooking.id,
         timeSlot: myBooking.timeSlot,
+        durationSlots: myBooking.durationSlots as 1 | 2,
         checkedOutAt: myBooking.checkedOutAt?.toISOString() ?? null,
       } : null,
       slots,
     }
   }
 
-  async book(userId: string, email: string | null, date: string, timeSlot: string, fallbackGender?: 'male' | 'female') {
+  async book(userId: string, email: string | null, date: string, timeSlot: string, durationSlots = 1, fallbackGender?: 'male' | 'female') {
     if (await this.hasMissedCheckout(userId)) return { error: new BathBookingBannedError() }
 
     const config = await this.getConfig()
     if (!(date >= config.eventStart && date <= config.eventEnd)) return { error: new InvalidDateError() }
-    if (!generateSlots(config.dailyStart, config.dailyEnd).includes(timeSlot)) return { error: new InvalidSlotError() }
+    const availableSlots = generateSlots(config.dailyStart, config.dailyEnd)
+    const requestedSlots = Array.from({ length: durationSlots }, (_, index) => index === 0 ? timeSlot : add30Min(timeSlot))
+    if (![1, 2].includes(durationSlots) || requestedSlots.some((slot) => !availableSlots.includes(slot))) return { error: new InvalidSlotError() }
 
     const gender = await this.resolveGender(userId, email, fallbackGender)
     if (gender instanceof NotCheckedInError || gender instanceof InvalidGenderError) return { error: gender }
@@ -252,6 +257,12 @@ export class BathService {
       .limit(1)
     if (existing.length > 0) return { error: new AlreadyBookedTodayError() }
 
+    const occupied = await this.db.select({ timeSlot: bathBookings.timeSlot, durationSlots: bathBookings.durationSlots })
+      .from(bathBookings)
+      .where(and(eq(bathBookings.date, date), eq(bathBookings.gender, gender)))
+    const occupiedSlots = new Set(occupied.flatMap((booking) => Array.from({ length: booking.durationSlots }, (_, index) => index === 0 ? booking.timeSlot : add30Min(booking.timeSlot))))
+    if (requestedSlots.some((slot) => occupiedSlots.has(slot))) return { error: new SlotTakenError() }
+
     try {
       const [result] = await this.db
         .insert(bathBookings)
@@ -260,7 +271,8 @@ export class BathService {
           date,
           timeSlot,
           gender,
-          checkoutDeadline: calculateCheckoutDeadline(date, timeSlot),
+          durationSlots: durationSlots as 1 | 2,
+          checkoutDeadline: calculateCheckoutDeadline(date, timeSlot, durationSlots),
         })
         .execute()
       return {
@@ -268,6 +280,7 @@ export class BathService {
           id: Number(result.insertId),
           date,
           timeSlot,
+          durationSlots: durationSlots as 1 | 2,
           gender,
         },
       }
@@ -303,8 +316,8 @@ export class BathService {
     if (booking.checkedOutAt) return { error: new AlreadyCheckedOutError() }
 
     const now = this.now()
-    if (now < bookingEnd(booking.date, booking.timeSlot)) return { error: new CheckoutNotStartedError() }
-    const deadline = booking.checkoutDeadline ?? calculateCheckoutDeadline(booking.date, booking.timeSlot)
+    if (now < bookingEnd(booking.date, booking.timeSlot, booking.durationSlots)) return { error: new CheckoutNotStartedError() }
+    const deadline = booking.checkoutDeadline ?? calculateCheckoutDeadline(booking.date, booking.timeSlot, booking.durationSlots)
     if (now > deadline) return { error: new CheckoutExpiredError() }
 
     const result = await this.db.update(bathBookings)

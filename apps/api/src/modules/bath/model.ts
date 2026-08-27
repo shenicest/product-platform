@@ -24,6 +24,7 @@ export const BathSlotsResponse = t.Object({
   myBooking: t.Nullable(t.Object({
     id: t.Number(),
     timeSlot: t.String(),
+    durationSlots: t.Union([t.Literal(1), t.Literal(2)]),
     checkedOutAt: t.Nullable(t.String()),
   })),
   slots: t.Array(BathSlot),
@@ -49,6 +50,7 @@ export type BathConfigBody = typeof BathConfigBody.static
 export const BathBookBody = t.Object({
   date: t.String({ pattern: '^\\d{4}-\\d{2}-\\d{2}$' }),
   timeSlot: t.String({ pattern: '^\\d{2}:\\d{2}$' }),
+  durationSlots: t.Union([t.Literal(1), t.Literal(2)]),
   gender: t.Optional(t.Union([t.Literal('male'), t.Literal('female')])),
 })
 export type BathBookBody = typeof BathBookBody.static
@@ -57,6 +59,7 @@ export const BathBookResponse = t.Object({
   id: t.Number(),
   date: t.String(),
   timeSlot: t.String(),
+  durationSlots: t.Union([t.Literal(1), t.Literal(2)]),
   gender: t.String(),
 })
 export type BathBookResponse = typeof BathBookResponse.static
@@ -82,7 +85,7 @@ export class NotCheckedInError extends Error {
 export class AlreadyBookedTodayError extends Error {
   readonly code = 'ALREADY_BOOKED_TODAY'
   constructor() {
-    super('您今天已预约过，每人每天仅限 1 次')
+    super('您当天已预约过，每人每天仅限 1 次')
   }
 }
 

@@ -60,7 +60,7 @@ export const bathModule = new Elysia()
     response: { 200: 'Bath.BathSlotsResponse', 400: ErrorResponse, 401: ErrorResponse },
   })
   .post('/bath/bookings', async ({ user, body }) => {
-    const result = await bathService.book(user.userId, user.email, body.date, body.timeSlot, body.gender)
+    const result = await bathService.book(user.userId, user.email, body.date, body.timeSlot, body.durationSlots ?? 1, body.gender)
     if (result.error) return errorResponse(result.error)
     return result.data
   }, {

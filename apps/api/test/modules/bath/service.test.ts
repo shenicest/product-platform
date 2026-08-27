@@ -75,6 +75,22 @@ describe('BathService checkout', () => {
     expect(result.error).toBeInstanceOf(CancellationClosedError)
   })
 
+  it('books two consecutive slots and blocks the second slot', async () => {
+    const userId = `bath-double-${crypto.randomUUID()}`
+    const bookingId = await createBooking(`bath-occupied-${crypto.randomUUID()}`, '2026-08-28', '14:30')
+    const service = new BathService(db, () => new Date('2026-08-27T09:00:00+08:00'))
+
+    const result = await service.book(userId, 'admin@shenicest.cn', '2026-08-28', '13:30', 2, 'male')
+    const blockedUserId = `bath-blocked-${crypto.randomUUID()}`
+    userIds.push(blockedUserId)
+    const blocked = await service.book(blockedUserId, 'admin@shenicest.cn', '2026-08-28', '14:00', 1, 'male')
+
+    expect(result.error).toBeUndefined()
+    expect((result.data as { durationSlots: number }).durationSlots).toBe(2)
+    expect(blocked.error?.code).toBe('SLOT_TAKEN')
+    await db.delete(bathBookings).where(inArray(bathBookings.id, [bookingId]))
+  })
+
   it('also evaluates legacy bookings without a stored deadline', async () => {
     const userId = `bath-legacy-${crypto.randomUUID()}`
     userIds.push(userId)
