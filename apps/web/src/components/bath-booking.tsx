@@ -67,6 +67,10 @@ function timeOptions() {
   return options
 }
 
+function isPastSlot(dateStr: string, timeSlot: string): boolean {
+  return new Date(`${dateStr}T${timeSlot}:00`) < new Date()
+}
+
 export function BathBooking({ userId: _userId, email }: { userId: string; email: string | null }) {
   const today = getTodayStr()
   const isAdmin = !!email && email.toLowerCase().endsWith('@shenicest.cn')
@@ -274,6 +278,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
               const end_time = add30Min(slot.timeSlot)
               const isDisabled = (data.myBooking && !slot.isMine) || actionLoading !== null
               const isMySlot = slot.isMine
+              const isPast = !slot.booked && isPastSlot(data.date, slot.timeSlot)
 
               return (
                 <div
@@ -283,7 +288,9 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
                       ? isMySlot
                         ? 'border-primary/40 bg-primary/5'
                         : 'border-border bg-muted/30'
-                      : 'border-border hover:border-primary/30 hover:bg-muted/20'
+                      : isPast
+                        ? 'border-border bg-muted/10'
+                        : 'border-border hover:border-primary/30 hover:bg-muted/20'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -295,7 +302,9 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
                         {isMySlot ? '我的预约' : (occupiedSlotName(data.date, data.gender, slot.timeSlot) ?? slot.name)}
                       </span>
                     ) : (
-                      <span className="text-sm text-muted-foreground">可预约</span>
+                      <span className={`text-sm ${isPast ? 'text-muted-foreground/60' : 'text-muted-foreground'}`}>
+                        {isPast ? '已过可预约时段' : '可预约'}
+                      </span>
                     )}
                   </div>
 
@@ -308,7 +317,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
                       >
                         {actionLoading === 'cancel' ? '取消中...' : '取消'}
                       </button>
-                    ) : !slot.booked ? (
+                    ) : !slot.booked && !isPast ? (
                       <button
                         onClick={() => handleBook(slot.timeSlot)}
                         disabled={isDisabled}
