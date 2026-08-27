@@ -6,6 +6,7 @@ import {
   BathBookingBannedError,
   CancellationClosedError,
   CheckoutExpiredError,
+  CheckoutNotStartedError,
 } from '../../../src/modules/bath/model'
 import { BathService } from '../../../src/modules/bath/service'
 
@@ -30,16 +31,26 @@ describe('BathService checkout', () => {
     }
   })
 
-  it('checks out during the booking and records the checkout time', async () => {
+  it('allows checkout as soon as the booking starts and records the checkout time', async () => {
     const userId = `bath-checkout-${crypto.randomUUID()}`
     const bookingId = await createBooking(userId, '2026-08-27', '10:00')
-    const now = new Date('2026-08-27T10:30:00+08:00')
+    const now = new Date('2026-08-27T10:00:00+08:00')
     const service = new BathService(db, () => now)
 
     const result = await service.checkout(userId, bookingId)
 
     expect(result).toEqual({ data: { success: true, checkedOutAt: now.toISOString() } })
     expect(await service.hasMissedCheckout(userId)).toBe(false)
+  })
+
+  it('rejects checkout before the booking starts', async () => {
+    const userId = `bath-not-started-${crypto.randomUUID()}`
+    const bookingId = await createBooking(userId, '2026-08-27', '10:30')
+    const service = new BathService(db, () => new Date('2026-08-27T10:29:59+08:00'))
+
+    const result = await service.checkout(userId, bookingId)
+
+    expect(result.error).toBeInstanceOf(CheckoutNotStartedError)
   })
 
   it('allows checkout exactly three minutes after the booking ends', async () => {

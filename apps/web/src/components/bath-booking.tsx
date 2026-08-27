@@ -72,10 +72,7 @@ function isPastSlot(dateStr: string, timeSlot: string): boolean {
 }
 
 function hasStarted(dateStr: string, timeSlot: string, now: Date): boolean {
-  const [hours, minutes] = timeSlot.split(':').map(Number)
-  const endMinutes = hours * 60 + minutes + 30
-  const endTime = `${String(Math.floor(endMinutes / 60)).padStart(2, '0')}:${String(endMinutes % 60).padStart(2, '0')}`
-  return now >= new Date(`${dateStr}T${endTime}:00`)
+  return now >= new Date(`${dateStr}T${timeSlot}:00`)
 }
 
 export function BathBooking({ userId: _userId, email }: { userId: string; email: string | null }) {
@@ -271,7 +268,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
         <ul className="space-y-1.5 text-sm text-muted-foreground">
           <li>· 按时间段预约，尽量准时到达</li>
           <li>· 洗漱不要超过自己的时段</li>
-          <li>· 请在预约结束后 3 分钟内签退，逾期未签退将永久无法再次预约</li>
+          <li>· 预约开始后即可签退，请在预约结束后 3 分钟内完成签退</li>
           <li>· 大家要自行带洗漱用品、浴巾</li>
           <li>· 直接去 C 座前台报&quot;黑克松女生&quot;&quot;黑客松男生&quot;进对应的房间，前台会登记信息，然后帮我们开门。（记得带身份证）</li>
           <li>· 酒店地址：北辰汇园酒店 C 座（酒店距离 1.7km）</li>

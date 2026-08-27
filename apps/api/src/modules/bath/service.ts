@@ -42,10 +42,6 @@ function calculateCheckoutDeadline(date: string, time: string, durationSlots: nu
   return new Date(bookingStart(date, time).getTime() + (durationSlots * SLOT_DURATION_MINUTES + CHECKOUT_GRACE_MINUTES) * 60_000)
 }
 
-function bookingEnd(date: string, time: string, durationSlots: number): Date {
-  return new Date(bookingStart(date, time).getTime() + durationSlots * SLOT_DURATION_MINUTES * 60_000)
-}
-
 function isValidTime(t: string): boolean {
   if (!/^\d{2}:\d{2}$/.test(t)) return false
   const [h, m] = t.split(':').map(Number)
@@ -316,7 +312,7 @@ export class BathService {
     if (booking.checkedOutAt) return { error: new AlreadyCheckedOutError() }
 
     const now = this.now()
-    if (now < bookingEnd(booking.date, booking.timeSlot, booking.durationSlots)) return { error: new CheckoutNotStartedError() }
+    if (now < bookingStart(booking.date, booking.timeSlot)) return { error: new CheckoutNotStartedError() }
     const deadline = booking.checkoutDeadline ?? calculateCheckoutDeadline(booking.date, booking.timeSlot, booking.durationSlots)
     if (now > deadline) return { error: new CheckoutExpiredError() }
 
