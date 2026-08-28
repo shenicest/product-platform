@@ -7,6 +7,7 @@ import {
   CancellationClosedError,
   CheckoutExpiredError,
   CheckoutNotStartedError,
+  NotAdminError,
 } from '../../../src/modules/bath/model'
 import { BathService } from '../../../src/modules/bath/service'
 
@@ -127,5 +128,25 @@ describe('BathService gender resolution', () => {
     } as unknown as typeof db)
 
     expect(await service.getUserGender('123')).toBe(expectedGender)
+  })
+
+  it('recognizes a volunteer by email without granting configuration access', async () => {
+    const service = new BathService({
+      execute: async () => [[{ found: 1 }]],
+    } as unknown as typeof db)
+
+    expect(await service.isVolunteer('volunteer@example.com')).toBe(true)
+    const result = await service.updateConfig('volunteer@example.com', '2026-08-27', '2026-08-30', '09:00', '21:00')
+    expect(result.error).toBeInstanceOf(NotAdminError)
+  })
+
+  it('allows volunteers to select either bathroom without an application record', async () => {
+    const service = new BathService({
+      execute: async () => [[{ found: 1 }]],
+    } as unknown as typeof db)
+
+    expect(await service.resolveGender('123', 'volunteer@example.com', 'female')).toBe('female')
+    expect(await service.resolveGender('123', 'volunteer@example.com', 'male')).toBe('male')
+    expect(await service.resolveGender('123', 'volunteer@example.com')).toBe('female')
   })
 })

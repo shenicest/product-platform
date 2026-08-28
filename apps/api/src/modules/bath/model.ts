@@ -21,6 +21,7 @@ export const BathSlotsResponse = t.Object({
   eventEnd: t.String(),
   dailyStart: t.String(),
   dailyEnd: t.String(),
+  canSelectGender: t.Boolean(),
   myBooking: t.Nullable(t.Object({
     id: t.Number(),
     timeSlot: t.String(),

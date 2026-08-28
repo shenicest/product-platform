@@ -18,6 +18,7 @@ interface SlotsData {
   eventEnd: string
   dailyStart: string
   dailyEnd: string
+  canSelectGender: boolean
   myBooking: { id: number; timeSlot: string; durationSlots: 1 | 2; checkedOutAt: string | null } | null
   slots: BathSlot[]
 }
@@ -88,7 +89,8 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
   const [actionLoading, setActionLoading] = useState<string | null>(null)
   const [now, setNow] = useState(() => new Date())
   const [error, setError] = useState<string | null>(null)
-  const [gender, setGender] = useState<'male' | 'female' | undefined>(isAdmin ? 'male' : undefined)
+  const [gender, setGender] = useState<'male' | 'female' | undefined>(isAdmin ? 'female' : undefined)
+  const [canSelectGender, setCanSelectGender] = useState(isAdmin)
 
   const [editStart, setEditStart] = useState('')
   const [editEnd, setEditEnd] = useState('')
@@ -100,16 +102,18 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
   const fetchSlots = useCallback(async () => {
     setLoading(true)
     setError(null)
-    const { data: slotsData, error: err } = await getBathSlots(selectedDate, isAdmin ? gender : undefined)
+    const { data: slotsData, error: err } = await getBathSlots(selectedDate, canSelectGender ? gender : undefined)
     if (err) {
       setError(err.body?.error?.message ?? '加载失败')
       setData(null)
     } else if (slotsData) {
       setData(slotsData)
+      setCanSelectGender(slotsData.canSelectGender)
+      if (slotsData.canSelectGender) setGender(slotsData.gender)
       setConfig({ eventStart: slotsData.eventStart, eventEnd: slotsData.eventEnd, dailyStart: slotsData.dailyStart, dailyEnd: slotsData.dailyEnd })
     }
     setLoading(false)
-  }, [selectedDate, isAdmin, gender])
+  }, [selectedDate, canSelectGender, gender])
 
   useEffect(() => {
     let cancelled = false
@@ -137,7 +141,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
   const handleBook = async (timeSlot: string) => {
     setActionLoading(timeSlot)
     setError(null)
-    const { error: err } = await bookBathSlot(selectedDate, timeSlot, durationSlots, isAdmin ? gender : undefined)
+    const { error: err } = await bookBathSlot(selectedDate, timeSlot, durationSlots, canSelectGender ? gender : undefined)
     if (err) {
       setError(err.body?.error?.message ?? '预约失败')
     }
@@ -195,7 +199,7 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
          <input type="date" min={config?.eventStart} max={config?.eventEnd} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="rounded-md border border-border bg-background px-2 py-1 font-medium text-primary" />
       </p>
 
-      {isAdmin && (
+      {canSelectGender && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted-foreground">浴室：</span>
           <button

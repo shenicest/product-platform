@@ -4,6 +4,7 @@ import type { Database } from '../../db'
 import { AlreadyBookedTodayError, AlreadyCheckedOutError, BathBookingBannedError, BookingNotFoundError, CancellationClosedError, CheckoutExpiredError, CheckoutNotStartedError, InvalidConfigError, InvalidDateError, InvalidGenderError, InvalidSlotError, InvalidTimeConfigError, NotAdminError, NotBookingOwnerError, NotCheckedInError, SlotTakenError } from './model'
 
 const APPLICATION_TABLE = 'event_management.applications'
+const VOLUNTEER_TABLE = 'event_management.g001_volunteers'
 const EVENT_ID = 4
 const DEFAULT_EVENT_START = '2026-08-27'
 const DEFAULT_EVENT_END = '2026-08-30'
@@ -83,6 +84,18 @@ export class BathService {
     return !!email && email.toLowerCase().endsWith(ADMIN_EMAIL_SUFFIX)
   }
 
+  async isVolunteer(email: string | null): Promise<boolean> {
+    if (!email || this.isAdmin(email)) return false
+    try {
+      const [rows] = await this.db.execute(
+        sql`SELECT 1 AS found FROM ${sql.raw(VOLUNTEER_TABLE)} WHERE LOWER(email) = LOWER(${email}) LIMIT 1`,
+      ) as unknown as [Array<{ found: number }>]
+      return rows.length > 0
+    } catch {
+      return false
+    }
+  }
+
   async getConfig(): Promise<{ eventStart: string; eventEnd: string; dailyStart: string; dailyEnd: string }> {
     const [row] = await this.db.select().from(bathConfig).limit(1)
     if (!row) {
@@ -151,16 +164,16 @@ export class BathService {
     }
   }
 
-  // Admins (@shenicest.cn) are exempt from the check-in requirement: they may
-  // pass an explicit gender to choose a bathroom when their application record
-  // is absent or not checked in. Non-admins always use the application gender.
+  // Staff and volunteers may choose either bathroom without an application
+  // record. Other users must use the gender from their checked-in application.
   async resolveGender(userId: string, email: string | null, fallbackGender?: 'male' | 'female'): Promise<'male' | 'female' | NotCheckedInError | InvalidGenderError> {
     const isAdmin = this.isAdmin(email)
-    if (isAdmin && fallbackGender) return fallbackGender
+    const canSelectGender = isAdmin || await this.isVolunteer(email)
+    if (canSelectGender && fallbackGender) return fallbackGender
 
     const appGender = await this.getUserGender(userId)
     if (appGender) return appGender
-    if (isAdmin) return new InvalidGenderError()
+    if (canSelectGender) return 'female'
     return new NotCheckedInError()
   }
 
@@ -175,6 +188,7 @@ export class BathService {
 
     const gender = await this.resolveGender(userId, email, fallbackGender)
     if (gender instanceof NotCheckedInError || gender instanceof InvalidGenderError) return { error: gender }
+    const canSelectGender = this.isAdmin(email) || await this.isVolunteer(email)
 
     const slotsList = generateSlots(config.dailyStart, config.dailyEnd)
 
@@ -224,6 +238,7 @@ export class BathService {
       eventEnd: config.eventEnd,
       dailyStart: config.dailyStart,
       dailyEnd: config.dailyEnd,
+      canSelectGender,
       myBooking: myBooking ? {
         id: myBooking.id,
         timeSlot: myBooking.timeSlot,
