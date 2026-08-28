@@ -116,3 +116,16 @@ describe('BathService checkout', () => {
     expect(await service.hasMissedCheckout(userId)).toBe(true)
   })
 })
+
+describe('BathService gender resolution', () => {
+  it.each([
+    ['male', 'male'],
+    ['female', 'female'],
+  ] as const)('accepts the %s gender value from application form data', async (formGender, expectedGender) => {
+    const service = new BathService({
+      execute: async () => [[{ form_data: JSON.stringify({ gender: formGender }) }]],
+    } as unknown as typeof db)
+
+    expect(await service.getUserGender('123')).toBe(expectedGender)
+  })
+})

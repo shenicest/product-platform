@@ -127,8 +127,8 @@ export class BathService {
       if (!genderRaw) return null
 
       const genderValue = Array.isArray(genderRaw) ? genderRaw[0] : genderRaw
-      if (genderValue === '男性') return 'male'
-      if (genderValue === '女性') return 'female'
+      if (genderValue === '男性' || genderValue === 'male') return 'male'
+      if (genderValue === '女性' || genderValue === 'female') return 'female'
       return null
     } catch {
       return null
