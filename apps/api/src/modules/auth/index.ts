@@ -3,9 +3,15 @@ import { authPlugin } from '../../plugins/auth'
 import { verifyToken } from '../../lib/jwt'
 import { getCsrfToken, sendCode, verifyCode } from '../../lib/shenicest-client'
 import { ErrorCode, ErrorMessage, ErrorResponse } from '../../common'
+import { clientIp, consumeRateLimit, rateLimitExceeded, rateLimitUnavailable } from '../../lib/rate-limit'
 
 const unauthorized = () =>
   status(401, { error: { code: ErrorCode.UNAUTHORIZED, message: ErrorMessage.UNAUTHORIZED } })
+
+const tooManyRequests = (set: { headers: Record<string, string | number>; status?: number | string }, retryAfter: number) => {
+  set.headers['retry-after'] = String(retryAfter)
+  return rateLimitExceeded(retryAfter)
+}
 
 const TOKEN_COOKIE = 'shenicest_token'
 const TOKEN_COOKIE_MAX_AGE = 30 * 24 * 60 * 60
@@ -73,12 +79,26 @@ export const authModule = new Elysia()
     },
   })
 
-  .post('/auth/send-code', async ({ body }) => {
+  .post('/auth/send-code', async ({ body, request, set }) => {
+    const identifier = body.identifier.trim().toLowerCase()
+    const identifierLimited = await consumeRateLimit(identifier, [
+      { scope: 'auth.send-code.identifier.minute', windowSeconds: 60, limit: 1 },
+      { scope: 'auth.send-code.identifier.hour', windowSeconds: 3600, limit: 5 },
+      { scope: 'auth.send-code.identifier.day', windowSeconds: 86400, limit: 20 },
+    ])
+    if ('unavailable' in identifierLimited) return rateLimitUnavailable()
+    if (!identifierLimited.allowed) return tooManyRequests(set, identifierLimited.retryAfter)
+    const ipLimited = await consumeRateLimit(clientIp(request), [
+      { scope: 'auth.send-code.ip.minute', windowSeconds: 60, limit: 10 },
+      { scope: 'auth.send-code.ip.hour', windowSeconds: 3600, limit: 30 },
+    ])
+    if ('unavailable' in ipLimited) return rateLimitUnavailable()
+    if (!ipLimited.allowed) return tooManyRequests(set, ipLimited.retryAfter)
     const { token: csrfToken, cookies } = await getCsrfToken()
     const result = await sendCode(body.identifier, csrfToken, cookies)
     return result
   }, {
-    body: t.Object({ identifier: t.String({ minLength: 1 }) }),
+    body: t.Object({ identifier: t.String({ minLength: 1, maxLength: 255 }) }),
     detail: {
       summary: 'Send OTP code',
       description: 'Sends a verification code to the given email identifier.',
@@ -87,7 +107,13 @@ export const authModule = new Elysia()
     },
   })
 
-  .post('/auth/verify-code', async ({ body, cookie }) => {
+  .post('/auth/verify-code', async ({ body, cookie, request, set }) => {
+    const identifierLimited = await consumeRateLimit(`${body.identifier.trim().toLowerCase()}|${clientIp(request)}`, [
+      { scope: 'auth.verify-code.identifier-ip', windowSeconds: 600, limit: 5 },
+    ])
+    if ('unavailable' in identifierLimited) return rateLimitUnavailable()
+    if (!identifierLimited.allowed) return tooManyRequests(set, identifierLimited.retryAfter)
+
     const { token: csrfToken, cookies } = await getCsrfToken()
     const result = await verifyCode(body.identifier, body.code, csrfToken, cookies)
 
@@ -108,7 +134,7 @@ export const authModule = new Elysia()
     return rest
   }, {
     body: t.Object({
-      identifier: t.String({ minLength: 1 }),
+      identifier: t.String({ minLength: 1, maxLength: 255 }),
       code: t.String({ minLength: 6, maxLength: 6 }),
     }),
     detail: {

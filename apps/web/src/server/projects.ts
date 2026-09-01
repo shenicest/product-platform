@@ -43,6 +43,19 @@ export const getProject = cache(async (id: number) => {
 
 export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProject>>>
 
+export const getHackathonProjects = cache(async (query: Pick<ProjectListQuery, 'offset' | 'limit'> & { track?: 'software' | 'hardware' | 'game' | 'aigc' } = {}) => {
+  const { data, error } = await api.hackathon.projects.get({ query })
+  if (error || !data) throw new Error('Failed to load hackathon projects')
+  return data
+})
+
+export const getHackathonProject = cache(async (id: number) => {
+  const { data, error } = await api.hackathon.projects({ id }).get()
+  if (error?.status === 404) return null
+  if (error || !data) throw new Error('Failed to load hackathon project')
+  return data
+})
+
 export const getProjectWithAuth = cache(async (id: number) => {
   const jar = await cookies()
   const token = jar.get('shenicest_token')?.value

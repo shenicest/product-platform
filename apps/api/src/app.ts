@@ -12,6 +12,7 @@ import { likeModule } from './modules/like'
 import { followModule } from './modules/follow'
 import { talentModule, talentOperatorModule } from './modules/talent'
 import { bathModule } from './modules/bath'
+import { hackathonModule } from './modules/hackathon'
 
 export const app = new Elysia()
   .use(openapi({
@@ -57,6 +58,7 @@ export const app = new Elysia()
   .use(authModule)
   .use(userIdentityModule)
   .use(projectModule)
+  .use(hackathonModule)
   .use(likeModule)
   .use(followModule)
   .use(talentModule)

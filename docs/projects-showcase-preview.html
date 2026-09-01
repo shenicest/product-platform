@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>黑客松项目展厅 · Preview</title>
+  <style>
+    @font-face { font-family: HarmonySN; src: url("../apps/web/src/fonts/HarmonySN-400.woff2") format("woff2"); font-weight: 400; }
+    @font-face { font-family: HarmonySN; src: url("../apps/web/src/fonts/HarmonySN-700.woff2") format("woff2"); font-weight: 700; }
+    @font-face { font-family: HarmonySN; src: url("../apps/web/src/fonts/HarmonySN-900.woff2") format("woff2"); font-weight: 900; }
+    :root {
+      --ink: #f7f7f4;
+      --muted: #a8a5ae;
+      --line: #3d3740;
+      --panel: #15141a;
+      --panel-2: #1b1b21;
+      --void: #08080b;
+      --pink: #ff2da6;
+      --orange: #ff8a42;
+      --blue: #5ab4ff;
+      --green: #8bd450;
+      --yellow: #f6cc63;
+      --radius: 0px;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--void);
+      font-family: HarmonySN, "PingFang SC", "Microsoft YaHei", sans-serif;
+      line-height: 1.5;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .18;
+      background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,45,166,.025) 1px, transparent 1px);
+      background-size: 4px 4px;
+      z-index: 5;
+    }
+    a { color: inherit; text-decoration: none; }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    .shell { width: min(1440px, 100%); margin: 0 auto; padding-left: clamp(20px, 4vw, 64px); padding-right: clamp(20px, 4vw, 64px); }
+    .topbar {
+      min-height: 64px;
+      border-bottom: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(8, 8, 11, .86);
+      backdrop-filter: blur(16px);
+    }
+    .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: -.03em; }
+    .brand-mark { width: 25px; height: 25px; background: var(--pink); display: grid; place-items: center; color: var(--void); font: 900 13px HarmonySN, sans-serif; }
+    .nav { display: flex; gap: 24px; color: var(--muted); font-size: 13px; }
+    .nav a:hover { color: var(--ink); }
+    .hero { padding: 72px 0 52px; display: grid; grid-template-columns: 1.4fr .6fr; gap: 48px; align-items: end; }
+    .eyebrow { color: var(--pink); font: 11px/1.2 monospace; letter-spacing: .18em; text-transform: uppercase; }
+    h1 { max-width: 760px; margin: 16px 0 20px; font-size: clamp(42px, 7vw, 86px); line-height: .94; letter-spacing: -.075em; }
+    .hero-copy { max-width: 570px; margin: 0; color: var(--muted); font-size: 16px; }
+    .hero-meta { border-left: 1px solid var(--line); padding-left: 25px; }
+    .hero-meta strong { display: block; color: var(--pink); font: 50px/1 monospace; letter-spacing: -.08em; }
+    .hero-meta span { display: block; margin-top: 10px; color: var(--muted); font-size: 13px; }
+    .toolbar { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 16px 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 14px; }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; }
+    .filter { border: 1px solid var(--line); color: var(--muted); background: transparent; padding: 8px 10px; font: 11px monospace; transition: .2s ease; }
+    .filter:hover, .filter.active { color: var(--pink); background: transparent; border-color: var(--pink); }
+    .search { width: 190px; padding: 9px 12px; color: var(--ink); background: var(--panel); border: 1px solid var(--line); outline: none; }
+    .search:focus { border-color: var(--pink); box-shadow: 0 0 0 2px rgba(255,45,166,.18); }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; padding: 72px 0 28px; }
+    h2 { margin: 0; font-size: clamp(32px, 4vw, 56px); line-height: 1.05; letter-spacing: -.05em; }
+    .section-count { color: var(--muted); font: 12px monospace; }
+    .project-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    .project-card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; transition: transform .2s ease, border-color .2s ease; }
+    .project-card:hover { transform: translateY(-4px); border-color: #666671; }
+    .project-card.hidden { display: none; }
+    .cover { height: 180px; position: relative; padding: 14px; display: flex; align-items: flex-end; overflow: hidden; }
+    .cover::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 22%, rgba(0,0,0,.62)); }
+    .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: saturate(.8) contrast(1.05); }
+    .track { position: relative; z-index: 1; border: 1px solid currentColor; border-radius: 999px; padding: 5px 9px; background: rgba(10,10,13,.72); font: 11px monospace; }
+    .track.software { color: var(--blue); } .track.hardware { color: var(--orange); } .track.game { color: var(--green); } .track.aigc { color: var(--yellow); }
+    .card-body { padding: 17px; }
+    .card-title { margin: 0 0 7px; font-size: 19px; letter-spacing: -.04em; }
+    .card-desc { min-height: 48px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .card-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-top: 17px; margin-top: 17px; border-top: 1px solid var(--line); }
+    .team { color: var(--muted); font: 11px monospace; }
+    .actions { display: flex; align-items: center; gap: 8px; }
+    .like { display: inline-flex; align-items: center; gap: 5px; padding: 7px 9px; border: 1px solid var(--line); color: var(--muted); background: transparent; font: 11px monospace; transition: .18s ease; }
+    .like:hover, .like.liked { color: var(--pink); border-color: var(--pink); background: transparent; }
+    .like.liked .heart { transform: scale(1.16); }
+    .heart { display: inline-block; transition: transform .18s ease; }
+    .detail { color: var(--ink); border-bottom: 1px solid var(--pink); padding: 3px 0; font-size: 12px; }
+    .empty { display: none; border: 1px dashed var(--line); padding: 50px 20px; color: var(--muted); text-align: center; }
+    .empty.visible { display: block; }
+    .load-more { display: block; margin: 30px auto 80px; padding: 14px 20px; color: var(--pink); background: transparent; border: 2px solid var(--pink); font-weight: 700; }
+    .load-more:hover { color: var(--void); background: var(--pink); }
+    .note { margin: -52px 0 48px; color: #686871; font: 11px monospace; text-align: center; }
+    @media (max-width: 800px) { .hero { grid-template-columns: 1fr; padding-top: 52px; gap: 28px; } .hero-meta { border-left: 0; border-top: 1px solid var(--line); padding: 20px 0 0; } .project-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 560px) { .shell { width: min(100% - 28px, 420px); } .topbar { min-height: 64px; } .nav { display: none; } h1 { font-size: 52px; } .toolbar { align-items: stretch; } .filters { width: 100%; } .search { width: 100%; } .project-grid { grid-template-columns: 1fr; } .cover { height: 205px; } .note { margin-top: -52px; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition: none !important; } }
+  </style>
+</head>
+<body>
+  <header class="topbar shell">
+    <a class="brand" href="#top"><span class="brand-mark">S</span><span>SHENICEST / PROJECTS</span></a>
+    <nav class="nav" aria-label="主导航"><a href="#projects">项目展厅</a><a href="#tracks">赛道</a><a href="/hackathon">返回专区</a></nav>
+  </header>
+
+  <main id="top" class="shell">
+    <section class="hero">
+      <div><div class="eyebrow">HACKATHON / G001 / PROJECTS</div><h1>让好作品<br>被看见。</h1><p class="hero-copy">探索第四届黑客松的参赛项目。按赛道浏览，打开项目详情，为你支持的创意留下一个赞。</p></div>
+      <div class="hero-meta"><strong>238</strong><span>个项目已入选展示<br>项目内容持续更新中</span></div>
+    </section>
+
+    <section id="projects">
+      <div class="toolbar">
+        <div id="tracks" class="filters" role="group" aria-label="按赛道筛选">
+          <button class="filter active" data-filter="all">全部 · 238</button><button class="filter" data-filter="software">软件 · 130</button><button class="filter" data-filter="hardware">硬件 · 49</button><button class="filter" data-filter="game">游戏 · 36</button><button class="filter" data-filter="aigc">AIGC影像 · 19</button>
+        </div>
+        <input class="search" id="search" type="search" placeholder="搜索项目名称" aria-label="搜索项目名称" />
+      </div>
+      <div class="section-head"><h2>精选项目</h2><span class="section-count" id="resultCount">SHOWING 06 / 238</span></div>
+      <div class="project-grid" id="projectGrid">
+        <article class="project-card" data-track="software" data-name="好好花 WorthBloom"><div class="cover"><img src="https://shenicest.com/platform/uploads/images/2026/08/6a92d54e3a04b_92a5b17b90c94cf1.jpg" alt="好好花 WorthBloom 项目封面"><span class="track software">SOFTWARE / 软件</span></div><div class="card-body"><h3 class="card-title">好好花 WorthBloom</h3><p class="card-desc">花开有时，花钱有值。让消费从付款延伸到持续使用与价值验证。</p><div class="card-foot"><span class="team">好好花 · TEAM 48</span><div class="actions"><button class="like" aria-label="点赞 好好花" aria-pressed="false"><span class="heart">♡</span><span class="likes">0</span></button><a class="detail" href="project-detail-preview.html">查看详情 ↗</a></div></div></div></article>
+        <article class="project-card" data-track="hardware" data-name="光合桌面 Photodesk"><div class="cover"><img src="https://picsum.photos/seed/photodesk/800/500" alt="光合桌面项目封面"><span class="track hardware">HARDWARE / 硬件</span></div><div class="card-body"><h3 class="card-title">光合桌面 Photodesk</h3><p class="card-desc">一盏会观察你、理解你，也会提醒你休息的桌面灯。</p><div class="card-foot"><span class="team">TEAM 18 · 4 MEMBERS</span><div class="actions"><button class="like" aria-label="点赞 光合桌面" aria-pressed="false"><span class="heart">♡</span><span class="likes">28</span></button><a class="detail" href="/projects/118">查看详情 ↗</a></div></div></div></article>
+        <article class="project-card" data-track="game" data-name="月球便利店 Moon Mart"><div class="cover"><img src="https://picsum.photos/seed/moon-mart/800/500" alt="月球便利店项目封面"><span class="track game">GAME / 游戏</span></div><div class="card-body"><h3 class="card-title">月球便利店 Moon Mart</h3><p class="card-desc">在月球边缘经营一家小店，遇见来往的旅人和他们的故事。</p><div class="card-foot"><span class="team">TEAM 03 · 2 MEMBERS</span><div class="actions"><button class="like" aria-label="点赞 月球便利店" aria-pressed="false"><span class="heart">♡</span><span class="likes">67</span></button><a class="detail" href="/projects/103">查看详情 ↗</a></div></div></div></article>
+        <article class="project-card" data-track="aigc" data-name="一帧之间 Between Frames"><div class="cover"><img src="https://picsum.photos/seed/between-frames/800/500" alt="一帧之间项目封面"><span class="track aigc">AIGC IMAGE / AIGC影像</span></div><div class="card-body"><h3 class="card-title">一帧之间 Between Frames</h3><p class="card-desc">让静止的老照片拥有一小段时间，找回记忆里的动作和温度。</p><div class="card-foot"><span class="team">TEAM 24 · 3 MEMBERS</span><div class="actions"><button class="like" aria-label="点赞 一帧之间" aria-pressed="false"><span class="heart">♡</span><span class="likes">51</span></button><a class="detail" href="/projects/124">查看详情 ↗</a></div></div></div></article>
+        <article class="project-card" data-track="software" data-name="照护信号 Care Signal"><div class="cover"><img src="https://picsum.photos/seed/care-signal/800/500" alt="照护信号项目封面"><span class="track software">SOFTWARE / 软件</span></div><div class="card-body"><h3 class="card-title">照护信号 Care Signal</h3><p class="card-desc">为独居长者和远方家人，设计一套不打扰但始终在场的联系方式。</p><div class="card-foot"><span class="team">TEAM 31 · 5 MEMBERS</span><div class="actions"><button class="like" aria-label="点赞 照护信号" aria-pressed="false"><span class="heart">♡</span><span class="likes">35</span></button><a class="detail" href="/projects/131">查看详情 ↗</a></div></div></div></article>
+        <article class="project-card" data-track="hardware" data-name="风的档案 Wind Archive"><div class="cover"><img src="https://picsum.photos/seed/wind-archive/800/500" alt="风的档案项目封面"><span class="track hardware">HARDWARE / 硬件</span></div><div class="card-body"><h3 class="card-title">风的档案 Wind Archive</h3><p class="card-desc">一个把不可见的风记录成触觉、光线与声音的开放式装置。</p><div class="card-foot"><span class="team">TEAM 42 · 2 MEMBERS</span><div class="actions"><button class="like" aria-label="点赞 风的档案" aria-pressed="false"><span class="heart">♡</span><span class="likes">19</span></button><a class="detail" href="/projects/142">查看详情 ↗</a></div></div></div></article>
+      </div>
+      <div class="empty" id="empty">没有找到匹配的项目。换个赛道或关键词试试。</div>
+      <button class="load-more" id="loadMore">加载更多项目</button>
+      <p class="note">PREVIEW DATA · 卡片内容、点赞数和封面为展示原型示例，接入 API 后替换</p>
+    </section>
+  </main>
+
+  <script>
+    const cards = [...document.querySelectorAll('.project-card')];
+    const filters = [...document.querySelectorAll('.filter')];
+    const search = document.querySelector('#search');
+    const count = document.querySelector('#resultCount');
+    const empty = document.querySelector('#empty');
+    let selected = 'all';
+    function update() {
+      const query = search.value.trim().toLowerCase();
+      let shown = 0;
+      cards.forEach(card => {
+        const matchesTrack = selected === 'all' || card.dataset.track === selected;
+        const matchesSearch = !query || card.dataset.name.toLowerCase().includes(query);
+        const visible = matchesTrack && matchesSearch;
+        card.classList.toggle('hidden', !visible);
+        if (visible) shown++;
+      });
+      count.textContent = `SHOWING ${String(shown).padStart(2, '0')} / 238`;
+      empty.classList.toggle('visible', shown === 0);
+    }
+    filters.forEach(filter => filter.addEventListener('click', () => {
+      selected = filter.dataset.filter;
+      filters.forEach(item => item.classList.toggle('active', item === filter));
+      update();
+    }));
+    search.addEventListener('input', update);
+    document.querySelectorAll('.like').forEach(button => button.addEventListener('click', () => {
+      const liked = button.classList.toggle('liked');
+      button.setAttribute('aria-pressed', String(liked));
+      const number = button.querySelector('.likes');
+      number.textContent = Number(number.textContent) + (liked ? 1 : -1);
+      button.querySelector('.heart').textContent = liked ? '♥' : '♡';
+    }));
+    document.querySelector('#loadMore').addEventListener('click', event => {
+      event.currentTarget.textContent = '预览中仅展示精选项目';
+      event.currentTarget.disabled = true;
+    });
+  </script>
+</body>
+</html>

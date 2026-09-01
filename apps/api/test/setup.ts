@@ -123,6 +123,7 @@ await q(`CREATE TABLE \`${SHARED_DB}\`.\`users\` (
 process.env.DATABASE_URL = buildUrl(APP_DB)
 process.env.SHARED_USERS_TABLE = SHARED_TABLE
 process.env.SHENICEST_JWT_SECRET ??= 'test-secret-do-not-use-in-prod'
+process.env.SHENICEST_RATE_LIMIT_SECRET ??= 'test-rate-limit-secret-do-not-use-in-prod'
 process.env.SHENICEST_API_BASE ??= 'https://shenicest.test/platform/api'
 // Dummy COS credentials: presigning is a local HMAC computation, so tests
 // never touch the network — but the upload service validates presence at

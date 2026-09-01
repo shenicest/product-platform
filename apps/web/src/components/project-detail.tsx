@@ -49,7 +49,7 @@ function DemoAssets({ project }: { project: ProjectDetail }) {
   const video = demoVideoUrl ? resolveDemoVideo(demoVideoUrl) : null
 
   return (
-    <section className="mt-12 border border-border bg-card">
+    <section className="detail-demo mt-12 border border-border bg-card">
       <div className="flex items-center justify-between border-b border-border px-5 py-3">
         <h2 className="font-mono text-xs tracking-[0.12em] text-primary">
           DEMO / SIGNAL
@@ -111,6 +111,15 @@ function DemoAssets({ project }: { project: ProjectDetail }) {
             ))}
           </div>
         ) : null}
+        {demoLink ? (
+          <div className="overflow-hidden border border-border bg-[#111116]">
+            <div className="flex h-7 items-center gap-1.5 border-b border-border px-2 font-mono text-[10px] text-muted-foreground">
+              <i className="size-1.5 rounded-full bg-[#4a4a52]" /><i className="size-1.5 rounded-full bg-[#4a4a52]" /><i className="size-1.5 rounded-full bg-[#4a4a52]" />
+              <span className="truncate pl-2">{demoLink.replace(/^https?:\/\//, '')}</span>
+            </div>
+            <iframe src={demoLink} title={`${project.name} 产品 Demo`} className="h-[560px] w-full border-0 bg-white" />
+          </div>
+        ) : null}
       </div>
     </section>
   )
@@ -136,7 +145,7 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
   const betaDescription = nonEmpty(project.betaDescription)
 
   return (
-    <article className="mx-auto w-full max-w-3xl px-4 py-12 sm:px-6">
+    <article className="detail-page mx-auto w-full max-w-[1440px] px-5 py-8 sm:px-8 lg:px-16">
       <Link
         href={backHref}
         className="font-mono text-xs tracking-[0.08em] text-muted-foreground transition-colors hover:text-primary"
@@ -144,6 +153,9 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
         ← BACK / {backHref === '/' ? 'INDEX' : 'DASHBOARD'}
       </Link>
 
+      <div className="detail-crumb mb-8">PROJECTS / PROJECT {project.id}</div>
+      <div className="detail-layout">
+      <div>
       <header className="mt-8">
         {coverUrl ? (
           <div className="scan-frame border border-foreground/40 bg-card p-2">
@@ -157,8 +169,8 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
         ) : null}
 
         <div className="mt-8">
-          <p className="eyebrow">OBJECT / {projectIdLabel(project.id)}</p>
-          <h1 className="mt-3 text-[clamp(30px,4vw,44px)] font-bold leading-[1.1]">
+           <p className="eyebrow">FEATURED PROJECT / {projectIdLabel(project.id)}</p>
+           <h1 className="detail-title mt-3 text-[clamp(40px,5vw,70px)] font-bold leading-[.96]">
             {project.name}
           </h1>
           {tagline ? (
@@ -166,7 +178,7 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
               {tagline}
             </p>
           ) : null}
-          {showLike ? <div className="mt-5"><LikeButton projectId={project.id} likeCount={project.likeCount} /></div> : null}
+           {showLike ? <div className="detail-actions mt-5"><LikeButton projectId={project.id} likeCount={project.likeCount} /></div> : null}
 
           {project.founder ? <FounderCard founder={project.founder} projectName={project.name} /> : null}
 
@@ -186,8 +198,6 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
           ) : null}
         </div>
       </header>
-
-      <DemoAssets project={project} />
 
       {sections.length ? (
         <div className="mt-12 space-y-10">
@@ -218,6 +228,9 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
           ) : null}
         </section>
       ) : null}
+      </div>
+      <aside className="detail-aside"><DemoAssets project={project} /></aside>
+      </div>
     </article>
   )
 }

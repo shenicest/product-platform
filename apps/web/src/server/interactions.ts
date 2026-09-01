@@ -17,3 +17,11 @@ export const getMyFollows = cache(async (): Promise<string[]> => {
   if (error || !data) return []
   return data.followed_founder_user_ids
 })
+
+export const getMyHackathonLikes = cache(async (): Promise<number[]> => {
+  const token = (await cookies()).get('shenicest_token')?.value
+  if (!token) return []
+  const { data, error } = await api.me['hackathon-likes'].get({ headers: { cookie: `shenicest_token=${token}` } })
+  if (error || !data) return []
+  return data.liked_hackathon_project_ids
+})

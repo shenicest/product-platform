@@ -113,6 +113,27 @@
       "when": 1787845451290,
       "tag": "0015_lying_firebird",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1788236944749,
+      "tag": "0016_right_liz_osborn",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1788240219933,
+      "tag": "0017_aromatic_paper_doll",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1788241852333,
+      "tag": "0018_curious_scarecrow",
+      "breakpoints": true
     }
   ]
 }

@@ -121,6 +121,18 @@ export function unlikeProject(projectId: number) {
   return request<{ liked: boolean; likeCount: number }>('DELETE', `/projects/${projectId}/like`)
 }
 
+export function likeHackathonProject(projectId: number) {
+  return request<{ liked: boolean; likeCount: number }>('POST', `/hackathon/projects/${projectId}/like`)
+}
+
+export function unlikeHackathonProject(projectId: number) {
+  return request<{ liked: boolean; likeCount: number }>('DELETE', `/hackathon/projects/${projectId}/like`)
+}
+
+export function hideHackathonProject(projectId: number) {
+  return request<{ hidden: boolean }>('POST', `/hackathon/projects/${projectId}/hide`)
+}
+
 export function followFounder(userId: string) {
   return request<{ followed: boolean; followerCount: number }>('POST', `/founders/${userId}/follow`)
 }

@@ -7,6 +7,7 @@
 - [docs/auth.md](./docs/auth.md) — 鉴权体系：JWT 认证、角色/属主授权、前后端守卫
 - [docs/main-site-sso-integration.md](./docs/main-site-sso-integration.md) — 主站（PHP）SSO 接入契约，交给主站维护者/AI 用
 - [docs/spec-v1-frontend.md](./docs/spec-v1-frontend.md) — v1.0 前端路由、页面与组件规格说明
+- [docs/security-hardening.md](./docs/security-hardening.md) — 安全加固待办、限流方案与上线检查清单
 - [docs/adr/](./docs/adr/) — 架构决策记录，解释关键设计选择的原因
   - [0001-project-revision-separation.md](./docs/adr/0001-project-revision-separation.md) — _Superseded by 0004_
   - [0002-no-project-status-field.md](./docs/adr/0002-no-project-status-field.md) — _Superseded by 0005_

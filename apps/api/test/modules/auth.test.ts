@@ -39,6 +39,7 @@ describe('GET /me', () => {
 
 describe('POST /auth/verify-code', () => {
   const originalFetch = globalThis.fetch
+  let verifyRequests = 0
 
   beforeAll(() => {
     globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -47,6 +48,7 @@ describe('POST /auth/verify-code', () => {
         return Response.json({ success: true, token: 'csrf-token' })
       }
       const body = JSON.parse(String(init?.body))
+      verifyRequests += 1
       if (body.code === '000000') {
         return Response.json({ success: false, error: 'Invalid code' })
       }
@@ -106,6 +108,34 @@ describe('POST /auth/verify-code', () => {
     } finally {
       delete process.env.COOKIE_DOMAIN
     }
+  })
+
+  it('returns 429 with Retry-After before calling the external auth service after five attempts', async () => {
+    const identifier = 'limited@example.com'
+    const request = () => authModule.handle(
+      new Request('http://localhost/auth/verify-code', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-forwarded-for': '203.0.113.10',
+        },
+        body: JSON.stringify({ identifier, code: '000000' }),
+      }),
+    )
+
+    const before = verifyRequests
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      expect((await request()).status).toBe(200)
+    }
+    const response = await request()
+
+    expect(response.status).toBe(429)
+    expect(Number(response.headers.get('retry-after'))).toBeGreaterThan(0)
+    expect(await response.json()).toEqual({
+      error: { code: 'RATE_LIMITED', message: 'Too many requests' },
+      retryAfter: expect.any(Number),
+    })
+    expect(verifyRequests).toBe(before + 5)
   })
 })
 

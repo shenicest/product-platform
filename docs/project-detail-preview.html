@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>好好花 WorthBloom · 项目详情预览</title>
+  <style>
+    @font-face { font-family: HarmonySN; src: url("../apps/web/src/fonts/HarmonySN-400.woff2") format("woff2"); font-weight: 400; }
+    @font-face { font-family: HarmonySN; src: url("../apps/web/src/fonts/HarmonySN-700.woff2") format("woff2"); font-weight: 700; }
+    @font-face { font-family: HarmonySN; src: url("../apps/web/src/fonts/HarmonySN-900.woff2") format("woff2"); font-weight: 900; }
+    :root { --void:#08080b; --panel:#15141a; --panel-2:#1b1b21; --ink:#f7f7f4; --muted:#a8a5ae; --line:#3d3740; --pink:#ff2da6; --blue:#5ab4ff; --radius:0px; }
+    * { box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { margin:0; color:var(--ink); background:var(--void); font-family:HarmonySN,"PingFang SC","Microsoft YaHei",sans-serif; line-height:1.5; }
+    body::before { content:""; position:fixed; inset:0; pointer-events:none; opacity:.17; background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,45,166,.025) 1px,transparent 1px); background-size:4px 4px; z-index:8; }
+    a { color:inherit; text-decoration:none; }
+    button { font:inherit; cursor:pointer; }
+    .shell { width:min(1440px,100%); margin:0 auto; padding-left:clamp(20px,4vw,64px); padding-right:clamp(20px,4vw,64px); }
+    .topbar { min-height:64px; border-bottom:1px solid var(--line); display:flex; align-items:center; justify-content:space-between; gap:20px; position:sticky; top:0; z-index:10; background:rgba(8,8,11,.86); backdrop-filter:blur(16px); }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:800; letter-spacing:-.03em; }
+    .mark { width:25px; height:25px; display:grid; place-items:center; color:var(--void); background:var(--pink); font-size:13px; font-weight:900; }
+    .back { color:var(--muted); font-size:13px; }
+    .back:hover { color:var(--pink); }
+    .crumb { padding:32px 0 20px; color:var(--muted); font:11px monospace; letter-spacing:.1em; text-transform:uppercase; }
+    .crumb a { color:var(--pink); }
+    .layout { display:grid; grid-template-columns:minmax(0,.92fr) minmax(420px,1.08fr); gap:54px; align-items:start; }
+    .eyebrow { color:var(--pink); font:11px monospace; letter-spacing:.18em; text-transform:uppercase; }
+    h1 { margin:15px 0 13px; font-size:clamp(40px,5vw,70px); line-height:.96; letter-spacing:-.075em; }
+    .tagline { max-width:540px; margin:0; color:var(--muted); font-size:18px; line-height:1.55; }
+    .tag { display:inline-block; margin-top:27px; border:1px solid var(--blue); border-radius:999px; padding:6px 10px; color:var(--blue); font:11px monospace; }
+    .hero-cover { margin-top:32px; height:280px; position:relative; overflow:hidden; border:1px solid var(--line); border-radius:var(--radius); }
+    .hero-cover img { width:100%; height:100%; object-fit:cover; filter:saturate(.72) contrast(1.1); }
+    .hero-cover::after { content:"WORTHBLOOM / 2026"; position:absolute; left:18px; bottom:15px; color:white; font:11px monospace; letter-spacing:.12em; text-shadow:0 1px 8px #000; }
+    .section { margin-top:44px; border-top:1px solid var(--line); padding-top:22px; }
+    h2 { margin:0 0 14px; font-size:23px; letter-spacing:-.045em; }
+    .copy { margin:0; color:#c4c3c9; font-size:15px; line-height:1.85; }
+    .facts { display:grid; grid-template-columns:repeat(2,1fr); gap:1px; margin-top:22px; border:1px solid var(--line); background:var(--line); }
+    .fact { min-height:82px; padding:14px; background:var(--panel); }
+    .fact label { display:block; margin-bottom:6px; color:var(--muted); font:10px monospace; letter-spacing:.08em; text-transform:uppercase; }
+    .fact strong { font-size:14px; font-weight:600; }
+    .actions { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-top:29px; }
+    .like { display:inline-flex; align-items:center; gap:8px; border:2px solid var(--pink); padding:14px 20px; color:var(--void); background:var(--pink); font-size:13px; font-weight:700; transition:.18s ease; }
+    .like:hover,.like.liked { color:var(--void); background:var(--pink); transform:translate(-2px,-2px); box-shadow:4px 4px 0 #91245f; }
+    .heart { font-size:17px; }
+    .plain-link { border-bottom:1px solid var(--line); padding:8px 0; color:var(--muted); font-size:13px; }
+    .plain-link:hover { color:var(--ink); border-color:var(--pink); }
+    .demo-wrap { position:sticky; top:24px; }
+    .demo-head { display:flex; align-items:center; justify-content:space-between; gap:15px; margin-bottom:12px; }
+    .demo-title { font:11px monospace; letter-spacing:.14em; color:var(--pink); }
+    .demo-tools { display:flex; gap:6px; }
+    .viewport { border:1px solid var(--line); border-radius:var(--radius); padding:10px; background:#111116; box-shadow:0 18px 50px rgba(0,0,0,.32); transition:.25s ease; }
+    .viewport.mobile { width:390px; max-width:100%; margin:0 auto; }
+    .device-bar { height:28px; display:flex; align-items:center; gap:5px; padding:0 8px; border-bottom:1px solid var(--line); color:#696972; font:10px monospace; }
+    .dot { width:7px; height:7px; border-radius:50%; background:#4a4a52; }
+    .url { flex:1; padding-left:8px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+    iframe { display:block; width:100%; height:620px; border:0; background:#fff; }
+    .demo-note { margin:11px 0 0; color:#777780; font:11px monospace; line-height:1.5; }
+    .device-button { border:1px solid var(--line); padding:8px 10px; color:var(--muted); background:transparent; font:11px monospace; }
+    .device-button.active,.device-button:hover { color:var(--ink); border-color:var(--pink); }
+    .placeholder { position:absolute; inset:0; display:none; place-items:center; padding:25px; color:#65656e; background:var(--panel); text-align:center; font:12px monospace; }
+    .placeholder.show { display:grid; }
+    .demo-frame { position:relative; }
+    footer { margin:75px 0 28px; padding-top:18px; border-top:1px solid var(--line); color:#696972; font:11px monospace; }
+    @media (max-width:850px) { .layout { grid-template-columns:1fr; gap:46px; } .demo-wrap { position:relative; top:auto; } iframe { height:560px; } }
+    @media (max-width:560px) { .shell { width:calc(100% - 28px); } .topbar { min-height:64px; } .back { font-size:0; } .back::after { content:"← 返回"; font-size:13px; } .crumb { padding-top:24px; } .hero-cover { height:220px; } .facts { grid-template-columns:1fr; } .demo-head { align-items:flex-start; flex-direction:column; } iframe { height:560px; } }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition:none!important; } }
+  </style>
+</head>
+<body>
+  <header class="topbar shell"><a class="brand" href="projects-showcase-preview.html"><span class="mark">S</span><span>SHENICEST / PROJECTS</span></a><a class="back" href="projects-showcase-preview.html">← 返回项目展厅</a></header>
+  <main class="shell">
+    <div class="crumb"><a href="projects-showcase-preview.html">PROJECTS</a> / EVENT 04 / PROJECT 378</div>
+    <div class="layout">
+      <article>
+        <div class="eyebrow">FEATURED PROJECT / 2026</div>
+        <h1>好好花<br>WorthBloom</h1>
+        <p class="tagline">花开有时，花钱有值</p>
+        <span class="tag">SOFTWARE / 软件</span>
+        <div class="hero-cover"><img src="https://shenicest.com/platform/uploads/images/2026/08/6a92d54e3a04b_92a5b17b90c94cf1.jpg" alt="好好花 WorthBloom 项目封面"></div>
+        <div class="actions"><button class="like" id="like" aria-pressed="false"><span class="heart">♡</span><span>喜欢这个项目</span><strong id="likes">0</strong></button><a class="plain-link" href="https://www.bilibili.com/video/BV1r3426vES6" target="_blank" rel="noreferrer">观看项目视频 ↗</a><a class="plain-link" href="https://github.com/SherryXiaoqaq/worthbloom" target="_blank" rel="noreferrer">查看 GitHub ↗</a></div>
+        <section class="section"><h2>项目介绍</h2><p class="copy">WorthBloom·好好花是一款面向消费决策与购买后价值追踪的产品，关注用户在课程、会员、数码产品、旅行及体验类消费中常见的“想买但不确定值不值”“买完后又没有真正使用”等问题。用户可以创建心愿、比较多个候选产品、邀请朋友参与讨论，并结合 AI 建议做出购买、存钱或等待的决定。购买后，产品继续记录使用次数、余额、有效期及 Cost per Use，让一次消费从付款瞬间延伸为“想清楚、做决定、持续使用、验证价值”的完整过程。</p></section>
+        <section class="section"><h2>现场成果</h2><p class="copy">团队完成了移动端 PWA 的核心产品闭环，包括心愿创建、截图与链接信息提取、多商品比较、朋友免登录回信、AI 建议与 Agent 对话、存钱目标、购买后物资管理、使用记录和成长积分。同时完成 ESP32-S3 电子花的软硬件联动接口，将存钱、购买和使用状态映射为实体花朵的成长状态。</p></section>
+        <section class="section"><h2>项目资料</h2><div class="facts"><div class="fact"><label>团队</label><strong>好好花 · TEAM ID 48</strong></div><div class="fact"><label>项目编号</label><strong>EVENT 04 · PROJECT 378</strong></div><div class="fact"><label>完成状态</label><strong>Demo 已完成 · Approved</strong></div><div class="fact"><label>技术栈</label><strong>Next.js · TypeScript · CloudBase · GLM</strong></div></div></section>
+      </article>
+      <aside class="demo-wrap" aria-label="项目 Demo 预览"><div class="demo-head"><span class="demo-title">LIVE DEMO / DEMO_LINK</span><div class="demo-tools"><button class="device-button active" data-size="desktop">桌面</button><button class="device-button" data-size="mobile">移动</button></div></div><div class="viewport" id="viewport"><div class="device-bar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="url" id="url">worthbloom-web-302528-11-1473737765.sh.run.tcloudbase.com/#agent</span></div><div class="demo-frame"><iframe id="demo" title="好好花 WorthBloom 网页 Demo" src="https://worthbloom-web-302528-11-1473737765.sh.run.tcloudbase.com/#agent"></iframe><div class="placeholder" id="placeholder">目标网站禁止 iframe 嵌入<br>请点击下方“新窗口打开 Demo”体验</div></div></div><p class="demo-note">DEMO_LINK · 此处使用数据库中 PROJECT 378 的真实 demo_link。若目标站点设置了 X-Frame-Options 或 CSP，浏览器会阻止内嵌。</p><div style="margin-top:15px"><a class="plain-link" href="https://worthbloom-web-302528-11-1473737765.sh.run.tcloudbase.com/#agent" target="_blank" rel="noreferrer">新窗口打开 Demo ↗</a></div></aside>
+    </div>
+    <footer>REAL PROJECT DATA · 项目信息来自 event_management.projects 的 PROJECT 378；点赞为本地交互预览</footer>
+  </main>
+  <script>
+    const like = document.querySelector('#like');
+    like.addEventListener('click', () => { const active = like.classList.toggle('liked'); like.setAttribute('aria-pressed', String(active)); like.querySelector('.heart').textContent = active ? '♥' : '♡'; document.querySelector('#likes').textContent = Number(document.querySelector('#likes').textContent) + (active ? 1 : -1); });
+    const viewport = document.querySelector('#viewport');
+    document.querySelectorAll('[data-size]').forEach(button => button.addEventListener('click', () => { document.querySelectorAll('[data-size]').forEach(item => item.classList.toggle('active', item === button)); viewport.classList.toggle('mobile', button.dataset.size === 'mobile'); }));
+    document.querySelector('#demo').addEventListener('load', () => { try { const frameUrl = document.querySelector('#demo').contentWindow.location.href; document.querySelector('#url').textContent = frameUrl.replace(/^https?:\/\//, ''); } catch (_) { document.querySelector('#url').textContent = 'external demo'; } });
+  </script>
+</body>
+</html>

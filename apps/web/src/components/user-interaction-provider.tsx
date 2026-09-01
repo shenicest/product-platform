@@ -2,10 +2,11 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/components/auth-provider'
-import { followFounder, likeProject, unfollowFounder, unlikeProject } from '@/lib/client-api'
+import { followFounder, likeHackathonProject, likeProject, unfollowFounder, unlikeHackathonProject, unlikeProject } from '@/lib/client-api'
 
 interface InteractionState {
   liked: Set<number>
+  likedHackathon: Set<number>
   following: Set<string>
   likeCounts: Map<number, number>
   followerCounts: Map<string, number>
@@ -13,16 +14,19 @@ interface InteractionState {
   registerFollowerCount: (userId: string, count: number) => void
   like: (id: number) => Promise<void>
   unlike: (id: number) => Promise<void>
+  likeHackathon: (id: number) => Promise<void>
+  unlikeHackathon: (id: number) => Promise<void>
   follow: (userId: string) => Promise<void>
   unfollow: (userId: string) => Promise<void>
 }
 
 const InteractionContext = createContext<InteractionState | null>(null)
 
-export function UserInteractionProvider({ initialLikedProjectIds, initialFollowedFounderUserIds, children }: { initialLikedProjectIds: number[]; initialFollowedFounderUserIds: string[]; children: React.ReactNode }) {
+export function UserInteractionProvider({ initialLikedProjectIds, initialFollowedFounderUserIds, initialLikedHackathonProjectIds = [], children }: { initialLikedProjectIds: number[]; initialFollowedFounderUserIds: string[]; initialLikedHackathonProjectIds?: number[]; children: React.ReactNode }) {
   const { user } = useAuth()
   const hadAuthenticatedUser = useRef(false)
   const [liked, setLiked] = useState(() => new Set(initialLikedProjectIds))
+  const [likedHackathon, setLikedHackathon] = useState(() => new Set(initialLikedHackathonProjectIds))
   const [following, setFollowing] = useState(() => new Set(initialFollowedFounderUserIds))
   const [likeCounts, setLikeCounts] = useState(() => new Map<number, number>())
   const [followerCounts, setFollowerCounts] = useState(() => new Map<string, number>())
@@ -33,13 +37,15 @@ export function UserInteractionProvider({ initialLikedProjectIds, initialFollowe
     if (user) {
       hadAuthenticatedUser.current = true
       setLiked(new Set(initialLikedProjectIds))
+      setLikedHackathon(new Set(initialLikedHackathonProjectIds))
       setFollowing(new Set(initialFollowedFounderUserIds))
     } else if (hadAuthenticatedUser.current) {
       setLiked(new Set())
+      setLikedHackathon(new Set())
       setFollowing(new Set())
       hadAuthenticatedUser.current = false
     }
-  }, [initialFollowedFounderUserIds, initialLikedProjectIds, user])
+  }, [initialFollowedFounderUserIds, initialLikedHackathonProjectIds, initialLikedProjectIds, user])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const registerLikeCount = useCallback((id: number, count: number) => {
@@ -78,6 +84,26 @@ export function UserInteractionProvider({ initialLikedProjectIds, initialFollowe
   const like = useCallback((id: number) => mutateLike(id, true), [mutateLike])
   const unlike = useCallback((id: number) => mutateLike(id, false), [mutateLike])
 
+  const mutateHackathonLike = useCallback(async (id: number, nextLiked: boolean) => {
+    const wasLiked = likedHackathon.has(id)
+    if (wasLiked === nextLiked) return
+    const previous = new Set(likedHackathon)
+    setLikedHackathon((current) => {
+      const next = new Set(current)
+      if (nextLiked) next.add(id)
+      else next.delete(id)
+      return next
+    })
+    const result = nextLiked ? await likeHackathonProject(id) : await unlikeHackathonProject(id)
+    if (result.error || !result.data) {
+      setLikedHackathon(previous)
+      throw new Error('Hackathon like mutation failed')
+    }
+  }, [likedHackathon])
+
+  const likeHackathon = useCallback((id: number) => mutateHackathonLike(id, true), [mutateHackathonLike])
+  const unlikeHackathon = useCallback((id: number) => mutateHackathonLike(id, false), [mutateHackathonLike])
+
   const mutateFollow = useCallback(async (userId: string, nextFollowing: boolean) => {
     const wasFollowing = following.has(userId)
     if (wasFollowing === nextFollowing) return
@@ -106,7 +132,7 @@ export function UserInteractionProvider({ initialLikedProjectIds, initialFollowe
   const follow = useCallback((userId: string) => mutateFollow(userId, true), [mutateFollow])
   const unfollow = useCallback((userId: string) => mutateFollow(userId, false), [mutateFollow])
 
-  return <InteractionContext value={{ liked, following, likeCounts, followerCounts, registerLikeCount, registerFollowerCount, like, unlike, follow, unfollow }}>{children}</InteractionContext>
+  return <InteractionContext value={{ liked, likedHackathon, following, likeCounts, followerCounts, registerLikeCount, registerFollowerCount, like, unlike, likeHackathon, unlikeHackathon, follow, unfollow }}>{children}</InteractionContext>
 }
 
 export function useUserInteraction() {
