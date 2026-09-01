@@ -5,6 +5,7 @@ import { HackathonCover } from '@/components/hackathon-cover'
 import { PublicInteractionBoundary } from '@/components/public-interaction-boundary'
 import { HackathonLikeButton } from '@/components/hackathon-like-button'
 import { HackathonHideButton } from '@/components/hackathon-hide-button'
+import { DemoEmbed } from '@/components/demo-embed'
 
 export const dynamic = 'force-dynamic'
 
@@ -44,12 +45,9 @@ export default async function HackathonProjectPage(props: PageProps<'/hackathon/
       </article>
       <aside className="detail-aside">
         <div className="detail-aside-heading"><span>TRY IT OUT</span><span className="detail-status"><i aria-hidden /> LIVE</span></div>
-        {project.demoLink ? <div className="detail-demo flex min-h-[280px] flex-col items-center justify-center gap-5 bg-[#111116] p-8 text-center">
-          <div>
-            <p className="font-mono text-xs tracking-[0.12em] text-primary">EXTERNAL DEMO</p>
-            <p className="mt-3 text-sm text-muted-foreground">产品页面可能不支持站内嵌入，请前往原网站体验完整功能。</p>
-          </div>
-          <a className="detail-link detail-link-primary" href={project.demoLink} target="_blank" rel="noopener noreferrer">打开产品 Demo <span aria-hidden>↗</span></a>
+        {project.demoLink ? <div className="detail-demo">
+          <DemoEmbed className="h-[620px] w-full bg-white" src={project.demoLink} title={`${project.name} Demo`} />
+          <p className="border-t border-border bg-[#111116] p-3 text-center text-xs text-muted-foreground">如果 Demo 无法显示，请 <a className="underline" href={project.demoLink} target="_blank" rel="noopener noreferrer">打开产品 Demo</a>。</p>
         </div> : <div className="showcase-empty">暂无 Demo 链接</div>}
         <div className="detail-links">
           {project.demoLink ? <a className="detail-link detail-link-primary" href={project.demoLink} target="_blank" rel="noreferrer">打开产品 Demo <span aria-hidden>↗</span></a> : null}

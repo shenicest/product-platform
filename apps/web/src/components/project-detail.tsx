@@ -5,6 +5,7 @@ import { resolveDemoVideo } from '@/lib/demo-media'
 import { projectIdLabel } from '@/lib/utils'
 import { LikeButton } from '@/components/like-button'
 import { FounderCard } from '@/components/founder-card'
+import { DemoEmbed } from '@/components/demo-embed'
 
 // Public display deliberately excludes all contact fields
 // (contactName / contactPhone / contactEmail / contactWechat).
@@ -117,12 +118,7 @@ function DemoAssets({ project }: { project: ProjectDetail }) {
               <i className="size-1.5 rounded-full bg-[#4a4a52]" /><i className="size-1.5 rounded-full bg-[#4a4a52]" /><i className="size-1.5 rounded-full bg-[#4a4a52]" />
               <span className="truncate pl-2">{demoLink.replace(/^https?:\/\//, '')}</span>
             </div>
-            <div className="flex min-h-[240px] flex-col items-center justify-center gap-4 p-6 text-center">
-              <p className="text-sm text-muted-foreground">产品页面可能不支持站内嵌入，请前往原网站体验完整功能。</p>
-              <a href={demoLink} target="_blank" rel="noopener noreferrer" className="btn-hard btn-primary px-4 py-2 text-xs">
-                打开产品 Demo <span aria-hidden>→</span>
-              </a>
-            </div>
+            <DemoEmbed src={demoLink} title={`${project.name} 产品 Demo`} className="h-[560px] w-full border-0 bg-white" />
           </div>
         ) : null}
       </div>
