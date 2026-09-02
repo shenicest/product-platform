@@ -29,19 +29,14 @@ function buildRequest(pathname: string, token?: string): NextRequest {
   return req
 }
 
-describe('middleware — /login redirect', () => {
-  it('redirects to / when a valid unexpired token is present', () => {
+describe('middleware — login access', () => {
+  it('does not block /login when an old token looks unexpired', () => {
     const token = fakeJwt({ exp: nowSec() + HOUR })
     const res = middleware(buildRequest('/login', token))
 
-    expect(res.status).toBe(307)
-    expect(res.headers.get('location')).toBe('http://localhost:3000/')
-  })
-
-  it('redirects when visiting /login/anything with a valid token (startsWith match)', () => {
-    const token = fakeJwt({ exp: nowSec() + HOUR })
-    const res = middleware(buildRequest('/login/verify', token))
-    expect(res.status).toBe(307)
+    // An unverified token may have an apparently valid exp but an invalid
+    // signature after the JWT secret changes. Login must remain reachable.
+    expect(res.headers.get('location')).toBeNull()
   })
 
   it('does not redirect when the token is expired', () => {
