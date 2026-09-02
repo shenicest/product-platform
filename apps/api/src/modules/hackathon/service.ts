@@ -37,6 +37,10 @@ function clampLimit(raw: number | undefined) {
   return Math.max(1, Math.min(raw ?? DEFAULT_LIMIT, MAX_LIMIT))
 }
 
+function escapeSqlString(value: string) {
+  return value.replaceAll('\\', '\\\\').replaceAll("'", "''")
+}
+
 export class HackathonService {
   constructor(private eventDb: EventManagementDatabase, private platformDb = db) {}
 
@@ -59,7 +63,7 @@ export class HackathonService {
       : ''
   }
 
-  async listProjects(query: { track?: 'software' | 'hardware' | 'game' | 'aigc'; limit?: number; offset?: number }) {
+  async listProjects(query: { track?: 'software' | 'hardware' | 'game' | 'aigc'; q?: string; limit?: number; offset?: number }) {
     const limit = clampLimit(query.limit)
     const offset = query.offset ?? 0
     const hiddenIds = await this.getHiddenProjectIds()
@@ -71,11 +75,15 @@ export class HackathonService {
         : query.track === 'aigc'
           ? ` AND (${trackText} LIKE '%aigc%' OR ${trackText} LIKE '%影像%')`
           : query.track === 'software'
-            ? ` AND NOT (${trackText} LIKE '%硬件%' OR ${trackText} LIKE '%hardware%' OR ${trackText} LIKE '%游戏%' OR ${trackText} LIKE '%game%' OR ${trackText} LIKE '%aigc%' OR ${trackText} LIKE '%影像%')`
+              ? ` AND NOT (${trackText} LIKE '%硬件%' OR ${trackText} LIKE '%hardware%' OR ${trackText} LIKE '%游戏%' OR ${trackText} LIKE '%game%' OR ${trackText} LIKE '%aigc%' OR ${trackText} LIKE '%影像%')`
             : ''
+    const search = query.q?.trim()
+    const searchWhere = search
+      ? ` AND (project_name LIKE '%${escapeSqlString(search)}%' OR team_name LIKE '%${escapeSqlString(search)}%' OR tagline LIKE '%${escapeSqlString(search)}%')`
+      : ''
     const [rows, totals] = await Promise.all([
-       this.eventDb.execute(sql.raw(`SELECT id, project_name, tagline, project_description, cover_image_url, demo_link, video_link, screenshot_urls, team_name, track_code, github_repo_url, xiaohongshu_likes, event_id FROM ${HACKATHON_PROJECTS_TABLE} WHERE event_id = ${HACKATHON_EVENT_ID}${this.hiddenClause(hiddenIds)}${trackWhere} ORDER BY COALESCE(demo_order, 999999), id LIMIT ${limit} OFFSET ${offset}`)),
-        this.eventDb.execute(sql.raw(`SELECT COUNT(*) AS total FROM ${HACKATHON_PROJECTS_TABLE} WHERE event_id = ${HACKATHON_EVENT_ID}${this.hiddenClause(hiddenIds)}${trackWhere}`)),
+       this.eventDb.execute(sql.raw(`SELECT id, project_name, tagline, project_description, cover_image_url, demo_link, video_link, screenshot_urls, team_name, track_code, github_repo_url, xiaohongshu_likes, event_id FROM ${HACKATHON_PROJECTS_TABLE} WHERE event_id = ${HACKATHON_EVENT_ID}${this.hiddenClause(hiddenIds)}${trackWhere}${searchWhere} ORDER BY COALESCE(demo_order, 999999), id LIMIT ${limit} OFFSET ${offset}`)),
+        this.eventDb.execute(sql.raw(`SELECT COUNT(*) AS total FROM ${HACKATHON_PROJECTS_TABLE} WHERE event_id = ${HACKATHON_EVENT_ID}${this.hiddenClause(hiddenIds)}${trackWhere}${searchWhere}`)),
      ])
     const data = (rows[0] as unknown as HackathonRow[]).map(mapHackathonProject)
     const counts = await this.getLikeCounts(data.map((project) => project.id))

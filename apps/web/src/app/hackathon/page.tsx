@@ -9,15 +9,16 @@ export const dynamic = 'force-dynamic'
 
 export default async function HackathonPage(props: { searchParams: Promise<SearchParams> }) {
   const searchParams = await props.searchParams
-  const { page } = parseListParams(searchParams)
+  const { page, q } = parseListParams(searchParams)
   const trackValue = Array.isArray(searchParams.track) ? searchParams.track[0] : searchParams.track
   const track = trackValue === 'software' || trackValue === 'hardware' || trackValue === 'game' || trackValue === 'aigc' ? trackValue : undefined
   const { data, total } = await getHackathonProjects({
     offset: (page - 1) * PAGE_SIZE,
     limit: PAGE_SIZE,
     track,
+    q,
   })
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
 
-  return <PublicInteractionBoundary><HackathonShowcase projects={data} total={total} selectedTrack={track ?? 'all'} /><Pagination page={page} totalPages={totalPages} searchParams={searchParams} basePath="/hackathon" /></PublicInteractionBoundary>
+  return <PublicInteractionBoundary><HackathonShowcase projects={data} total={total} selectedTrack={track ?? 'all'} query={q ?? ''} /><Pagination page={page} totalPages={totalPages} searchParams={searchParams} basePath="/hackathon" /></PublicInteractionBoundary>
 }

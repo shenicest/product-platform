@@ -43,7 +43,7 @@ export const getProject = cache(async (id: number) => {
 
 export type ProjectDetail = NonNullable<Awaited<ReturnType<typeof getProject>>>
 
-export const getHackathonProjects = cache(async (query: Pick<ProjectListQuery, 'offset' | 'limit'> & { track?: 'software' | 'hardware' | 'game' | 'aigc' } = {}) => {
+export const getHackathonProjects = cache(async (query: Pick<ProjectListQuery, 'offset' | 'limit' | 'q'> & { track?: 'software' | 'hardware' | 'game' | 'aigc' } = {}) => {
   const { data, error } = await api.hackathon.projects.get({ query })
   if (error || !data) throw new Error('Failed to load hackathon projects')
   return data

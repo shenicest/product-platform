@@ -25,18 +25,27 @@ function trackFor(project: Project) {
   return 'software'
 }
 
-export function HackathonShowcase({ projects, total, selectedTrack }: { projects: Project[]; total: number; selectedTrack: string }) {
+export function HackathonShowcase({ projects, total, selectedTrack, query }: { projects: Project[]; total: number; selectedTrack: string; query: string }) {
   const router = useRouter()
   const pathname = usePathname()
-  const [query, setQuery] = useState('')
+  const [search, setSearch] = useState(query)
   const selected = selectedTrack
-  const filtered = projects.filter((project) => {
-    const haystack = `${project.name} ${project.teamName ?? ''}`.toLowerCase()
-    return !query.trim() || haystack.includes(query.trim().toLowerCase())
-  })
+
+  function searchProjects(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const params = new URLSearchParams()
+    if (selected !== 'all') params.set('track', selected)
+    if (search.trim()) params.set('q', search.trim())
+    const queryString = params.toString()
+    router.push(queryString ? `${pathname}?${queryString}` : pathname)
+  }
 
   function selectTrack(value: string) {
-    router.push(value === 'all' ? pathname : `${pathname}?track=${value}`)
+    const params = new URLSearchParams()
+    if (value !== 'all') params.set('track', value)
+    if (search.trim()) params.set('q', search.trim())
+    const queryString = params.toString()
+    router.push(queryString ? `${pathname}?${queryString}` : pathname)
   }
 
   return (
@@ -46,9 +55,9 @@ export function HackathonShowcase({ projects, total, selectedTrack }: { projects
         <div className="hero-meta"><strong>{total}</strong><span>个项目已入选展示<br />项目内容持续更新中</span></div>
       </section>
       <section id="projects">
-        <div className="showcase-toolbar"><div className="filters" role="group" aria-label="按赛道筛选">{tracks.map((track) => <button key={track.value} type="button" className={`filter ${selected === track.value ? 'active' : ''}`} onClick={() => selectTrack(track.value)}>{track.label}</button>)}</div><input className="showcase-search" value={query} onChange={(event) => setQuery(event.target.value)} type="search" placeholder="搜索项目名称" aria-label="搜索项目名称" /></div>
-        <div className="section-head"><h2>精选项目</h2><span className="section-count">SHOWING {String(filtered.length).padStart(2, '0')} / {total}</span></div>
-        {filtered.length ? <div className="showcase-grid">{filtered.map((project) => <article className="showcase-card" key={project.id}><Link href={`/hackathon/projects/${project.id}`}><HackathonCover url={project.coverUrl} name={project.name} projectId={project.id} track={trackFor(project)} /><div className="showcase-body"><h3>{project.name}</h3><p>{project.tagline || stripTrackAppendix(project.description) || '暂无项目简介'}</p></div></Link><footer><span>{project.teamName || '匿名团队'}</span><HackathonLikeButton projectId={project.id} count={project.likeCount} /></footer></article>)}</div> : <div className="showcase-empty">没有找到匹配的项目。换个赛道或关键词试试。</div>}
+        <div className="showcase-toolbar"><div className="filters" role="group" aria-label="按赛道筛选">{tracks.map((track) => <button key={track.value} type="button" className={`filter ${selected === track.value ? 'active' : ''}`} onClick={() => selectTrack(track.value)}>{track.label}</button>)}</div><form onSubmit={searchProjects}><input className="showcase-search" value={search} onChange={(event) => setSearch(event.target.value)} type="search" placeholder="搜索项目名称" aria-label="搜索项目名称" /></form></div>
+        <div className="section-head"><h2>精选项目</h2><span className="section-count">SHOWING {String(projects.length).padStart(2, '0')} / {total}</span></div>
+        {projects.length ? <div className="showcase-grid">{projects.map((project) => <article className="showcase-card" key={project.id}><Link href={`/hackathon/projects/${project.id}`}><HackathonCover url={project.coverUrl} name={project.name} projectId={project.id} track={trackFor(project)} /><div className="showcase-body"><h3>{project.name}</h3><p>{project.tagline || stripTrackAppendix(project.description) || '暂无项目简介'}</p></div></Link><footer><span>{project.teamName || '匿名团队'}</span><HackathonLikeButton projectId={project.id} count={project.likeCount} /></footer></article>)}</div> : <div className="showcase-empty">没有找到匹配的项目。换个赛道或关键词试试。</div>}
       </section>
     </main>
   )

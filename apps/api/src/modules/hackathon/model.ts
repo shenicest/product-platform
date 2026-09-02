@@ -16,6 +16,7 @@ export const HackathonProjectQuery = t.Object({
   track: t.Optional(t.Union([
     t.Literal('software'), t.Literal('hardware'), t.Literal('game'), t.Literal('aigc'),
   ])),
+  q: t.Optional(t.String()),
   limit: t.Optional(t.Numeric()), offset: t.Optional(t.Numeric()),
 })
 export type HackathonProjectQuery = typeof HackathonProjectQuery.static
