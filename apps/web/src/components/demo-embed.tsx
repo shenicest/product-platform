@@ -16,5 +16,5 @@ export function DemoEmbed({ src, title, className }: { src: string; title: strin
     )
   }
 
-  return <iframe src={src} title={title} className={className} onError={() => setFailed(true)} />
+  return <iframe src={src} title={title} className={className} loading="lazy" onError={() => setFailed(true)} />
 }

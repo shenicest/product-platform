@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth-provider";
 import { LayoutChrome } from "@/components/layout-chrome";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const harmony = localFont({
   src: [
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <AuthProvider>
             <LayoutChrome>{children}</LayoutChrome>
           </AuthProvider>
+          <SpeedInsights />
         </body>
     </html>
   );

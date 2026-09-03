@@ -36,7 +36,7 @@ export default async function HackathonProjectPage(props: PageProps<'/hackathon/
 
     <div className="detail-layout mt-12">
       <article className="detail-main">
-        <div className="detail-cover-wrap"><HackathonCover url={project.coverUrl} name={project.name} projectId={project.id} track={project.track} className="detail-cover" /></div>
+        <div className="detail-cover-wrap"><HackathonCover url={project.coverUrl} name={project.name} projectId={project.id} className="detail-cover" /></div>
         <section className="detail-section" aria-labelledby="intro-title">
           <div className="detail-section-heading"><span>01</span><h2 id="intro-title">项目介绍</h2></div>
           <p className="detail-copy whitespace-pre-line">{visibleDescription(project.description)}</p>

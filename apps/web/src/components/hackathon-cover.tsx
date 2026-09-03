@@ -2,15 +2,15 @@
 
 import { useState } from 'react'
 
-export function HackathonCover({ url, name, projectId, track, className = '' }: {
+export function HackathonCover({ url, name, projectId, className = '' }: {
   url: string | null
   name: string
   projectId: number
-  track: string | null
   className?: string
 }) {
   const [failed, setFailed] = useState(false)
   const showFallback = !url || failed
+  const isDetail = className.split(' ').includes('detail-cover')
 
   return (
     <div className={`hackathon-cover ${showFallback ? 'hackathon-cover-fallback' : ''} ${className}`}>
@@ -22,9 +22,15 @@ export function HackathonCover({ url, name, projectId, track, className = '' }: 
       ) : (
         // Remote event assets are not limited to a known image host.
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={url} alt={name} onError={() => setFailed(true)} />
+         <img
+           src={url}
+           alt={name}
+           loading={isDetail ? 'eager' : 'lazy'}
+           fetchPriority={isDetail ? 'high' : 'auto'}
+           decoding="async"
+           onError={() => setFailed(true)}
+         />
       )}
-      <span className={`track-label ${track ?? 'software'}`}>{(track || 'software').toUpperCase()}</span>
     </div>
   )
 }
@@ -40,6 +46,13 @@ export function HackathonDetailCover({ url, name, className = '' }: {
   return (
     // Remote event assets are not limited to a known image host.
     // eslint-disable-next-line @next/next/no-img-element
-    <img className={className} src={url} alt={name} onError={() => setFailed(true)} />
+     <img
+       className={className}
+       src={url}
+       alt={name}
+       loading="lazy"
+       decoding="async"
+       onError={() => setFailed(true)}
+     />
   )
 }
