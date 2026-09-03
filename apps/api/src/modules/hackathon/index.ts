@@ -11,6 +11,9 @@ import {
   HackathonProjectQuery,
   LikeResponse,
   HackathonHideResponse,
+  HackathonTagBody,
+  HackathonTagParams,
+  HackathonTagResponse,
 } from './model'
 import { HackathonService } from './service'
 
@@ -19,17 +22,17 @@ const service = new HackathonService(eventManagementDb, db)
 export const hackathonModule = new Elysia()
   .use(eventManagementDbPlugin)
   .use(authPlugin)
-  .model({ HackathonProject, HackathonProjectIdParams, HackathonProjectListResponse, HackathonProjectQuery, LikeResponse, HackathonHideResponse })
+  .model({ HackathonProject, HackathonProjectIdParams, HackathonProjectListResponse, HackathonProjectQuery, LikeResponse, HackathonHideResponse, HackathonTagBody, HackathonTagParams, HackathonTagResponse })
   .prefix('model', 'Hackathon.')
   .get('/hackathon/projects', ({ query }) => service.listProjects(query), {
     detail: { summary: 'List event 4 hackathon projects', tags: ['Hackathon'], security: [] },
     query: 'Hackathon.HackathonProjectQuery', response: { 200: 'Hackathon.HackathonProjectListResponse' },
   })
-  .get('/hackathon/projects/:id', async ({ params }) => {
-    const project = await service.getProject(params.id)
+  .get('/hackathon/projects/:id', async ({ params, user }) => {
+    const project = await service.getProjectWithTags(params.id, user?.userId)
     if (!project) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: 'Hackathon project not found' } })
     return project
-  }, {
+  }, { optionalAuth: true,
     detail: { summary: 'Get event 4 hackathon project', tags: ['Hackathon'], security: [] },
     params: 'Hackathon.HackathonProjectIdParams', response: { 200: 'Hackathon.HackathonProject', 404: ErrorResponse },
   })
@@ -53,3 +56,15 @@ export const hackathonModule = new Elysia()
     if (!hidden) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: 'Hackathon project not found' } })
     return { hidden: true }
   }, { auth: true, params: 'Hackathon.HackathonProjectIdParams', response: { 200: 'Hackathon.HackathonHideResponse', 401: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse } })
+  .post('/hackathon/projects/:id/tags', async ({ user, params, body }) => {
+    const result = await service.toggleTag(params.id, user.userId, body.tagId, true)
+    if (!result) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: 'Hackathon project not found' } })
+    if (result === 'INVALID_TAG') return status(400, { error: { code: 'INVALID_TAG', message: 'Tag is not available for this track' } })
+    return result
+  }, { auth: true, params: 'Hackathon.HackathonProjectIdParams', body: 'Hackathon.HackathonTagBody', response: { 200: 'Hackathon.HackathonTagResponse', 400: ErrorResponse, 401: ErrorResponse, 404: ErrorResponse } })
+  .delete('/hackathon/projects/:id/tags/:tagId', async ({ user, params }) => {
+    const result = await service.toggleTag(params.id, user.userId, params.tagId, false)
+    if (!result) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: 'Hackathon project not found' } })
+    if (result === 'INVALID_TAG') return status(400, { error: { code: 'INVALID_TAG', message: 'Tag is not available for this track' } })
+    return result
+  }, { auth: true, params: 'Hackathon.HackathonTagParams', response: { 200: 'Hackathon.HackathonTagResponse', 400: ErrorResponse, 401: ErrorResponse, 404: ErrorResponse } })

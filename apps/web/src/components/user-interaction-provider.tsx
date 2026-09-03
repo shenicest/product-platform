@@ -30,6 +30,9 @@ export function UserInteractionProvider({ initialLikedProjectIds, initialFollowe
   const [following, setFollowing] = useState(() => new Set(initialFollowedFounderUserIds))
   const [likeCounts, setLikeCounts] = useState(() => new Map<number, number>())
   const [followerCounts, setFollowerCounts] = useState(() => new Map<string, number>())
+  const likedKey = initialLikedProjectIds.join(',')
+  const likedHackathonKey = initialLikedHackathonProjectIds.join(',')
+  const followingKey = initialFollowedFounderUserIds.join('\0')
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -45,7 +48,10 @@ export function UserInteractionProvider({ initialLikedProjectIds, initialFollowe
       setFollowing(new Set())
       hadAuthenticatedUser.current = false
     }
-  }, [initialFollowedFounderUserIds, initialLikedHackathonProjectIds, initialLikedProjectIds, user])
+  // Content keys intentionally replace array references: server-rendered props
+  // may be recreated on each render, but should not rehydrate the same state.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [followingKey, likedHackathonKey, likedKey, user])
   /* eslint-enable react-hooks/set-state-in-effect */
 
   const registerLikeCount = useCallback((id: number, count: number) => {

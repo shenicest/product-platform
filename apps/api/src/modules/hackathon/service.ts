@@ -2,6 +2,8 @@ import { and, eq, sql } from 'drizzle-orm'
 import { db } from '../../db'
 import { hackathonProjectHidden, hackathonProjectLikes } from '../../db/schema'
 import type { EventManagementDatabase } from '../../db/event-management'
+import { HACKATHON_TRACK_TAGS, type HackathonTrack } from '@shenicest/shared'
+import { hackathonProjectTags } from '../../db/schema'
 
 const HACKATHON_EVENT_ID = 4
 const HACKATHON_PROJECTS_TABLE = 'projects'
@@ -29,7 +31,7 @@ function mapHackathonProject(row: HackathonRow) {
     id: row.id, name: row.project_name, tagline: row.tagline, description: row.project_description,
     coverUrl: row.cover_image_url, demoLink: row.demo_link, demoVideoUrl: row.video_link, demoImages,
     teamName: row.team_name, track: row.track_code, githubUrl: row.github_repo_url,
-     likeCount: 0, eventId: row.event_id,
+     likeCount: 0, eventId: row.event_id, tagCounts: {}, myTagIds: [],
   }
 }
 
@@ -48,6 +50,28 @@ export class HackathonService {
     if (!projectIds.length) return new Map<number, number>()
     const rows = await this.platformDb.execute(sql`SELECT hackathon_project_id, COUNT(*) AS total FROM ${hackathonProjectLikes} WHERE hackathon_project_id IN (${sql.join(projectIds.map((id) => sql`${id}`), sql`, `)}) GROUP BY hackathon_project_id`)
     return new Map((rows[0] as unknown as Array<{ hackathon_project_id: number; total: number }>).map((row) => [row.hackathon_project_id, Number(row.total)]))
+  }
+
+  private trackFor(value: string | null | undefined): HackathonTrack {
+    const text = (value ?? '').toLowerCase()
+    if (text.includes('硬件') || text.includes('hardware')) return 'hardware'
+    if (text.includes('游戏') || text.includes('game')) return 'game'
+    if (text.includes('aigc') || text.includes('影像')) return 'aigc'
+    return 'software'
+  }
+
+  private validTagIds(track: HackathonTrack) {
+    const dimensions = Object.entries(HACKATHON_TRACK_TAGS[track].dimensions) as Array<[string, readonly string[]]>
+    return dimensions.flatMap(([dimension, tags]) => tags.map((_: string, index: number) => `${dimension}:${index}`))
+  }
+
+  private async getTagData(projectId: number, eventId = HACKATHON_EVENT_ID, userId?: string) {
+    const rows = await this.platformDb.select({ tagId: hackathonProjectTags.tagId, userId: hackathonProjectTags.userId })
+      .from(hackathonProjectTags)
+      .where(and(eq(hackathonProjectTags.eventId, eventId), eq(hackathonProjectTags.hackathonProjectId, projectId)))
+    const tagCounts: Record<string, number> = {}
+    for (const row of rows) tagCounts[row.tagId] = (tagCounts[row.tagId] ?? 0) + 1
+    return { tagCounts, myTagIds: userId ? rows.filter((row) => row.userId === userId).map((row) => row.tagId) : [] }
   }
 
   private async getHiddenProjectIds() {
@@ -100,7 +124,26 @@ export class HackathonService {
     const row = (rows[0] as unknown as HackathonRow[])[0]
     if (!row) return null
     const [result] = await this.platformDb.select({ total: sql<number>`COUNT(*)` }).from(hackathonProjectLikes).where(eq(hackathonProjectLikes.hackathonProjectId, projectId))
-    return { ...mapHackathonProject(row), likeCount: Number(result?.total ?? 0) }
+    return { ...mapHackathonProject(row), likeCount: Number(result?.total ?? 0), ...(await this.getTagData(projectId, row.event_id)) }
+  }
+
+  async getProjectWithTags(projectId: number, userId?: string) {
+    const project = await this.getProject(projectId)
+    if (!project) return null
+    return { ...project, ...(await this.getTagData(projectId, project.eventId, userId)) }
+  }
+
+  async toggleTag(projectId: number, userId: string, tagId: string, selected: boolean) {
+    const project = await this.getProject(projectId)
+    if (!project) return null
+    const valid = this.validTagIds(this.trackFor(`${project.track ?? ''} ${project.name}`))
+    if (!valid.includes(tagId)) return 'INVALID_TAG' as const
+    if (selected) {
+      await this.platformDb.insert(hackathonProjectTags).values({ eventId: project.eventId, hackathonProjectId: projectId, userId, tagId }).onDuplicateKeyUpdate({ set: { tagId } })
+    } else {
+      await this.platformDb.delete(hackathonProjectTags).where(and(eq(hackathonProjectTags.eventId, project.eventId), eq(hackathonProjectTags.hackathonProjectId, projectId), eq(hackathonProjectTags.userId, userId), eq(hackathonProjectTags.tagId, tagId)))
+    }
+    return { tagId, selected, ...(await this.getTagData(projectId, project.eventId)) }
   }
 
   async hideProject(projectId: number, userId: string) {

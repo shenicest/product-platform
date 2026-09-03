@@ -7,6 +7,7 @@ export const HackathonProject = t.Object({
   demoImages: t.Array(t.String()), teamName: t.Union([t.String(), t.Null()]),
   track: t.Union([t.String(), t.Null()]), githubUrl: t.Union([t.String(), t.Null()]),
   likeCount: t.Number(), eventId: t.Number(),
+  tagCounts: t.Record(t.String(), t.Number()), myTagIds: t.Array(t.String()),
 })
 export type HackathonProject = typeof HackathonProject.static
 
@@ -23,3 +24,9 @@ export type HackathonProjectQuery = typeof HackathonProjectQuery.static
 
 export const HackathonProjectIdParams = t.Object({ id: t.Numeric({ description: 'Hackathon project ID' }) })
 export const HackathonHideResponse = t.Object({ hidden: t.Boolean() })
+export const HackathonTagBody = t.Object({ tagId: t.String({ minLength: 1, maxLength: 100 }) })
+export const HackathonTagParams = t.Object({
+  id: t.Numeric({ description: 'Hackathon project ID' }),
+  tagId: t.String({ minLength: 1, maxLength: 100 }),
+})
+export const HackathonTagResponse = t.Object({ tagId: t.String(), selected: t.Boolean(), tagCounts: t.Record(t.String(), t.Number()) })

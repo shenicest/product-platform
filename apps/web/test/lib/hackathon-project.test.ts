@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { stripTrackAppendix } from '@/lib/hackathon-project'
+import { normalizeHackathonTrack, stripTrackAppendix } from '@/lib/hackathon-project'
 
 describe('stripTrackAppendix', () => {
   it.each(['软件', '游戏', '硬件', 'AIGC 影像'])(
@@ -16,5 +16,18 @@ describe('stripTrackAppendix', () => {
 
   it('keeps descriptions without a track appendix unchanged', () => {
     expect(stripTrackAppendix('项目正文\n包含正常内容')).toBe('项目正文\n包含正常内容')
+  })
+})
+
+describe('normalizeHackathonTrack', () => {
+  it('normalizes known Chinese and English track names', () => {
+    expect(normalizeHackathonTrack('硬件赛道')).toBe('hardware')
+    expect(normalizeHackathonTrack('Game')).toBe('game')
+    expect(normalizeHackathonTrack('AIGC 视频作品')).toBe('aigc')
+  })
+
+  it('falls back to software and considers the project name', () => {
+    expect(normalizeHackathonTrack(null, '智能硬件套件')).toBe('hardware')
+    expect(normalizeHackathonTrack(null, '效率助手')).toBe('software')
   })
 })

@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import type { getHackathonProjects } from '@/server/projects'
-import { stripTrackAppendix } from '@/lib/hackathon-project'
+import { normalizeHackathonTrack, stripTrackAppendix } from '@/lib/hackathon-project'
 import { HackathonCover } from '@/components/hackathon-cover'
 import { HackathonLikeButton } from '@/components/hackathon-like-button'
 type Project = Awaited<ReturnType<typeof getHackathonProjects>>['data'][number]
@@ -18,11 +18,7 @@ const tracks = [
 ] as const
 
 function trackFor(project: Project) {
-  const text = `${project.track ?? ''} ${project.name}`.toLowerCase()
-  if (text.includes('硬件') || text.includes('hardware')) return 'hardware'
-  if (text.includes('游戏') || text.includes('game')) return 'game'
-  if (text.includes('aigc') || text.includes('影像')) return 'aigc'
-  return 'software'
+  return normalizeHackathonTrack(project.track, project.name)
 }
 
 export function HackathonShowcase({ projects, total, selectedTrack, query }: { projects: Project[]; total: number; selectedTrack: string; query: string }) {

@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { getHackathonProject } from '@/server/projects'
-import { stripTrackAppendix } from '@/lib/hackathon-project'
+import { normalizeHackathonTrack, stripTrackAppendix } from '@/lib/hackathon-project'
+import { HackathonTagEvaluator } from '@/components/hackathon-tag-evaluator'
 import { HackathonCover } from '@/components/hackathon-cover'
 import { PublicInteractionBoundary } from '@/components/public-interaction-boundary'
 import { HackathonLikeButton } from '@/components/hackathon-like-button'
@@ -42,6 +43,7 @@ export default async function HackathonProjectPage(props: PageProps<'/hackathon/
           <p className="detail-copy whitespace-pre-line">{visibleDescription(project.description)}</p>
         </section>
         {project.teamName ? <section className="detail-section detail-team" aria-labelledby="team-title"><div className="detail-section-heading"><span>02</span><h2 id="team-title">团队</h2></div><p className="detail-copy">{project.teamName}</p></section> : null}
+        <HackathonTagEvaluator projectId={project.id} track={normalizeHackathonTrack(project.track, project.name)} initialTagCounts={project.tagCounts} initialMyTagIds={project.myTagIds} />
       </article>
       <aside className="detail-aside">
         <div className="detail-aside-heading"><span>TRY IT OUT</span><span className="detail-status"><i aria-hidden /> LIVE</span></div>

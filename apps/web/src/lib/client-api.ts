@@ -133,6 +133,14 @@ export function hideHackathonProject(projectId: number) {
   return request<{ hidden: boolean }>('POST', `/hackathon/projects/${projectId}/hide`)
 }
 
+export function selectHackathonTag(projectId: number, tagId: string) {
+  return request<{ tagId: string; selected: boolean; tagCounts: Record<string, number> }>('POST', `/hackathon/projects/${projectId}/tags`, { tagId })
+}
+
+export function unselectHackathonTag(projectId: number, tagId: string) {
+  return request<{ tagId: string; selected: boolean; tagCounts: Record<string, number> }>('DELETE', `/hackathon/projects/${projectId}/tags/${encodeURIComponent(tagId)}`)
+}
+
 export function followFounder(userId: string) {
   return request<{ followed: boolean; followerCount: number }>('POST', `/founders/${userId}/follow`)
 }

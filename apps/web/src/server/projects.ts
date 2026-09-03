@@ -50,7 +50,9 @@ export const getHackathonProjects = cache(async (query: Pick<ProjectListQuery, '
 })
 
 export const getHackathonProject = cache(async (id: number) => {
-  const { data, error } = await api.hackathon.projects({ id }).get()
+  const token = (await cookies()).get('shenicest_token')?.value
+  const headers = token ? { cookie: `shenicest_token=${token}` } : undefined
+  const { data, error } = await api.hackathon.projects({ id }).get({ headers })
   if (error?.status === 404) return null
   if (error || !data) throw new Error('Failed to load hackathon project')
   return data
