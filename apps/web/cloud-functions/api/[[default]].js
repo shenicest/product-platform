@@ -15,7 +15,8 @@ function forwardHeaders(headers) {
   const forwarded = new Headers();
 
   for (const [name, value] of headers) {
-    if (!HOP_BY_HOP_HEADERS.has(name.toLowerCase()) && name.toLowerCase() !== "accept-encoding") {
+    const lowerName = name.toLowerCase();
+    if (!HOP_BY_HOP_HEADERS.has(lowerName) && lowerName !== "accept-encoding") {
       forwarded.set(name, value);
     }
   }
@@ -25,14 +26,10 @@ function forwardHeaders(headers) {
 
 function upstreamUrl(requestUrl, apiUrl) {
   const request = new URL(requestUrl);
-  const proxyPrefix = "/api-proxy";
-  const pathname = request.pathname.startsWith(proxyPrefix)
-    ? request.pathname.slice(proxyPrefix.length) || "/"
-    : "/";
   const target = new URL(apiUrl);
   const basePath = target.pathname.replace(/\/$/, "");
 
-  target.pathname = `${basePath}${pathname}`;
+  target.pathname = `${basePath}${request.pathname || "/"}`;
   target.search = request.search;
   return target;
 }
