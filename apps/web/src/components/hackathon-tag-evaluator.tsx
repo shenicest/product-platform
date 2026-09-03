@@ -1,33 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { HACKATHON_TRACK_TAGS, type HackathonDimension, type HackathonTrack } from '@shenicest/shared'
 import { useOptionalAuth } from '@/components/auth-provider'
 import { selectHackathonTag, unselectHackathonTag } from '@/lib/client-api'
 
 const dimensionLabels: Record<HackathonDimension, string> = {
-  experience: '体验感受',
-  technology: '技术实现',
-  creativity: '创意表达',
-  utility: '实用价值',
-  improvement: '改进建议',
-}
-
-const dimensionNotes: Record<HackathonDimension, string> = {
-  experience: '第一次体验时，什么感受最明显？',
-  technology: '性能、稳定性和完成度表现如何？',
-  creativity: '它是否带来了独特而清晰的表达？',
-  utility: '它有没有解决一个真实、具体的问题？',
-  improvement: '如果继续迭代，最该优先处理什么？',
+  experience: '体验感受', technology: '技术实现', creativity: '创意表达', utility: '实用价值', improvement: '改进建议',
 }
 
 const dimensionCodes: Record<HackathonDimension, string> = {
-  experience: 'EXPERIENCE',
-  technology: 'BUILD',
-  creativity: 'ORIGINALITY',
-  utility: 'VALUE',
-  improvement: 'NEXT PASS',
+  experience: 'EXPERIENCE', technology: 'BUILD', creativity: 'ORIGINALITY', utility: 'VALUE', improvement: 'NEXT PASS',
 }
 
 export function HackathonTagEvaluator({ projectId, track, initialTagCounts, initialMyTagIds }: {
@@ -40,17 +24,25 @@ export function HackathonTagEvaluator({ projectId, track, initialTagCounts, init
   const auth = useOptionalAuth()
   const [tagCounts, setTagCounts] = useState(initialTagCounts)
   const [selected, setSelected] = useState(() => new Set(initialMyTagIds))
+  const [open, setOpen] = useState(false)
   const [pendingTag, setPendingTag] = useState<string | null>(null)
   const [error, setError] = useState('')
   const trackConfig = HACKATHON_TRACK_TAGS[track]
-  const tagEntries = (Object.entries(trackConfig.dimensions) as [HackathonDimension, readonly string[]][])
-  const allTags = tagEntries.flatMap(([dimension, tags]) => tags.map((label, index) => ({ id: `${dimension}:${index}`, label })))
+  const tagEntries = Object.entries(trackConfig.dimensions) as [HackathonDimension, readonly string[]][]
+  const allTags = tagEntries.flatMap(([dimension, tags]) => tags.map((label, index) => ({ id: `${dimension}:${index}`, label, dimension })))
+  const visibleTags = allTags.filter((tag) => (tagCounts[tag.id] ?? 0) > 0 || selected.has(tag.id))
   const totalSignals = Object.values(tagCounts).reduce((total, count) => total + count, 0)
-  const topTag = allTags.reduce<{ id: string; label: string; count: number } | null>((top, tag) => {
-    const count = tagCounts[tag.id] ?? 0
-    return !top || count > top.count ? { ...tag, count } : top
-  }, null)
-  const highestCount = topTag?.count ?? 0
+
+  useEffect(() => {
+    if (!open) return
+    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && setOpen(false)
+    document.addEventListener('keydown', onKeyDown)
+    document.body.classList.add('tag-modal-open')
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.body.classList.remove('tag-modal-open')
+    }
+  }, [open])
 
   async function toggle(tagId: string) {
     if (!auth?.user) {
@@ -91,38 +83,34 @@ export function HackathonTagEvaluator({ projectId, track, initialTagCounts, init
     <div className="detail-section-heading"><span>03</span><h2 id="tags-title">社区评价</h2></div>
     <div className="tag-panel">
       <header className="tag-panel-head">
-        <div><span>COMMUNITY SIGNAL / {trackConfig.label}</span><p>选出最符合你体验的标签，帮助团队看到亮点与下一步方向。</p></div>
-        <span className="tag-panel-mode">MULTI SELECT</span>
+        <div><span>COMMUNITY SIGNAL / {trackConfig.label}</span><p>来自社区的真实体验反馈，帮助团队看见项目的亮点与下一步。</p></div>
+        <button type="button" className="tag-open-button" onClick={() => auth?.user ? setOpen(true) : router.push('/login')}><span>{auth?.user ? '参与评价' : '登录后评价'}</span><b aria-hidden>↗</b></button>
       </header>
-      <div className="tag-metrics" aria-label="评价概览">
-        <div><span>TOTAL SIGNALS</span><strong>{String(totalSignals).padStart(2, '0')}</strong><p>社区累计反馈</p></div>
-        <div><span>YOUR INPUT</span><strong>{String(selected.size).padStart(2, '0')}</strong><p>{selected.size ? '已记录你的选择' : '等待你的评价'}</p></div>
-        <div className="tag-metric-top"><span>MOST SELECTED</span><strong>{topTag?.count ? topTag.label : '等待首条反馈'}</strong><p>{topTag?.count ? `${topTag.count} 人有同感` : '成为第一个评价的人'}</p></div>
+      <div className="tag-overview">
+        <div className="tag-overview-total"><span>COMMUNITY SIGNALS</span><strong>{String(totalSignals).padStart(2, '0')}</strong><p>{totalSignals ? '条累计反馈' : '还没有人留下评价'}</p></div>
+        <div className="tag-overview-list">
+          {visibleTags.length ? visibleTags.slice(0, 8).map((tag) => <span className={selected.has(tag.id) ? 'is-mine' : ''} key={tag.id}>{tag.label}<b>{tagCounts[tag.id] ?? 0}</b></span>) : <p>成为第一个留下体验信号的人</p>}
+          {visibleTags.length > 8 ? <em>+{visibleTags.length - 8} 更多</em> : null}
+        </div>
       </div>
-      <div className="tag-evaluator">
-        {tagEntries.map(([dimension, tags], dimensionIndex) => <div className={`tag-dimension ${dimension === 'improvement' ? 'tag-dimension-improvement' : ''}`} key={dimension}>
-          <div className="tag-dimension-head"><span>{String(dimensionIndex + 1).padStart(2, '0')} / {dimensionCodes[dimension]}</span><h3>{dimensionLabels[dimension]}</h3><p>{dimensionNotes[dimension]}</p></div>
-          <div className="tag-options">
-            {tags.map((label, index) => {
-              const tagId = `${dimension}:${index}`
-              const isSelected = selected.has(tagId)
-              const count = tagCounts[tagId] ?? 0
-              const isTop = count > 0 && count === highestCount
-              return <button key={tagId} type="button" className={`evaluation-tag ${isSelected ? 'selected' : ''} ${isTop ? 'top-signal' : ''}`} onClick={() => toggle(tagId)} disabled={pendingTag === tagId} aria-pressed={isSelected} aria-busy={pendingTag === tagId}>
-                <i aria-hidden />
-                <span>{label}</span>
-                <b>{pendingTag === tagId ? '··' : String(count).padStart(2, '0')}</b>
-                {highestCount > 0 ? <em aria-hidden style={{ width: `${Math.max(3, (count / highestCount) * 100)}%` }} /> : null}
-              </button>
-            })}
-          </div>
-        </div>)}
-      </div>
-      <footer className="tag-panel-foot">
-        <span><i aria-hidden /> 你的选择</span><span>数字为社区选择次数</span>
-        {!auth?.user ? <button type="button" onClick={() => router.push('/login')}>登录后参与 <b aria-hidden>↗</b></button> : <span>点击标签可随时修改</span>}
-      </footer>
+      <footer className="tag-panel-foot"><span><i aria-hidden /> 已展示有社区反馈的标签</span><span>{selected.size ? `你选择了 ${selected.size} 项` : '可多选标签'}</span></footer>
     </div>
     {error ? <p className="tag-error" role="alert">{error}</p> : null}
+    {open ? <div className="tag-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setOpen(false)}>
+      <section className="tag-modal" role="dialog" aria-modal="true" aria-labelledby="tag-modal-title">
+        <header className="tag-modal-head"><div><span>YOUR SIGNAL / {trackConfig.label}</span><h2 id="tag-modal-title">留下你的体验</h2><p>选择你认为符合项目的标签，可多选。</p></div><button type="button" className="tag-modal-close" onClick={() => setOpen(false)} aria-label="关闭评价弹窗">×</button></header>
+        <div className="tag-modal-body">
+          {tagEntries.map(([dimension, tags], dimensionIndex) => <div className={`tag-dimension ${dimension === 'improvement' ? 'tag-dimension-improvement' : ''}`} key={dimension}>
+            <div className="tag-dimension-head"><span>{String(dimensionIndex + 1).padStart(2, '0')} / {dimensionCodes[dimension]}</span><h3>{dimensionLabels[dimension]}</h3></div>
+            <div className="tag-options">{tags.map((label, index) => {
+              const tagId = `${dimension}:${index}`
+              const isSelected = selected.has(tagId)
+              return <button key={tagId} type="button" className={`evaluation-tag ${isSelected ? 'selected' : ''}`} onClick={() => toggle(tagId)} disabled={pendingTag === tagId} aria-pressed={isSelected} aria-busy={pendingTag === tagId}><i aria-hidden />{label}<b>{pendingTag === tagId ? '··' : tagCounts[tagId] ?? 0}</b></button>
+            })}</div>
+          </div>)}
+        </div>
+        <footer className="tag-modal-foot"><span>已选择 {selected.size} 项</span><button type="button" className="tag-modal-done" onClick={() => setOpen(false)}>完成 <b aria-hidden>↗</b></button></footer>
+      </section>
+    </div> : null}
   </section>
 }
