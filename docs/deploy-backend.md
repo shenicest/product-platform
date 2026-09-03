@@ -41,7 +41,6 @@ cd /home/shenicest/shenicest-product-platform/apps/api
 
 # Start (no ecosystem.config.js needed)
 pm2 start "bun dist/index.js" --name shenicest-api \
-  --cwd /home/shenicest/shenicest-product-platform/apps/api \
   --max-memory-restart 512M \
   --time
 
