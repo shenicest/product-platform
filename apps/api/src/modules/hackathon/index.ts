@@ -11,6 +11,8 @@ import {
   HackathonProjectQuery,
   LikeResponse,
   HackathonHideResponse,
+  HackathonProjectUpdateBody,
+  HackathonProjectUpdateResponse,
   HackathonTagBody,
   HackathonTagParams,
   HackathonTagResponse,
@@ -22,7 +24,7 @@ const service = new HackathonService(eventManagementDb, db)
 export const hackathonModule = new Elysia()
   .use(eventManagementDbPlugin)
   .use(authPlugin)
-  .model({ HackathonProject, HackathonProjectIdParams, HackathonProjectListResponse, HackathonProjectQuery, LikeResponse, HackathonHideResponse, HackathonTagBody, HackathonTagParams, HackathonTagResponse })
+  .model({ HackathonProject, HackathonProjectIdParams, HackathonProjectListResponse, HackathonProjectQuery, LikeResponse, HackathonHideResponse, HackathonProjectUpdateBody, HackathonProjectUpdateResponse, HackathonTagBody, HackathonTagParams, HackathonTagResponse })
   .prefix('model', 'Hackathon.')
   .get('/hackathon/projects', ({ query }) => service.listProjects(query), {
     detail: { summary: 'List event 4 hackathon projects', tags: ['Hackathon'], security: [] },
@@ -56,6 +58,12 @@ export const hackathonModule = new Elysia()
     if (!hidden) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: 'Hackathon project not found' } })
     return { hidden: true }
   }, { auth: true, params: 'Hackathon.HackathonProjectIdParams', response: { 200: 'Hackathon.HackathonHideResponse', 401: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse } })
+  .patch('/hackathon/projects/:id', async ({ user, params, body }) => {
+    if (!user.email?.toLowerCase().endsWith('@shenicest.cn')) return status(403, { error: { code: 'FORBIDDEN', message: 'Only shenicest.cn accounts can edit hackathon projects' } })
+    const updated = await service.updateProject(params.id, body)
+    if (!updated) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: 'Hackathon project not found' } })
+    return { updated: true }
+  }, { auth: true, params: 'Hackathon.HackathonProjectIdParams', body: 'Hackathon.HackathonProjectUpdateBody', response: { 200: 'Hackathon.HackathonProjectUpdateResponse', 401: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse } })
   .post('/hackathon/projects/:id/tags', async ({ user, params, body }) => {
     const result = await service.toggleTag(params.id, user.userId, body.tagId, true)
     if (!result) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: 'Hackathon project not found' } })

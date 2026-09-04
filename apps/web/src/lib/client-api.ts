@@ -133,6 +133,10 @@ export function hideHackathonProject(projectId: number) {
   return request<{ hidden: boolean }>('POST', `/hackathon/projects/${projectId}/hide`)
 }
 
+export function updateHackathonProject(projectId: number, body: { description: string | null; coverUrl: string | null; demoLink: string | null }) {
+  return request<{ updated: boolean }>('PATCH', `/hackathon/projects/${projectId}`, body)
+}
+
 export function selectHackathonTag(projectId: number, tagId: string) {
   return request<{ tagId: string; selected: boolean; tagCounts: Record<string, number> }>('POST', `/hackathon/projects/${projectId}/tags`, { tagId })
 }

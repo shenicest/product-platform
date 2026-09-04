@@ -152,6 +152,18 @@ export class HackathonService {
     return true
   }
 
+  async updateProject(projectId: number, changes: { description?: string | null; coverUrl?: string | null; demoLink?: string | null }) {
+    const project = await this.getProject(projectId)
+    if (!project) return false
+    const assignments: string[] = []
+    if (changes.description !== undefined) assignments.push(`project_description = ${changes.description === null ? 'NULL' : `'${escapeSqlString(changes.description)}'`}`)
+    if (changes.coverUrl !== undefined) assignments.push(`cover_image_url = ${changes.coverUrl === null ? 'NULL' : `'${escapeSqlString(changes.coverUrl)}'`}`)
+    if (changes.demoLink !== undefined) assignments.push(`demo_link = ${changes.demoLink === null ? 'NULL' : `'${escapeSqlString(changes.demoLink)}'`}`)
+    if (!assignments.length) return true
+    await this.eventDb.execute(sql.raw(`UPDATE ${HACKATHON_PROJECTS_TABLE} SET ${assignments.join(', ')} WHERE event_id = ${HACKATHON_EVENT_ID} AND id = ${projectId} LIMIT 1`))
+    return true
+  }
+
   async getMyLikes(userId: string) {
     const rows = await this.platformDb.select({ projectId: hackathonProjectLikes.hackathonProjectId }).from(hackathonProjectLikes).where(eq(hackathonProjectLikes.userId, userId))
     return rows.map(({ projectId }) => projectId)
