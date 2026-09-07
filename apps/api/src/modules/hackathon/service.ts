@@ -52,15 +52,17 @@ export class HackathonService {
     return new Map((rows[0] as unknown as Array<{ hackathon_project_id: number; total: number }>).map((row) => [row.hackathon_project_id, Number(row.total)]))
   }
 
-  private trackFor(value: string | null | undefined): HackathonTrack {
+  private trackFor(value: string | null | undefined): HackathonTrack | null {
     const text = (value ?? '').toLowerCase()
     if (text.includes('硬件') || text.includes('hardware')) return 'hardware'
     if (text.includes('游戏') || text.includes('game')) return 'game'
     if (text.includes('aigc') || text.includes('影像')) return 'aigc'
-    return 'software'
+    if (text.includes('软件') || text.includes('software')) return 'software'
+    return null
   }
 
-  private validTagIds(track: HackathonTrack) {
+  private validTagIds(track: HackathonTrack | null) {
+    if (!track) return []
     const dimensions = Object.entries(HACKATHON_TRACK_TAGS[track].dimensions) as Array<[string, readonly string[]]>
     return dimensions.flatMap(([dimension, tags]) => tags.map((_: string, index: number) => `${dimension}:${index}`))
   }
@@ -92,22 +94,23 @@ export class HackathonService {
     const offset = query.offset ?? 0
     const hiddenIds = await this.getHiddenProjectIds()
     const trackText = "CONCAT(COALESCE(track_code, ''), ' ', COALESCE(project_name, ''))"
+    const quantumWhere = ` AND NOT (${trackText} LIKE '%量子%' OR ${trackText} LIKE '%quantum%')`
     const trackWhere = query.track === 'hardware'
       ? ` AND (${trackText} LIKE '%硬件%' OR ${trackText} LIKE '%hardware%')`
       : query.track === 'game'
         ? ` AND (${trackText} LIKE '%游戏%' OR ${trackText} LIKE '%game%')`
         : query.track === 'aigc'
           ? ` AND (${trackText} LIKE '%aigc%' OR ${trackText} LIKE '%影像%')`
-          : query.track === 'software'
-              ? ` AND NOT (${trackText} LIKE '%硬件%' OR ${trackText} LIKE '%hardware%' OR ${trackText} LIKE '%游戏%' OR ${trackText} LIKE '%game%' OR ${trackText} LIKE '%aigc%' OR ${trackText} LIKE '%影像%')`
+      : query.track === 'software'
+              ? ` AND (${trackText} LIKE '%软件%' OR ${trackText} LIKE '%software%')`
             : ''
     const search = query.q?.trim()
     const searchWhere = search
       ? ` AND (project_name LIKE '%${escapeSqlString(search)}%' OR team_name LIKE '%${escapeSqlString(search)}%' OR tagline LIKE '%${escapeSqlString(search)}%')`
       : ''
     const [rows, totals] = await Promise.all([
-       this.eventDb.execute(sql.raw(`SELECT id, project_name, tagline, project_description, cover_image_url, demo_link, video_link, screenshot_urls, team_name, track_code, github_repo_url, xiaohongshu_likes, event_id FROM ${HACKATHON_PROJECTS_TABLE} WHERE event_id = ${HACKATHON_EVENT_ID}${this.hiddenClause(hiddenIds)}${trackWhere}${searchWhere} ORDER BY COALESCE(demo_order, 999999), id LIMIT ${limit} OFFSET ${offset}`)),
-        this.eventDb.execute(sql.raw(`SELECT COUNT(*) AS total FROM ${HACKATHON_PROJECTS_TABLE} WHERE event_id = ${HACKATHON_EVENT_ID}${this.hiddenClause(hiddenIds)}${trackWhere}${searchWhere}`)),
+        this.eventDb.execute(sql.raw(`SELECT id, project_name, tagline, project_description, cover_image_url, demo_link, video_link, screenshot_urls, team_name, track_code, github_repo_url, xiaohongshu_likes, event_id FROM ${HACKATHON_PROJECTS_TABLE} WHERE event_id = ${HACKATHON_EVENT_ID}${this.hiddenClause(hiddenIds)}${quantumWhere}${trackWhere}${searchWhere} ORDER BY COALESCE(demo_order, 999999), id LIMIT ${limit} OFFSET ${offset}`)),
+         this.eventDb.execute(sql.raw(`SELECT COUNT(*) AS total FROM ${HACKATHON_PROJECTS_TABLE} WHERE event_id = ${HACKATHON_EVENT_ID}${this.hiddenClause(hiddenIds)}${quantumWhere}${trackWhere}${searchWhere}`)),
      ])
     const data = (rows[0] as unknown as HackathonRow[]).map(mapHackathonProject)
     const counts = await this.getLikeCounts(data.map((project) => project.id))

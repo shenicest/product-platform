@@ -20,6 +20,7 @@ export default async function HackathonProjectPage(props: PageProps<'/hackathon/
   if (!/^\d+$/.test(rawId)) notFound()
   const project = await getHackathonProject(Number(rawId))
   if (!project) notFound()
+  const track = normalizeHackathonTrack(project.track, project.name)
   return <PublicInteractionBoundary><main className="detail-page mx-auto w-full max-w-[1440px] px-5 py-8 sm:px-8 lg:px-16">
     <a className="detail-back" href="/hackathon">← 返回项目展厅</a>
     <header className="detail-hero mt-8">
@@ -30,7 +31,7 @@ export default async function HackathonProjectPage(props: PageProps<'/hackathon/
       </div>
       <div className="detail-summary" aria-label="项目概要">
         <div><span>PROJECT ID</span><strong>#{String(project.id).padStart(4, '0')}</strong></div>
-        <div><span>TRACK</span><strong>{(project.track || 'software').toUpperCase()}</strong></div>
+         <div><span>TRACK</span><strong>{track ? track.toUpperCase() : '未分类'}</strong></div>
         {project.teamName ? <div><span>TEAM</span><strong>{project.teamName}</strong></div> : null}
         <div className="detail-summary-action"><span>SUPPORT THIS PROJECT</span><HackathonLikeButton projectId={project.id} count={project.likeCount} /></div>
       </div>
@@ -44,7 +45,7 @@ export default async function HackathonProjectPage(props: PageProps<'/hackathon/
           <p className="detail-copy whitespace-pre-line">{visibleDescription(project.description)}</p>
         </section>
         {project.teamName ? <section className="detail-section detail-team" aria-labelledby="team-title"><div className="detail-section-heading"><span>02</span><h2 id="team-title">团队</h2></div><p className="detail-copy">{project.teamName}</p></section> : null}
-        <HackathonTagEvaluator projectId={project.id} track={normalizeHackathonTrack(project.track, project.name)} initialTagCounts={project.tagCounts} initialMyTagIds={project.myTagIds} />
+         {track ? <HackathonTagEvaluator projectId={project.id} track={track} initialTagCounts={project.tagCounts} initialMyTagIds={project.myTagIds} /> : null}
       </article>
       <aside className="detail-aside">
         <div className="detail-aside-heading"><span>TRY IT OUT</span><span className="detail-status"><i aria-hidden /> LIVE</span></div>

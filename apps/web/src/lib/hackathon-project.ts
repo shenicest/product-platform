@@ -7,10 +7,11 @@ export function stripTrackAppendix(description: string | null | undefined) {
     .trim()
 }
 
-export function normalizeHackathonTrack(track: string | null | undefined, name = ''): HackathonTrack {
+export function normalizeHackathonTrack(track: string | null | undefined, name = ''): HackathonTrack | null {
   const text = `${track ?? ''} ${name}`.toLowerCase()
   if (text.includes('硬件') || text.includes('hardware')) return 'hardware'
   if (text.includes('游戏') || text.includes('game')) return 'game'
   if (text.includes('aigc') || text.includes('影像')) return 'aigc'
-  return 'software'
+  if (text.includes('软件') || text.includes('software')) return 'software'
+  return null
 }

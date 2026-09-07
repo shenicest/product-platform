@@ -26,8 +26,10 @@ describe('normalizeHackathonTrack', () => {
     expect(normalizeHackathonTrack('AIGC 视频作品')).toBe('aigc')
   })
 
-  it('falls back to software and considers the project name', () => {
+  it('considers the project name without treating unknown tracks as software', () => {
     expect(normalizeHackathonTrack(null, '智能硬件套件')).toBe('hardware')
-    expect(normalizeHackathonTrack(null, '效率助手')).toBe('software')
+    expect(normalizeHackathonTrack('软件赛道')).toBe('software')
+    expect(normalizeHackathonTrack(null, '量子计算平台')).toBeNull()
+    expect(normalizeHackathonTrack(null, '效率助手')).toBeNull()
   })
 })
