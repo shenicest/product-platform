@@ -1,6 +1,6 @@
 import { and, desc, eq, or, sql } from 'drizzle-orm'
 import type { Database } from '../../db'
-import { connectionDailyLimits, connectionRequests, projects, talentModerationRecords, talentProfiles } from '../../db/schema'
+import { ConnectionDailyLimitScope, connectionDailyLimits, connectionRequests, projects, talentModerationRecords, talentProfiles } from '../../db/schema'
 import { decryptContact, encryptContact } from '../../lib/contact-encryption'
 import { beijingDate } from '../../lib/beijing-date'
 import { UserProfileService } from '../user/service'
@@ -339,8 +339,8 @@ export class TalentService {
         if (project.status !== ProjectStatus.Live) throw new TalentError('PROJECT_NOT_LIVE', 'Project must be Live')
       }
       const date = beijingDate()
-      await tx.execute(sql`INSERT IGNORE INTO ${connectionDailyLimits} (sender_user_id, beijing_date, successful_count) VALUES (${senderUserId}, ${date}, 0)`)
-      const [daily] = await tx.select().from(connectionDailyLimits).where(and(eq(connectionDailyLimits.senderUserId, senderUserId), eq(connectionDailyLimits.beijingDate, date))).for('update')
+      await tx.execute(sql`INSERT IGNORE INTO ${connectionDailyLimits} (scope, sender_user_id, beijing_date, successful_count) VALUES (${ConnectionDailyLimitScope.TalentConnection}, ${senderUserId}, ${date}, 0)`)
+      const [daily] = await tx.select().from(connectionDailyLimits).where(and(eq(connectionDailyLimits.scope, ConnectionDailyLimitScope.TalentConnection), eq(connectionDailyLimits.senderUserId, senderUserId), eq(connectionDailyLimits.beijingDate, date))).for('update')
       const maximum = sender?.status === TalentProfileStatus.Published ? 10 : 3
       if ((daily?.successfulCount ?? 0) >= maximum) throw new TalentError('RATE_LIMITED', 'Daily connection request limit reached')
       const [inserted] = await tx.insert(connectionRequests).values({

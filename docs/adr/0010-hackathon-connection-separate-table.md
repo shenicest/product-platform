@@ -16,7 +16,7 @@ Concrete mismatches found in the code:
 
 ## Decision
 
-Create an independent `hackathon_connection_requests` table (plus its own `hackathon_connection_daily_limits`), and do **not** extend `connection_requests`.
+Create an independent `hackathon_connection_requests` table (plus, at the time, its own `hackathon_connection_daily_limits` — later merged back into `connection_daily_limits` with a `scope` column, see [ADR-0011](./0011-unified-connection-daily-limits.md)), and do **not** extend `connection_requests`.
 
 What is shared stays shared without schema changes: the status enum lives in `@shenicest/shared`, contact encryption in `lib/`, the `pair_key` unique-while-pending pattern (`uq_hackathon_connection_requests_active_pair`, NULLed on terminal states — same as Talent's `uq_connection_requests_active_pair`), and the unified connections-record DTO at the API layer.
 
@@ -32,5 +32,5 @@ What is shared stays shared without schema changes: the status enum lives in `@s
 
 - **Talent module untouched** — no migration, no behavior change, no test churn in `talent/`.
 - **Aggregation is a read-layer concern** — the unified `GET /connections` composes both services into a common DTO (`source`/`target`); it does not imply a unified table.
-- **Repetition of mechanics** — daily-limit and pair-key logic exist twice (Talent + Hackathon). Accepted trade-off; if a third connection surface appears, extract the shared service then rather than pre-abstracting now.
+- **Repetition of mechanics** — pair-key logic exists twice (Talent + Hackathon). Accepted trade-off; if a third connection surface appears, extract the shared service then rather than pre-abstracting now. (The daily-limit counter table was separately unified in [ADR-0011](./0011-unified-connection-daily-limits.md) — the logic is duplicated, the table is not.)
 - **Future unification path stays open** — when platform Projects join, evaluate a shared `ConnectionTarget` abstraction over the two tables instead of merging rows.

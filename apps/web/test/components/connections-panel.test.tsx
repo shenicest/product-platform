@@ -88,6 +88,9 @@ describe('ConnectionsPanel (unified)', () => {
     // Pending-received hackathon card comes first despite being older.
     expect(cards[0]).toHaveTextContent('等待对方回应')
     expect(cards[0].textContent).toContain('试用产品与交流')
+    // Hackathon cards never show the party name / talent-profile line.
+    expect(cards[0].textContent).not.toContain('平台用户')
+    expect(cards[0].textContent).not.toContain('该用户暂未公开介绍')
     expect(cards.length).toBe(2)
 
     expect(screen.getByRole('link', { name: '月事轻记' })).toHaveAttribute('href', 'https://shenicest.test/hackathon/projects/71')

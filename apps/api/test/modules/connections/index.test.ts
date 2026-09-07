@@ -7,7 +7,6 @@ import {
   connectionDailyLimits,
   connectionNotificationDeliveries,
   connectionRequests,
-  hackathonConnectionDailyLimits,
   hackathonConnectionRequests,
   hackathonProjectContacts,
   talentProfiles,
@@ -146,7 +145,6 @@ afterAll(async () => {
     await db.delete(connectionNotificationDeliveries).where(inArray(connectionNotificationDeliveries.connectionRequestId, requestRows.map((row) => row.id)))
     await db.delete(hackathonConnectionRequests).where(inArray(hackathonConnectionRequests.id, requestRows.map((row) => row.id)))
   }
-  await db.delete(hackathonConnectionDailyLimits).where(inArray(hackathonConnectionDailyLimits.senderUserId, allUsers))
   if (contactRows.length) await db.delete(hackathonProjectContacts).where(inArray(hackathonProjectContacts.id, contactRows))
 })
 

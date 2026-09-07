@@ -50,11 +50,4 @@ export const talentModerationRecords = mysqlTable('talent_moderation_records', {
   createdAt: timestamp('created_at').notNull().defaultNow(),
 }, (table) => [index('idx_talent_moderation_profile').on(table.talentProfileId)])
 
-export const connectionDailyLimits = mysqlTable('connection_daily_limits', {
-  id: int('id').primaryKey().autoincrement(),
-  senderUserId: varchar('sender_user_id', { length: 255 }).notNull(),
-  beijingDate: varchar('beijing_date', { length: 10 }).notNull(),
-  successfulCount: int('successful_count').notNull().default(0),
-}, (table) => [
-  uniqueIndex('uq_connection_daily_sender_date').on(table.senderUserId, table.beijingDate),
-])
+

@@ -1,0 +1,1 @@
+ALTER TABLE `hackathon_project_contacts` DROP COLUMN `display_name`;

@@ -16,7 +16,6 @@ const HACKATHON_PROJECT_CONTACTS: HackathonProjectContact[] = [
     hackathonProjectId: 1,
     receiverUserId: '1',
     notificationEmail: 'team@example.com',
-    displayName: '示例项目方',
   },
 ]
 
@@ -29,7 +28,6 @@ async function seedHackathonContacts() {
         set: {
           receiverUserId: contact.receiverUserId,
           notificationEmail: contact.notificationEmail,
-          displayName: contact.displayName ?? null,
         },
       })
     console.log(

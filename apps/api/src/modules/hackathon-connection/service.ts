@@ -1,8 +1,9 @@
 import { and, desc, eq, or, sql } from 'drizzle-orm'
 import type { Database } from '../../db'
 import {
+  ConnectionDailyLimitScope,
+  connectionDailyLimits,
   connectionNotificationDeliveries,
-  hackathonConnectionDailyLimits,
   hackathonConnectionRequests,
   hackathonProjectContacts,
   talentProfiles,
@@ -129,15 +130,16 @@ export class HackathonConnectionService {
         }
         const date = beijingDate()
         await tx.execute(
-          sql`INSERT IGNORE INTO ${hackathonConnectionDailyLimits} (sender_user_id, beijing_date, successful_count) VALUES (${senderUserId}, ${date}, 0)`,
+          sql`INSERT IGNORE INTO ${connectionDailyLimits} (scope, sender_user_id, beijing_date, successful_count) VALUES (${ConnectionDailyLimitScope.HackathonConnection}, ${senderUserId}, ${date}, 0)`,
         )
         const [daily] = await tx
           .select()
-          .from(hackathonConnectionDailyLimits)
+          .from(connectionDailyLimits)
           .where(
             and(
-              eq(hackathonConnectionDailyLimits.senderUserId, senderUserId),
-              eq(hackathonConnectionDailyLimits.beijingDate, date),
+              eq(connectionDailyLimits.scope, ConnectionDailyLimitScope.HackathonConnection),
+              eq(connectionDailyLimits.senderUserId, senderUserId),
+              eq(connectionDailyLimits.beijingDate, date),
             ),
           )
           .for('update')
@@ -166,9 +168,9 @@ export class HackathonConnectionService {
           status: 'Pending',
         })
         await tx
-          .update(hackathonConnectionDailyLimits)
-          .set({ successfulCount: sql`${hackathonConnectionDailyLimits.successfulCount} + 1` })
-          .where(eq(hackathonConnectionDailyLimits.id, daily.id))
+          .update(connectionDailyLimits)
+          .set({ successfulCount: sql`${connectionDailyLimits.successfulCount} + 1` })
+          .where(eq(connectionDailyLimits.id, daily.id))
         const [created] = await tx
           .select()
           .from(hackathonConnectionRequests)

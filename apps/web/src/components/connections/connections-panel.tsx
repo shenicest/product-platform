@@ -154,11 +154,13 @@ function ConnectionCard({
         <div>
           <p className="font-bold">
             <span className="chip-hard mr-2 align-middle">{connectionSourceLabel(connection.source)}</span>
-            {identityName(party)}
+            {connection.source === 'talent' ? identityName(party) : null}
           </p>
-          <p className="mt-1 font-mono text-xs text-primary">
-            {party.hasPublishedTalentProfile ? '公开人才档案' : '该用户暂未公开介绍'}
-          </p>
+          {connection.source === 'talent' && (
+            <p className="mt-1 font-mono text-xs text-primary">
+              {party.hasPublishedTalentProfile ? '公开人才档案' : '该用户暂未公开介绍'}
+            </p>
+          )}
         </div>
         <span className="chip-hard">{connectionItemStatusLabel(connection.status, view === 'sent')}</span>
       </div>

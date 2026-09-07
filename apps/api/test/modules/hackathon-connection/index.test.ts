@@ -3,8 +3,9 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { ConnectionRequestStatus, HACKATHON_CONNECTION_PURPOSES } from '@shenicest/shared'
 import { db } from '../../../src/db'
 import {
+  ConnectionDailyLimitScope,
+  connectionDailyLimits,
   connectionNotificationDeliveries,
-  hackathonConnectionDailyLimits,
   hackathonConnectionRequests,
   hackathonProjectContacts,
 } from '../../../src/db/schema'
@@ -13,7 +14,7 @@ import { NOTIFICATION_TYPES } from '../../../src/lib/mail/notification-types'
 import { HACKATHON_EVENT_ID } from '../../../src/modules/hackathon/service'
 import { HackathonConnectionService } from '../../../src/modules/hackathon-connection/service'
 
-const contactConfig = { receiverUserId: '900001', notificationEmail: 'receiver@example.com', displayName: '项目方' }
+const contactConfig = { receiverUserId: '900001', notificationEmail: 'receiver@example.com' }
 const contactRows: number[] = []
 // Sender ids are unique per independent create-flow test: the 3/day limit is
 // per sender per Beijing day, so a reused sender can silently run out of quota
@@ -66,7 +67,7 @@ afterAll(async () => {
     await db.delete(connectionNotificationDeliveries).where(inArray(connectionNotificationDeliveries.connectionRequestId, requestRows.map((row) => row.id)))
   }
   await db.delete(hackathonConnectionRequests).where(inArray(hackathonConnectionRequests.senderUserId, senderIds))
-  await db.delete(hackathonConnectionDailyLimits).where(inArray(hackathonConnectionDailyLimits.senderUserId, senderIds))
+  await db.delete(connectionDailyLimits).where(inArray(connectionDailyLimits.senderUserId, senderIds))
   if (contactRows.length) await db.delete(hackathonProjectContacts).where(inArray(hackathonProjectContacts.id, contactRows))
 })
 
@@ -107,8 +108,8 @@ describe('HackathonConnectionService.create', () => {
 
     const [limit] = await db
       .select()
-      .from(hackathonConnectionDailyLimits)
-      .where(eq(hackathonConnectionDailyLimits.senderUserId, sender))
+      .from(connectionDailyLimits)
+      .where(and(eq(connectionDailyLimits.scope, ConnectionDailyLimitScope.HackathonConnection), eq(connectionDailyLimits.senderUserId, sender)))
     expect(limit.successfulCount).toBe(1)
   })
 
@@ -211,8 +212,8 @@ describe('HackathonConnectionService.create', () => {
     await expect(create(sender, fourth)).rejects.toMatchObject({ code: 'RATE_LIMITED' })
     const [limit] = await db
       .select()
-      .from(hackathonConnectionDailyLimits)
-      .where(eq(hackathonConnectionDailyLimits.senderUserId, sender))
+      .from(connectionDailyLimits)
+      .where(and(eq(connectionDailyLimits.scope, ConnectionDailyLimitScope.HackathonConnection), eq(connectionDailyLimits.senderUserId, sender)))
     expect(limit.successfulCount).toBe(3)
   })
 

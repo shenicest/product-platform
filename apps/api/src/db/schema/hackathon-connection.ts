@@ -11,7 +11,6 @@ export const hackathonProjectContacts = mysqlTable('hackathon_project_contacts',
   hackathonProjectId: int('hackathon_project_id').notNull(),
   receiverUserId: varchar('receiver_user_id', { length: 255 }).notNull(),
   notificationEmail: varchar('notification_email', { length: 254 }).notNull(),
-  displayName: varchar('display_name', { length: 255 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
 }, (table) => [
@@ -40,15 +39,6 @@ export const hackathonConnectionRequests = mysqlTable('hackathon_connection_requ
   index('idx_hackathon_connection_requests_project_status').on(table.eventId, table.hackathonProjectId, table.status),
   index('idx_hackathon_connection_requests_sender_project_status').on(table.senderUserId, table.hackathonProjectId, table.status),
   uniqueIndex('uq_hackathon_connection_requests_active_pair').on(table.pairKey),
-])
-
-export const hackathonConnectionDailyLimits = mysqlTable('hackathon_connection_daily_limits', {
-  id: int('id').primaryKey().autoincrement(),
-  senderUserId: varchar('sender_user_id', { length: 255 }).notNull(),
-  beijingDate: varchar('beijing_date', { length: 10 }).notNull(),
-  successfulCount: int('successful_count').notNull().default(0),
-}, (table) => [
-  uniqueIndex('uq_hackathon_connection_daily_sender_date').on(table.senderUserId, table.beijingDate),
 ])
 
 export const connectionNotificationDeliveries = mysqlTable('connection_notification_deliveries', {

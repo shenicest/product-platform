@@ -40,6 +40,8 @@ PRD 的技术方案整体可行。核心改动落在后端一个新模块 + 邮�
 
 不复用 `lib/rate-limit.ts`（`consumeRateLimit`）：它的窗口是 UTC 对齐的固定窗口，而"每日"在本仓库既有语义是北京日期（Talent 同类限制即如此）；且限额应只计创建成功数，走与 Talent 相同的"事务内 INSERT IGNORE + FOR UPDATE + 成功后自增"模式。表结构与 `connection_daily_limits` 同构（`sender_user_id + beijing_date` 唯一），限制 3 条/日。
 
+> 后续更新：两张同构限额表已合并为带 `scope` 列的 `connection_daily_limits`，见 [ADR-0011](./adr/0011-unified-connection-daily-limits.md)。
+
 ### D3 — 项目隐藏的 Pending 取消采用"埋点 + 守卫"，不做后台清扫
 
 - 项目唯一会变隐藏的入口是 `HackathonService.hideProject`：在其成功路径同步调用 `cancelPendingByProject(eventId, projectId)`（置 Cancelled + `handled_at`）；
