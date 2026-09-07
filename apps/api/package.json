@@ -15,6 +15,7 @@
     "seed:hackathon-contacts": "bun src/db/seed-hackathon-contacts.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1125.0",
     "@elysiajs/cors": "^1.4.2",
     "@elysiajs/jwt": "^1.4.2",
     "@elysiajs/openapi": "^1.4.15",

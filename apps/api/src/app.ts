@@ -49,6 +49,7 @@ export const app = new Elysia()
   }))
   .use(cors({
     origin: [
+      /^https?:\/\/(www\.|product-platform\.)?shenicest\.com$/,
       /\.vercel\.app$/,
       /^https?:\/\/localhost(:\d+)?$/,
       /^https?:\/\/127\.0\.0\.1(:\d+)?$/,

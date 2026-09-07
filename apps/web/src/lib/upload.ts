@@ -36,7 +36,11 @@ async function uploadToCos(file: File, maxSize: number, kind: 'image' | 'video')
 
   const { url, publicUrl } = await requestPresign(file.name, file.type)
 
-  const upload = await fetch(url, { method: 'PUT', body: file })
+  const upload = await fetch(url, {
+    method: 'PUT',
+    headers: file.type ? { 'content-type': file.type } : undefined,
+    body: file,
+  })
   if (!upload.ok) throw new UploadError('上传失败，请重试')
 
   return publicUrl
