@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm'
 import type { Database } from '../db'
 import { hackathonConnectionRequests } from '../db/schema'
 import { NOTIFICATION_TYPES } from '../lib/mail/notification-types'
+import { renderHackathonConnectionAcceptedEmail } from '../lib/mail/templates/hackathon-connection-accepted'
 import { renderHackathonConnectionCreatedEmail } from '../lib/mail/templates/hackathon-connection-created'
 import type { ContentResolver } from './mail-worker'
 
@@ -13,15 +14,19 @@ export interface HackathonConnectionContentResolverDeps {
   webBaseUrl: string
 }
 
-// Builds the reminder email for a hackathon connection-created delivery row.
-// Returns null (→ terminal Failed) when the backing request or project no
-// longer exists; throws on transient failures so the worker retries.
+// Builds the email for a hackathon connection delivery row (created reminder
+// or accepted outcome). Returns null (→ terminal Failed) when the backing
+// request or project no longer exists; throws on transient failures so the
+// worker retries.
 export function createHackathonConnectionContentResolver(
   deps: HackathonConnectionContentResolverDeps,
 ): ContentResolver {
   const base = deps.webBaseUrl.replace(/\/+$/, '')
+  const connectionsUrl = `${base}/connections`
   return async (task) => {
-    if (task.notificationType !== NOTIFICATION_TYPES.CONNECTION_CREATED) return null
+    if (task.notificationType !== NOTIFICATION_TYPES.CONNECTION_CREATED && task.notificationType !== NOTIFICATION_TYPES.CONNECTION_ACCEPTED) {
+      return null
+    }
     const [request] = await deps.db
       .select()
       .from(hackathonConnectionRequests)
@@ -30,6 +35,14 @@ export function createHackathonConnectionContentResolver(
     if (!request) return null
     const project = await deps.getProjectSummary(request.hackathonProjectId)
     if (!project) return null
+    if (task.notificationType === NOTIFICATION_TYPES.CONNECTION_ACCEPTED) {
+      return renderHackathonConnectionAcceptedEmail({
+        projectName: project.name,
+        projectUrl: `${base}/hackathon/projects/${request.hackathonProjectId}`,
+        acceptedAt: request.acceptedAt ?? request.handledAt ?? request.createdAt,
+        connectionsUrl,
+      })
+    }
     const nickname = await deps.getSenderNickname(request.senderUserId)
     return renderHackathonConnectionCreatedEmail({
       projectName: project.name,
@@ -38,7 +51,7 @@ export function createHackathonConnectionContentResolver(
       purpose: request.purpose,
       message: request.message,
       createdAt: request.createdAt,
-      connectionsUrl: `${base}/connections`,
+      connectionsUrl,
     })
   }
 }

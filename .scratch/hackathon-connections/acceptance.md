@@ -77,6 +77,8 @@ GROUP BY status, last_error_code;
 
 ## 8. 埋点/漏斗基线（PRD 15）
 
+> 追加决策（2026-09-08 产品确认）：接受结果邮件从 P1 提前 — 项目方接受时向发送方平台账号邮箱（共享 users 表）发送通知，复用投递 worker 与幂等投递表；收不到账号邮箱或项目隐藏/重复接受路径静默跳过；忽略仍不发邮件。徽标未读方案未启用（邮件替代了该提示职责）。
+
 无埋点系统，按票面回退为**结构化日志**，本次实现：
 
 - `apps/api/src/lib/log-event.ts`：单行 JSON 到 stdout（`event`、`time` + PRD 15.2 白名单字段：eventId / hackathonProjectId / requestId / source / status / errorCode），单测保证单行与字段集合。

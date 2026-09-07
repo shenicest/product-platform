@@ -258,6 +258,20 @@ export class HackathonConnectionService {
           pairKey: null,
         })
         .where(and(eq(hackathonConnectionRequests.id, requestId), eq(hackathonConnectionRequests.status, ConnectionRequestStatus.Pending)))
+      // Accepted-outcome email (PRD 21.6, revised decision): notify the sender
+      // at their platform-account email. Sent only on the Pending → Accepted
+      // transition — repeated accepts return early, so the unique
+      // (request, type) delivery row is written exactly once. No account
+      // email (or external-table hiccup) degrades to "skip", never an error.
+      const senderEmail = await this.users.getEmail(row.senderUserId)
+      if (senderEmail) {
+        await tx.insert(connectionNotificationDeliveries).values({
+          connectionRequestId: requestId,
+          notificationType: NOTIFICATION_TYPES.CONNECTION_ACCEPTED,
+          recipientEmail: senderEmail,
+          status: 'Pending',
+        })
+      }
       const [updated] = await tx.select().from(hackathonConnectionRequests).where(eq(hackathonConnectionRequests.id, requestId)).limit(1)
       return updated
     })

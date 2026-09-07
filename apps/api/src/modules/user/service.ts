@@ -36,4 +36,21 @@ export class UserProfileService {
       return null
     }
   }
+
+  // The platform-account email of a user (external auth system owns it).
+  // Used as the notification recipient for connection outcomes. Degrades to
+  // null exactly like getPublicProfile — a missing row or a flaky external
+  // table must never break the surrounding transaction; callers treat null
+  // as "no email addressable, skip the notification".
+  async getEmail(userId: string): Promise<string | null> {
+    if (!/^\d+$/.test(userId)) return null
+    try {
+      const [rows] = (await this.db.execute(
+        sql`SELECT email FROM ${sql.raw(SHARED_USERS_TABLE)} WHERE id = ${userId} LIMIT 1`,
+      )) as unknown as [{ email: string | null }[]]
+      return rows[0]?.email ?? null
+    } catch {
+      return null
+    }
+  }
 }

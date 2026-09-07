@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from 'bun:test'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 import { ConnectionRequestStatus, HACKATHON_CONNECTION_PURPOSES } from '@shenicest/shared'
 import { db } from '../../../src/db'
 import {
@@ -12,6 +12,7 @@ import {
 import { decryptContact } from '../../../src/lib/contact-encryption'
 import { NOTIFICATION_TYPES } from '../../../src/lib/mail/notification-types'
 import { HACKATHON_EVENT_ID } from '../../../src/modules/hackathon/service'
+import { SHARED_USERS_TABLE } from '../../../src/modules/user/service'
 import { HackathonConnectionService } from '../../../src/modules/hackathon-connection/service'
 
 const contactConfig = { receiverUserId: '900001', notificationEmail: 'receiver@example.com' }
@@ -58,6 +59,17 @@ function create(senderUserId: string, hackathonProjectId: number, overrides: Rec
   return service.create(senderUserId, hackathonProjectId, { ...validBody, ...overrides } as typeof validBody)
 }
 
+// Seeds a shared-users row (the external auth table) so the accepted-email
+// lookup can resolve the sender's account email.
+async function seedSharedUser(userId: string, email: string) {
+  await db.execute(
+    sql`INSERT INTO ${sql.raw(SHARED_USERS_TABLE)} (id, email, nickname) VALUES (${Number(userId)}, ${email}, ${'用户' + userId}) ON DUPLICATE KEY UPDATE email = VALUES(email)`,
+  )
+  sharedUserIds.push(Number(userId))
+}
+
+const sharedUserIds: number[] = []
+
 afterAll(async () => {
   const requestRows = await db
     .select({ id: hackathonConnectionRequests.id })
@@ -69,6 +81,9 @@ afterAll(async () => {
   await db.delete(hackathonConnectionRequests).where(inArray(hackathonConnectionRequests.senderUserId, senderIds))
   await db.delete(connectionDailyLimits).where(inArray(connectionDailyLimits.senderUserId, senderIds))
   if (contactRows.length) await db.delete(hackathonProjectContacts).where(inArray(hackathonProjectContacts.id, contactRows))
+  if (sharedUserIds.length) {
+    await db.execute(sql`DELETE FROM ${sql.raw(SHARED_USERS_TABLE)} WHERE id IN (${sql.join(sharedUserIds.map((id) => sql`${id}`), sql`, `)})`)
+  }
 })
 
 describe('HackathonConnectionService.create', () => {
@@ -383,6 +398,46 @@ describe('HackathonConnectionService.accept', () => {
     expect(row.pairKey).toBeNull()
     expect(row.handledAt).not.toBeNull()
     expect(row.receiverContact).toBeNull()
+  })
+
+  it('enqueues one accepted notification email to the sender account email', async () => {
+    const sender = senderIds[10]
+    const hackathonProjectId = await seedContact()
+    const created = await create(sender, hackathonProjectId)
+    await seedSharedUser(sender, 'sender-acct@example.com')
+
+    await service.accept(receiver, created.id, { wechat: 'receiver-wx' })
+
+    const deliveries = await db
+      .select()
+      .from(connectionNotificationDeliveries)
+      .where(and(eq(connectionNotificationDeliveries.connectionRequestId, created.id), eq(connectionNotificationDeliveries.notificationType, NOTIFICATION_TYPES.CONNECTION_ACCEPTED)))
+    expect(deliveries).toHaveLength(1)
+    expect(deliveries[0]).toMatchObject({ recipientEmail: 'sender-acct@example.com', status: 'Pending', lastErrorCode: null })
+
+    // Repeated accept is idempotent: no second delivery row.
+    await service.accept(receiver, created.id, { email: 'changed@example.com' })
+    expect(
+      (await db.select().from(connectionNotificationDeliveries).where(and(eq(connectionNotificationDeliveries.connectionRequestId, created.id), eq(connectionNotificationDeliveries.notificationType, NOTIFICATION_TYPES.CONNECTION_ACCEPTED)))).length,
+    ).toBe(1)
+  })
+
+  it('skips the accepted email when the sender has no account email or the project is hidden', async () => {
+    const noEmailSender = senderIds[11]
+    const noEmailProject = await seedContact()
+    const noEmailRequest = await create(noEmailSender, noEmailProject)
+    await service.accept(receiver, noEmailRequest.id, { wechat: 'receiver-wx' })
+    expect(
+      (await db.select().from(connectionNotificationDeliveries).where(and(eq(connectionNotificationDeliveries.connectionRequestId, noEmailRequest.id), eq(connectionNotificationDeliveries.notificationType, NOTIFICATION_TYPES.CONNECTION_ACCEPTED)))).length,
+    ).toBe(0)
+
+    const hiddenSender = senderIds[12]
+    const hiddenProject = await seedContact()
+    const hiddenRequest = await create(hiddenSender, hiddenProject)
+    await expect(invisibleSource.accept(receiver, hiddenRequest.id, { wechat: 'x' })).rejects.toMatchObject({ code: 'REQUEST_NOT_PENDING' })
+    expect(
+      (await db.select().from(connectionNotificationDeliveries).where(and(eq(connectionNotificationDeliveries.connectionRequestId, hiddenRequest.id), eq(connectionNotificationDeliveries.notificationType, NOTIFICATION_TYPES.CONNECTION_ACCEPTED)))).length,
+    ).toBe(0)
   })
 })
 

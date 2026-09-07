@@ -94,4 +94,24 @@ describe('createHackathonConnectionContentResolver', () => {
       await resolver({ id: 1, connectionRequestId: 1, notificationType: 'something_else', recipientEmail: 'r@e.com' }),
     ).toBeNull()
   })
+
+  it('renders the accepted-email template for CONNECTION_ACCEPTED deliveries', async () => {
+    const request = await insertRequest({ status: 1, acceptedAt: new Date('2026-09-07T02:00:00Z') })
+    const resolver = buildResolver()
+
+    const content = await resolver({ ...taskFor(request.id), notificationType: NOTIFICATION_TYPES.CONNECTION_ACCEPTED })
+    expect(content).not.toBeNull()
+    expect(content!.subject).toBe('[Shenicest] 你的建联申请已被项目方接受')
+    expect(content!.html).toContain(`项目 ${request.hackathonProjectId}`)
+    expect(content!.html).toContain(`href="https://shenicest.test/connections"`)
+    expect(content!.html).not.toContain('收件人')
+    expect(content!.text).toContain('登录平台查看联系方式：https://shenicest.test/connections')
+  })
+
+  it('returns null for CONNECTION_ACCEPTED when the request row is gone', async () => {
+    const resolver = buildResolver()
+    expect(
+      await resolver({ id: 1, connectionRequestId: 99999999, notificationType: NOTIFICATION_TYPES.CONNECTION_ACCEPTED, recipientEmail: 'r@e.com' }),
+    ).toBeNull()
+  })
 })

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test'
+import { renderHackathonConnectionAcceptedEmail } from '../../../src/lib/mail/templates/hackathon-connection-accepted'
 import { renderHackathonConnectionCreatedEmail } from '../../../src/lib/mail/templates/hackathon-connection-created'
 
 const baseInput = {
@@ -57,5 +58,43 @@ describe('renderHackathonConnectionCreatedEmail', () => {
     const email = renderHackathonConnectionCreatedEmail(baseInput)
     expect(email.html).toContain('申请时间：2026-09-07 10:00')
     expect(email.text).toContain('申请时间：2026-09-07 10:00')
+  })
+})
+
+const acceptedBaseInput = {
+  projectName: '月事轻记',
+  projectUrl: 'https://shenicest.test/hackathon/projects/42',
+  acceptedAt: new Date('2026-09-07T02:00:00Z'),
+  connectionsUrl: 'https://shenicest.test/connections',
+}
+
+describe('renderHackathonConnectionAcceptedEmail', () => {
+  it('tells the sender the request was accepted and links the connections page', () => {
+    const email = renderHackathonConnectionAcceptedEmail(acceptedBaseInput)
+    expect(email.subject).toBe('[Shenicest] 你的建联申请已被项目方接受')
+    for (const body of [email.html, email.text]) {
+      expect(body).toContain('月事轻记')
+      expect(body).toContain('https://shenicest.test/hackathon/projects/42')
+      expect(body).toContain('https://shenicest.test/connections')
+    }
+    expect(email.html).toContain('<a href="https://shenicest.test/connections"')
+  })
+
+  it('escapes project input and never includes contact info', () => {
+    const email = renderHackathonConnectionAcceptedEmail({
+      ...acceptedBaseInput,
+      projectName: 'A&B "<img src=x onerror=1>',
+    })
+    expect(email.html).not.toContain('<img')
+    expect(email.html).toContain('A&amp;B &quot;&lt;img')
+    expect(JSON.stringify(email)).not.toContain('wechat')
+    expect(JSON.stringify(email)).not.toContain('receiverContact')
+    expect(email.html).not.toContain('mailto:')
+  })
+
+  it('formats the accepted time in Beijing time', () => {
+    const email = renderHackathonConnectionAcceptedEmail(acceptedBaseInput)
+    expect(email.html).toContain('接受时间：2026-09-07 10:00')
+    expect(email.text).toContain('接受时间：2026-09-07 10:00')
   })
 })

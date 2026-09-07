@@ -25,7 +25,8 @@ export function escapeHtml(value: string): string {
 }
 
 // Beijing wall-clock time, matching the platform's "daily" semantics.
-function formatBeijingTime(date: Date): string {
+// Exported because the accepted-outcome template shares it.
+export function formatBeijingTime(date: Date): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Shanghai',
     year: 'numeric',
