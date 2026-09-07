@@ -5,7 +5,7 @@ import type { EventManagementDatabase } from '../../db/event-management'
 import { HACKATHON_TRACK_TAGS, type HackathonTrack } from '@shenicest/shared'
 import { hackathonProjectTags } from '../../db/schema'
 
-const HACKATHON_EVENT_ID = 4
+export const HACKATHON_EVENT_ID = 4
 const HACKATHON_PROJECTS_TABLE = 'projects'
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 100
@@ -44,6 +44,12 @@ function escapeSqlString(value: string) {
 }
 
 export class HackathonService {
+  // Called with the event id after a project is successfully hidden. Wired by
+  // the composition root (hackathon module index) to cancel Pending hackathon
+  // connection requests for the project (D3). Optional so tests and other
+  // consumers can omit it.
+  onProjectHidden?: (eventId: number, hackathonProjectId: number) => Promise<void>
+
   constructor(private eventDb: EventManagementDatabase, private platformDb = db) {}
 
   private async getLikeCounts(projectIds: number[]) {
@@ -152,6 +158,7 @@ export class HackathonService {
   async hideProject(projectId: number, userId: string) {
     if (!(await this.getProject(projectId))) return false
     await this.platformDb.insert(hackathonProjectHidden).values({ eventId: HACKATHON_EVENT_ID, hackathonProjectId: projectId, hiddenBy: userId }).onDuplicateKeyUpdate({ set: { hiddenBy: userId } })
+    await this.onProjectHidden?.(HACKATHON_EVENT_ID, projectId)
     return true
   }
 

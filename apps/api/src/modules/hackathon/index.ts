@@ -18,8 +18,14 @@ import {
   HackathonTagResponse,
 } from './model'
 import { HackathonService } from './service'
+import { hackathonConnectionService } from '../hackathon-connection'
 
 const service = new HackathonService(eventManagementDb, db)
+
+// D3: hiding a project cancels its Pending connection requests as part of the
+// hide's success path.
+service.onProjectHidden = (eventId, hackathonProjectId) =>
+  hackathonConnectionService.cancelPendingByProject(eventId, hackathonProjectId)
 
 export const hackathonModule = new Elysia()
   .use(eventManagementDbPlugin)

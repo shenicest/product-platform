@@ -2,6 +2,7 @@ import { and, desc, eq, or, sql } from 'drizzle-orm'
 import type { Database } from '../../db'
 import { connectionDailyLimits, connectionRequests, projects, talentModerationRecords, talentProfiles } from '../../db/schema'
 import { decryptContact, encryptContact } from '../../lib/contact-encryption'
+import { beijingDate } from '../../lib/beijing-date'
 import { UserProfileService } from '../user/service'
 import {
   CATEGORIES,
@@ -247,12 +248,6 @@ export class TalentService {
     }
   }
 
-  private beijingDate() {
-    const now = new Date()
-    const beijing = new Date(now.getTime() + 8 * 60 * 60 * 1000)
-    return `${beijing.getUTCFullYear()}-${String(beijing.getUTCMonth() + 1).padStart(2, '0')}-${String(beijing.getUTCDate()).padStart(2, '0')}`
-  }
-
   private async connectionView(row: typeof connectionRequests.$inferSelect, viewerId: string) {
     const [senderProfile, receiverProfile, senderIdentity, receiverIdentity, project] = await Promise.all([
       this.getProfile(row.senderUserId),
@@ -341,7 +336,7 @@ export class TalentService {
         if (project.userId !== senderUserId) throw new TalentError('PROJECT_FORBIDDEN', 'Project is not owned by sender')
         if (project.status !== ProjectStatus.Live) throw new TalentError('PROJECT_NOT_LIVE', 'Project must be Live')
       }
-      const date = this.beijingDate()
+      const date = beijingDate()
       await tx.execute(sql`INSERT IGNORE INTO ${connectionDailyLimits} (sender_user_id, beijing_date, successful_count) VALUES (${senderUserId}, ${date}, 0)`)
       const [daily] = await tx.select().from(connectionDailyLimits).where(and(eq(connectionDailyLimits.senderUserId, senderUserId), eq(connectionDailyLimits.beijingDate, date))).for('update')
       const maximum = sender?.status === TalentProfileStatus.Published ? 10 : 3
