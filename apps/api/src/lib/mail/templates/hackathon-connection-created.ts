@@ -1,4 +1,17 @@
 import type { EmailContent } from '../mailer'
+import {
+  EMAIL_COLORS,
+  EMAIL_FONT_MONO,
+  EMAIL_FONT_SANS,
+  emailCta,
+  emailEyebrow,
+  emailField,
+  emailNote,
+  emailPanelClose,
+  emailPanelOpen,
+  emailShellClose,
+  emailShellOpen,
+} from './layout'
 
 export interface HackathonConnectionCreatedInput {
   projectName: string
@@ -54,16 +67,19 @@ export function renderHackathonConnectionCreatedEmail(input: HackathonConnection
 
   const subject = SUBJECT
   const html = [
-    `<div style="font-family: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; max-width: 560px; margin: 0 auto; color: #1f2329; line-height: 1.6;">`,
-    `<h2 style="font-size: 18px; margin: 24px 0 16px;">你的黑客松项目收到一条新的建联申请</h2>`,
-    `<p><strong>项目：</strong><a href="${projectUrl}">${projectName}</a></p>`,
-    `<p><strong>申请人：</strong>${senderNickname}</p>`,
-    `<p><strong>联系目的：</strong>${purpose}</p>`,
-    `<div style="white-space: pre-wrap; background: #f5f6f7; border-radius: 8px; padding: 12px 16px; margin: 12px 0;">${message}</div>`,
-    `<p style="color: #646a73; font-size: 13px;">申请时间：${createdAt}</p>`,
-    `<p><a href="${connectionsUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px;">登录平台处理申请</a></p>`,
-    `<p style="font-size: 12px; color: #8f959e;">${PRIVACY_NOTE}</p>`,
-    `</div>`,
+    emailShellOpen(),
+    emailEyebrow('CONNECTION REQUEST / NEW'),
+    `<h2 style="font-size:20px; line-height:1.4; margin:0 0 22px; color:${EMAIL_COLORS.white}; font-family:${EMAIL_FONT_SANS};">你的黑客松项目收到一条新的建联申请</h2>`,
+    emailPanelOpen(),
+    emailField('项目：', `<a href="${projectUrl}" style="color:${EMAIL_COLORS.pink}; text-decoration:underline;">${projectName}</a>`),
+    emailField('申请人：', senderNickname),
+    emailField('联系目的：', purpose),
+    `<div style="white-space:pre-wrap; color:${EMAIL_COLORS.white}; font-family:${EMAIL_FONT_SANS}; border-left:2px solid ${EMAIL_COLORS.pink}; margin:14px 0 12px; padding:10px 14px; background:${EMAIL_COLORS.void};">${message}</div>`,
+    `<p style="font:13px/1.5 ${EMAIL_FONT_MONO}; color:${EMAIL_COLORS.muted}; margin:0;">申请时间：${createdAt}</p>`,
+    emailPanelClose(),
+    emailCta('登录平台处理申请', connectionsUrl),
+    emailNote(escapeHtml(PRIVACY_NOTE)),
+    emailShellClose(),
   ].join('\n')
 
   const text = [
@@ -81,6 +97,8 @@ export function renderHackathonConnectionCreatedEmail(input: HackathonConnection
     `登录平台处理申请：${input.connectionsUrl}`,
     '',
     PRIVACY_NOTE,
+    '',
+    'SHENICEST PLATFORM MESSAGE',
   ].join('\n')
 
   return { subject, html, text }

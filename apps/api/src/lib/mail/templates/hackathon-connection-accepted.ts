@@ -1,4 +1,17 @@
 import type { EmailContent } from '../mailer'
+import {
+  EMAIL_COLORS,
+  EMAIL_FONT_MONO,
+  EMAIL_FONT_SANS,
+  emailCta,
+  emailEyebrow,
+  emailField,
+  emailNote,
+  emailPanelClose,
+  emailPanelOpen,
+  emailShellClose,
+  emailShellOpen,
+} from './layout'
 import { escapeHtml, formatBeijingTime } from './hackathon-connection-created'
 
 export interface HackathonConnectionAcceptedInput {
@@ -21,14 +34,17 @@ export function renderHackathonConnectionAcceptedEmail(input: HackathonConnectio
 
   const subject = SUBJECT
   const html = [
-    `<div style="font-family: -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; max-width: 560px; margin: 0 auto; color: #1f2329; line-height: 1.6;">`,
-    `<h2 style="font-size: 18px; margin: 24px 0 16px;">你的建联申请已被项目方接受</h2>`,
-    `<p><strong>项目：</strong><a href="${projectUrl}">${projectName}</a></p>`,
-    `<p style="color: #646a73; font-size: 13px;">接受时间：${acceptedAt}</p>`,
-    `<p>项目方已授权自己的联系方式，现在双方都可以在平台的连接记录中查看对方本次授权的联系方式。</p>`,
-    `<p><a href="${connectionsUrl}" style="display: inline-block; background: #2563eb; color: #ffffff; text-decoration: none; padding: 10px 24px; border-radius: 6px;">登录平台查看联系方式</a></p>`,
-    `<p style="font-size: 12px; color: #8f959e;">为保护双方隐私，联系方式只在平台连接记录中展示，不会出现在邮件里。</p>`,
-    `</div>`,
+    emailShellOpen(),
+    emailEyebrow('CONNECTION REQUEST / ACCEPTED'),
+    `<h2 style="font-size:20px; line-height:1.4; margin:0 0 22px; color:${EMAIL_COLORS.white}; font-family:${EMAIL_FONT_SANS};">你的建联申请已被项目方接受</h2>`,
+    emailPanelOpen(),
+    emailField('项目：', `<a href="${projectUrl}" style="color:${EMAIL_COLORS.pink}; text-decoration:underline;">${projectName}</a>`),
+    `<p style="font:13px/1.5 ${EMAIL_FONT_MONO}; color:${EMAIL_COLORS.muted}; margin:0 0 10px;">接受时间：${acceptedAt}</p>`,
+    `<p style="font-family:${EMAIL_FONT_SANS}; font-size:15px; margin:0;">项目方已授权自己的联系方式，现在双方都可以在平台的<strong style="color:${EMAIL_COLORS.pink};">连接记录</strong>中查看对方本次授权的联系方式。</p>`,
+    emailPanelClose(),
+    emailCta('登录平台查看联系方式', connectionsUrl),
+    emailNote('为保护双方隐私，联系方式只在平台连接记录中展示，不会出现在邮件里。'),
+    emailShellClose(),
   ].join('\n')
 
   const text = [
@@ -43,6 +59,8 @@ export function renderHackathonConnectionAcceptedEmail(input: HackathonConnectio
     `登录平台查看联系方式：${input.connectionsUrl}`,
     '',
     '为保护双方隐私，联系方式不会出现在邮件里。',
+    '',
+    'SHENICEST PLATFORM MESSAGE',
   ].join('\n')
 
   return { subject, html, text }
