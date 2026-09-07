@@ -26,7 +26,8 @@
     "drizzle-typebox": "^0.3.3",
     "elysia": "^1.2.25",
     "jose": "^6.2.8",
-    "mysql2": "^3.14.1"
+    "mysql2": "^3.14.1",
+    "tencentcloud-sdk-nodejs-ses": "^4.1.271"
   },
   "devDependencies": {
     "@types/bun": "^1.2.15",
