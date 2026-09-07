@@ -110,3 +110,8 @@ export type CollaborationDuration = (typeof COLLABORATION_DURATIONS)[number]
 
 export const CONNECTION_PURPOSES = ['共同创业', '加入项目', '短期协作', '专业咨询', '认识交流', '其他'] as const
 export type ConnectionPurpose = (typeof CONNECTION_PURPOSES)[number]
+
+export const HACKATHON_CONNECTION_PURPOSES = [
+  '试用产品', '合作交流', '加入项目', '提供专业帮助', '寻求反馈', '其他',
+] as const
+export type HackathonConnectionPurpose = (typeof HACKATHON_CONNECTION_PURPOSES)[number]
