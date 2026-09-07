@@ -194,3 +194,14 @@ export function listOperatorTalents(query: Record<string, string | number | unde
 export function getOperatorTalent(userId: string) { return request<TalentManagement>('GET', `/operator/talents/${encodeURIComponent(userId)}`) }
 export function getTalentAudit(userId: string) { return request<Array<Record<string, unknown>>>('GET', `/operator/talents/${encodeURIComponent(userId)}/suspension-audit`) }
 export function suspendTalent(userId: string, reason: string) { return request<TalentManagement>('POST', `/operator/talents/${encodeURIComponent(userId)}/suspend`, { reason }) }
+
+export interface HackathonConnectionStatus {
+  id: number
+  status: number
+  createdAt: string
+}
+export function sendHackathonConnection(
+  projectId: number,
+  body: { purpose: string; message: string; wechat?: string; email?: string },
+) { return request<HackathonConnectionStatus>('POST', `/hackathon/projects/${projectId}/connections`, body) }
+export function getMyHackathonConnection(projectId: number) { return request<{ data: HackathonConnectionStatus | null }>('GET', `/hackathon/projects/${projectId}/connections/me`) }
