@@ -180,15 +180,26 @@ export function checkoutBathSlot(bookingId: number) {
 }
 
 import type { TalentBody, TalentConnection, TalentManagement, TalentProfile } from '@/lib/talent'
+import type { ConnectionsResult, ConnectionItem } from '@/lib/connections'
 export function listTalents(query: Record<string, string | number | undefined>) { return request<{ data: TalentProfile[]; total: number }>('GET', `/talents?${new URLSearchParams(Object.entries(query).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)]))}`) }
 export function getTalent(userId: string) { return request<TalentProfile>('GET', `/talents/${encodeURIComponent(userId)}`) }
 export function getMyTalent() { return request<TalentManagement>('GET', '/talents/me') }
 export function saveTalent(body: TalentBody, mode: 'publish' | 'update' | 'resume' = 'publish') { return request<TalentManagement>(mode === 'update' ? 'PUT' : 'POST', mode === 'resume' ? '/talents/me/resume' : '/talents/me', body) }
 export function pauseTalent() { return request<TalentManagement>('POST', '/talents/me/pause') }
-export function getConnections() { return request<{ data: TalentConnection[]; total: number; pendingReceived: number }>('GET', '/talents/connections') }
+export function getTalentConnections() { return request<{ data: TalentConnection[]; total: number; pendingReceived: number }>('GET', '/talents/connections') }
 export function sendTalentConnection(body: { receiverUserId: string; projectId?: number; purpose: string; message: string; wechat?: string; email?: string }) { return request<TalentConnection>('POST', '/talents/connections', body) }
 export function acceptTalentConnection(id: number, body: { wechat?: string; email?: string }) { return request<TalentConnection>('POST', `/talents/connections/${id}/accept`, body) }
 export function ignoreTalentConnection(id: number) { return request<TalentConnection>('POST', `/talents/connections/${id}/ignore`) }
+export function getConnections(query?: { source?: 'all' | 'talent' | 'hackathon'; direction?: 'all' | 'sent' | 'received' }) {
+  const params = new URLSearchParams()
+  if (query?.source && query.source !== 'all') params.set('source', query.source)
+  if (query?.direction && query.direction !== 'all') params.set('direction', query.direction)
+  const suffix = params.size ? `?${params.toString()}` : ''
+  return request<ConnectionsResult>('GET', `/connections${suffix}`)
+}
+export function acceptHackathonConnection(id: number, body: { wechat?: string; email?: string }) { return request<ConnectionItem>('POST', `/connections/hackathon/${id}/accept`, body) }
+export function ignoreHackathonConnection(id: number) { return request<ConnectionItem>('POST', `/connections/hackathon/${id}/ignore`) }
+export function getHackathonContacts(id: number) { return request<ConnectionItem['contacts']>('GET', `/connections/hackathon/${id}/contacts`) }
 export function getTalentContacts(id: number) { return request<TalentConnection['contacts']>('GET', `/talents/connections/${id}/contacts`) }
 export function listOperatorTalents(query: Record<string, string | number | undefined>) { return request<TalentManagement[]>('GET', `/operator/talents?${new URLSearchParams(Object.entries(query).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)]))}`) }
 export function getOperatorTalent(userId: string) { return request<TalentManagement>('GET', `/operator/talents/${encodeURIComponent(userId)}`) }

@@ -10,14 +10,10 @@ import {
   CONNECTION_PURPOSES,
   TALENT_ROLES,
   TALENT_SKILLS,
-  ConnectionRequestStatus,
   TalentProfileStatus,
 } from "@shenicest/shared";
 import { useAuth } from "@/components/auth-provider";
 import {
-  acceptTalentConnection,
-  getConnections,
-  ignoreTalentConnection,
   pauseTalent,
   saveTalent,
   sendTalentConnection,
@@ -29,9 +25,7 @@ import {
   saveTalentDraft,
   validateTalentBody,
   validateConnectionBody,
-  connectionStatusLabel,
   type TalentBody,
-  type TalentConnection,
   type TalentManagement,
   type TalentProfile,
   type TalentProject,
@@ -56,8 +50,6 @@ const TALENT_SKILL_GROUPS = [
   { direction: "数据", skills: TALENT_SKILLS.slice(31, 35) },
   { direction: "其他", skills: TALENT_SKILLS.slice(35) },
 ] as const;
-const identityName = (party: TalentConnection["sender"]) =>
-  party.identity?.nickname || `用户 #${party.userId}`;
 function Chips({
   values,
   selected,
@@ -981,253 +973,6 @@ export function TalentEditor({
         </div>
       </div>
     </main>
-  );
-}
-
-function ContactForm({
-  connection,
-  onDone,
-}: {
-  connection: TalentConnection;
-  onDone: () => void;
-}) {
-  const [wechat, setWechat] = useState("");
-  const [email, setEmail] = useState("");
-  const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-  return (
-    <div className="mt-4 border border-primary/50 p-4">
-      <p className="text-sm">接受后双方才能查看授权联系方式。</p>
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <input
-          placeholder="微信"
-          value={wechat}
-          onChange={(e) => setWechat(e.target.value)}
-          className="border border-input bg-background px-3 py-2"
-        />
-        <input
-          placeholder="邮箱"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="border border-input bg-background px-3 py-2"
-        />
-      </div>
-      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
-      <button
-        className="btn-hard btn-primary mt-3"
-        onClick={async () => {
-          if (!wechat && !email) {
-            setError("至少提供微信或邮箱");
-            return;
-          }
-          setSaving(true);
-          const result = await acceptTalentConnection(connection.id, {
-            wechat: wechat || undefined,
-            email: email || undefined,
-          });
-          setSaving(false);
-          if (result.error) setError(result.error.body.error.message);
-          else onDone();
-        }}
-      >
-        {saving ? "处理中..." : "接受连接"}
-      </button>
-    </div>
-  );
-}
-function ContactDisplay({
-  contacts,
-}: {
-  contacts: NonNullable<TalentConnection["contacts"]>["other"];
-}) {
-  return (
-    <div className="mt-4 space-y-2 border-t border-border pt-3">
-      {contacts.wechat && (
-        <button
-          className="block font-mono text-xs text-primary"
-          onClick={() => navigator.clipboard.writeText(contacts.wechat!)}
-        >
-          微信：{contacts.wechat} · 复制
-        </button>
-      )}
-      {contacts.email && (
-        <button
-          className="block font-mono text-xs text-primary"
-          onClick={() => navigator.clipboard.writeText(contacts.email!)}
-        >
-          邮箱：{contacts.email} · 复制
-        </button>
-      )}
-    </div>
-  );
-}
-export function ConnectionsPanel({
-  initial,
-  userId,
-}: {
-  initial: { data: TalentConnection[]; pendingReceived: number };
-  userId: string;
-}) {
-  const [data, setData] = useState(initial.data);
-  const [view, setView] = useState<"received" | "sent">("received");
-  const [accepting, setAccepting] = useState<number | null>(null);
-  const [actionError, setActionError] = useState("");
-  async function refresh() {
-    const result = await getConnections();
-    if (result.data) {
-      setData(result.data.data);
-      setActionError("");
-      window.dispatchEvent(new Event("talent-connections-refresh"));
-    }
-  }
-  const filtered = data
-    .toSorted((a, b) => {
-      const pendingA =
-        a.status === ConnectionRequestStatus.Pending &&
-        a.receiverUserId === userId;
-      const pendingB =
-        b.status === ConnectionRequestStatus.Pending &&
-        b.receiverUserId === userId;
-      return Number(pendingB) - Number(pendingA);
-    })
-    .filter((item) =>
-      view === "received"
-        ? item.receiverUserId === userId
-        : item.senderUserId === userId,
-    );
-  return (
-    <section className="mx-auto max-w-5xl px-4 py-14 sm:px-6">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="eyebrow">CONNECTIONS / NETWORK</p>
-           <h1 className="mt-3 text-4xl font-black">连接记录</h1>
-        </div>
-        <button className="btn-hard btn-ghost" onClick={refresh}>
-          刷新
-        </button>
-      </div>
-      <div className="mt-8 flex gap-2 border-b border-border pb-3">
-        <button
-          className={`chip-hard ${view === "received" ? "chip-active" : ""}`}
-          onClick={() => setView("received")}
-        >
-           收到的连接
-        </button>
-        <button
-          className={`chip-hard ${view === "sent" ? "chip-active" : ""}`}
-          onClick={() => setView("sent")}
-        >
-           发出的连接
-        </button>
-      </div>
-      <div className="mt-6 space-y-4">
-        {filtered.length ? (
-          filtered.map((connection) => {
-            const party =
-              view === "received" ? connection.sender : connection.receiver;
-            return (
-              <article
-                className="border border-border bg-card p-5"
-                key={connection.id}
-              >
-                <div className="flex flex-wrap justify-between gap-3">
-                  <div>
-                    <p className="font-bold">{identityName(party)}</p>
-                    <p className="mt-1 font-mono text-xs text-primary">
-                      {party.hasPublishedTalentProfile
-                         ? party.talentProfile?.headline || "公开介绍"
-                         : "该用户暂未公开介绍"}
-                    </p>
-                  </div>
-                  <span className="chip-hard">
-                    {connectionStatusLabel(connection.status, view === "sent")}
-                  </span>
-                </div>
-                {party.talentProfile && (
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                    {party.talentProfile.roles.map((role) => (
-                      <span className="chip-hard" key={role}>
-                        {role}
-                      </span>
-                    ))}
-                    {party.talentProfile.durations.map((duration) => (
-                      <span className="chip-hard" key={duration}>
-                        {duration}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {connection.project && (
-                  <p className="mt-4 border-l-2 border-primary pl-3 text-sm">
-                    关联项目：
-                    {"unavailable" in connection.project ? (
-                      "项目当前不可用"
-                    ) : (
-                      <Link
-                        href={`/projects/${connection.project.id}`}
-                        className="text-primary underline"
-                      >
-                        {connection.project.name}
-                      </Link>
-                    )}
-                  </p>
-                )}
-                <p className="mt-4 text-sm text-muted-foreground">
-                  {connection.purpose}
-                </p>
-                <p className="mt-2 whitespace-pre-wrap text-sm">
-                  {connection.message}
-                </p>
-                {connection.status === ConnectionRequestStatus.Accepted &&
-                  connection.contacts && (
-                    <ContactDisplay contacts={connection.contacts.other} />
-                  )}
-                {view === "received" &&
-                  connection.status === ConnectionRequestStatus.Pending &&
-                  (accepting === connection.id ? (
-                    <ContactForm
-                      connection={connection}
-                      onDone={() => {
-                        setAccepting(null);
-                        refresh();
-                      }}
-                    />
-                  ) : (
-                    <div className="mt-4 flex gap-2">
-                      <button
-                        className="btn-hard btn-primary"
-                        onClick={() => setAccepting(connection.id)}
-                      >
-                        接受
-                      </button>
-                      <button
-                        className="btn-hard btn-ghost"
-                        onClick={async () => {
-                          const result = await ignoreTalentConnection(
-                            connection.id,
-                          );
-                          if (result.error)
-                            setActionError(result.error.body.error.message);
-                          else refresh();
-                        }}
-                      >
-                        忽略
-                      </button>
-                    </div>
-                  ))}
-              </article>
-            );
-          })
-        ) : (
-          <div className="border border-dashed border-border py-20 text-center text-muted-foreground">
-            这里还没有连接记录
-          </div>
-        )}
-      </div>
-      {actionError && (
-        <p className="mt-4 text-sm text-destructive">{actionError}</p>
-      )}
-    </section>
   );
 }
 

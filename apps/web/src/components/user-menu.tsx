@@ -18,10 +18,10 @@ export function UserMenu() {
       if (active && result.data) setPending(result.data.pendingReceived)
     }
     void refresh()
-    window.addEventListener('talent-connections-refresh', refresh)
+    window.addEventListener('connections-refresh', refresh)
     return () => {
       active = false
-      window.removeEventListener('talent-connections-refresh', refresh)
+      window.removeEventListener('connections-refresh', refresh)
     }
   }, [user])
 

@@ -47,7 +47,7 @@ export const getTalent = cache((userId: string) =>
 export const getMyTalent = cache(() =>
   serverRequest<TalentManagement>("/talents/me"),
 );
-export const getConnections = cache(async () => {
+export const getTalentConnections = cache(async () => {
   const result = await serverRequest<{
     data: TalentConnection[];
     total: number;
