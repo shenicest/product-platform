@@ -4,7 +4,7 @@
 
 **Blocked by:** 03
 
-**Status:** todo
+**Status:** done
 
 - [ ] accept（单事务）：
   - 行锁读取申请（`FOR UPDATE`）；当前用户必须是创建时锁定的 `receiver_user_id`（否则 404 `REQUEST_NOT_FOUND`，不泄露存在性给非接收人）

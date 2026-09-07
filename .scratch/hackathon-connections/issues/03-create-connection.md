@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** todo
+**Status:** done
 
 - [ ] `apps/api/src/modules/hackathon-connection/`（`index.ts` / `service.ts` / `model.ts`），无前缀 Elysia 实例，`app.ts` 追加注册
 - [ ] `HackathonConnectionService` 构造注入 `{ getVisibleProject, getProjectSummary }`（评审 D5 缝隙）；模块 index 用真实 `HackathonService` 装配，测试注入桩

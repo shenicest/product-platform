@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
-import { sendHackathonConnection, type HackathonConnectionStatus } from '@/lib/client-api'
+import { sendHackathonConnection, type MyHackathonConnectionStatus } from '@/lib/client-api'
 import { HACKATHON_CONNECTION_STATUS_LABELS, validateHackathonConnectionBody } from '@/lib/hackathon-project'
 import { HACKATHON_CONNECTION_PURPOSES, ConnectionRequestStatus } from '@shenicest/shared'
 
@@ -14,12 +14,15 @@ export function hackathonPendingConnectKey(projectId: number) {
 
 // Connection entry for hackathon project detail pages: default "connect"
 // button, Pending/Accepted status displays, and the login return flow
-// (open the dialog after login, never auto-submit).
-export function HackathonConnectButton({ projectId, initialStatus }: { projectId: number; initialStatus: HackathonConnectionStatus | null }) {
+// (open the dialog after login, never auto-submit). `initialStatus` carries
+// the server-computed gating flags; null means "unknown" (logged-out visitor
+// or transient error) and still renders the button — the 409/404 backend
+// responses remain the fallback for races.
+export function HackathonConnectButton({ projectId, initialStatus }: { projectId: number; initialStatus: MyHackathonConnectionStatus | null }) {
   const router = useRouter()
   const auth = useAuth()
   const [open, setOpen] = useState(false)
-  const [status, setStatus] = useState<HackathonConnectionStatus | null>(initialStatus)
+  const [gate, setGate] = useState<MyHackathonConnectionStatus | null>(initialStatus)
   const [form, setForm] = useState({ purpose: '', message: '', wechat: '', email: '' })
   const [error, setError] = useState('')
   const [sending, setSending] = useState(false)
@@ -32,6 +35,13 @@ export function HackathonConnectButton({ projectId, initialStatus }: { projectId
     })
     return () => window.clearTimeout(timer)
   }, [projectId])
+
+  // Grayscale: unconfigured projects and the receiver themselves never see
+  // the entry (PRD 18 阶段 3; tech-review risk table). After every hook —
+  // this is a render gate, not a hook skip.
+  if (gate && (!gate.receiverConfigured || gate.viewerIsReceiver)) return null
+
+  const status = gate?.data ?? null
 
   function connect() {
     if (!auth.user) {
@@ -62,8 +72,13 @@ export function HackathonConnectButton({ projectId, initialStatus }: { projectId
     }
     setOpen(false)
     setError('')
-    if (result.data) {
-      setStatus({ id: result.data.id, status: result.data.status, createdAt: result.data.createdAt })
+    const created = result.data
+    if (created) {
+      setGate((prev) => ({
+        data: { id: created.id, status: created.status, createdAt: created.createdAt },
+        receiverConfigured: prev?.receiverConfigured ?? true,
+        viewerIsReceiver: false,
+      }))
     }
     router.refresh()
   }

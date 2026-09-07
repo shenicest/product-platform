@@ -241,13 +241,31 @@ describe('HackathonConnectionService.create', () => {
 })
 
 describe('HackathonConnectionService.statusFor', () => {
-  it('returns null without records and the latest record otherwise', async () => {
+  it('returns null data plus button-gating flags, and the latest record otherwise', async () => {
     const sender = senderIds[5]
-    expect(await service.statusFor(sender, 999999)).toBeNull()
+    // Unconfigured project: no receiver row — the detail page hides the button.
+    expect(await service.statusFor(sender, 999999)).toEqual({
+      data: null,
+      receiverConfigured: false,
+      viewerIsReceiver: false,
+    })
 
     const hackathonProjectId = await seedContact()
+    // Configured, no history, viewer is not the receiver: button may render.
+    expect(await service.statusFor(sender, hackathonProjectId)).toEqual({
+      data: null,
+      receiverConfigured: true,
+      viewerIsReceiver: false,
+    })
+    // The configured receiver themselves never sees the connect button.
+    expect(await service.statusFor(contactConfig.receiverUserId, hackathonProjectId)).toEqual({
+      data: null,
+      receiverConfigured: true,
+      viewerIsReceiver: true,
+    })
+
     const first = await create(sender, hackathonProjectId)
-    expect(await service.statusFor(sender, hackathonProjectId)).toMatchObject({ id: first.id, status: ConnectionRequestStatus.Pending })
+    expect(await service.statusFor(sender, hackathonProjectId)).toMatchObject({ data: { id: first.id, status: ConnectionRequestStatus.Pending } })
 
     // Ignored the first, created a second: the latest wins.
     await db
@@ -256,8 +274,8 @@ describe('HackathonConnectionService.statusFor', () => {
       .where(eq(hackathonConnectionRequests.id, first.id))
     const second = await create(sender, hackathonProjectId)
     const status = await service.statusFor(sender, hackathonProjectId)
-    expect(status).toMatchObject({ id: second.id, status: ConnectionRequestStatus.Pending })
-    expect(Object.keys(status as object).sort()).toEqual(['createdAt', 'id', 'status'])
+    expect(status?.data).toMatchObject({ id: second.id, status: ConnectionRequestStatus.Pending })
+    expect(Object.keys(status?.data as object).sort()).toEqual(['createdAt', 'id', 'status'])
     expect(JSON.stringify(status)).not.toContain('senderContact')
   })
 })
@@ -302,7 +320,7 @@ describe('HackathonConnectionService.accept', () => {
 
     // Missing contact is rejected before any state changes.
     await expect(service.accept(receiver, created.id, {})).rejects.toMatchObject({ code: 'INVALID_CONTACT' })
-    expect(await service.statusFor(sender, hackathonProjectId)).toMatchObject({ status: ConnectionRequestStatus.Pending })
+    expect(await service.statusFor(sender, hackathonProjectId)).toMatchObject({ data: { status: ConnectionRequestStatus.Pending } })
 
     const view = await service.accept(receiver, created.id, { wechat: '  receiver-wx  ', email: 'Receiver@Example.COM' })
     expect(view).toMatchObject({

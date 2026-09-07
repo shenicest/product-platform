@@ -1,6 +1,7 @@
 import { and, eq, isNull, lte, or, sql, type SQL } from 'drizzle-orm'
 import type { Database } from '../db'
 import { connectionNotificationDeliveries } from '../db/schema'
+import { logEvent } from '../lib/log-event'
 import { MailSendError, type EmailContent, type Mailer } from '../lib/mail/mailer'
 
 export const DELIVERY_STATUS = {
@@ -158,6 +159,7 @@ export class MailWorker {
     // retryable — otherwise it would exhaust attempts on guaranteed failures.
     if (!content) {
       await this.writeOutcome(task.id, attempt, DELIVERY_STATUS.Failed, 'CONTENT_UNAVAILABLE')
+      this.logDelivery('mail_delivery_failed', task, 'Failed', 'CONTENT_UNAVAILABLE')
       return
     }
     try {
@@ -170,6 +172,7 @@ export class MailWorker {
         providerMessageId: providerMessageId ?? null,
         sentAt: this.clock(),
       })
+      this.logDelivery('mail_delivery_sent', task, 'Sent')
     } catch (err) {
       console.error(`[mail-worker] send failed for delivery ${task.id}:`, err)
       const code = err instanceof MailSendError ? err.code : 'UNKNOWN'
@@ -180,7 +183,26 @@ export class MailWorker {
         terminal ? DELIVERY_STATUS.Failed : DELIVERY_STATUS.Pending,
         code,
       )
+      if (terminal) this.logDelivery('mail_delivery_failed', task, 'Failed', code)
     }
+  }
+
+  // Funnel events for the delivery pipeline (PRD 15): one line per terminal
+  // outcome — success and exhausted failures. Retriable attempts are visible
+  // via the delivery row, not as events.
+  private logDelivery(
+    event: string,
+    task: DeliveryTask,
+    status: string,
+    errorCode?: string,
+  ): void {
+    logEvent(event, {
+      requestId: task.connectionRequestId,
+      deliveryId: task.id,
+      notificationType: task.notificationType,
+      status,
+      ...(errorCode !== undefined ? { errorCode } : {}),
+    })
   }
 
   // Writes the outcome of attempt N. The status + attempt-count guard means a

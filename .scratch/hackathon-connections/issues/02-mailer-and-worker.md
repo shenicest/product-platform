@@ -4,7 +4,7 @@
 
 **Blocked by:** 01（需要 `connection_notification_deliveries` 表）
 
-**Status:** todo
+**Status:** done
 
 - [ ] 安装 `tencentcloud-sdk-nodejs-ses`（模块化包，不装整包）
 - [ ] `apps/api/src/lib/mail/mailer.ts`：`Mailer` 接口 `send({ to, subject, html, text, idempotencyKey }): Promise<{ providerMessageId?: string }>` + 内存实现（测试用，记录调用）

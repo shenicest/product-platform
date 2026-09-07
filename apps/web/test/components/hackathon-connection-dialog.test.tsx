@@ -30,7 +30,7 @@ beforeEach(() => {
 
 describe('HackathonConnectButton', () => {
   it('shows static Pending and Accepted states without a submit button', () => {
-    const pendingRender = render(<HackathonConnectButton projectId={42} initialStatus={{ id: 7, status: 0, createdAt: '' }} />)
+    const pendingRender = render(<HackathonConnectButton projectId={42} initialStatus={envelope({ id: 7, status: 0, createdAt: '' })} />)
     expect(screen.getByText('等待项目方回应')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /查看连接记录/ })).toHaveAttribute('href', '/connections')
     expect(screen.queryByRole('button', { name: /联系项目方/ })).not.toBeInTheDocument()
@@ -38,9 +38,36 @@ describe('HackathonConnectButton', () => {
     pendingRender.unmount()
 
     // Fresh mount (each server render passes its own initial status).
-    render(<HackathonConnectButton projectId={42} initialStatus={{ id: 8, status: 1, createdAt: '' }} />)
+    render(<HackathonConnectButton projectId={42} initialStatus={envelope({ id: 8, status: 1, createdAt: '' })} />)
     expect(screen.getByText('已建立连接')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /联系项目方/ })).not.toBeInTheDocument()
+  })
+
+  it('renders nothing when the project has no receiver configured', () => {
+    const { container } = render(
+      <HackathonConnectButton projectId={42} initialStatus={envelope(null, { receiverConfigured: false })} />,
+    )
+    expect(container).toBeEmptyDOMElement()
+    expect(screen.queryByRole('button', { name: /联系项目方/ })).not.toBeInTheDocument()
+  })
+
+  it('renders nothing for the receiver viewing their own project', () => {
+    const { container } = render(
+      <HackathonConnectButton projectId={42} initialStatus={envelope(null, { viewerIsReceiver: true })} />,
+    )
+    expect(container).toBeEmptyDOMElement()
+  })
+
+  it('still renders for unknown gating (logged-out visitors) so they can reach login', async () => {
+    authState.user = null
+    const user = userEvent.setup()
+    render(<HackathonConnectButton projectId={42} initialStatus={null} />)
+    expect(screen.getByRole('button', { name: /联系项目方/ })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /联系项目方/ }))
+    expect(sessionStorage.getItem(hackathonPendingConnectKey(42))).toBe('42')
+    expect(push).toHaveBeenCalledWith('/login?returnTo=/hackathon/projects/42')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('stores the pending-connect marker and redirects with returnTo for logged-out visitors', async () => {
@@ -148,4 +175,15 @@ describe('HackathonConnectButton', () => {
 
 function baseMessage() {
   return '我们正在做相近方向的产品，希望交流产品设计与用户验证经验，期待长期合作。'
+}
+
+function envelope(
+  data: { id: number; status: number; createdAt: string } | null,
+  overrides: { receiverConfigured?: boolean; viewerIsReceiver?: boolean } = {},
+) {
+  return {
+    data,
+    receiverConfigured: overrides.receiverConfigured ?? true,
+    viewerIsReceiver: overrides.viewerIsReceiver ?? false,
+  }
 }

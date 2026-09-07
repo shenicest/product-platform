@@ -4,7 +4,7 @@
 
 **Blocked by:** —
 
-**Status:** todo
+**Status:** done
 
 - [ ] `packages/shared/src/index.ts` 新增 `HACKATHON_CONNECTION_PURPOSES = ['试用产品', '合作交流', '加入项目', '提供专业帮助', '寻求反馈', '其他']` 及类型导出；`ConnectionRequestStatus` 复用，不新增状态枚举
 - [ ] `apps/api/src/db/schema/hackathon-connection.ts`：`hackathonProjectContacts`、`hackathonConnectionRequests`、`hackathonConnectionDailyLimits`、`connectionNotificationDeliveries`（字段与索引见评审文档第 4 节；**无 `is_active`**）

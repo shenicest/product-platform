@@ -4,7 +4,7 @@
 
 **Blocked by:** 03（hackathon 侧 list 函数；04 可并行）
 
-**Status:** todo
+**Status:** done
 
 - [ ] `apps/api/src/modules/connections/`（无前缀 Elysia 实例，`app.ts` 追加注册）
 - [ ] 统一 DTO：

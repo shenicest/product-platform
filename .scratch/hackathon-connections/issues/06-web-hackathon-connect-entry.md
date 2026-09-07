@@ -4,7 +4,7 @@
 
 **Blocked by:** 03
 
-**Status:** todo
+**Status:** done
 
 - [ ] `apps/web/src/lib/hackathon-project.ts`：目的枚举（从 `@shenicest/shared` 引入 `HACKATHON_CONNECTION_PURPOSES`）、状态文案、`validateHackathonConnectionBody`（目的必选、消息 30–500、微信/邮箱至少一项、邮箱格式）
 - [ ] `apps/web/src/lib/client-api.ts` 追加：`sendHackathonConnection(projectId, body)`、`getMyHackathonConnection(projectId)`

@@ -180,9 +180,95 @@ describe('MailWorker.tick', () => {
   })
 })
 
+// Captures structured funnel-event lines emitted via console.log (logEvent),
+// passing everything else through to the real console.
+function captureEvents() {
+  const events: Record<string, unknown>[] = []
+  const original = console.log
+  console.log = (...args: unknown[]) => {
+    const line = args[0]
+    if (typeof line === 'string' && line.startsWith('{"event":')) {
+      events.push(JSON.parse(line))
+      return
+    }
+    original(...(args as []))
+  }
+  return { events, stop: () => { console.log = original } }
+}
+
 class FailingMailer implements Mailer {
   constructor(private readonly code: string) {}
   async send(): Promise<never> {
     throw new MailSendError(this.code, 'provider error')
   }
 }
+
+describe('MailWorker funnel events', () => {
+  it('emits mail_delivery_sent with ids and notification type', async () => {
+    const captured = captureEvents()
+    try {
+      const worker = buildWorker(new InMemoryMailer())
+      const delivery = await insertDelivery()
+      await worker.tick()
+
+      const sent = captured.events.filter((event) => event.event === 'mail_delivery_sent')
+      expect(sent).toHaveLength(1)
+      expect(sent[0]).toMatchObject({
+        requestId: delivery.connectionRequestId,
+        deliveryId: delivery.id,
+        notificationType: NOTIFICATION_TYPES.CONNECTION_CREATED,
+        status: 'Sent',
+      })
+      expect(typeof sent[0].time).toBe('string')
+      expect(captured.events.filter((event) => event.event === 'mail_delivery_failed')).toHaveLength(0)
+    } finally {
+      captured.stop()
+    }
+  })
+
+  it('emits mail_delivery_failed once with the provider error code on the terminal attempt', async () => {
+    const captured = captureEvents()
+    try {
+      const worker = buildWorker(new FailingMailer('InvalidParameter'))
+      const delivery = await insertDelivery()
+      await worker.tick()
+      advanceMinutes(2)
+      await worker.tick()
+      advanceMinutes(6)
+      await worker.tick()
+
+      const failed = captured.events.filter((event) => event.event === 'mail_delivery_failed')
+      expect(await getDelivery(delivery.id)).toMatchObject({ status: DELIVERY_STATUS.Failed, attemptCount: 3 })
+      expect(failed).toHaveLength(1)
+      expect(failed[0]).toMatchObject({
+        requestId: delivery.connectionRequestId,
+        deliveryId: delivery.id,
+        notificationType: NOTIFICATION_TYPES.CONNECTION_CREATED,
+        status: 'Failed',
+        errorCode: 'InvalidParameter',
+      })
+    } finally {
+      captured.stop()
+    }
+  })
+
+  it('emits mail_delivery_failed for content that can never be resolved', async () => {
+    const captured = captureEvents()
+    try {
+      const worker = buildWorker(new InMemoryMailer(), async () => null)
+      const delivery = await insertDelivery()
+      await worker.tick()
+
+      const failed = captured.events.filter((event) => event.event === 'mail_delivery_failed')
+      expect(failed).toHaveLength(1)
+      expect(failed[0]).toMatchObject({
+        requestId: delivery.connectionRequestId,
+        deliveryId: delivery.id,
+        status: 'Failed',
+        errorCode: 'CONTENT_UNAVAILABLE',
+      })
+    } finally {
+      captured.stop()
+    }
+  })
+})

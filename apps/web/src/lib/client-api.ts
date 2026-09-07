@@ -211,8 +211,16 @@ export interface HackathonConnectionStatus {
   status: number
   createdAt: string
 }
+// Envelope from GET /hackathon/projects/:id/connections/me: the latest
+// request plus the flags the detail page needs to hide the connect button
+// (grayscale: unconfigured projects; also the receiver themselves).
+export interface MyHackathonConnectionStatus {
+  data: HackathonConnectionStatus | null
+  receiverConfigured: boolean
+  viewerIsReceiver: boolean
+}
 export function sendHackathonConnection(
   projectId: number,
   body: { purpose: string; message: string; wechat?: string; email?: string },
 ) { return request<HackathonConnectionStatus>('POST', `/hackathon/projects/${projectId}/connections`, body) }
-export function getMyHackathonConnection(projectId: number) { return request<{ data: HackathonConnectionStatus | null }>('GET', `/hackathon/projects/${projectId}/connections/me`) }
+export function getMyHackathonConnection(projectId: number) { return request<MyHackathonConnectionStatus>('GET', `/hackathon/projects/${projectId}/connections/me`) }

@@ -4,7 +4,7 @@
 
 **Blocked by:** 04、05
 
-**Status:** todo
+**Status:** done
 
 - [ ] `apps/web/src/lib/connections.ts`：统一 `ConnectionItem` 类型（对齐 05 DTO）、来源/状态标签、`connectionStatusLabel` 兼容黑客松（sent 视角 Ignored → "暂未建立连接"）
 - [ ] `client-api.ts`：`getConnections(query?)` 改调 `/connections`；`acceptHackathonConnection(id, body)` / `ignoreHackathonConnection(id)` / `getHackathonContacts(id)`；Talent 原函数保留（其他页面可能引用）

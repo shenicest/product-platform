@@ -4,7 +4,7 @@
 
 **Blocked by:** 01–07
 
-**Status:** todo
+**Status:** done
 
 - [ ] 全量测试：根目录 `bun run test`（api + web）、`bun run lint`、`bun run typecheck`、`bun run build`
 - [ ] 环境变量配置到部署环境（评审文档第 5 节）；确认 `NOTIFICATION_WORKER=on` 且 worker 日志可见

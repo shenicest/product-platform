@@ -188,8 +188,23 @@ export class HackathonConnectionService {
   }
 
   // Status summary for the detail-page button (PRD 11.1): the sender's latest
-  // request for the project, or null. Never includes contacts.
+  // request for the project, or null, plus the button-gating flags the page
+  // needs — the connect button is hidden when the project has no receiver
+  // configured (grayscale) or the viewer IS the receiver. Never includes
+  // contacts or receiver identity beyond the viewer's own match.
   async statusFor(senderUserId: string, hackathonProjectId: number) {
+    const [contact] = await this.db
+      .select({ receiverUserId: hackathonProjectContacts.receiverUserId })
+      .from(hackathonProjectContacts)
+      .where(
+        and(
+          eq(hackathonProjectContacts.eventId, HACKATHON_EVENT_ID),
+          eq(hackathonProjectContacts.hackathonProjectId, hackathonProjectId),
+        ),
+      )
+      .limit(1)
+    const receiverConfigured = contact !== undefined
+    const viewerIsReceiver = contact?.receiverUserId === senderUserId
     const [row] = await this.db
       .select()
       .from(hackathonConnectionRequests)
@@ -203,7 +218,11 @@ export class HackathonConnectionService {
       .orderBy(desc(hackathonConnectionRequests.id))
       .limit(1)
     // Spec shape for the status summary (ticket): exactly id / status / createdAt.
-    return row ? { id: row.id, status: row.status, createdAt: row.createdAt.toISOString() } : null
+    return {
+      data: row ? { id: row.id, status: row.status, createdAt: row.createdAt.toISOString() } : null,
+      receiverConfigured,
+      viewerIsReceiver,
+    }
   }
 
   // Receiver-side accept (PRD 11.2). Only the locked receiver may act — any

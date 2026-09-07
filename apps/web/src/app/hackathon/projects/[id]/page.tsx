@@ -23,7 +23,7 @@ export default async function HackathonProjectPage(props: PageProps<'/hackathon/
   const project = await getHackathonProject(Number(rawId))
   if (!project) notFound()
   const track = normalizeHackathonTrack(project.track, project.name)
-  const connectStatus = await getMyHackathonConnectionStatus(project.id)
+  const connectGate = await getMyHackathonConnectionStatus(project.id)
   return <PublicInteractionBoundary><main className="detail-page mx-auto w-full max-w-[1440px] px-5 py-8 sm:px-8 lg:px-16">
     <a className="detail-back" href="/hackathon">← 返回项目展厅</a>
     <header className="detail-hero mt-8">
@@ -61,7 +61,7 @@ export default async function HackathonProjectPage(props: PageProps<'/hackathon/
            {project.githubUrl ? <a className="detail-link" href={project.githubUrl} target="_blank" rel="noreferrer">查看 GitHub <span aria-hidden>↗</span></a> : null}
            <HackathonHideButton projectId={project.id} />
          </div>
-         <HackathonConnectButton projectId={project.id} initialStatus={connectStatus} />
+         <HackathonConnectButton projectId={project.id} initialStatus={connectGate} />
          <HackathonProjectEditor project={project} />
        </aside>
     </div>

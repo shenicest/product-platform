@@ -1,9 +1,11 @@
 import { Elysia, status, t } from 'elysia'
 import { db } from '../../db'
 import { eventManagementDb } from '../../db/event-management'
+import { logEvent, type EventFields } from '../../lib/log-event'
 import { authPlugin } from '../../plugins/auth'
 import { ErrorResponse } from '../../common'
-import { HackathonService } from '../hackathon/service'
+import { HACKATHON_EVENT_ID, HackathonService } from '../hackathon/service'
+import { ConnectionRequestStatus } from '@shenicest/shared'
 import { HackathonConnectionError, HackathonConnectionService } from './service'
 import {
   AcceptConnectionBody,
@@ -49,6 +51,14 @@ function handleError(error: unknown) {
 
 export { service as hackathonConnectionService }
 
+// Funnel events (PRD 15) are emitted here, at the request boundary: an event
+// records "this API call ended in X", including validation and conflict codes
+// the service knows nothing about. Fields stay inside the PRD 15.2 allow-list
+// — never contacts, message bodies, or emails.
+function logConnectionEvent(event: string, fields: EventFields = {}): void {
+  logEvent(event, { eventId: HACKATHON_EVENT_ID, source: 'hackathon', ...fields })
+}
+
 export const hackathonConnectionModule = new Elysia()
   .use(authPlugin)
   .model({
@@ -60,8 +70,20 @@ export const hackathonConnectionModule = new Elysia()
   .prefix('model', 'HackathonConnection.')
   .post('/hackathon/projects/:id/connections', async ({ user, params, body }) => {
     try {
-      return await service.create(user.userId, params.id, body)
+      const created = await service.create(user.userId, params.id, body)
+      logConnectionEvent('connection_submit_success', {
+        hackathonProjectId: created.hackathonProjectId,
+        requestId: created.id,
+        status: created.status,
+      })
+      return created
     } catch (error) {
+      if (error instanceof HackathonConnectionError) {
+        logConnectionEvent('connection_submit_failed', {
+          hackathonProjectId: params.id,
+          errorCode: error.code,
+        })
+      }
       return handleError(error)
     }
   }, {
@@ -73,7 +95,7 @@ export const hackathonConnectionModule = new Elysia()
   })
   .get('/hackathon/projects/:id/connections/me', async ({ user, params }) => {
     try {
-      return { data: await service.statusFor(user.userId, params.id) }
+      return await service.statusFor(user.userId, params.id)
     } catch (error) {
       return handleError(error)
     }
@@ -85,7 +107,12 @@ export const hackathonConnectionModule = new Elysia()
   })
   .post('/connections/hackathon/:id/accept', async ({ user, params, body }) => {
     try {
-      return await service.accept(user.userId, params.id, body)
+      const accepted = await service.accept(user.userId, params.id, body)
+      logConnectionEvent('connection_accept_success', {
+        requestId: accepted.id,
+        status: accepted.status,
+      })
+      return accepted
     } catch (error) {
       return handleError(error)
     }
@@ -98,7 +125,12 @@ export const hackathonConnectionModule = new Elysia()
   })
   .post('/connections/hackathon/:id/ignore', async ({ user, params }) => {
     try {
-      return await service.ignore(user.userId, params.id)
+      const ignored = await service.ignore(user.userId, params.id)
+      logConnectionEvent('connection_ignore_success', {
+        requestId: ignored.id,
+        status: ignored.status,
+      })
+      return ignored
     } catch (error) {
       return handleError(error)
     }
@@ -110,7 +142,12 @@ export const hackathonConnectionModule = new Elysia()
   })
   .get('/connections/hackathon/:id/contacts', async ({ user, params }) => {
     try {
-      return await service.contacts(user.userId, params.id)
+      const contacts = await service.contacts(user.userId, params.id)
+      logConnectionEvent('connection_contacts_unlocked', {
+        requestId: params.id,
+        status: ConnectionRequestStatus.Accepted,
+      })
+      return contacts
     } catch (error) {
       return handleError(error)
     }
