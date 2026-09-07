@@ -15,7 +15,13 @@ import { HackathonConnectionService } from '../../../src/modules/hackathon-conne
 
 const contactConfig = { receiverUserId: '900001', notificationEmail: 'receiver@example.com', displayName: '项目方' }
 const contactRows: number[] = []
-const senderIds = ['900101', '900102', '900103', '900104', '900105', '900106', '900107', '900108', '900109']
+// Sender ids are unique per independent create-flow test: the 3/day limit is
+// per sender per Beijing day, so a reused sender can silently run out of quota
+// and flip the failing assertion to RATE_LIMITED.
+const senderIds = [
+  '900101', '900102', '900103', '900104', '900105', '900106', '900107', '900108', '900109',
+  '900110', '900111', '900112', '900113', '900114', '900115', '900116', '900117', '900118',
+]
 let nextProjectId = 880000
 
 function sourceStub() {
@@ -277,5 +283,169 @@ describe('HackathonConnectionService.cancelPendingByProject', () => {
     const [acceptedRow] = await db.select().from(hackathonConnectionRequests).where(eq(hackathonConnectionRequests.id, accepted.id))
     expect(acceptedRow.status).toBe(ConnectionRequestStatus.Accepted)
     expect(acceptedRow.pairKey).toBe(`${senderIds[6]}:${acceptedProject}`)
+  })
+})
+
+const receiver = contactConfig.receiverUserId
+
+describe('HackathonConnectionService.accept', () => {
+  it('lets only the locked receiver accept, storing encrypted contact and acceptance timestamps', async () => {
+    const sender = senderIds[10]
+    const hackathonProjectId = await seedContact()
+    const created = await create(sender, hackathonProjectId)
+
+    // Non-receivers — including the sender — get 404; existence is not leaked.
+    await expect(service.accept(sender, created.id, { wechat: 'x' })).rejects.toMatchObject({ code: 'REQUEST_NOT_FOUND' })
+    await expect(service.accept('900199', created.id, { wechat: 'x' })).rejects.toMatchObject({ code: 'REQUEST_NOT_FOUND' })
+    await expect(service.ignore(sender, created.id)).rejects.toMatchObject({ code: 'REQUEST_NOT_FOUND' })
+
+    // Missing contact is rejected before any state changes.
+    await expect(service.accept(receiver, created.id, {})).rejects.toMatchObject({ code: 'INVALID_CONTACT' })
+    expect(await service.statusFor(sender, hackathonProjectId)).toMatchObject({ status: ConnectionRequestStatus.Pending })
+
+    const view = await service.accept(receiver, created.id, { wechat: '  receiver-wx  ', email: 'Receiver@Example.COM' })
+    expect(view).toMatchObject({
+      id: created.id,
+      source: 'hackathon',
+      status: ConnectionRequestStatus.Accepted,
+      senderUserId: sender,
+      receiverUserId: receiver,
+    })
+    expect(view.target).toMatchObject({ type: 'hackathon_project', projectId: hackathonProjectId, eventId: HACKATHON_EVENT_ID, name: `项目 ${hackathonProjectId}` })
+    expect(view.contacts!.mine).toEqual({ wechat: 'receiver-wx', email: 'receiver@example.com' })
+    expect(view.contacts!.other).toEqual({ wechat: 'sender-wechat', email: null })
+    expect(view.acceptedAt).toBeTruthy()
+    expect(view.handledAt).toBeTruthy()
+
+    const [row] = await db.select().from(hackathonConnectionRequests).where(eq(hackathonConnectionRequests.id, created.id))
+    expect(row.status).toBe(ConnectionRequestStatus.Accepted)
+    expect(row.pairKey).toBeNull()
+    expect(row.acceptedAt).not.toBeNull()
+    expect(row.handledAt).not.toBeNull()
+    expect(row.receiverContact).not.toContain('receiver-wx')
+    expect(decryptContact(row.receiverContact)).toEqual({ wechat: 'receiver-wx', email: 'receiver@example.com' })
+  })
+
+  it('returns the original record on repeated accept without overwriting contact', async () => {
+    const sender = senderIds[11]
+    const hackathonProjectId = await seedContact()
+    const created = await create(sender, hackathonProjectId)
+    const first = await service.accept(receiver, created.id, { wechat: 'original-wx' })
+
+    const second = await service.accept(receiver, created.id, { email: 'changed@example.com' })
+    expect(second.status).toBe(ConnectionRequestStatus.Accepted)
+    expect(second.contacts!.mine).toEqual({ wechat: 'original-wx', email: null })
+    expect(second.acceptedAt).toBe(first.acceptedAt)
+
+    const [row] = await db.select().from(hackathonConnectionRequests).where(eq(hackathonConnectionRequests.id, created.id))
+    expect(decryptContact(row.receiverContact)).toEqual({ wechat: 'original-wx', email: null })
+  })
+
+  it('rejects accept on cancelled requests with the cancel persisted', async () => {
+    const sender = senderIds[12]
+    const hackathonProjectId = await seedContact()
+    const created = await create(sender, hackathonProjectId)
+    await service.cancelPendingByProject(HACKATHON_EVENT_ID, hackathonProjectId)
+
+    await expect(service.accept(receiver, created.id, { wechat: 'x' })).rejects.toMatchObject({ code: 'REQUEST_NOT_PENDING' })
+  })
+
+  it('cancels the pending request and reports 409 when the project is hidden', async () => {
+    const sender = senderIds[13]
+    const hackathonProjectId = await seedContact()
+    const created = await create(sender, hackathonProjectId)
+
+    // The hidden check runs before contact validation: an empty body still 409s
+    // (not 400) and the cancel is persisted.
+    await expect(invisibleSource.accept(receiver, created.id, {})).rejects.toMatchObject({ code: 'REQUEST_NOT_PENDING' })
+
+    const [row] = await db.select().from(hackathonConnectionRequests).where(eq(hackathonConnectionRequests.id, created.id))
+    expect(row.status).toBe(ConnectionRequestStatus.Cancelled)
+    expect(row.pairKey).toBeNull()
+    expect(row.handledAt).not.toBeNull()
+    expect(row.receiverContact).toBeNull()
+  })
+})
+
+describe('HackathonConnectionService.ignore', () => {
+  it('ignores once, stays idempotent, and preserves the authorized contact of accepted rows', async () => {
+    const sender = senderIds[14]
+    const ignoredProject = await seedContact()
+    const created = await create(sender, ignoredProject)
+
+    await expect(service.ignore('900199', created.id)).rejects.toMatchObject({ code: 'REQUEST_NOT_FOUND' })
+
+    const view = await service.ignore(receiver, created.id)
+    expect(view.status).toBe(ConnectionRequestStatus.Ignored)
+    expect(view.handledAt).toBeTruthy()
+    expect(view.contacts).toBeUndefined()
+    const repeated = await service.ignore(receiver, created.id)
+    expect(repeated.status).toBe(ConnectionRequestStatus.Ignored)
+    expect(repeated.handledAt).toBe(view.handledAt)
+
+    const [row] = await db.select().from(hackathonConnectionRequests).where(eq(hackathonConnectionRequests.id, created.id))
+    expect(row.pairKey).toBeNull()
+    expect(row.senderContact).not.toContain('sender-wechat')
+
+    // An accepted request can no longer be ignored.
+    const acceptedProject = await seedContact()
+    const accepted = await create(sender, acceptedProject)
+    await service.accept(receiver, accepted.id, { wechat: 'receiver-wx' })
+    await expect(service.ignore(receiver, accepted.id)).rejects.toMatchObject({ code: 'REQUEST_NOT_PENDING' })
+  })
+
+  it('lets the sender re-apply after the cooldown following an ignore', async () => {
+    const sender = senderIds[15]
+    const hackathonProjectId = await seedContact()
+    const created = await create(sender, hackathonProjectId)
+    await service.ignore(receiver, created.id)
+
+    await expect(create(sender, hackathonProjectId)).rejects.toMatchObject({ code: 'RETRY_COOLDOWN' })
+
+    await db
+      .update(hackathonConnectionRequests)
+      .set({ handledAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000) })
+      .where(eq(hackathonConnectionRequests.id, created.id))
+    const retried = await create(sender, hackathonProjectId)
+    expect(retried.id).not.toBe(created.id)
+    expect(retried.status).toBe(ConnectionRequestStatus.Pending)
+  })
+})
+
+describe('HackathonConnectionService.contacts', () => {
+  it('unlocks mine/other contacts for both parties only after acceptance', async () => {
+    const sender = senderIds[10]
+    const hackathonProjectId = await seedContact()
+    const created = await create(sender, hackathonProjectId)
+
+    // Pending: nobody may read contacts.
+    await expect(service.contacts(sender, created.id)).rejects.toMatchObject({ code: 'CONTACTS_FORBIDDEN' })
+    await expect(service.contacts(receiver, created.id)).rejects.toMatchObject({ code: 'CONTACTS_FORBIDDEN' })
+    await expect(service.contacts('900199', created.id)).rejects.toMatchObject({ code: 'CONTACTS_FORBIDDEN' })
+    // A missing record is indistinguishable from a forbidden one.
+    await expect(service.contacts(receiver, 99999999)).rejects.toMatchObject({ code: 'CONTACTS_FORBIDDEN' })
+
+    await service.accept(receiver, created.id, { wechat: 'receiver-wx' })
+
+    const asSender = await service.contacts(sender, created.id)
+    expect(asSender.mine).toEqual({ wechat: 'sender-wechat', email: null })
+    expect(asSender.other).toEqual({ wechat: 'receiver-wx', email: null })
+
+    const asReceiver = await service.contacts(receiver, created.id)
+    expect(asReceiver.mine).toEqual({ wechat: 'receiver-wx', email: null })
+    expect(asReceiver.other).toEqual({ wechat: 'sender-wechat', email: null })
+
+    await expect(service.contacts('900199', created.id)).rejects.toMatchObject({ code: 'CONTACTS_FORBIDDEN' })
+
+    // Ignored and Cancelled states never unlock contacts.
+    const ignoredProject = await seedContact()
+    const ignored = await create(senderIds[16], ignoredProject)
+    await service.ignore(receiver, ignored.id)
+    await expect(service.contacts(senderIds[16], ignored.id)).rejects.toMatchObject({ code: 'CONTACTS_FORBIDDEN' })
+
+    const cancelledProject = await seedContact()
+    const cancelled = await create(senderIds[17], cancelledProject)
+    await service.cancelPendingByProject(HACKATHON_EVENT_ID, cancelledProject)
+    await expect(service.contacts(receiver, cancelled.id)).rejects.toMatchObject({ code: 'CONTACTS_FORBIDDEN' })
   })
 })

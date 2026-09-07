@@ -5,13 +5,15 @@ import {
   hackathonConnectionDailyLimits,
   hackathonConnectionRequests,
   hackathonProjectContacts,
+  talentProfiles,
 } from '../../db/schema'
-import { encryptContact } from '../../lib/contact-encryption'
+import { decryptContact, encryptContact } from '../../lib/contact-encryption'
 import { beijingDate } from '../../lib/beijing-date'
 import { NOTIFICATION_TYPES } from '../../lib/mail/notification-types'
 import { HACKATHON_EVENT_ID } from '../hackathon/service'
-import { ConnectionRequestStatus, HACKATHON_CONNECTION_PURPOSES } from '@shenicest/shared'
-import type { CreateConnectionBody } from './model'
+import { UserProfileService } from '../user/service'
+import { ConnectionRequestStatus, HACKATHON_CONNECTION_PURPOSES, TalentProfileStatus } from '@shenicest/shared'
+import type { AcceptConnectionBody, CreateConnectionBody } from './model'
 
 export class HackathonConnectionError extends Error {
   constructor(public code: string, message: string) {
@@ -28,6 +30,11 @@ export interface HackathonConnectionProjectSource {
 }
 
 type ContactInput = { wechat?: string; email?: string }
+type ContactPayload = { wechat: string | null; email: string | null }
+
+function iso(value: Date | null) {
+  return value?.toISOString() ?? null
+}
 
 // P0 fixes the daily send limit at 3 (PRD 7.3); the Ignored cooldown is 7 days (PRD 7.4).
 const DAILY_LIMIT = 3
@@ -59,10 +66,14 @@ function authorizedContact(input: ContactInput) {
 type RequestRow = typeof hackathonConnectionRequests.$inferSelect
 
 export class HackathonConnectionService {
+  private users: UserProfileService
+
   constructor(
     private db: Database,
     private source: HackathonConnectionProjectSource,
-  ) {}
+  ) {
+    this.users = new UserProfileService(db)
+  }
 
   async create(senderUserId: string, hackathonProjectId: number, body: CreateConnectionBody) {
     if (!HACKATHON_CONNECTION_PURPOSES.includes(body.purpose)) {
@@ -192,6 +203,81 @@ export class HackathonConnectionService {
     return row ? { id: row.id, status: row.status, createdAt: row.createdAt.toISOString() } : null
   }
 
+  // Receiver-side accept (PRD 11.2). Only the locked receiver may act — any
+  // other caller gets REQUEST_NOT_FOUND so request existence is not leaked.
+  // A hidden target project cancels the Pending request as part of the same
+  // transaction, then the endpoint reports 409.
+  async accept(viewerId: string, requestId: number, body: AcceptConnectionBody) {
+    const accepted = await this.db.transaction(async (tx): Promise<RequestRow | 'CANCELLED'> => {
+      const [row] = await tx.select().from(hackathonConnectionRequests).where(eq(hackathonConnectionRequests.id, requestId)).for('update')
+      if (!row || row.receiverUserId !== viewerId) {
+        throw new HackathonConnectionError('REQUEST_NOT_FOUND', 'Connection request not found')
+      }
+      if (row.status === ConnectionRequestStatus.Accepted) return row
+      if (row.status !== ConnectionRequestStatus.Pending) {
+        throw new HackathonConnectionError('REQUEST_NOT_PENDING', 'Request is not pending')
+      }
+      const visible = await this.source.getVisibleProject(row.hackathonProjectId)
+      if (!visible) {
+        await tx
+          .update(hackathonConnectionRequests)
+          .set({ status: ConnectionRequestStatus.Cancelled, pairKey: null, handledAt: new Date() })
+          .where(and(eq(hackathonConnectionRequests.id, requestId), eq(hackathonConnectionRequests.status, ConnectionRequestStatus.Pending)))
+        return 'CANCELLED'
+      }
+      const receiverContact = authorizedContact(body)
+      await tx
+        .update(hackathonConnectionRequests)
+        .set({
+          receiverContact: encryptContact(receiverContact),
+          status: ConnectionRequestStatus.Accepted,
+          acceptedAt: new Date(),
+          handledAt: new Date(),
+          pairKey: null,
+        })
+        .where(and(eq(hackathonConnectionRequests.id, requestId), eq(hackathonConnectionRequests.status, ConnectionRequestStatus.Pending)))
+      const [updated] = await tx.select().from(hackathonConnectionRequests).where(eq(hackathonConnectionRequests.id, requestId)).limit(1)
+      return updated
+    })
+    if (accepted === 'CANCELLED') {
+      throw new HackathonConnectionError('REQUEST_NOT_PENDING', 'Request is not pending')
+    }
+    return this.viewRequest(accepted, viewerId)
+  }
+
+  // Receiver-side ignore. Idempotent on already-Ignored rows; Accepted and
+  // Cancelled rows are rejected.
+  async ignore(viewerId: string, requestId: number) {
+    const row = await this.db.transaction(async (tx): Promise<RequestRow> => {
+      const [record] = await tx.select().from(hackathonConnectionRequests).where(eq(hackathonConnectionRequests.id, requestId)).for('update')
+      if (!record || record.receiverUserId !== viewerId) {
+        throw new HackathonConnectionError('REQUEST_NOT_FOUND', 'Connection request not found')
+      }
+      if (record.status === ConnectionRequestStatus.Ignored) return record
+      if (record.status !== ConnectionRequestStatus.Pending) {
+        throw new HackathonConnectionError('REQUEST_NOT_PENDING', 'Request is not pending')
+      }
+      await tx
+        .update(hackathonConnectionRequests)
+        .set({ status: ConnectionRequestStatus.Ignored, pairKey: null, handledAt: new Date() })
+        .where(and(eq(hackathonConnectionRequests.id, requestId), eq(hackathonConnectionRequests.status, ConnectionRequestStatus.Pending)))
+      const [updated] = await tx.select().from(hackathonConnectionRequests).where(eq(hackathonConnectionRequests.id, requestId)).limit(1)
+      return updated
+    })
+    return this.viewRequest(row, viewerId)
+  }
+
+  // Contact unlock: both parties of an Accepted request read their own and the
+  // other side's authorized contact. Everything else is 403 — existence and
+  // state are not distinguished for non-parties.
+  async contacts(viewerId: string, requestId: number) {
+    const [row] = await this.db.select().from(hackathonConnectionRequests).where(eq(hackathonConnectionRequests.id, requestId)).limit(1)
+    if (!row || row.status !== ConnectionRequestStatus.Accepted || ![row.senderUserId, row.receiverUserId].includes(viewerId)) {
+      throw new HackathonConnectionError('CONTACTS_FORBIDDEN', 'Contacts are only available for accepted requests')
+    }
+    return this.contactsFor(row, viewerId)
+  }
+
   // D3 hook target: hidden projects cannot receive new requests, and their
   // Pending requests end as Cancelled. Accepted connections are preserved.
   async cancelPendingByProject(eventId: number, hackathonProjectId: number) {
@@ -220,6 +306,66 @@ export class HackathonConnectionService {
       hackathonProjectId: row.hackathonProjectId,
       status: row.status,
       createdAt: row.createdAt.toISOString(),
+    }
+  }
+
+  private contactsFor(row: RequestRow, viewerId: string) {
+    const mine = row.senderUserId === viewerId ? row.senderContact : row.receiverContact!
+    const other = row.senderUserId === viewerId ? row.receiverContact! : row.senderContact
+    return {
+      mine: decryptContact<ContactPayload>(mine),
+      other: decryptContact<ContactPayload>(other),
+    }
+  }
+
+  private async participantDto(userId: string) {
+    const identity = await this.users.getPublicProfile(userId)
+    const [profile] = await this.db
+      .select({ status: talentProfiles.status })
+      .from(talentProfiles)
+      .where(eq(talentProfiles.userId, userId))
+      .limit(1)
+    return {
+      userId,
+      nickname: identity?.nickname ?? null,
+      avatarUrl: identity?.avatarUrl ?? null,
+      hasPublishedTalentProfile: profile?.status === TalentProfileStatus.Published,
+    }
+  }
+
+  // Unified connection DTO (ticket 05 shape). `contacts` is present only for
+  // Accepted requests viewed by one of the two parties.
+  private async viewRequest(row: RequestRow, viewerId: string) {
+    const [sender, receiver, summary] = await Promise.all([
+      this.participantDto(row.senderUserId),
+      this.participantDto(row.receiverUserId),
+      this.source.getProjectSummary(row.hackathonProjectId),
+    ])
+    const contacts =
+      row.status === ConnectionRequestStatus.Accepted && [row.senderUserId, row.receiverUserId].includes(viewerId)
+        ? this.contactsFor(row, viewerId)
+        : undefined
+    return {
+      id: row.id,
+      source: 'hackathon' as const,
+      status: row.status,
+      senderUserId: row.senderUserId,
+      receiverUserId: row.receiverUserId,
+      sender,
+      receiver,
+      target: {
+        type: 'hackathon_project' as const,
+        projectId: row.hackathonProjectId,
+        eventId: row.eventId,
+        name: summary?.name,
+        ...(summary ? {} : { unavailable: true }),
+      },
+      purpose: row.purpose,
+      message: row.message,
+      createdAt: row.createdAt.toISOString(),
+      acceptedAt: iso(row.acceptedAt),
+      handledAt: iso(row.handledAt),
+      ...(contacts ? { contacts } : {}),
     }
   }
 }
