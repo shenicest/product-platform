@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, or, sql } from 'drizzle-orm'
 import type { Database } from '../../db'
 import {
   connectionNotificationDeliveries,
@@ -23,10 +23,11 @@ export class HackathonConnectionError extends Error {
 
 // D5 seam over the external event database: the service never reaches the
 // event DB itself, so tests stub these and the module index wires the real
-// HackathonService.
+// HackathonService. `url` (web page link for the connections card) is optional
+// and only present when the composition root knows the web base URL.
 export interface HackathonConnectionProjectSource {
   getVisibleProject: (hackathonProjectId: number) => Promise<{ id: number } | null>
-  getProjectSummary: (hackathonProjectId: number) => Promise<{ name: string } | null>
+  getProjectSummary: (hackathonProjectId: number) => Promise<{ name: string; url?: string } | null>
 }
 
 type ContactInput = { wechat?: string; email?: string }
@@ -358,6 +359,7 @@ export class HackathonConnectionService {
         projectId: row.hackathonProjectId,
         eventId: row.eventId,
         name: summary?.name,
+        url: summary?.url,
         ...(summary ? {} : { unavailable: true }),
       },
       purpose: row.purpose,
@@ -368,4 +370,24 @@ export class HackathonConnectionService {
       ...(contacts ? { contacts } : {}),
     }
   }
+
+  // All requests touching the viewer, for the unified /connections aggregate
+  // (ticket 05). Read-only composition — no state machine logic here.
+  async listForUser(viewerId: string) {
+    const rows = await this.db
+      .select()
+      .from(hackathonConnectionRequests)
+      .where(or(eq(hackathonConnectionRequests.senderUserId, viewerId), eq(hackathonConnectionRequests.receiverUserId, viewerId)))
+      .orderBy(desc(hackathonConnectionRequests.id))
+    return {
+      data: await Promise.all(rows.map((row) => this.viewRequest(row, viewerId))),
+      pendingReceived: rows.filter(
+        (row) => row.receiverUserId === viewerId && row.status === ConnectionRequestStatus.Pending,
+      ).length,
+    }
+  }
 }
+
+// Unified list item shape consumed by the /connections aggregate, derived from
+// the service output so there is exactly one author of the DTO.
+export type HackathonConnectionListItem = Awaited<ReturnType<HackathonConnectionService['listForUser']>>['data'][number]

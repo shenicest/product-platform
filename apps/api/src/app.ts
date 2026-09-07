@@ -14,6 +14,7 @@ import { talentModule, talentOperatorModule } from './modules/talent'
 import { bathModule } from './modules/bath'
 import { hackathonModule } from './modules/hackathon'
 import { hackathonConnectionModule } from './modules/hackathon-connection'
+import { connectionsModule } from './modules/connections'
 
 export const app = new Elysia()
   .use(openapi({
@@ -70,6 +71,7 @@ export const app = new Elysia()
   .use(founderModule)
   .use(uploadModule)
   .use(bathModule)
+  .use(connectionsModule)
   .use(operatorModule)
   .get('/health', () => ({ status: 'ok' as const, env: process.env.NODE_ENV }), {
     detail: {

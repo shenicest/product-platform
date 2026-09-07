@@ -139,6 +139,11 @@ process.env.COS_UPLOAD_PREFIX ??= 'projects/'
 process.env.SHENICEST_CONTACT_ENCRYPTION_KEY ??= 'test-contact-encryption-key-at-least-32-chars'
 // The mail worker is exercised directly via tick() in tests; never started.
 process.env.NOTIFICATION_WORKER ??= 'off'
+// The hackathon module reaches the external event database through its own
+// pool. Tests never query it (project lookups are stubbed at the service
+// seam), but the pool is constructed at app import time, so give it a URL
+// pointing at the test database — mysql2 pools only connect on first query.
+process.env.EVENT_MANAGEMENT_DATABASE_URL ??= buildUrl(APP_DB)
 
 // Apply drizzle migrations against the freshly created app DB.
 const migrationPool = mysql.createPool(buildUrl(APP_DB))

@@ -289,7 +289,9 @@ export class TalentService {
   private contactsFor(row: typeof connectionRequests.$inferSelect, viewerId: string) {
     const mine = row.senderUserId === viewerId ? row.senderContact : row.receiverContact!
     const other = row.senderUserId === viewerId ? row.receiverContact! : row.senderContact
-    return { mine: decryptContact(mine), other: decryptContact(other) }
+    const payload = (value: string) =>
+      decryptContact<{ wechat: string | null; email: string | null }>(value)
+    return { mine: payload(mine), other: payload(other) }
   }
 
   async connections(userId: string) {

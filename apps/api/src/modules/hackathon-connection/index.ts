@@ -16,11 +16,17 @@ import {
 // stubs into HackathonConnectionService directly and never import this file
 // (it needs the event database).
 const hackathonService = new HackathonService(eventManagementDb, db)
+const webBaseUrl = process.env.SHENICEST_WEB_BASE_URL
 const service = new HackathonConnectionService(db, {
   getVisibleProject: (hackathonProjectId) => hackathonService.getProject(hackathonProjectId),
   getProjectSummary: async (hackathonProjectId) => {
     const project = await hackathonService.getProject(hackathonProjectId)
-    return project ? { name: project.name } : null
+    return project
+      ? {
+          name: project.name,
+          ...(webBaseUrl ? { url: `${webBaseUrl.replace(/\/+$/, '')}/hackathon/projects/${hackathonProjectId}` } : {}),
+        }
+      : null
   },
 })
 
