@@ -47,7 +47,15 @@ export function HackathonShowcase({ projects, total, selectedTrack, query }: { p
   return (
     <main className="showcase-shell mx-auto w-full max-w-[1440px] px-5 sm:px-8 lg:px-16">
       <section className="showcase-hero grid gap-8 py-14 sm:py-20 lg:grid-cols-[1.4fr_.6fr] lg:items-end">
-        <div><p className="eyebrow">HACKATHON / G001 / PROJECTS</p><h1>让好作品<br />被看见。</h1><p className="hero-copy">探索黑客松的参赛项目。按赛道浏览，打开项目详情，为你支持的创意留下一个赞。</p></div>
+        <div>
+          <p className="eyebrow">HACKATHON / G001 / PROJECTS</p>
+          <h1>让好作品<br />被看见。</h1>
+          <p className="hero-copy">探索黑客松的参赛项目。按赛道浏览，打开项目详情，为你支持的创意留下一个赞。</p>
+          <Link className="hackathon-statement-link" href="/hackathon/statement">
+            <span>She Nicest 团队关于「烈变千人黑客松」活动的致歉与声明</span>
+            <span className="hackathon-statement-arrow" aria-hidden="true">&gt;</span>
+          </Link>
+        </div>
         <div className="hero-meta"><strong>{total}</strong><span>个项目已入选展示<br />项目内容持续更新中</span></div>
       </section>
       <section id="projects">

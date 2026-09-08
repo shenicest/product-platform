@@ -81,9 +81,6 @@ export function ConnectionsPanel({
           <p className="eyebrow">CONNECTIONS / NETWORK</p>
           <h1 className="mt-3 text-4xl font-black">连接记录</h1>
         </div>
-        <Link href="/hackathon/projects" className="btn-hard btn-ghost">
-          去发现黑客松项目
-        </Link>
       </div>
       <div className="mt-8 flex flex-wrap gap-2 border-b border-border pb-3">
         {(['received', 'sent'] as View[]).map((value) => (

@@ -137,6 +137,13 @@
   .showcase-shell { color: var(--signal-white); }
   .showcase-hero h1 { margin: 16px 0 20px; max-width: 760px; font-size: clamp(42px, 7vw, 86px); line-height: .94; letter-spacing: -.075em; }
   .hero-copy { max-width: 570px; margin: 0; color: var(--muted-text); font-size: 16px; }
+  .hackathon-statement-link { display: inline-flex; align-items: baseline; gap: 10px; margin: 12px 0 8px; border-bottom: 1px solid rgba(255, 45, 166, .5); padding: 0 0 4px; color: var(--pink); font-size: 14px; line-height: 1.5; transition: border-color .2s ease, color .2s ease, text-shadow .2s ease; }
+  .hackathon-statement-link:hover, .hackathon-statement-link:focus-visible { border-color: var(--pink); color: var(--signal-white); text-shadow: 0 0 12px rgba(255, 45, 166, .55); }
+  .hackathon-statement-arrow { flex: 0 0 auto; color: inherit; font: 16px/1 var(--font-mono); transition: transform .2s ease; }
+  .hackathon-statement-link:hover .hackathon-statement-arrow, .hackathon-statement-link:focus-visible .hackathon-statement-arrow { transform: translateX(3px); }
+  .hackathon-letter-stack { display: grid; gap: 12px; }
+  .hackathon-letter-stack img { display: block; width: 100%; height: auto; border: 1px solid var(--line); background: var(--signal-white); }
+  .statement-title { max-width: 850px; margin-top: 16px; font-size: clamp(34px, 6vw, 72px); line-height: 1.08; letter-spacing: -.065em; }
   .hero-meta { border-left: 1px solid var(--line); padding-left: 25px; }
   .hero-meta strong { display: block; color: var(--pink); font: 50px/1 var(--font-mono); letter-spacing: -.08em; }
   .hero-meta span { display: block; margin-top: 10px; color: var(--muted-text); font-size: 13px; }
