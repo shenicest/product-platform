@@ -10,7 +10,6 @@ export interface HackathonConnectionContentResolverDeps {
   db: Database
   // D5-style seam over the event database so tests can stub project lookups.
   getProjectSummary: (hackathonProjectId: number) => Promise<{ name: string } | null>
-  getSenderNickname: (userId: string) => Promise<string | null>
   webBaseUrl: string
 }
 
@@ -43,11 +42,9 @@ export function createHackathonConnectionContentResolver(
         connectionsUrl,
       })
     }
-    const nickname = await deps.getSenderNickname(request.senderUserId)
     return renderHackathonConnectionCreatedEmail({
       projectName: project.name,
       projectUrl: `${base}/hackathon/projects/${request.hackathonProjectId}`,
-      senderNickname: nickname ?? '平台用户',
       purpose: request.purpose,
       message: request.message,
       createdAt: request.createdAt,

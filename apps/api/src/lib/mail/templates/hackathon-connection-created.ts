@@ -16,14 +16,13 @@ import {
 export interface HackathonConnectionCreatedInput {
   projectName: string
   projectUrl: string
-  senderNickname: string
   purpose: string
   message: string
   createdAt: Date
   connectionsUrl: string
 }
 
-const SUBJECT = '[Shenicest] 你的黑客松项目收到一条新的建联申请'
+const SUBJECT = '[SheNicest] 你的黑客松项目收到一条新的建联申请'
 
 // The email must never carry the sender's authorized contact info (PRD 6.2):
 // this template deliberately accepts no contact fields, and everything
@@ -58,7 +57,6 @@ const PRIVACY_NOTE =
 
 export function renderHackathonConnectionCreatedEmail(input: HackathonConnectionCreatedInput): EmailContent {
   const projectName = escapeHtml(input.projectName)
-  const senderNickname = escapeHtml(input.senderNickname)
   const purpose = escapeHtml(input.purpose)
   const message = escapeHtml(input.message)
   const projectUrl = escapeHtml(input.projectUrl)
@@ -72,7 +70,6 @@ export function renderHackathonConnectionCreatedEmail(input: HackathonConnection
     `<h2 style="font-size:20px; line-height:1.4; margin:0 0 22px; color:${EMAIL_COLORS.white}; font-family:${EMAIL_FONT_SANS};">你的黑客松项目收到一条新的建联申请</h2>`,
     emailPanelOpen(),
     emailField('项目：', `<a href="${projectUrl}" style="color:${EMAIL_COLORS.pink}; text-decoration:underline;">${projectName}</a>`),
-    emailField('申请人：', senderNickname),
     emailField('联系目的：', purpose),
     `<div style="white-space:pre-wrap; color:${EMAIL_COLORS.white}; font-family:${EMAIL_FONT_SANS}; border-left:2px solid ${EMAIL_COLORS.pink}; margin:14px 0 12px; padding:10px 14px; background:${EMAIL_COLORS.void};">${message}</div>`,
     `<p style="font:13px/1.5 ${EMAIL_FONT_MONO}; color:${EMAIL_COLORS.muted}; margin:0;">申请时间：${createdAt}</p>`,
@@ -87,7 +84,6 @@ export function renderHackathonConnectionCreatedEmail(input: HackathonConnection
     '',
     `项目：${input.projectName}`,
     `项目链接：${input.projectUrl}`,
-    `申请人：${input.senderNickname}`,
     `联系目的：${input.purpose}`,
     `申请时间：${createdAt}`,
     '',

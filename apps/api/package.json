@@ -27,10 +27,11 @@
     "elysia": "^1.2.25",
     "jose": "^6.2.8",
     "mysql2": "^3.14.1",
-    "tencentcloud-sdk-nodejs-ses": "^4.1.271"
+    "nodemailer": "^10.0.1"
   },
   "devDependencies": {
     "@types/bun": "^1.2.15",
+    "@types/nodemailer": "^8.0.1",
     "drizzle-kit": "^0.31.1"
   }
 }

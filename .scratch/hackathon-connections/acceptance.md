@@ -15,15 +15,15 @@
 
 ## 2. 环境变量（评审文档第 5 节）
 
-- ✅ `apps/api/.env.example` 已含全部条目：`TENCENTCLOUD_SECRET_ID/SECRET_KEY`、`TENCENTCLOUD_SES_REGION`（默认 ap-guangzhou）、`SES_FROM_EMAIL_ADDRESS`、`SES_REPLY_TO_ADDRESS`（可选）、`NOTIFICATION_WORKER`、`NOTIFICATION_POLL_INTERVAL_MS`、`SHENICEST_WEB_BASE_URL`；`SHENICEST_CONTACT_ENCRYPTION_KEY` 复用既有变量。
-- ✅ 缺失即报错：`SesMailer` 构造时校验必填项并列出缺失名（`test/lib/mail/ses-mailer.test.ts`）；`index.ts:17` 在 worker 开启但缺 `SHENICEST_WEB_BASE_URL` 时启动即抛错。
+- ✅ `apps/api/.env.example` 已含全部条目：`SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS`、`SMTP_FROM_EMAIL_ADDRESS`、`SMTP_REPLY_TO_ADDRESS`（可选）、`NOTIFICATION_WORKER`、`NOTIFICATION_POLL_INTERVAL_MS`、`SHENICEST_WEB_BASE_URL`；`SHENICEST_CONTACT_ENCRYPTION_KEY` 复用既有变量。
+- ✅ 缺失即报错：`SmtpMailer` 构造时校验必填项并列出缺失名（`test/lib/mail/smtp-mailer.test.ts`）；`index.ts:17` 在 worker 开启但缺 `SHENICEST_WEB_BASE_URL` 时启动即抛错。
 - ✅ Worker 门控行为：`NOTIFICATION_WORKER !== 'off'` 才启动（生产默认 on，测试 setup 默认 off）；投递行在 worker 关闭时依然写入（`create` 事务内），开启后按 Pending/退避继续投递，不丢请求（`apps/api/src/index.ts:15-38`、`apps/api/src/worker/mail-worker.ts`）。
 - ⬜ **部署环境**实际注入上述变量并确认 worker 日志出现 `Mail worker started (poll every ...ms)` — 人工项。
 
-## 3. 腾讯云 SES 发信验证
+## 3. SMTP（腾讯云 SES 通道）发信验证
 
-- ⬜ **人工项**：用部署环境凭据向内部邮箱发一封测试邮件，确认凭据、Region、发信地址可用。
-- 已验证的代码层等价物：`SesMailer.send` 走 `SendEmail`（Html/Text base64），失败规范化为 `MailSendError`（`errorCode()` 只保留稳定错误码，不落原始响应）。
+- ⬜ **人工项**：用部署环境 SMTP 凭据向内部邮箱发一封测试邮件，确认 SMTP 服务地址、端口、SMTP 密码与发信地址可用。
+- 已验证的代码层等价物：`SmtpMailer.send` 经 `nodemailer` 发送原始 HTML/Text（无模板），失败规范化为 `MailSendError`（`errorCode()` 只保留 nodemailer 错误码 / SMTP 响应码，不落原始响应）。
 
 ## 4. 预置数据（seed-hackathon-contacts）
 
@@ -101,7 +101,7 @@ GROUP BY status, last_error_code;
 ## 10. 上线前人工待办汇总
 
 1. 部署环境注入第 2 节环境变量，确认 worker 启动日志；
-2. SES 实发测试邮件（第 3 节）；
+2. SMTP 实发测试邮件（第 3 节）；
 3. 正式导入首批接收主体并完成账号/邮箱归属确认（第 4 节）；
 4. 内部账号走通全流程（PRD 20 闭环在真实部署上复走一遍）；
 5. 错误凭据失败演练（第 7 节）；

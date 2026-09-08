@@ -21,7 +21,7 @@ export interface HackathonConnectionAcceptedInput {
   connectionsUrl: string
 }
 
-const SUBJECT = '[Shenicest] 你的建联申请已被项目方接受'
+const SUBJECT = '[SheNicest] 你的建联申请已被项目方接受'
 
 // Accepted-outcome email to the sender (PRD 21.6, revised decision). Same
 // privacy line as the created-email: never carries either party's authorized

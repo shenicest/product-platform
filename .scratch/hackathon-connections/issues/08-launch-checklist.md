@@ -8,7 +8,7 @@
 
 - [ ] 全量测试：根目录 `bun run test`（api + web）、`bun run lint`、`bun run typecheck`、`bun run build`
 - [ ] 环境变量配置到部署环境（评审文档第 5 节）；确认 `NOTIFICATION_WORKER=on` 且 worker 日志可见
-- [ ] 腾讯云 SES：确认现有发信地址可编程调用（发一封测试邮件验证凭据、Region、发信地址）
+- [ ] 腾讯云 SES：确认现有发信地址可编程调用（发一封测试邮件验证 SMTP 服务地址、端口、SMTP 密码与发信地址）
 - [ ] 预置数据：运行 `seed-hackathon-contacts` 导入首批项目接收主体（含 `receiver_user_id` 平台账号存在性检查 + `notification_email` 归属确认）
 - [ ] 灰度：仅对已配置接收主体的项目生效（未配置项目按钮不渲染，后端 409 兜底）；先内部账号走通全流程
 - [ ] 验收走查（PRD 20，逐条记录结果）：

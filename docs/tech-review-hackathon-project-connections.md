@@ -65,10 +65,10 @@ PRD 11.2 写"扩展现有连接记录聚合接口"，但 API 层现状只有 `/t
 
 可见性判定以 `getProject`（hidden 表）为准——与详情页一致；列表接口额外的"量子"关键词过滤不参与建联可见性（详情页能看到的就能建联）。
 
-### D6 — 邮件：腾讯云 SES 适配 + 进程内投递 worker
+### D6 — 邮件：SMTP（腾讯云 SES 通道）+ 进程内投递 worker
 
-- SDK 用模块化的 `tencentcloud-sdk-nodejs-ses`（比整包 `tencentcloud-sdk-nodejs` 小），调自定义内容邮件接口，HTML + 纯文本双版本；
-- `Mailer` 接口薄适配：`send({ to, subject, html, text, idempotencyKey })`；凭据/Region 走环境变量，缺省时在构造处报错（遵循 AGENTS.md 环境变量规范）；测试注入内存实现；
+- 腾讯云 SES 的 `SendEmail` API 默认仅支持模板发送，`Simple`（自定义内容）参数已废弃、需特殊权限，故改用其 **SMTP 通道**（`nodemailer`），直接发送 HTML + 纯文本正文，无模板参与；
+- `Mailer` 接口薄适配：`send({ to, subject, html, text, idempotencyKey })`；SMTP 凭据/服务地址走环境变量，缺省时在构造处报错（遵循 AGENTS.md 环境变量规范）；测试注入内存实现或桩 transporter；
 - 投递 worker 为 API 进程内 `setInterval` 轮询（PRD 规模足够），认领用条件 UPDATE（`Pending → Sending`，`affectedRows` 门闩；`Sending` 超过 10 分钟视为僵死可重新认领），多实例部署时天然安全；
 - 退避 1 分钟 / 5 分钟 / 30 分钟，最多 3 次尝试，超出置 `Failed`；幂等键 `(connection_request_id, notification_type)` 唯一索引兜底；
 - worker 由 `NOTIFICATION_WORKER` 环境变量门控（测试关闭）。
@@ -112,16 +112,16 @@ PRD 11.2 写"扩展现有连接记录聚合接口"，但 API 层现状只有 `/t
 1. `hackathon_project_contacts` — `(event_id, hackathon_project_id)` 唯一；`receiver_user_id` 索引；无 `is_active`。
 2. `hackathon_connection_requests` — `pair_key` 唯一可空（Pending 写入、终态置 NULL）；索引 `(receiver_user_id, status, created_at)`、`(sender_user_id, hackathon_project_id, status)`；`sender_contact` / `receiver_contact` 密文。
 3. `hackathon_connection_daily_limits` — `(sender_user_id, beijing_date)` 唯一。
-4. `connection_notification_deliveries` — `(connection_request_id, notification_type)` 唯一；`status`：Pending/Sending/Sent/Failed；`provider_message_id` 存 SES `MessageId`。
+4. `connection_notification_deliveries` — `(connection_request_id, notification_type)` 唯一；`status`：Pending/Sending/Sent/Failed；`provider_message_id` 存 SMTP 返回的 `MessageId`。
 
 ## 5. 环境变量
 
 | 变量 | 说明 |
 | --- | --- |
-| `TENCENTCLOUD_SECRET_ID` / `TENCENTCLOUD_SECRET_KEY` | 沿用现有腾讯云凭据（若已有同名变量则直接复用） |
-| `TENCENTCLOUD_SES_REGION` | 默认 `ap-guangzhou` |
-| `SES_FROM_EMAIL_ADDRESS` | 现有已验证发信地址 |
-| `SES_REPLY_TO_ADDRESS`（可选） | 回复地址 |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | 腾讯云 SES SMTP 网关（`smtp.qcloudmail.com` 香港区 / `gz-smtp.qcloudmail.com` 广州区，默认 465） |
+| `SMTP_FROM_EMAIL_ADDRESS` | 现有已验证发信地址 |
+| `SMTP_FROM_NAME`（可选） | 发件人显示名，默认 `SheNicest` |
+| `SMTP_REPLY_TO_ADDRESS`（可选） | 回复地址 |
 | `NOTIFICATION_WORKER` | `on`/`off`，默认生产 `on`、测试 `off` |
 | `NOTIFICATION_POLL_INTERVAL_MS` | 默认 30000 |
 

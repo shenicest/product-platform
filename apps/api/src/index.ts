@@ -2,9 +2,8 @@ import 'dotenv/config'
 import { app } from './app'
 import { db } from './db'
 import { eventManagementDb } from './db/event-management'
-import { SesMailer } from './lib/mail/ses-mailer'
+import { SmtpMailer } from './lib/mail/smtp-mailer'
 import { HackathonService } from './modules/hackathon/service'
-import { UserProfileService } from './modules/user/service'
 import { MailWorker } from './worker/mail-worker'
 import { createHackathonConnectionContentResolver } from './worker/hackathon-connection-content'
 
@@ -18,10 +17,9 @@ if (process.env.NOTIFICATION_WORKER !== 'off') {
   const pollIntervalMs = Number(process.env.NOTIFICATION_POLL_INTERVAL_MS) || 30000
 
   const hackathonService = new HackathonService(eventManagementDb, db)
-  const userProfileService = new UserProfileService(db)
   const worker = new MailWorker({
     db,
-    mailer: new SesMailer(),
+    mailer: new SmtpMailer(),
     pollIntervalMs,
     resolveContent: createHackathonConnectionContentResolver({
       db,
@@ -29,7 +27,6 @@ if (process.env.NOTIFICATION_WORKER !== 'off') {
         const project = await hackathonService.getProject(hackathonProjectId)
         return project ? { name: project.name } : null
       },
-      getSenderNickname: async (userId) => (await userProfileService.getPublicProfile(userId))?.nickname ?? null,
       webBaseUrl,
     }),
   })

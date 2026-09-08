@@ -382,7 +382,7 @@ P0 推荐建立平台侧映射：
 
 ### 9.5 邮件服务
 
-邮件发送使用腾讯云邮件推送（Tencent Cloud SES）。平台新增一个薄适配层隔离 SDK 细节，接口至少包含：
+邮件发送走腾讯云 SES 的 **SMTP 通道**。腾讯云 SES 的 `SendEmail` API 默认仅支持模板发送（`Simple` 自定义内容参数已废弃，仅历史申请过特殊配置的账号可用），而 SMTP 直接携带原始 HTML / 纯文本正文，无需控制台模板。平台新增一个薄适配层隔离供应商细节，接口至少包含：
 
 ```ts
 interface Mailer {
@@ -398,11 +398,11 @@ interface Mailer {
 
 实现要求：
 
-- 使用腾讯云 SES 的自定义内容邮件接口发送 HTML 与纯文本正文，通过官方 SDK（`tencentcloud-sdk-nodejs` 的 `ses` 客户端）或 `ses.tencentcloudapi.com` 调用；
-- 发信域名已完成验证、发信地址沿用现有腾讯云 SES 配置，通过环境变量引用，无需重新配置；
-- API 凭据（`SecretId` / `SecretKey`）通过环境变量注入，禁止写入代码、仓库或日志；
-- 需要配置 Region（如 `ap-guangzhou`、`ap-hongkong`）、发件人地址和回复地址；
-- 发送成功后记录 SES 返回的 `MessageId`，写入投递记录的 `provider_message_id`；
+- 使用 SMTP（`nodemailer`）发送 HTML 与纯文本正文，复用已验证的发信域名/发信地址（腾讯云 SES 控制台为发信地址生成 SMTP 专用密码）；
+- 发件人显示名为 `SheNicest`（`SMTP_FROM_NAME`，可选覆盖），收件端不展示裸邮箱本地部分（如 `notification@...`）；
+- SMTP 凭据（host / port / user / pass）通过环境变量注入，禁止写入代码、仓库或日志；
+- 需要配置 SMTP 服务地址（如 `smtp.qcloudmail.com` 香港区 / `gz-smtp.qcloudmail.com` 广州区）、端口（465，隐式 TLS）、发件人地址和回复地址；
+- 发送成功后记录 SMTP 返回的 `MessageId`，写入投递记录的 `provider_message_id`；
 - 适配层负责凭据读取、供应商错误归一化和投递状态记录；测试环境用内存实现替换 Mailer，不真实发信。
 
 ## 10. 技术方案概览
@@ -799,7 +799,7 @@ apps/api/src/modules/hackathon-connection/
 2. 项目方通知邮箱的来源和维护人。
 3. 项目方登录身份是否已经存在于外部认证系统。
 4. 项目负责人变更时由谁更新接收主体。
-5. 沿用现有腾讯云 SES 的发信域名、发信地址和 API 密钥；确认回复地址和 Region 取值。
+5. 沿用现有腾讯云 SES 的发信域名和发信地址，控制台为发信地址生成 SMTP 专用密码；确认 SMTP 服务地址、端口和回复地址。
 6. 邮件发送 worker 的运行方式和失败告警渠道。
 7. 申请方每日限额、Ignored 冷却时间和邮件重试次数。
 8. 项目隐藏时 Pending 申请的取消策略。
@@ -864,7 +864,7 @@ apps/api/src/modules/hackathon-connection/
 - 邮件不包含任何申请方联系方式；
 - 链接指向平台连接记录；
 - 重试不会重复发送；
-- 腾讯云 SES 返回失败后记录错误并按策略重试。
+- SMTP 发送失败后记录错误并按策略重试。
 
 ## 18. 迁移与发布计划
 
@@ -872,7 +872,7 @@ apps/api/src/modules/hackathon-connection/
 
 - 确认黑客松项目方映射；
 - 创建项目接收主体配置；
-- 确认复用现有腾讯云 SES 发信域名、发信地址和 API 密钥；
+- 确认复用现有腾讯云 SES 发信域名和发信地址，控制台生成 SMTP 专用密码；
 - 配置加密密钥、邮件环境变量和 worker；
 - 补充隐私政策和服务条款中的建联说明。
 
@@ -939,4 +939,4 @@ apps/api/src/modules/hackathon-connection/
 5. 项目隐藏后，已有 Pending 申请自动转为 Cancelled，历史记录保留。
 6. 申请方通过连接记录查看状态（P0 忽略不发结果邮件；产品后续决策：项目方**接受**时向发送方平台账号邮箱发送结果通知邮件，即该邮件从 P1 提前实现，复用现有投递 worker，收不到账号邮箱时静默跳过）。
 7. P0 不提供“暂时关闭新申请”开关；`hackathon_project_contacts` 不含 `is_active` 字段，P1 引入时再加列。
-8. 腾讯云 SES 的发信域名、发信地址和 API 密钥沿用现有配置，无需新建。
+8. 腾讯云 SES 的发信域名和发信地址沿用现有配置，SMTP 专用密码由控制台生成，无需新建。

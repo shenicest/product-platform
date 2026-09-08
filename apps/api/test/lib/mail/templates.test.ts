@@ -5,7 +5,6 @@ import { renderHackathonConnectionCreatedEmail } from '../../../src/lib/mail/tem
 const baseInput = {
   projectName: '月事轻记',
   projectUrl: 'https://shenicest.test/hackathon/projects/42',
-  senderNickname: '林晓',
   purpose: '合作交流',
   message: '我们正在做相近方向的产品，希望交流产品设计与用户验证经验。',
   createdAt: new Date('2026-09-07T02:00:00Z'),
@@ -15,20 +14,19 @@ const baseInput = {
 describe('renderHackathonConnectionCreatedEmail', () => {
   it('uses the fixed PRD subject', () => {
     const email = renderHackathonConnectionCreatedEmail(baseInput)
-    expect(email.subject).toBe('[Shenicest] 你的黑客松项目收到一条新的建联申请')
+    expect(email.subject).toBe('[SheNicest] 你的黑客松项目收到一条新的建联申请')
   })
 
-  it('renders project, sender, purpose, message, and links in both versions', () => {
+  it('renders project, purpose, message, and links in both versions', () => {
     const email = renderHackathonConnectionCreatedEmail(baseInput)
     for (const body of [email.html, email.text]) {
       expect(body).toContain('月事轻记')
-      expect(body).toContain('林晓')
       expect(body).toContain('合作交流')
       expect(body).toContain('我们正在做相近方向的产品，希望交流产品设计与用户验证经验。')
       expect(body).toContain('https://shenicest.test/hackathon/projects/42')
       expect(body).toContain('https://shenicest.test/connections')
     }
-    expect(email.html).toContain('<a href="https://shenicest.test/hackathon/projects/42">')
+    expect(email.html).toContain('<a href="https://shenicest.test/hackathon/projects/42"')
     expect(email.html).toContain('<a href="https://shenicest.test/connections"')
   })
 
@@ -71,7 +69,7 @@ const acceptedBaseInput = {
 describe('renderHackathonConnectionAcceptedEmail', () => {
   it('tells the sender the request was accepted and links the connections page', () => {
     const email = renderHackathonConnectionAcceptedEmail(acceptedBaseInput)
-    expect(email.subject).toBe('[Shenicest] 你的建联申请已被项目方接受')
+    expect(email.subject).toBe('[SheNicest] 你的建联申请已被项目方接受')
     for (const body of [email.html, email.text]) {
       expect(body).toContain('月事轻记')
       expect(body).toContain('https://shenicest.test/hackathon/projects/42')

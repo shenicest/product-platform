@@ -32,7 +32,6 @@ function buildResolver(overrides: Partial<Parameters<typeof createHackathonConne
   return createHackathonConnectionContentResolver({
     db,
     getProjectSummary: async (hackathonProjectId) => ({ name: `项目 ${hackathonProjectId}` }),
-    getSenderNickname: async () => '林晓',
     webBaseUrl: 'https://shenicest.test/',
     ...overrides,
   })
@@ -58,9 +57,8 @@ describe('createHackathonConnectionContentResolver', () => {
 
     const content = await resolver(taskFor(request.id))
     expect(content).not.toBeNull()
-    expect(content!.subject).toBe('[Shenicest] 你的黑客松项目收到一条新的建联申请')
+    expect(content!.subject).toBe('[SheNicest] 你的黑客松项目收到一条新的建联申请')
     expect(content!.html).toContain(`项目 ${request.hackathonProjectId}`)
-    expect(content!.html).toContain('林晓')
     expect(content!.html).toContain('合作交流')
     expect(content!.html).toContain('希望交流产品设计经验。')
     expect(content!.html).toContain(`href="https://shenicest.test/hackathon/projects/${request.hackathonProjectId}"`)
@@ -68,12 +66,12 @@ describe('createHackathonConnectionContentResolver', () => {
     expect(content!.text).toContain('希望交流产品设计经验。')
   })
 
-  it('falls back to 平台用户 when the sender has no public nickname', async () => {
+  it('never renders the sender nickname in the created email', async () => {
     const request = await insertRequest()
-    const resolver = buildResolver({ getSenderNickname: async () => null })
+    const resolver = buildResolver()
 
     const content = await resolver(taskFor(request.id))
-    expect(content!.html).toContain('平台用户')
+    expect(content!.html).not.toContain('申请人')
   })
 
   it('returns null when the request row is gone', async () => {
@@ -101,7 +99,7 @@ describe('createHackathonConnectionContentResolver', () => {
 
     const content = await resolver({ ...taskFor(request.id), notificationType: NOTIFICATION_TYPES.CONNECTION_ACCEPTED })
     expect(content).not.toBeNull()
-    expect(content!.subject).toBe('[Shenicest] 你的建联申请已被项目方接受')
+    expect(content!.subject).toBe('[SheNicest] 你的建联申请已被项目方接受')
     expect(content!.html).toContain(`项目 ${request.hackathonProjectId}`)
     expect(content!.html).toContain(`href="https://shenicest.test/connections"`)
     expect(content!.html).not.toContain('收件人')

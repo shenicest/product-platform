@@ -177,7 +177,7 @@ function ConnectionCard({
         </p>
       )}
       <p className="mt-4 text-sm text-muted-foreground">{connection.purpose}</p>
-      <p className="mt-2 whitespace-pre-wrap text-sm">{connection.message}</p>
+      <p className="mt-2 whitespace-pre-wrap break-words text-sm">{connection.message}</p>
       {/* Contacts render only for Accepted requests viewed by a party — other
           states never receive contact payloads, so nothing can leak. */}
       {accepted && connection.contacts ? (
