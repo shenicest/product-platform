@@ -49,7 +49,7 @@ const talentProfileBody = {
   bio: '擅长从用户研究到产品交付，希望与认真解决真实问题的团队长期合作。',
   city: '上海',
   roles: ['开发'],
-  skills: ['前端开发', '后端开发', '全栈开发'],
+  skills: ['frontend', 'backend', 'fullstack'],
   seekingSkills: [],
   domains: ['效率工具'],
   durations: ['长期合作'],

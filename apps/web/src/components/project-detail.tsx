@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { skillLabel } from '@shenicest/shared'
 import type { ProjectDetail } from '@/server/projects'
 import { ProjectBadges } from '@/components/project-badges'
 import { resolveDemoVideo } from '@/lib/demo-media'
@@ -237,7 +238,7 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
           <h2 className="text-lg font-bold">寻求帮助</h2>
           <div className="mt-3 flex flex-wrap gap-1.5">
             {project.seekingSkills.map((skill) => (
-              <span key={skill} className="chip-hard">{skill}</span>
+              <span key={skill} className="chip-hard">{skillLabel(skill)}</span>
             ))}
           </div>
         </section>

@@ -34,7 +34,7 @@ function makeProject(overrides: Partial<OperatorProject> = {}): OperatorProject 
     userCount: 120,
     monthlyRevenue: 3000,
     retentionRate: 42,
-    seekingSkills: ['后端开发'],
+    seekingSkills: ['backend'],
     isOpenForBeta: true,
     betaDescription: '正在招募 20 位内测用户。',
     contactName: '张三',

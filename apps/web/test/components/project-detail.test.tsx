@@ -36,7 +36,7 @@ function makeProject(overrides: Partial<ProjectDetailData> = {}): ProjectDetailD
     userCount: 1234,
     monthlyRevenue: 0,
     retentionRate: 38,
-    seekingSkills: ['前端开发', '内容创作'],
+    seekingSkills: ['frontend', 'contentCreation'],
     isOpenForBeta: true,
     betaDescription: '正在招募第一批 Beta 用户。',
     contactName: '李四',
@@ -96,7 +96,7 @@ describe('ProjectDetail — 新字段故事', () => {
     render(<ProjectDetail project={makeProject()} showLike={false} />)
 
     expect(screen.getByText('寻求帮助')).toBeInTheDocument()
-    expect(screen.getByText('前端开发')).toBeInTheDocument()
+    expect(screen.getByText('前端')).toBeInTheDocument()
     expect(screen.getByText('内容创作')).toBeInTheDocument()
     expect(screen.getByText('正在招募 Beta 用户')).toBeInTheDocument()
     expect(screen.getByText('正在招募第一批 Beta 用户。')).toBeInTheDocument()

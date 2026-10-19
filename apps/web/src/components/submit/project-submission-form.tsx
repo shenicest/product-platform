@@ -3,7 +3,13 @@
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { CATEGORIES, MAX_SEEKING_SKILLS, ProjectStage, TALENT_SKILL_GROUPS } from '@shenicest/shared'
+import {
+  CATEGORIES,
+  MAX_SEEKING_SKILLS,
+  ProjectStage,
+  TALENT_SKILL_GROUPS,
+  skillLabel,
+} from '@shenicest/shared'
 import { useAuth } from '@/components/auth-provider'
 import {
   createProject,
@@ -115,15 +121,16 @@ const STAGE_OPTIONS = [
   { value: String(ProjectStage.Revenue), label: '有收入' },
 ]
 
-// Skill wall grouped by top-level direction (shared vocabulary), capped at MAX_SEEKING_SKILLS.
+// Seeking-skills wall, revealed by the「正在寻找的角色」checkbox like the Beta
+// recruitment flow: tick the box first, then the grouped skill wall expands.
+// Selected values are enum keys from the shared vocabulary; chips display
+// their labels. Capped at MAX_SEEKING_SKILLS across all directions.
 function SeekingSkillsWall({
   selected,
   onChange,
-  error,
 }: {
   selected: string[]
   onChange: (skills: string[]) => void
-  error?: string
 }) {
   const full = selected.length >= MAX_SEEKING_SKILLS
   function toggle(skill: string) {
@@ -148,14 +155,13 @@ function SeekingSkillsWall({
                     isSelected ? 'chip-active' : ''
                   }`}
                 >
-                  {skill}
+                  {skillLabel(skill)}
                 </button>
               )
             })}
           </div>
         </div>
       ))}
-      {error ? <p className="mt-1 font-mono text-[11px] text-destructive">{error}</p> : null}
     </div>
   )
 }
@@ -199,6 +205,11 @@ export function ProjectSubmissionForm({
     }
   }
 
+  // 「正在寻找的角色」works like the Beta checkbox: the wall is hidden until the
+  // Founder ticks the box; unticking clears the selection. Existing drafts with
+  // skills start expanded so the saved choices stay visible and editable.
+  const [showSeekingSkills, setShowSeekingSkills] = useState(initialForm.seekingSkills.length > 0)
+
   const update = useCallback(
     <K extends keyof FormState>(key: K, value: FormState[K]) => {
       setForm((prev) => ({ ...prev, [key]: value }))
@@ -207,6 +218,14 @@ export function ProjectSubmissionForm({
     },
     [],
   )
+
+  function updateSeekingSkills(skills: string[]) {
+    update('seekingSkills', skills)
+  }
+  function toggleShowSeekingSkills(checked: boolean) {
+    setShowSeekingSkills(checked)
+    if (!checked) updateSeekingSkills([])
+  }
 
   const handleSaveDraft = useCallback(async () => {
     if (!form.name.trim()) {
@@ -626,17 +645,27 @@ export function ProjectSubmissionForm({
             />
           </FormField>
         ) : null}
-        <FormField
-          label="正在寻找的角色"
-          htmlFor="seekingSkills"
-          hint={`选填。最多 ${MAX_SEEKING_SKILLS} 个技能标签，便于与广场上相关能力的人对接。`}
+        <CheckboxInput
+          id="seekingSkillsToggle"
+          name="seekingSkillsToggle"
+          checked={showSeekingSkills}
+          onChange={toggleShowSeekingSkills}
         >
-          <SeekingSkillsWall
-            selected={form.seekingSkills}
-            onChange={(skills) => update('seekingSkills', skills)}
+          正在寻找的角色
+        </CheckboxInput>
+        {showSeekingSkills ? (
+          <FormField
+            label="想找的具体技能"
+            htmlFor="seekingSkills"
+            hint={`选填。最多 ${MAX_SEEKING_SKILLS} 个技能标签，便于与广场上相关能力的人对接。`}
             error={errors.seekingSkills}
-          />
-        </FormField>
+          >
+            <SeekingSkillsWall
+              selected={form.seekingSkills}
+              onChange={updateSeekingSkills}
+            />
+          </FormField>
+        ) : null}
       </FormSection>
 
       <FormSection index={6} title="联系方式">

@@ -35,26 +35,27 @@ describe('TalentEditor choices', () => {
     const seeking = screen.getByRole('group', { name: /希望一起做什么/ })
     expect(within(skills).getAllByText('产品')).toHaveLength(1)
     expect(within(skills).getAllByText('设计')).toHaveLength(1)
-    expect(within(skills).getAllByText('开发')).toHaveLength(1)
-    expect(within(skills).getAllByText('增长/内容')).toHaveLength(1)
+    expect(within(skills).getAllByText('增长')).toHaveLength(1)
     expect(within(skills).getAllByText('运营')).toHaveLength(1)
-    expect(within(skills).getAllByText('数据')).toHaveLength(1)
-    expect(within(skills).getAllByText('其他')).toHaveLength(1)
+    expect(within(skills).getAllByText('开发')).toHaveLength(1)
+    expect(within(skills).getAllByText('数据')).toHaveLength(2)
+    expect(within(skills).getAllByText('商务/职能')).toHaveLength(1)
 
-    const roleChoices = ['产品', '设计', '开发']
-    for (const role of roleChoices) await user.click(screen.getByRole('button', { name: role }))
-    expect(screen.getByRole('button', { name: '运营' })).toBeDisabled()
-    await user.click(screen.getByRole('button', { name: '开发' }))
-    expect(screen.getByRole('button', { name: '运营' })).toBeEnabled()
+    const roles = screen.getByRole('group', { name: /方向（至少 1 个）/ })
+    const roleChoices = ['产品', '开发', '数据']
+    for (const role of roleChoices) await user.click(within(roles).getByRole('button', { name: role }))
+    expect(within(roles).getByRole('button', { name: '商务/职能' })).toBeDisabled()
+    await user.click(within(roles).getByRole('button', { name: '开发' }))
+    expect(within(roles).getByRole('button', { name: '商务/职能' })).toBeEnabled()
 
-    const skillChoices = ['产品策略', '需求分析', '用户研究', '产品设计', '原型设计', '项目管理', 'UI 设计', 'UX 设计', '交互设计', '视觉设计']
+    const skillChoices = ['产品策略', '需求分析', '用户研究', '项目管理', 'UI', 'UX', '视觉', '品牌', '动效', '增长策略']
     for (const skill of skillChoices) await user.click(within(skills).getByRole('button', { name: skill }))
-    expect(within(skills).getByRole('button', { name: '品牌设计' })).toBeDisabled()
+    expect(within(skills).getByRole('button', { name: '内容策划' })).toBeDisabled()
     expect(within(skills).getByText('已选 10 / 10')).toBeInTheDocument()
 
-    const seekingChoices = ['产品策略', '需求分析', '用户研究', '产品设计', '原型设计']
+    const seekingChoices = ['产品策略', '需求分析', '用户研究', 'UI', 'UX']
     for (const skill of seekingChoices) await user.click(within(seeking).getByRole('button', { name: skill }))
-    expect(within(seeking).getByRole('button', { name: '项目管理' })).toBeDisabled()
+    expect(within(seeking).getByRole('button', { name: '视觉' })).toBeDisabled()
     expect(within(seeking).getByText('已选 5 / 5')).toBeInTheDocument()
   })
 })

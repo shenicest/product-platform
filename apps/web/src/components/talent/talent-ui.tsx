@@ -9,7 +9,8 @@ import {
   COLLABORATION_DURATIONS,
   CONNECTION_PURPOSES,
   TALENT_ROLES,
-  TALENT_SKILLS,
+  TALENT_SKILL_GROUPS,
+  skillLabel,
   TalentProfileStatus,
 } from "@shenicest/shared";
 import { useAuth } from "@/components/auth-provider";
@@ -41,25 +42,19 @@ const empty: TalentBody = {
   domains: [],
   durations: [],
 };
-const TALENT_SKILL_GROUPS = [
-  { direction: "产品", skills: TALENT_SKILLS.slice(0, 6) },
-  { direction: "设计", skills: TALENT_SKILLS.slice(6, 12) },
-  { direction: "开发", skills: TALENT_SKILLS.slice(12, 20) },
-  { direction: "增长/内容", skills: TALENT_SKILLS.slice(20, 26) },
-  { direction: "运营", skills: TALENT_SKILLS.slice(26, 31) },
-  { direction: "数据", skills: TALENT_SKILLS.slice(31, 35) },
-  { direction: "其他", skills: TALENT_SKILLS.slice(35) },
-] as const;
+const identity = (value: string) => value;
 function Chips({
   values,
   selected,
   onChange,
   max,
+  label = identity,
 }: {
   values: readonly string[];
   selected: string[];
   onChange: (value: string[]) => void;
   max: number;
+  label?: (value: string) => string;
 }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -81,7 +76,7 @@ function Chips({
             }
             className={`chip-hard ${isSelected ? "chip-active" : ""} disabled:cursor-not-allowed`}
           >
-            {value}
+            {label(value)}
           </button>
         );
       })}
@@ -108,10 +103,11 @@ function SkillGroups({
             {group.direction}
           </span>
           <Chips
-            values={group.skills}
+            values={[...group.skills]}
             selected={selected}
             onChange={onChange}
             max={max}
+            label={skillLabel}
           />
         </div>
       ))}
@@ -144,7 +140,7 @@ function ProfileCard({ profile }: { profile: TalentProfile }) {
       <div className="mt-6 flex flex-wrap gap-2">
         {profile.skills.slice(0, 4).map((skill) => (
           <span className="chip-hard" key={skill}>
-            {skill}
+            {skillLabel(skill)}
           </span>
         ))}
       </div>
@@ -390,7 +386,7 @@ export function TalentDetail({
           <div className="mt-10 flex flex-wrap gap-2">
             {profile.skills.map((skill) => (
               <span className="chip-hard" key={skill}>
-                {skill}
+                {skillLabel(skill)}
               </span>
             ))}
           </div>

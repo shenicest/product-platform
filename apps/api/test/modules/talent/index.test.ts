@@ -26,7 +26,7 @@ function profile(overrides: Record<string, unknown> = {}) {
     bio: '擅长从用户研究到产品交付，希望与认真解决真实问题的团队长期合作。',
     city: '上海',
     roles: ['开发'],
-    skills: ['前端开发', '后端开发', '全栈开发'],
+    skills: ['frontend', 'backend', 'fullstack'],
     seekingSkills: [],
     domains: ['效率工具'],
     durations: ['长期合作'],
@@ -96,12 +96,12 @@ describe('Talent Plaza API', () => {
   it('validates and deduplicates the confirmed profile fields', async () => {
     const owner = user()
     expect((await publish(owner, profile({ headline: '短' }))).status).toBe(422)
-    expect((await publish(owner, profile({ skills: ['前端开发', '后端开发'] }))).status).toBe(400)
+    expect((await publish(owner, profile({ skills: ['frontend', 'backend'] }))).status).toBe(400)
     const invalidAfterDedupe = await db.select().from(talentProfiles).where(eq(talentProfiles.userId, owner))
     expect(invalidAfterDedupe).toHaveLength(0)
-    const valid = await publish(owner, profile({ skills: ['前端开发', '前端开发', '后端开发', '全栈开发'], seekingSkills: [] }))
+    const valid = await publish(owner, profile({ skills: ['frontend', 'frontend', 'backend', 'fullstack'], seekingSkills: [] }))
     expect(valid.status).toBe(200)
-    expect((await valid.json()).skills).toEqual(['前端开发', '后端开发', '全栈开发'])
+    expect((await valid.json()).skills).toEqual(['frontend', 'backend', 'fullstack'])
   })
 
   it('normalizes contacts and enforces the fixed purpose and message contract', async () => {
@@ -121,14 +121,14 @@ describe('Talent Plaza API', () => {
   it('filters before pagination, reports filtered total, supports new/active, searches headline, skills, nickname, and Live project name, and omits match', async () => {
     const first = user(); const second = user(); const unrelated = user()
     await sharedUser(first, '昵称检索目标')
-    await publish(first, profile({ headline: '列表检索甲', skills: ['前端开发', '后端开发', '全栈开发'] }))
-    await publish(second, profile({ headline: '列表检索乙', skills: ['前端开发', 'AI 开发', '数据开发'] }))
-    await publish(unrelated, profile({ headline: '无关档案', skills: ['产品策略', '需求分析', '用户研究'] }))
+    await publish(first, profile({ headline: '列表检索甲', skills: ['frontend', 'backend', 'fullstack'] }))
+    await publish(second, profile({ headline: '列表检索乙', skills: ['frontend', 'ai', 'data'] }))
+    await publish(unrelated, profile({ headline: '无关档案', skills: ['productStrategy', 'needsAnalysis', 'userResearch'] }))
     const [created] = await db.insert(projects).values({ userId: second, status: ProjectStatus.Live, name: '项目名称检索目标' })
     projectIds.push(created.insertId)
     await db.update(talentProfiles).set({ publishedAt: new Date('2024-01-01'), updatedAt: new Date('2024-01-03') }).where(eq(talentProfiles.userId, first))
     await db.update(talentProfiles).set({ publishedAt: new Date('2024-01-02'), updatedAt: new Date('2024-01-02') }).where(eq(talentProfiles.userId, second))
-    const page = await (await request('/talents/?q=%E5%88%97%E8%A1%A8%E6%A3%80%E7%B4%A2&skills=%E5%89%8D%E7%AB%AF%E5%BC%80%E5%8F%91&limit=1&offset=1')).json()
+    const page = await (await request('/talents/?q=%E5%88%97%E8%A1%A8%E6%A3%80%E7%B4%A2&skills=%E5%89%8D%E7%AB%AF&limit=1&offset=1')).json()
     expect(page.total).toBe(2)
     expect(page.data).toHaveLength(1)
     expect(page.data[0]).not.toHaveProperty('match')

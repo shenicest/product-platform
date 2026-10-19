@@ -12,6 +12,8 @@ import {
   ProjectStatus,
   TALENT_ROLES,
   TALENT_SKILLS,
+  skillKey,
+  skillLabel,
   TalentProfileStatus,
 } from '@shenicest/shared'
 import type { AcceptBody, ConnectionBody, TalentListQuery, TalentProfileBody } from './model'
@@ -200,9 +202,11 @@ export class TalentService {
     const all = await this.db.select().from(talentProfiles).where(eq(talentProfiles.status, TalentProfileStatus.Published))
     const cards = await Promise.all(all.map(async (profile) => ({ profile, view: await this.publicProfile(profile, undefined, false) })))
     const needle = query.q?.trim().toLowerCase()
-    const requestedSkills = query.skills?.split(',').filter(Boolean) ?? []
+    // The skills filter accepts display labels (free-text input); keys are
+    // accepted too so API consumers that already know the enum keys also work.
+    const requestedSkills = query.skills?.split(',').filter(Boolean).map(skillKey) ?? []
     const filtered = cards.filter(({ profile, view }) => {
-      const searchable = [profile.headline, profile.bio, ...profile.skills, view.founder?.nickname ?? '', ...view.projects.map((project) => project.name)].join('\n').toLowerCase()
+      const searchable = [profile.headline, profile.bio, ...profile.skills.map(skillLabel), view.founder?.nickname ?? '', ...view.projects.map((project) => project.name)].join('\n').toLowerCase()
       return (!needle || searchable.includes(needle))
         && (!query.role || profile.roles.includes(query.role))
         && (!query.duration || profile.durations.includes(query.duration))

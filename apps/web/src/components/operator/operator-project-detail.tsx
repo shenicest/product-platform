@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ProjectStatus } from '@shenicest/shared'
+import { ProjectStatus, skillLabel } from '@shenicest/shared'
 import { cn } from '@/lib/utils'
 import { tractionMetrics } from '@/lib/traction'
 import { ProjectBadges } from '@/components/project-badges'
@@ -214,7 +214,7 @@ export function OperatorProjectDetail({
           {project.seekingSkills?.length ? (
             <div>
               <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">寻求帮助</dt>
-              <dd className="mt-1">{project.seekingSkills.join('、')}</dd>
+              <dd className="mt-1">{project.seekingSkills.map((skill) => skillLabel(skill)).join('、')}</dd>
             </div>
           ) : null}
           {project.isOpenForBeta !== null ? (

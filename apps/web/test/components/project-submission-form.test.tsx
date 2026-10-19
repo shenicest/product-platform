@@ -151,21 +151,26 @@ describe('ProjectSubmissionForm', () => {
     expect(body.seekingSkills).toEqual([])
   })
 
-  it('caps the seeking-skills wall at 5 tags', async () => {
+  it('reveals the seeking-skills wall via the checkbox, caps at 5 tags, and clears on untick', async () => {
     server.use(http.get('/api/me', () => HttpResponse.json(ME_WITH_NICKNAME)))
     const user = userEvent.setup()
     renderForm()
     await waitFor(() => expect(screen.getByLabelText(/^联系人姓名/)).toBeInTheDocument())
-    for (const name of ['产品策略', 'UI 设计', '前端开发', '增长策略', '社区运营']) {
+    expect(screen.queryByRole('button', { name: '产品策略' })).toBeNull()
+    await user.click(screen.getByRole('checkbox', { name: '正在寻找的角色' }))
+    for (const name of ['产品策略', 'UI', '前端', '增长策略', '社区运营']) {
       await user.click(screen.getByRole('button', { name }))
     }
-    await user.click(screen.getByRole('button', { name: '数据分析' }))
-    expect(screen.getByRole('button', { name: '数据分析' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '内容策划' })).toBeDisabled()
     expect(screen.getByRole('button', { name: '产品策略' })).toHaveAttribute('aria-pressed', 'true')
 
     await user.click(screen.getByRole('button', { name: '产品策略' }))
-    expect(screen.getByRole('button', { name: '数据分析' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: '内容策划' })).toBeEnabled()
     expect(screen.getByRole('button', { name: '产品策略' })).toHaveAttribute('aria-pressed', 'false')
+
+    await user.click(screen.getByRole('button', { name: '内容策划' }))
+    await user.click(screen.getByRole('checkbox', { name: '正在寻找的角色' }))
+    expect(screen.queryByRole('button', { name: '内容策划' })).toBeNull()
   })
 
   it('accepts wechat as the only contact channel', async () => {
