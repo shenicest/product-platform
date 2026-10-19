@@ -95,35 +95,55 @@ export const ConnectionRequestStatus = {
 } as const
 export type ConnectionRequestStatus = (typeof ConnectionRequestStatus)[keyof typeof ConnectionRequestStatus]
 
-export const TALENT_SKILLS = [
-  '产品策略', '需求分析', '用户研究', '产品设计', '原型设计', '项目管理',
-  'UI 设计', 'UX 设计', '交互设计', '视觉设计', '品牌设计', '动效设计',
-  '前端开发', '后端开发', '全栈开发', '移动端开发', 'AI 开发', '数据开发', 'DevOps', '硬件开发',
-  '增长策略', '内容策划', '内容创作', '社交媒体', 'SEO', '品牌传播',
-  '用户运营', '社区运营', '活动运营', '商业运营', '客户成功',
-  '数据分析', '数据可视化', '实验设计', '商业分析', '商业策略', '融资', '法务', '财务', '行业研究',
-] as const
-export type TalentSkill = (typeof TALENT_SKILLS)[number]
+// Skills are stored as enum keys (skills / seeking_skills JSON columns); the
+// labels below are display-only so renames never touch stored data.
+export const TALENT_SKILL_LABELS = {
+  productStrategy: '产品策略', needsAnalysis: '需求分析', userResearch: '用户研究', projectManagement: '项目管理',
+  ui: 'UI', ux: 'UX', visual: '视觉', branding: '品牌', motion: '动效',
+  growthStrategy: '增长策略', contentPlanning: '内容策划', contentCreation: '内容创作', socialMedia: '社媒运营', seo: 'SEO', brandCommunication: '品牌传播',
+  userOperations: '用户运营', communityOperations: '社区运营', eventOperations: '活动运营', customerSuccess: '客户成功',
+  frontend: '前端', backend: '后端', fullstack: '全栈', mobile: '移动端', ai: 'AI', robotics: '机器人', data: '数据', hardware: '硬件',
+  dataAnalysis: '数据分析', businessAnalysis: '商业分析',
+  businessStrategy: '商业策略', fundraising: '融资', legal: '法务', finance: '财务', industryResearch: '行业研究',
+} as const
+export type TalentSkill = keyof typeof TALENT_SKILL_LABELS
+export type TalentSkillLabel = (typeof TALENT_SKILL_LABELS)[TalentSkill]
+
+// Catalog keys, in display order (mirrors TALENT_SKILL_GROUPS below — keep
+// both in sync when adding a skill).
+export const TALENT_SKILLS = Object.keys(TALENT_SKILL_LABELS) as TalentSkill[]
+
+// Display a raw stored value: keys map to their label; anything else (legacy
+// label data, freeform values) renders as-is instead of breaking the UI.
+export function skillLabel(value: string): TalentSkillLabel | string {
+  return TALENT_SKILL_LABELS[value as TalentSkill] ?? value
+}
+
+// Reverse lookup for free-text search inputs that accept label text.
+export function skillKey(value: string): TalentSkill | string {
+  if (value in TALENT_SKILL_LABELS) return value as TalentSkill
+  const byLabel = (Object.keys(TALENT_SKILL_LABELS) as TalentSkill[]).find((key) => TALENT_SKILL_LABELS[key] === value)
+  return byLabel ?? value
+}
 
 // Cap on how many skills a seekingSkills array may carry (projects) and the
 // shared wall enforces in the UI. Kept next to the vocabulary it bounds.
 export const MAX_SEEKING_SKILLS = 5
 
-// Skill wall grouped by top-level direction. TALENT_SKILLS stays the single
-// source of truth for the labels; the grouping below slices it positionally so
-// adding a skill to TALENT_SKILLS does not silently orphan a group.
-export const TALENT_SKILL_GROUPS = [
-  { direction: '产品', skills: TALENT_SKILLS.slice(0, 6) },
-  { direction: '设计', skills: TALENT_SKILLS.slice(6, 12) },
-  { direction: '开发', skills: TALENT_SKILLS.slice(12, 20) },
-  { direction: '增长/内容', skills: TALENT_SKILLS.slice(20, 26) },
-  { direction: '运营', skills: TALENT_SKILLS.slice(26, 31) },
-  { direction: '数据', skills: TALENT_SKILLS.slice(31, 35) },
-  { direction: '其他', skills: TALENT_SKILLS.slice(35) },
-] as const
-export type TalentSkillGroup = (typeof TALENT_SKILL_GROUPS)[number]
+export type TalentSkillGroup = { direction: string; skills: readonly TalentSkill[] }
 
-export const TALENT_ROLES = ['产品', '设计', '开发', '增长/内容', '运营', '数据', '其他'] as const
+// Skill wall grouped by top-level direction, in display order.
+export const TALENT_SKILL_GROUPS: readonly TalentSkillGroup[] = [
+  { direction: '产品', skills: ['productStrategy', 'needsAnalysis', 'userResearch', 'projectManagement'] },
+  { direction: '设计', skills: ['ui', 'ux', 'visual', 'branding', 'motion'] },
+  { direction: '增长', skills: ['growthStrategy', 'contentPlanning', 'contentCreation', 'socialMedia', 'seo', 'brandCommunication'] },
+  { direction: '运营', skills: ['userOperations', 'communityOperations', 'eventOperations', 'customerSuccess'] },
+  { direction: '开发', skills: ['frontend', 'backend', 'fullstack', 'mobile', 'ai', 'robotics', 'data', 'hardware'] },
+  { direction: '数据', skills: ['dataAnalysis', 'businessAnalysis'] },
+  { direction: '商务/职能', skills: ['businessStrategy', 'fundraising', 'legal', 'finance', 'industryResearch'] },
+]
+
+export const TALENT_ROLES = ['产品', '设计', '增长', '运营', '开发', '数据', '商务/职能'] as const
 export type TalentRole = (typeof TALENT_ROLES)[number]
 
 export const COLLABORATION_DURATIONS = ['一次咨询', '短期项目', '长期合作'] as const
