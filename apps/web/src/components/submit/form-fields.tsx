@@ -43,6 +43,8 @@ export function TextInput({
   type = 'text',
   error,
   maxLength,
+  min,
+  max,
 }: {
   id: string
   name: string
@@ -53,6 +55,8 @@ export function TextInput({
   type?: string
   error?: string
   maxLength?: number
+  min?: number
+  max?: number
 }) {
   return (
     <input
@@ -64,6 +68,8 @@ export function TextInput({
       placeholder={placeholder}
       required={required}
       maxLength={maxLength}
+      min={type === 'number' ? min : undefined}
+      max={type === 'number' ? max : undefined}
       className={cn(fieldBase, error && 'border-destructive focus:border-destructive')}
     />
   )

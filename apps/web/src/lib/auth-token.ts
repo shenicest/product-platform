@@ -5,6 +5,8 @@ export interface AuthUser {
   email: string | null
   role: string
   roles: number[]
+  nickname: string | null
+  avatarUrl: string | null
 }
 
 export async function fetchCurrentUser(): Promise<AuthUser | null> {
@@ -13,7 +15,7 @@ export async function fetchCurrentUser(): Promise<AuthUser | null> {
     if (!res.ok) return null
     const data = (await res.json()) as { user?: AuthUser }
     if (!data.user) return null
-    return { ...data.user, roles: data.user.roles ?? [] }
+    return { ...data.user, roles: data.user.roles ?? [], nickname: data.user.nickname ?? null, avatarUrl: data.user.avatarUrl ?? null }
   } catch {
     return null
   }

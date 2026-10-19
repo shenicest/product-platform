@@ -1,28 +1,33 @@
 import { describe, expect, it } from 'vitest'
-import { validateProjectForm } from '@/lib/project-form-validation'
+import { TALENT_SKILLS } from '@shenicest/shared'
+import { validateProjectForm, type ProjectFormValues } from '@/lib/project-form-validation'
 
-const validForm = {
+const validForm: ProjectFormValues = {
   name: '测试项目',
-  tagline: '这是一个满足长度要求的一句话介绍',
+  tagline: '一句话介绍示例',
+  teamName: '',
   categories: ['效率工具'],
-  stage: '0',
-  description: '这是一段完整的项目介绍，用于说明项目是什么、解决什么问题以及当前进度。为了满足提交要求，这段内容需要达到一百个字符以上，并包含足够清晰的信息。项目已经完成基础原型和首轮用户访谈，接下来会继续验证核心需求、完善产品功能，并根据真实反馈持续改进使用体验。',
+  stage: '1',
+  problemStatement:
+    '自由职业者需要同时服务多个客户，还要自己处理合同、收款与报税琐事，过程分散且容易出错。',
+  nextSteps: '继续收集反馈并完善核心流程，计划两周内上线预约功能。',
   coverUrl: 'https://example.com/cover.png',
   demoImages: [],
   demoVideoUrl: '',
   demoLink: 'https://example.com/demo',
-  targetUsers: '主要面向希望提升日常工作效率的个人用户和小型团队。',
-  userProblem: '用户目前需要在多个工具之间切换，信息分散且协作效率较低。',
-  progress: '目前已经完成可使用的产品原型，并邀请首批用户参与测试。',
-  nextSteps: '继续收集反馈并完善核心流程。',
-  messageToUsers: '欢迎体验并告诉我们你的真实想法。',
+  differentiation: '与现有方案相比更轻量。',
+  businessModel: '',
+  progress: '',
+  userCount: '',
+  monthlyRevenue: '',
+  retentionRate: '',
+  seekingSkills: [],
   isOpenForBeta: false,
   betaDescription: '',
   contactName: '测试人员',
-  contactPhone: '13800138000',
+  contactPhone: '',
   contactEmail: 'test@example.com',
-  contactWechat: '',
-  teamName: '',
+  contactWechat: 'shenicest-fan',
 }
 
 describe('validateProjectForm', () => {
@@ -30,23 +35,112 @@ describe('validateProjectForm', () => {
     expect(validateProjectForm(validForm)).toEqual({})
   })
 
-  it('returns field-specific length and format errors', () => {
+  it('rejects when a required field is empty', () => {
+    const errors = validateProjectForm({
+      ...validForm,
+      name: '',
+      tagline: '',
+      categories: [],
+      stage: '',
+      problemStatement: '',
+      nextSteps: '',
+      coverUrl: '',
+      contactName: '',
+    })
+    for (const field of ['name', 'tagline', 'categories', 'stage', 'problemStatement', 'nextSteps', 'coverUrl', 'contactName'] as const) {
+      expect(errors[field]).toBe('请补全必填信息')
+    }
+  })
+
+  it('applies new length rules (tagline 4-50, problemStatement 30-300, nextSteps <=300)', () => {
+    const tooShortProblem = '问题太短'
     const errors = validateProjectForm({
       ...validForm,
       tagline: '太短',
-      description: '不足一百字',
-      contactPhone: '12345',
-      demoLink: 'not-a-url',
+      problemStatement: tooShortProblem,
+      differentiation: '很'.repeat(101),
+      nextSteps: '很'.repeat(301),
+      businessModel: '很'.repeat(201),
+      progress: '很'.repeat(301),
     })
+    expect(errors.tagline).toBe('一句话介绍需为4-50个字符')
+    expect(errors.problemStatement).toBe('为谁解决什么问题需为30-300字')
+    expect(errors.differentiation).toBe('差异化最多100字')
+    expect(errors.nextSteps).toBe('下一步计划最多300字')
+    expect(errors.businessModel).toBe('商业模式最多200字')
+    expect(errors.progress).toBe('当前进展最多300字')
 
-    expect(errors.tagline).toBe('一句话介绍需为10-40个字符')
-    expect(errors.description).toBe('项目介绍至少100字，至多2000字')
-    expect(errors.contactPhone).toBe('请输入正确的手机号')
-    expect(errors.demoLink).toBe('请输入正确的链接')
+    const tooLongTagline = validateProjectForm({ ...validForm, tagline: '很'.repeat(51) })
+    expect(tooLongTagline.tagline).toBe('一句话介绍需为4-50个字符')
+    const tooLongProblem = validateProjectForm({ ...validForm, problemStatement: '很'.repeat(301) })
+    expect(tooLongProblem.problemStatement).toBe('为谁解决什么问题需为30-300字')
+  })
+
+  it('keeps the name rule (2-30 han characters or 2-60 characters)', () => {
+    expect(validateProjectForm({ ...validForm, name: '名' }).name).toBe('项目名称长度不符合要求')
+    expect(validateProjectForm({ ...validForm, name: '很'.repeat(31) }).name).toBe('项目名称长度不符合要求')
+    const ok = validateProjectForm({ ...validForm, name: 'ab' })
+    expect(ok.name).toBeUndefined()
+  })
+
+  it('requires at least one contact channel and maps it to contactPhone', () => {
+    const errors = validateProjectForm({
+      ...validForm,
+      contactPhone: '',
+      contactEmail: '',
+      contactWechat: '',
+    })
+    expect(errors.contactPhone).toBe('请至少填写一种联系方式（电话/邮箱/微信）')
+  })
+
+  it('validates email format only when non-empty; accepts any phone value', () => {
+    const badEmail = validateProjectForm({ ...validForm, contactEmail: 'not-an-email' })
+    expect(badEmail.contactEmail).toBe('请输入正确的邮箱')
+
+    const anyPhone = validateProjectForm({ ...validForm, contactPhone: '+852 9123 4567' })
+    expect(anyPhone.contactPhone).toBeUndefined()
   })
 
   it('requires beta details only when beta is open', () => {
     expect(validateProjectForm({ ...validForm, isOpenForBeta: true }).betaDescription)
       .toBe('请补全必填信息')
+  })
+
+  it('validates http(s) URLs and demoImages aggregate rules', () => {
+    const errors = validateProjectForm({
+      ...validForm,
+      coverUrl: 'ftp://example.com/cover.png',
+      demoVideoUrl: 'not-a-url',
+      demoLink: 'javascript:alert(1)',
+      demoImages: ['https://example.com/a.png', 'broken'],
+    })
+    expect(errors.coverUrl).toBe('请输入正确的链接')
+    expect(errors.demoVideoUrl).toBe('请输入正确的链接')
+    expect(errors.demoLink).toBe('请输入正确的链接')
+    expect(errors.demoImages).toBe('Demo图片最多上传5张，且地址必须有效')
+  })
+
+  it('rejects traction values that are not unsigned integers (retentionRate 0-100)', () => {
+    const errors = validateProjectForm({
+      ...validForm,
+      retentionRate: '101',
+    })
+    expect(errors.retentionRate).toBe('请输入 0-100 的整数')
+
+    const countErrors = validateProjectForm({
+      ...validForm,
+      userCount: '-3',
+      monthlyRevenue: '1.5',
+    })
+    expect(countErrors.userCount).toBe('请输入非负整数')
+    expect(countErrors.monthlyRevenue).toBe('请输入非负整数')
+  })
+
+  it('rejects unknown seeking skills and caps the wall at 5', () => {
+    const capped = validateProjectForm({ ...validForm, seekingSkills: [...TALENT_SKILLS, TALENT_SKILLS[0]] as string[] })
+    expect(capped.seekingSkills).toBe('最多选择 5 个技能标签')
+
+    const unknown = validateProjectForm({ ...validForm, seekingSkills: ['神秘技能'] })
+    expect(unknown.seekingSkills).toBe('包含无效的技能标签')
   })
 })

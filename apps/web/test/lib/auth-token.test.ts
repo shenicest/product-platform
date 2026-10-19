@@ -8,7 +8,7 @@ describe('fetchCurrentUser', () => {
     server.use(
       http.get('/api/me', () =>
         HttpResponse.json({
-          user: { user_id: 1, email: 'a@b.com', role: 'operator', roles: [1] },
+          user: { user_id: 1, email: 'a@b.com', role: 'operator', roles: [1], nickname: '主理人', avatarUrl: null },
         })
       )
     )
@@ -18,10 +18,12 @@ describe('fetchCurrentUser', () => {
       email: 'a@b.com',
       role: 'operator',
       roles: [1],
+      nickname: '主理人',
+      avatarUrl: null,
     })
   })
 
-  it('defaults roles to [] when the response omits it', async () => {
+  it('returns the user with profile fields defaulted when the response omits them', async () => {
     server.use(
       http.get('/api/me', () =>
         HttpResponse.json({
@@ -35,6 +37,8 @@ describe('fetchCurrentUser', () => {
       email: null,
       role: 'founder',
       roles: [],
+      nickname: null,
+      avatarUrl: null,
     })
   })
 

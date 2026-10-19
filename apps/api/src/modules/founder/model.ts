@@ -1,6 +1,7 @@
 import { t } from 'elysia'
 import { SelectAuditRecord, SelectProject, SelectProjectEditProposal } from '../../db/schema'
 import { DomainError } from '../project/model'
+import { PublicProfile } from '../user/model'
 
 export const FounderProjectQuery = t.Object({
   status: t.Optional(t.Numeric({ description: 'Filter by status: 0=Draft, 1=PendingReview, 2=RevisionRequired, 3=Live, 4=Delisted, 5=Rejected' })),
@@ -32,6 +33,11 @@ export type StatsResponse = typeof StatsResponse.static
 
 export const AuditReasonResponse = t.Pick(SelectAuditRecord, ['action', 'reason', 'createdAt'])
 export type AuditReasonResponse = typeof AuditReasonResponse.static
+
+// Own public profile (from the shared users table). Both null when no row exists.
+// Used by the submission form to prefill contactName with the account nickname.
+export const ProfileResponse = PublicProfile
+export type ProfileResponse = typeof ProfileResponse.static
 
 export class AuditReasonNotFoundError extends DomainError {
   constructor(projectId: number) {

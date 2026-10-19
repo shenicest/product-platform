@@ -10,10 +10,12 @@ import {
   FounderProjectQuery,
   ProjectListResponse,
   ProposalListResponse,
+  ProfileResponse,
   StatsResponse,
 } from './model'
 import { ForbiddenError, ProjectIdParams, ProjectNotFoundError, type DomainError } from '../project/model'
 import { ErrorCode, ErrorMessage, ErrorResponse } from '../../common'
+import { userProfileService } from '../user'
 
 const founderService = new FounderService(db)
 
@@ -35,9 +37,25 @@ export const founderModule = new Elysia({ prefix: '/founder' })
     ProposalListResponse,
     StatsResponse,
     AuditReasonResponse,
+    ProfileResponse,
     ProjectIdParams,
   })
   .prefix('model', 'Founder.')
+  .get('/profile', async ({ user }) => {
+    return (await userProfileService.getPublicProfile(user.userId)) ?? { nickname: null, avatarUrl: null }
+  }, {
+    auth: true,
+    detail: {
+      summary: 'My public profile',
+      description: 'Returns the authenticated user\'s own public profile (nickname, avatarUrl) from the shared users table; both null when no row exists. Used to prefill the submission form. Requires authentication only.',
+      tags: ['Founder'],
+      operationId: 'founder.getProfile',
+    },
+    response: {
+      200: 'Founder.ProfileResponse',
+      401: ErrorResponse,
+    },
+  })
   .get('/projects', async ({ user, query }) => {
     return founderService.listProjects(user.userId, query)
   }, {

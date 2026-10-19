@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — 项目表单 v2：数据契约与后端
 
-**Status:** ready-for-agent
+**Status:** DONE. 6 板块表单重排完成（速览/故事/前景/展示/招募/联系）；validation v2（tagline 4-50、problemStatement 30-300 等）；VideoUploader 删除改 http(s) 链接输入；TALENT_SKILL_GROUPS 迁入 shared 供技能分组墙（≤5）；contactName 预填账号昵称（新增 API `GET /founder/profile` + `/api/me` 聚合 nickname/avatarUrl，仅新建时预填）；422 映射回字段；草稿/提交/退回回显流程不变。api 363/363、web 242/242、两端 typecheck、lint、build 全绿。
 
 - [ ] 表单重排为 6 板块：① 项目速览（name*、tagline*、categories*、stage* 五档下拉）② 项目故事（problemStatement* 30-300、differentiation ≤100）③ 进展与前景（nextSteps* ≤300、traction 三数字框、businessModel ≤200、progress ≤300）④ 展示资料（coverUrl*、demoImages ≤5、demoLink、视频链接输入）⑤ 招募与合作（Beta 勾选+betaDescription、seekingSkills 分组墙 ≤5）⑥ 联系方式（contactName* 预填账号昵称、三列联系方式至少一个）
 - [ ] tagline 规则改为 4-50 字符；problemStatement 30-300；其余长度按板块说明

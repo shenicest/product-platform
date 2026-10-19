@@ -3,7 +3,7 @@
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { CATEGORIES, ProjectStage } from '@shenicest/shared'
+import { CATEGORIES, MAX_SEEKING_SKILLS, ProjectStage, TALENT_SKILL_GROUPS } from '@shenicest/shared'
 import { useAuth } from '@/components/auth-provider'
 import {
   createProject,
@@ -17,7 +17,6 @@ import {
   type ProjectFormValues,
 } from '@/lib/project-form-validation'
 import { ImageUploader } from './image-uploader'
-import { VideoUploader } from './video-uploader'
 import {
   CheckboxInput,
   FormField,
@@ -35,16 +34,19 @@ const EMPTY_FORM: FormState = {
   teamName: '',
   categories: [],
   stage: '',
-  description: '',
+  problemStatement: '',
+  differentiation: '',
+  nextSteps: '',
+  userCount: '',
+  monthlyRevenue: '',
+  retentionRate: '',
+  businessModel: '',
+  progress: '',
   coverUrl: '',
   demoImages: [],
   demoVideoUrl: '',
   demoLink: '',
-  targetUsers: '',
-  userProblem: '',
-  progress: '',
-  nextSteps: '',
-  messageToUsers: '',
+  seekingSkills: [],
   isOpenForBeta: false,
   betaDescription: '',
   contactName: '',
@@ -55,30 +57,41 @@ const EMPTY_FORM: FormState = {
 
 type FormErrors = ProjectFormErrors
 
+function emptyToNullNumber(value: string): number | null {
+  return value === '' ? null : Number(value)
+}
+
 function toApiBody(form: FormState): Record<string, unknown> {
   return {
     ...form,
-    stage: form.stage === '' ? null : Number(form.stage),
+    stage: emptyToNullNumber(form.stage),
+    userCount: emptyToNullNumber(form.userCount),
+    monthlyRevenue: emptyToNullNumber(form.monthlyRevenue),
+    retentionRate: emptyToNullNumber(form.retentionRate),
   }
 }
 
 function fromProjectData(project: Record<string, unknown>): FormState {
+  const traction = (value: unknown) => (value === null || value === undefined ? '' : String(value))
   return {
     name: (project.name as string) ?? '',
     tagline: (project.tagline as string) ?? '',
     teamName: (project.teamName as string) ?? '',
     categories: (project.categories as string[]) ?? [],
     stage: project.stage !== null && project.stage !== undefined ? String(project.stage) : '',
-    description: (project.description as string) ?? '',
+    problemStatement: (project.problemStatement as string) ?? '',
+    differentiation: (project.differentiation as string) ?? '',
+    nextSteps: (project.nextSteps as string) ?? '',
+    userCount: traction(project.userCount),
+    monthlyRevenue: traction(project.monthlyRevenue),
+    retentionRate: traction(project.retentionRate),
+    businessModel: (project.businessModel as string) ?? '',
+    progress: (project.progress as string) ?? '',
     coverUrl: (project.coverUrl as string) ?? '',
     demoImages: Array.isArray(project.demoImages) ? (project.demoImages as string[]) : [],
     demoVideoUrl: (project.demoVideoUrl as string) ?? '',
     demoLink: (project.demoLink as string) ?? '',
-    targetUsers: (project.targetUsers as string) ?? '',
-    userProblem: (project.userProblem as string) ?? '',
-    progress: (project.progress as string) ?? '',
-    nextSteps: (project.nextSteps as string) ?? '',
-    messageToUsers: (project.messageToUsers as string) ?? '',
+    seekingSkills: Array.isArray(project.seekingSkills) ? (project.seekingSkills as string[]) : [],
     isOpenForBeta: (project.isOpenForBeta as boolean) ?? false,
     betaDescription: (project.betaDescription as string) ?? '',
     contactName: (project.contactName as string) ?? '',
@@ -88,10 +101,10 @@ function fromProjectData(project: Record<string, unknown>): FormState {
   }
 }
 
-function toggleCategory(current: string[], category: string): string[] {
-  return current.includes(category)
-    ? current.filter((c) => c !== category)
-    : [...current, category]
+function toggleValue(current: string[], value: string): string[] {
+  return current.includes(value)
+    ? current.filter((c) => c !== value)
+    : [...current, value]
 }
 
 const STAGE_OPTIONS = [
@@ -101,6 +114,51 @@ const STAGE_OPTIONS = [
   { value: String(ProjectStage.Launched), label: '已上线有用户' },
   { value: String(ProjectStage.Revenue), label: '有收入' },
 ]
+
+// Skill wall grouped by top-level direction (shared vocabulary), capped at MAX_SEEKING_SKILLS.
+function SeekingSkillsWall({
+  selected,
+  onChange,
+  error,
+}: {
+  selected: string[]
+  onChange: (skills: string[]) => void
+  error?: string
+}) {
+  const full = selected.length >= MAX_SEEKING_SKILLS
+  function toggle(skill: string) {
+    onChange(toggleValue(selected, skill))
+  }
+  return (
+    <div id="seekingSkills" tabIndex={-1} className="divide-y divide-border border-y border-border">
+      {TALENT_SKILL_GROUPS.map((group) => (
+        <div key={group.direction} className="grid gap-3 py-4 sm:grid-cols-[96px_1fr] sm:items-start">
+          <span className="pt-1 font-mono text-xs font-bold text-primary">{group.direction}</span>
+          <div className="flex flex-wrap gap-2">
+            {group.skills.map((skill) => {
+              const isSelected = selected.includes(skill)
+              return (
+                <button
+                  key={skill}
+                  type="button"
+                  aria-pressed={isSelected}
+                  disabled={!isSelected && full}
+                  onClick={() => toggle(skill)}
+                  className={`chip-hard cursor-pointer disabled:cursor-not-allowed ${
+                    isSelected ? 'chip-active' : ''
+                  }`}
+                >
+                  {skill}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      ))}
+      {error ? <p className="mt-1 font-mono text-[11px] text-destructive">{error}</p> : null}
+    </div>
+  )
+}
 
 function focusFirstError(errors: FormErrors) {
   const field = firstProjectFormError(errors)
@@ -116,7 +174,7 @@ export function ProjectSubmissionForm({
   initialData?: Record<string, unknown>
 }) {
   const router = useRouter()
-  const { isAuthenticated } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const initialForm = initialData ? fromProjectData(initialData) : EMPTY_FORM
   const [form, setForm] = useState<FormState>(initialForm)
   const [errors, setErrors] = useState<FormErrors>({})
@@ -125,6 +183,21 @@ export function ProjectSubmissionForm({
   const [submitting, setSubmitting] = useState(false)
   const [savedProjectId, setSavedProjectId] = useState<number | null>(projectId ?? null)
   const [submittedProjectId, setSubmittedProjectId] = useState<number | null>(null)
+
+  // contactName is prefilled from the account nickname only when creating a new
+  // project — an existing draft's value is never overwritten. The profile
+  // arrives async after mount, so the prefill adjusts state during render,
+  // guarded to run at most once and to keep whatever the Founder already typed.
+  const [prefilledNickname, setPrefilledNickname] = useState<string | null | undefined>(
+    initialData ? null : undefined,
+  )
+  const nickname = user?.nickname ?? null
+  if (prefilledNickname === undefined && nickname !== null) {
+    setPrefilledNickname(nickname)
+    if (nickname !== '') {
+      setForm((prev) => ({ ...prev, contactName: prev.contactName.trim() === '' ? nickname : prev.contactName }))
+    }
+  }
 
   const update = useCallback(
     <K extends keyof FormState>(key: K, value: FormState[K]) => {
@@ -263,7 +336,7 @@ export function ProjectSubmissionForm({
         </div>
       ) : null}
 
-      <FormSection index={1} title="基本信息">
+      <FormSection index={1} title="项目速览">
         <FormField label="项目名称" htmlFor="name" required error={errors.name}>
           <TextInput
             id="name"
@@ -276,19 +349,11 @@ export function ProjectSubmissionForm({
             error={errors.name}
           />
         </FormField>
-        <FormField label="一句话介绍" htmlFor="tagline" required error={errors.tagline}>
-          <TextInput
-            id="tagline"
-            name="tagline"
-            value={form.tagline}
-            onChange={(v) => update('tagline', v)}
-            placeholder="用一句话描述项目（10-40 个字符）"
-            required
-            maxLength={40}
-            error={errors.tagline}
-          />
-        </FormField>
-        <FormField label="团队名称" htmlFor="teamName">
+        <FormField
+          label="团队名称"
+          htmlFor="teamName"
+          hint="选填。个人项目可以留空，展示时优先使用创始人昵称。"
+        >
           <TextInput
             id="teamName"
             name="teamName"
@@ -297,16 +362,25 @@ export function ProjectSubmissionForm({
             placeholder="你的团队或公司名称"
           />
         </FormField>
-      </FormSection>
-
-      <FormSection index={2} title="产品分类">
+        <FormField label="一句话介绍" htmlFor="tagline" required error={errors.tagline}>
+          <TextInput
+            id="tagline"
+            name="tagline"
+            value={form.tagline}
+            onChange={(v) => update('tagline', v)}
+            placeholder="用一句话描述项目（4-50 个字符）"
+            required
+            maxLength={50}
+            error={errors.tagline}
+          />
+        </FormField>
         <FormField label="分类" htmlFor="categories" required error={errors.categories}>
           <div id="categories" tabIndex={-1} className="flex flex-wrap gap-2">
             {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 type="button"
-                onClick={() => update('categories', toggleCategory(form.categories, cat))}
+                onClick={() => update('categories', toggleValue(form.categories, cat))}
                 aria-pressed={form.categories.includes(cat)}
                 className={`chip-hard cursor-pointer transition-colors ${
                   form.categories.includes(cat) ? 'chip-active' : 'hover:border-primary/60'
@@ -331,20 +405,149 @@ export function ProjectSubmissionForm({
         </FormField>
       </FormSection>
 
-      <FormSection index={3} title="产品介绍">
-        <FormField label="详细描述" htmlFor="description" required error={errors.description}>
+      <FormSection index={2} title="项目故事">
+        <FormField
+          label="为谁解决什么问题"
+          htmlFor="problemStatement"
+          required
+          error={errors.problemStatement}
+          hint="谁在用你的产品？他们的什么问题被解决了？（30-300 字）"
+        >
           <TextArea
-            id="description"
-            name="description"
-            value={form.description}
-            onChange={(v) => update('description', v)}
-            placeholder="详细介绍项目是什么、做什么（100-2000 字）"
-            rows={6}
-            maxLength={2000}
+            id="problemStatement"
+            name="problemStatement"
+            value={form.problemStatement}
+            onChange={(v) => update('problemStatement', v)}
+            placeholder="描述你的目标用户与解决的问题，例如「自由职业者需要自己处理合同、收款与报税……」"
+            rows={4}
+            maxLength={300}
             required
-            error={errors.description}
+            error={errors.problemStatement}
           />
         </FormField>
+        <FormField
+          label="差异化"
+          htmlFor="differentiation"
+          hint="选填。和现有方案有什么不同？（≤100 字）"
+          error={errors.differentiation}
+        >
+          <TextInput
+            id="differentiation"
+            name="differentiation"
+            value={form.differentiation}
+            onChange={(v) => update('differentiation', v)}
+            placeholder="一句话说明与现有方案的差异"
+            maxLength={100}
+            error={errors.differentiation}
+          />
+        </FormField>
+      </FormSection>
+
+      <FormSection index={3} title="进展与前景">
+        <FormField
+          label="下一步计划"
+          htmlFor="nextSteps"
+          required
+          error={errors.nextSteps}
+          hint="接下来准备做什么？（≤300 字）"
+        >
+          <TextArea
+            id="nextSteps"
+            name="nextSteps"
+            value={form.nextSteps}
+            onChange={(v) => update('nextSteps', v)}
+            placeholder="描述项目接下来的计划"
+            rows={3}
+            maxLength={300}
+            required
+            error={errors.nextSteps}
+          />
+        </FormField>
+        <FormField
+          label="数据亮点"
+          htmlFor="userCount"
+          hint="选填。已有数据可以填写；早期项目可以全部留空。"
+        >
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <FieldLabelSub htmlFor="userCount">用户量</FieldLabelSub>
+              <TextInput
+                id="userCount"
+                name="userCount"
+                value={form.userCount}
+                onChange={(v) => update('userCount', v)}
+                placeholder="人数"
+                type="number"
+                min={0}
+                error={errors.userCount}
+              />
+            </div>
+            <div>
+              <FieldLabelSub htmlFor="monthlyRevenue">月收入</FieldLabelSub>
+              <TextInput
+                id="monthlyRevenue"
+                name="monthlyRevenue"
+                value={form.monthlyRevenue}
+                onChange={(v) => update('monthlyRevenue', v)}
+                placeholder="元/月"
+                type="number"
+                min={0}
+                error={errors.monthlyRevenue}
+              />
+            </div>
+            <div>
+              <FieldLabelSub htmlFor="retentionRate">30 日留存</FieldLabelSub>
+              <TextInput
+                id="retentionRate"
+                name="retentionRate"
+                value={form.retentionRate}
+                onChange={(v) => update('retentionRate', v)}
+                placeholder="%"
+                type="number"
+                min={0}
+                max={100}
+                error={errors.retentionRate}
+              />
+            </div>
+          </div>
+        </FormField>
+        <FormField
+          label="商业模式"
+          htmlFor="businessModel"
+          hint="选填。怎么赚钱？早期项目可以暂时没有答案。（≤200 字）"
+          error={errors.businessModel}
+        >
+          <TextArea
+            id="businessModel"
+            name="businessModel"
+            value={form.businessModel}
+            onChange={(v) => update('businessModel', v)}
+            placeholder="描述你的收入模式"
+            rows={2}
+            maxLength={200}
+            error={errors.businessModel}
+          />
+        </FormField>
+        <FormField
+          label="当前进展"
+          htmlFor="progress"
+          hint="选填。产品阶段已经体现整体位置，这里补充细节。（≤300 字）"
+          error={errors.progress}
+        >
+          <TextArea
+            id="progress"
+            name="progress"
+            value={form.progress}
+            onChange={(v) => update('progress', v)}
+            placeholder="目前项目进展到了什么阶段？"
+            rows={2}
+            maxLength={300}
+            error={errors.progress}
+          />
+        </FormField>
+      </FormSection>
+
+      <FormSection index={4} title="展示资料">
         <FormField label="封面图" htmlFor="coverUrl" required error={errors.coverUrl}>
           <ImageUploader
             id="coverUrl"
@@ -352,10 +555,12 @@ export function ProjectSubmissionForm({
             onChange={(urls) => update('coverUrl', urls[0] ?? '')}
           />
         </FormField>
-      </FormSection>
-
-      <FormSection index={4} title="演示资料">
-        <FormField label="演示截图" htmlFor="demoImages" error={errors.demoImages}>
+        <FormField
+          label="演示截图"
+          htmlFor="demoImages"
+          error={errors.demoImages}
+          hint="选填，最多 5 张。"
+        >
           <ImageUploader
             id="demoImages"
             multiple
@@ -364,91 +569,41 @@ export function ProjectSubmissionForm({
             onChange={(urls) => update('demoImages', urls)}
           />
         </FormField>
-        <FormField label="演示视频" htmlFor="demoVideoUrl">
-          <VideoUploader
-            id="demoVideoUrl"
-            value={form.demoVideoUrl}
-            onChange={(v) => update('demoVideoUrl', v)}
-          />
-        </FormField>
-        <FormField label="产品链接" htmlFor="demoLink">
+        <FormField
+          label="产品链接"
+          htmlFor="demoLink"
+          hint="选填。产品主页或 Demo 地址。"
+          error={errors.demoLink}
+        >
           <TextInput
             id="demoLink"
             name="demoLink"
             value={form.demoLink}
             onChange={(v) => update('demoLink', v)}
-            placeholder="产品链接（须为 http:// 或 https:// 地址）"
+            placeholder="须为 http:// 或 https:// 地址"
             type="url"
+            error={errors.demoLink}
+          />
+        </FormField>
+        <FormField
+          label="视频链接"
+          htmlFor="demoVideoUrl"
+          hint="选填。B站/YouTube 等平台的视频链接，直接粘贴 URL 即可。"
+          error={errors.demoVideoUrl}
+        >
+          <TextInput
+            id="demoVideoUrl"
+            name="demoVideoUrl"
+            value={form.demoVideoUrl}
+            onChange={(v) => update('demoVideoUrl', v)}
+            placeholder="须为 http:// 或 https:// 地址"
+            type="url"
+            error={errors.demoVideoUrl}
           />
         </FormField>
       </FormSection>
 
-      <FormSection index={5} title="用户与市场">
-        <FormField label="目标用户" htmlFor="targetUsers" required error={errors.targetUsers}>
-          <TextArea
-            id="targetUsers"
-            name="targetUsers"
-            value={form.targetUsers}
-            onChange={(v) => update('targetUsers', v)}
-            placeholder="描述目标用户是谁（20-500 字）"
-            rows={3}
-            maxLength={500}
-            required
-            error={errors.targetUsers}
-          />
-        </FormField>
-        <FormField label="解决的问题" htmlFor="userProblem" required error={errors.userProblem}>
-          <TextArea
-            id="userProblem"
-            name="userProblem"
-            value={form.userProblem}
-            onChange={(v) => update('userProblem', v)}
-            placeholder="用户遇到的问题及解决方式（20-500 字）"
-            rows={3}
-            maxLength={500}
-            required
-            error={errors.userProblem}
-          />
-        </FormField>
-        <FormField label="当前进展" htmlFor="progress" required error={errors.progress}>
-          <TextArea
-            id="progress"
-            name="progress"
-            value={form.progress}
-            onChange={(v) => update('progress', v)}
-            placeholder="目前项目进展到了什么阶段？（20-500 字）"
-            rows={3}
-            maxLength={500}
-            required
-            error={errors.progress}
-          />
-        </FormField>
-        <FormField label="下一步计划" htmlFor="nextSteps">
-          <TextArea
-            id="nextSteps"
-            name="nextSteps"
-            value={form.nextSteps}
-            onChange={(v) => update('nextSteps', v)}
-            placeholder="接下来打算做什么？（最多 500 字）"
-            rows={3}
-            maxLength={500}
-          />
-        </FormField>
-        <FormField label="想对用户说的话" htmlFor="messageToUsers" required error={errors.messageToUsers}>
-          <TextArea
-            id="messageToUsers"
-            name="messageToUsers"
-            value={form.messageToUsers}
-            onChange={(v) => update('messageToUsers', v)}
-            placeholder="对潜在用户说几句话"
-            rows={3}
-            required
-            error={errors.messageToUsers}
-          />
-        </FormField>
-      </FormSection>
-
-      <FormSection index={6} title="Beta 测试">
+      <FormSection index={5} title="招募与合作">
         <CheckboxInput
           id="isOpenForBeta"
           name="isOpenForBeta"
@@ -471,10 +626,26 @@ export function ProjectSubmissionForm({
             />
           </FormField>
         ) : null}
+        <FormField
+          label="正在寻找的角色"
+          htmlFor="seekingSkills"
+          hint={`选填。最多 ${MAX_SEEKING_SKILLS} 个技能标签，便于与广场上相关能力的人对接。`}
+        >
+          <SeekingSkillsWall
+            selected={form.seekingSkills}
+            onChange={(skills) => update('seekingSkills', skills)}
+            error={errors.seekingSkills}
+          />
+        </FormField>
       </FormSection>
 
-      <FormSection index={7} title="联系方式">
-        <FormField label="联系人姓名" htmlFor="contactName" required error={errors.contactName}>
+      <FormSection index={6} title="联系方式">
+        <FormField
+          label="联系人姓名"
+          htmlFor="contactName"
+          required
+          error={errors.contactName}
+        >
           <TextInput
             id="contactName"
             name="contactName"
@@ -485,35 +656,39 @@ export function ProjectSubmissionForm({
             error={errors.contactName}
           />
         </FormField>
-        <FormField label="联系电话" htmlFor="contactPhone" required error={errors.contactPhone}>
-          <TextInput
-            id="contactPhone"
-            name="contactPhone"
-            value={form.contactPhone}
-            onChange={(v) => update('contactPhone', v)}
-            placeholder="11 位中国大陆手机号，例如 13800138000"
-            required
-            error={errors.contactPhone}
-          />
-        </FormField>
-        <FormField label="联系邮箱" htmlFor="contactEmail">
-          <TextInput
-            id="contactEmail"
-            name="contactEmail"
-            value={form.contactEmail}
-            onChange={(v) => update('contactEmail', v)}
-            placeholder="有效邮箱地址，例如 you@example.com"
-            type="email"
-          />
-        </FormField>
-        <FormField label="微信号" htmlFor="contactWechat">
-          <TextInput
-            id="contactWechat"
-            name="contactWechat"
-            value={form.contactWechat}
-            onChange={(v) => update('contactWechat', v)}
-            placeholder="你的微信号"
-          />
+        <FormField
+          label="电话 / 邮箱 / 微信（至少填写一项）"
+          htmlFor="contactPhone"
+          error={errors.contactPhone}
+          hint="联系方式仅平台与运营可见，不会公开展示。"
+        >
+          <div className="space-y-3">
+            <TextInput
+              id="contactPhone"
+              name="contactPhone"
+              value={form.contactPhone}
+              onChange={(v) => update('contactPhone', v)}
+              placeholder="联系电话（含国家/地区码亦可）"
+              error={errors.contactPhone}
+            />
+            <TextInput
+              id="contactEmail"
+              name="contactEmail"
+              value={form.contactEmail}
+              onChange={(v) => update('contactEmail', v)}
+              placeholder="联系邮箱，例如 you@example.com"
+              type="email"
+              error={errors.contactEmail}
+            />
+            <TextInput
+              id="contactWechat"
+              name="contactWechat"
+              value={form.contactWechat}
+              onChange={(v) => update('contactWechat', v)}
+              placeholder="微信号"
+              error={errors.contactWechat}
+            />
+          </div>
         </FormField>
       </FormSection>
 
@@ -543,5 +718,13 @@ export function ProjectSubmissionForm({
         ) : null}
       </div>
     </div>
+  )
+}
+
+function FieldLabelSub({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
+  return (
+    <label htmlFor={htmlFor} className="mb-1.5 block text-xs font-bold text-muted-foreground">
+      {children}
+    </label>
   )
 }

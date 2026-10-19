@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import { Elysia } from 'elysia'
-import { inArray } from 'drizzle-orm'
+import { inArray, sql } from 'drizzle-orm'
 import { db } from '../../../src/db'
 import { auditRecords, projectEditProposals, projects, userIdentities } from '../../../src/db/schema'
+import { SHARED_USERS_TABLE } from '../../../src/modules/user/service'
 import { founderModule } from '../../../src/modules/founder'
 import { projectService } from '../../../src/modules/project'
 import { proposalService } from '../../../src/modules/proposal'
@@ -351,6 +352,56 @@ describe('Founder routes', () => {
     it('returns 401 without a token', async () => {
       const res = await app.handle(new Request('http://localhost/founder/projects/1/proposals'))
       expect(res.status).toBe(401)
+    })
+  })
+
+  // ── GET /founder/profile ─────────────────────────────────────────────
+
+  describe('GET /founder/profile', () => {
+    // Numeric profile: the shared users table keys users by integer ids.
+    const PROFILE_USER_ID = String(9_980_001 + Math.floor(Math.random() * 900))
+
+    async function localGet(userId: string) {
+      return app.handle(
+        new Request('http://localhost/founder/profile', {
+          headers: authHeaders(await signToken({ user_id: userId })),
+        }),
+      )
+    }
+    async function insertSharedUser(id: string, nickname: string | null) {
+      await db.execute(
+        sql`INSERT INTO ${sql.raw(SHARED_USERS_TABLE)} (id, nickname, avatar_url) VALUES (${id}, ${nickname}, NULL)
+          ON DUPLICATE KEY UPDATE nickname = VALUES(nickname)`,
+      )
+    }
+
+    afterAll(async () => {
+      await db.execute(sql`DELETE FROM ${sql.raw(SHARED_USERS_TABLE)} WHERE id = ${PROFILE_USER_ID}`)
+    })
+
+    it('returns 401 without a token', async () => {
+      const res = await app.handle(new Request('http://localhost/founder/profile'))
+      expect(res.status).toBe(401)
+    })
+
+    it('returns the account nickname of the shared users row', async () => {
+      await insertSharedUser(PROFILE_USER_ID, '测试创始人')
+      const res = await localGet(PROFILE_USER_ID)
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ nickname: '测试创始人', avatarUrl: null })
+    })
+
+    it('returns null fields when the shared users row lacks a nickname', async () => {
+      await insertSharedUser(PROFILE_USER_ID, null)
+      const res = await localGet(PROFILE_USER_ID)
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ nickname: null, avatarUrl: null })
+    })
+
+    it('returns null fields for users without a shared users row', async () => {
+      const res = await localGet(FOUNDER)
+      expect(res.status).toBe(200)
+      expect(await res.json()).toEqual({ nickname: null, avatarUrl: null })
     })
   })
 })

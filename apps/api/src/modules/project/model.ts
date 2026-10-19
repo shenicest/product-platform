@@ -1,7 +1,7 @@
 import { t } from 'elysia'
 import { InsertProject, SelectProject } from '../../db/schema'
 import { PublicFounder, PublicProfile } from '../user/model'
-import { CATEGORIES, ProjectStage, TALENT_SKILLS } from '@shenicest/shared'
+import { CATEGORIES, MAX_SEEKING_SKILLS, ProjectStage, TALENT_SKILLS } from '@shenicest/shared'
 
 // Domain enum lives in @shenicest/shared (single source of truth); re-exported
 // here so module-internal consumers keep a stable import path.
@@ -114,7 +114,7 @@ export const ProjectDraftBody = t.Intersect([
       t.Null(),
     ])),
     seekingSkills: t.Optional(t.Union([
-      t.Array(t.Union(TALENT_SKILLS.map((skill) => t.Literal(skill))), { uniqueItems: true, maxItems: 5 }),
+      t.Array(t.Union(TALENT_SKILLS.map((skill) => t.Literal(skill))), { uniqueItems: true, maxItems: MAX_SEEKING_SKILLS }),
       t.Null(),
     ])),
   }),

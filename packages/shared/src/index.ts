@@ -105,6 +105,24 @@ export const TALENT_SKILLS = [
 ] as const
 export type TalentSkill = (typeof TALENT_SKILLS)[number]
 
+// Cap on how many skills a seekingSkills array may carry (projects) and the
+// shared wall enforces in the UI. Kept next to the vocabulary it bounds.
+export const MAX_SEEKING_SKILLS = 5
+
+// Skill wall grouped by top-level direction. TALENT_SKILLS stays the single
+// source of truth for the labels; the grouping below slices it positionally so
+// adding a skill to TALENT_SKILLS does not silently orphan a group.
+export const TALENT_SKILL_GROUPS = [
+  { direction: '产品', skills: TALENT_SKILLS.slice(0, 6) },
+  { direction: '设计', skills: TALENT_SKILLS.slice(6, 12) },
+  { direction: '开发', skills: TALENT_SKILLS.slice(12, 20) },
+  { direction: '增长/内容', skills: TALENT_SKILLS.slice(20, 26) },
+  { direction: '运营', skills: TALENT_SKILLS.slice(26, 31) },
+  { direction: '数据', skills: TALENT_SKILLS.slice(31, 35) },
+  { direction: '其他', skills: TALENT_SKILLS.slice(35) },
+] as const
+export type TalentSkillGroup = (typeof TALENT_SKILL_GROUPS)[number]
+
 export const TALENT_ROLES = ['产品', '设计', '开发', '增长/内容', '运营', '数据', '其他'] as const
 export type TalentRole = (typeof TALENT_ROLES)[number]
 
