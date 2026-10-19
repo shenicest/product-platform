@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — 项目表单 v2：数据契约与后端（可与 02 并行）
 
-**Status:** ready-for-agent
+**Status:** DONE. 详情页新字段故事（问题陈述/进展/下一步/差异化/商业模式/指标条/技巧墙/Beta/视频链接）与 owner/Operator 联系方式区块（按 API 出场渲染）完成；运营审核详情补 traction 指标条；五档徽章/筛选/hasActiveFilters 由 01 票已落地，本票回归验证无回归。traction 派生抽入 `lib/traction.ts` 共享。web 252/252、api 363/363、两端 typecheck、lint、build 全绿。
 
 - [ ] 项目详情页：渲染 problemStatement / nextSteps / traction 指标条（仅显示非空项）/ differentiation / businessModel / seekingSkills / 视频链接 / Beta 说明；移除 description、messageToUsers、联系方式区块（owner 视野除外——本人可见自己的联系信息区）
 - [ ] 阶段徽章与筛选标签五档文案：想法验证 / 原型 / MVP / 已上线有用户 / 有收入；项目卡片 stage badge 同步
