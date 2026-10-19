@@ -38,7 +38,7 @@ function errorBody(error: HackathonConnectionError) {
 
 function handleError(error: unknown) {
   if (!(error instanceof HackathonConnectionError)) {
-    return status(500, { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } })
+    return status(500, { error: { code: 'INTERNAL_ERROR', message: '服务器内部错误，请稍后再试' } })
   }
   const code = error.code
   if (['PROJECT_NOT_FOUND', 'REQUEST_NOT_FOUND'].includes(code)) return status(404, errorBody(error))

@@ -38,7 +38,7 @@ export const hackathonModule = new Elysia()
   })
   .get('/hackathon/projects/:id', async ({ params, user }) => {
     const project = await service.getProjectWithTags(params.id, user?.userId)
-    if (!project) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: 'Hackathon project not found' } })
+    if (!project) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: '黑客松项目不存在或已下线' } })
     return project
   }, { optionalAuth: true,
     detail: { summary: 'Get event 4 hackathon project', tags: ['Hackathon'], security: [] },
@@ -50,35 +50,35 @@ export const hackathonModule = new Elysia()
   })
   .post('/hackathon/projects/:id/like', async ({ user, params }) => {
     const project = await service.like(params.id, user.userId)
-    if (!project) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: 'Hackathon project not found' } })
+    if (!project) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: '黑客松项目不存在或已下线' } })
     return { liked: true, likeCount: project.likeCount }
   }, { auth: true, params: 'Hackathon.HackathonProjectIdParams', response: { 200: 'Hackathon.LikeResponse', 401: ErrorResponse, 404: ErrorResponse } })
   .delete('/hackathon/projects/:id/like', async ({ user, params }) => {
     const project = await service.unlike(params.id, user.userId)
-    if (!project) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: 'Hackathon project not found' } })
+    if (!project) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: '黑客松项目不存在或已下线' } })
     return { liked: false, likeCount: project.likeCount }
   }, { auth: true, params: 'Hackathon.HackathonProjectIdParams', response: { 200: 'Hackathon.LikeResponse', 401: ErrorResponse, 404: ErrorResponse } })
   .post('/hackathon/projects/:id/hide', async ({ user, params }) => {
-    if (!user.email?.toLowerCase().endsWith('@shenicest.cn')) return status(403, { error: { code: 'FORBIDDEN', message: 'Only shenicest.cn accounts can hide hackathon projects' } })
+    if (!user.email?.toLowerCase().endsWith('@shenicest.cn')) return status(403, { error: { code: 'FORBIDDEN', message: '只有 shenicest.cn 账号可以下线黑客松项目' } })
     const hidden = await service.hideProject(params.id, user.userId)
-    if (!hidden) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: 'Hackathon project not found' } })
+    if (!hidden) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: '黑客松项目不存在或已下线' } })
     return { hidden: true }
   }, { auth: true, params: 'Hackathon.HackathonProjectIdParams', response: { 200: 'Hackathon.HackathonHideResponse', 401: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse } })
   .patch('/hackathon/projects/:id', async ({ user, params, body }) => {
-    if (!user.email?.toLowerCase().endsWith('@shenicest.cn')) return status(403, { error: { code: 'FORBIDDEN', message: 'Only shenicest.cn accounts can edit hackathon projects' } })
+    if (!user.email?.toLowerCase().endsWith('@shenicest.cn')) return status(403, { error: { code: 'FORBIDDEN', message: '只有 shenicest.cn 账号可以编辑黑客松项目' } })
     const updated = await service.updateProject(params.id, body)
-    if (!updated) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: 'Hackathon project not found' } })
+    if (!updated) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: '黑客松项目不存在或已下线' } })
     return { updated: true }
   }, { auth: true, params: 'Hackathon.HackathonProjectIdParams', body: 'Hackathon.HackathonProjectUpdateBody', response: { 200: 'Hackathon.HackathonProjectUpdateResponse', 401: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse } })
   .post('/hackathon/projects/:id/tags', async ({ user, params, body }) => {
     const result = await service.toggleTag(params.id, user.userId, body.tagId, true)
-    if (!result) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: 'Hackathon project not found' } })
-    if (result === 'INVALID_TAG') return status(400, { error: { code: 'INVALID_TAG', message: 'Tag is not available for this track' } })
+    if (!result) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: '黑客松项目不存在或已下线' } })
+    if (result === 'INVALID_TAG') return status(400, { error: { code: 'INVALID_TAG', message: '该标签不适用于当前赛道' } })
     return result
   }, { auth: true, params: 'Hackathon.HackathonProjectIdParams', body: 'Hackathon.HackathonTagBody', response: { 200: 'Hackathon.HackathonTagResponse', 400: ErrorResponse, 401: ErrorResponse, 404: ErrorResponse } })
   .delete('/hackathon/projects/:id/tags/:tagId', async ({ user, params }) => {
     const result = await service.toggleTag(params.id, user.userId, params.tagId, false)
-    if (!result) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: 'Hackathon project not found' } })
-    if (result === 'INVALID_TAG') return status(400, { error: { code: 'INVALID_TAG', message: 'Tag is not available for this track' } })
+    if (!result) return status(404, { error: { code: 'PROJECT_NOT_FOUND', message: '黑客松项目不存在或已下线' } })
+    if (result === 'INVALID_TAG') return status(400, { error: { code: 'INVALID_TAG', message: '该标签不适用于当前赛道' } })
     return result
   }, { auth: true, params: 'Hackathon.HackathonTagParams', response: { 200: 'Hackathon.HackathonTagResponse', 400: ErrorResponse, 401: ErrorResponse, 404: ErrorResponse } })

@@ -51,16 +51,16 @@ function authorizedContact(input: ContactInput) {
   const wechat = input.wechat?.trim()
   const email = input.email?.trim().toLowerCase()
   if (hasControlChars(wechat) || hasControlChars(email)) {
-    throw new HackathonConnectionError('INVALID_CONTACT', 'Contact methods cannot contain control characters')
+    throw new HackathonConnectionError('INVALID_CONTACT', '联系方式不能包含控制字符')
   }
   if (wechat && (wechat.length < 1 || wechat.length > 64)) {
-    throw new HackathonConnectionError('INVALID_CONTACT', 'WeChat ID must be 1-64 characters')
+    throw new HackathonConnectionError('INVALID_CONTACT', '微信号长度必须为 1-64 个字符')
   }
   if (email && (email.length < 1 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) {
-    throw new HackathonConnectionError('INVALID_CONTACT', 'Email address is invalid')
+    throw new HackathonConnectionError('INVALID_CONTACT', '邮箱格式不正确')
   }
   if (!wechat && !email) {
-    throw new HackathonConnectionError('INVALID_CONTACT', 'At least one contact method is required')
+    throw new HackathonConnectionError('INVALID_CONTACT', '至少提供微信或邮箱')
   }
   return { wechat: wechat ?? null, email: email ?? null }
 }
@@ -79,17 +79,17 @@ export class HackathonConnectionService {
 
   async create(senderUserId: string, hackathonProjectId: number, body: CreateConnectionBody) {
     if (!HACKATHON_CONNECTION_PURPOSES.includes(body.purpose)) {
-      throw new HackathonConnectionError('INVALID_PURPOSE', 'Purpose is not supported')
+      throw new HackathonConnectionError('INVALID_PURPOSE', '请选择有效的联系目的')
     }
     const message = body.message.trim()
     if (message.length < 30 || message.length > 500 || hasControlChars(message)) {
-      throw new HackathonConnectionError('INVALID_MESSAGE', 'Message must be 30-500 characters without control characters')
+      throw new HackathonConnectionError('INVALID_MESSAGE', '留言必须为 30-500 个字符，且不能包含控制字符')
     }
     const senderContact = authorizedContact(body)
     // Visibility uses the same rule as the detail page (D3/D5); the quantum
     // keyword filter does not participate.
     const project = await this.source.getVisibleProject(hackathonProjectId)
-    if (!project) throw new HackathonConnectionError('PROJECT_NOT_FOUND', 'Hackathon project not found')
+    if (!project) throw new HackathonConnectionError('PROJECT_NOT_FOUND', '黑客松项目不存在或已下线')
     try {
       return await this.db.transaction(async (tx) => {
         // Locking the receiver row serializes creates for this project and
@@ -104,9 +104,9 @@ export class HackathonConnectionService {
             ),
           )
           .for('update')
-        if (!contact) throw new HackathonConnectionError('NO_RECEIVER_CONFIGURED', 'Project has no receiver configured')
+        if (!contact) throw new HackathonConnectionError('NO_RECEIVER_CONFIGURED', '该项目暂未配置接收人')
         if (contact.receiverUserId === senderUserId) {
-          throw new HackathonConnectionError('CANNOT_CONNECT_SELF', 'Cannot connect to a project you are the receiver of')
+          throw new HackathonConnectionError('CANNOT_CONNECT_SELF', '不能向自己负责的项目发起建联')
         }
         const existing = await tx
           .select()
@@ -119,14 +119,14 @@ export class HackathonConnectionService {
           )
           .for('update')
         if (existing.some((row) => row.status === ConnectionRequestStatus.Accepted)) {
-          throw new HackathonConnectionError('ALREADY_CONNECTED', 'Users are already connected')
+          throw new HackathonConnectionError('ALREADY_CONNECTED', '你们已经建立连接')
         }
         if (existing.some((row) => row.status === ConnectionRequestStatus.Pending)) {
-          throw new HackathonConnectionError('PENDING_EXISTS', 'A pending request already exists')
+          throw new HackathonConnectionError('PENDING_EXISTS', '你已经提交过申请，请等待项目方回应')
         }
         const lastIgnored = this.latestByStatus(existing, ConnectionRequestStatus.Ignored)
         if (lastIgnored?.handledAt && Date.now() - lastIgnored.handledAt.getTime() < IGNORE_COOLDOWN_MS) {
-          throw new HackathonConnectionError('RETRY_COOLDOWN', 'Please wait 7 days after an ignored request before retrying')
+          throw new HackathonConnectionError('RETRY_COOLDOWN', '申请被忽略后需等待 7 天才能再次发起')
         }
         const date = beijingDate()
         await tx.execute(
@@ -144,7 +144,7 @@ export class HackathonConnectionService {
           )
           .for('update')
         if ((daily?.successfulCount ?? 0) >= DAILY_LIMIT) {
-          throw new HackathonConnectionError('RATE_LIMITED', 'Daily connection request limit reached')
+          throw new HackathonConnectionError('RATE_LIMITED', '今日黑客松建联次数已用完，请明天再试')
         }
         const [inserted] = await tx
           .insert(hackathonConnectionRequests)
@@ -181,7 +181,7 @@ export class HackathonConnectionService {
     } catch (error) {
       if (error instanceof HackathonConnectionError) throw error
       if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ER_DUP_ENTRY') {
-        throw new HackathonConnectionError('PENDING_EXISTS', 'A pending request already exists')
+        throw new HackathonConnectionError('PENDING_EXISTS', '你已经提交过申请，请等待项目方回应')
       }
       throw error
     }
@@ -233,11 +233,11 @@ export class HackathonConnectionService {
     const accepted = await this.db.transaction(async (tx): Promise<RequestRow | 'CANCELLED'> => {
       const [row] = await tx.select().from(hackathonConnectionRequests).where(eq(hackathonConnectionRequests.id, requestId)).for('update')
       if (!row || row.receiverUserId !== viewerId) {
-        throw new HackathonConnectionError('REQUEST_NOT_FOUND', 'Connection request not found')
+        throw new HackathonConnectionError('REQUEST_NOT_FOUND', '建联申请不存在')
       }
       if (row.status === ConnectionRequestStatus.Accepted) return row
       if (row.status !== ConnectionRequestStatus.Pending) {
-        throw new HackathonConnectionError('REQUEST_NOT_PENDING', 'Request is not pending')
+        throw new HackathonConnectionError('REQUEST_NOT_PENDING', '该申请当前不是待处理状态')
       }
       const visible = await this.source.getVisibleProject(row.hackathonProjectId)
       if (!visible) {
@@ -276,7 +276,7 @@ export class HackathonConnectionService {
       return updated
     })
     if (accepted === 'CANCELLED') {
-      throw new HackathonConnectionError('REQUEST_NOT_PENDING', 'Request is not pending')
+      throw new HackathonConnectionError('REQUEST_NOT_PENDING', '该申请当前不是待处理状态')
     }
     return this.viewRequest(accepted, viewerId)
   }
@@ -287,11 +287,11 @@ export class HackathonConnectionService {
     const row = await this.db.transaction(async (tx): Promise<RequestRow> => {
       const [record] = await tx.select().from(hackathonConnectionRequests).where(eq(hackathonConnectionRequests.id, requestId)).for('update')
       if (!record || record.receiverUserId !== viewerId) {
-        throw new HackathonConnectionError('REQUEST_NOT_FOUND', 'Connection request not found')
+        throw new HackathonConnectionError('REQUEST_NOT_FOUND', '建联申请不存在')
       }
       if (record.status === ConnectionRequestStatus.Ignored) return record
       if (record.status !== ConnectionRequestStatus.Pending) {
-        throw new HackathonConnectionError('REQUEST_NOT_PENDING', 'Request is not pending')
+        throw new HackathonConnectionError('REQUEST_NOT_PENDING', '该申请当前不是待处理状态')
       }
       await tx
         .update(hackathonConnectionRequests)
@@ -309,7 +309,7 @@ export class HackathonConnectionService {
   async contacts(viewerId: string, requestId: number) {
     const [row] = await this.db.select().from(hackathonConnectionRequests).where(eq(hackathonConnectionRequests.id, requestId)).limit(1)
     if (!row || row.status !== ConnectionRequestStatus.Accepted || ![row.senderUserId, row.receiverUserId].includes(viewerId)) {
-      throw new HackathonConnectionError('CONTACTS_FORBIDDEN', 'Contacts are only available for accepted requests')
+      throw new HackathonConnectionError('CONTACTS_FORBIDDEN', '只有已接受的建联申请才能查看联系方式')
     }
     return this.contactsFor(row, viewerId)
   }
