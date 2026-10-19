@@ -63,4 +63,28 @@ describe('OperatorProjectDetail', () => {
     expect(screen.getByText('正在开放内测')).toBeInTheDocument()
     expect(screen.getByText('正在招募 20 位内测用户。')).toBeInTheDocument()
   })
+
+  it('shows the traction metric bar with formatted values', () => {
+    render(<OperatorProjectDetail project={makeProject()} proposals={[]} />)
+
+    expect(screen.getByText('用户数')).toBeInTheDocument()
+    expect(screen.getByText('120')).toBeInTheDocument()
+    expect(screen.getByText('月收入')).toBeInTheDocument()
+    expect(screen.getByText('¥3,000')).toBeInTheDocument()
+    expect(screen.getByText('留存率')).toBeInTheDocument()
+    expect(screen.getByText('42%')).toBeInTheDocument()
+  })
+
+  it('renders no traction metrics when all three are null', () => {
+    render(
+      <OperatorProjectDetail
+        project={makeProject({ userCount: null, monthlyRevenue: null, retentionRate: null })}
+        proposals={[]}
+      />,
+    )
+
+    expect(screen.queryByText('用户数')).not.toBeInTheDocument()
+    expect(screen.queryByText('月收入')).not.toBeInTheDocument()
+    expect(screen.queryByText('留存率')).not.toBeInTheDocument()
+  })
 })

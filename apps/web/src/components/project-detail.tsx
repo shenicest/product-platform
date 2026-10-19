@@ -2,13 +2,11 @@ import Link from 'next/link'
 import type { ProjectDetail } from '@/server/projects'
 import { ProjectBadges } from '@/components/project-badges'
 import { resolveDemoVideo } from '@/lib/demo-media'
+import { tractionMetrics } from '@/lib/traction'
 import { projectIdLabel } from '@/lib/utils'
 import { LikeButton } from '@/components/like-button'
 import { FounderCard } from '@/components/founder-card'
 import { DemoEmbed } from '@/components/demo-embed'
-
-// Public display deliberately excludes all contact fields
-// (contactName / contactPhone / contactEmail / contactWechat).
 
 function nonEmpty(value: string | null | undefined): string | null {
   const trimmed = value?.trim()
@@ -131,6 +129,15 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
   const tagline = nonEmpty(project.tagline)
   const teamName = nonEmpty(project.teamName)
 
+  // Contact fields survive the API strip only for the owner and Operators;
+  // the section renders purely on their presence (ADR-0012).
+  const contacts = [
+    { label: '联系人', value: nonEmpty(project.contactName) },
+    { label: '邮箱', value: nonEmpty(project.contactEmail) },
+    { label: '电话', value: nonEmpty(project.contactPhone) },
+    { label: '微信', value: nonEmpty(project.contactWechat) },
+  ].filter((contact): contact is { label: string; value: string } => contact.value !== null)
+
   const sections = [
     { title: '项目背景与问题', content: nonEmpty(project.problemStatement) },
     { title: '当前进展', content: nonEmpty(project.progress) },
@@ -142,11 +149,7 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
   )
 
   const betaDescription = nonEmpty(project.betaDescription)
-  const traction = [
-    project.userCount !== null && project.userCount !== undefined ? { label: '用户数', value: project.userCount.toLocaleString() } : null,
-    project.monthlyRevenue !== null && project.monthlyRevenue !== undefined ? { label: '月收入', value: `¥${project.monthlyRevenue.toLocaleString()}` } : null,
-    project.retentionRate !== null && project.retentionRate !== undefined ? { label: '留存率', value: `${project.retentionRate}%` } : null,
-  ].filter((item): item is { label: string; value: string } => item !== null)
+  const traction = tractionMetrics(project)
 
   return (
     <article className="detail-page mx-auto w-full max-w-[1440px] px-5 py-8 sm:px-8 lg:px-16">
@@ -254,6 +257,20 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
               {betaDescription}
             </p>
           ) : null}
+        </section>
+      ) : null}
+
+      {contacts.length ? (
+        <section className="mt-12">
+          <h2 className="text-lg font-bold">联系方式</h2>
+          <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-sm text-muted-foreground">
+            {contacts.map((contact) => (
+              <span key={contact.label}>
+                <span className="font-mono text-[10px] tracking-[0.08em]">{contact.label}</span>
+                <span className="ml-2 text-foreground">{contact.value}</span>
+              </span>
+            ))}
+          </div>
         </section>
       ) : null}
       </div>

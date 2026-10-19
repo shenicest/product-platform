@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { ProjectStatus } from '@shenicest/shared'
 import { cn } from '@/lib/utils'
+import { tractionMetrics } from '@/lib/traction'
 import { ProjectBadges } from '@/components/project-badges'
 import { OPERATOR_STATUS_LABELS, OPERATOR_STATUS_COLORS, PROPOSAL_STATUS_LABELS, PROPOSAL_STATUS_COLORS } from '@/lib/operator-filters'
 import {
@@ -122,6 +123,7 @@ export function OperatorProjectDetail({
   const isLive = project.status === ProjectStatus.Live
   const isDelisted = project.status === ProjectStatus.Delisted
   const demoImages = (project.demoImages ?? []).filter((src) => typeof src === 'string' && src.trim())
+  const traction = tractionMetrics(project)
 
   return (
     <div className="space-y-8">
@@ -170,6 +172,17 @@ export function OperatorProjectDetail({
             <p className="mt-2 max-w-[65ch] text-sm leading-[1.7] text-muted-foreground whitespace-pre-line">
               {project.problemStatement}
             </p>
+          </div>
+        ) : null}
+
+        {traction.length ? (
+          <div className="mt-6 flex flex-wrap gap-8 border border-border p-4">
+            {traction.map((metric) => (
+              <div key={metric.label}>
+                <div className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">{metric.label}</div>
+                <div className="mt-1 text-2xl font-bold">{metric.value}</div>
+              </div>
+            ))}
           </div>
         ) : null}
 
