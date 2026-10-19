@@ -355,6 +355,27 @@
     border-style: dashed;
     background: color-mix(in srgb, var(--secondary) 12%, transparent);
   }
+  /* Availability badge (TALENT_AVAILABILITY_LABELS): one visual per state so the
+     public cooperation signal reads at a glance. */
+  .chip-availability {
+    background: transparent;
+  }
+  .chip-availability[data-state="0"] {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+  .chip-availability[data-state="1"] {
+    border-color: var(--foreground);
+    color: var(--foreground);
+    background: transparent;
+  }
+  .chip-availability[data-state="2"] {
+    border-color: var(--secondary);
+    color: var(--secondary);
+    border-style: dashed;
+    background: color-mix(in srgb, var(--secondary) 12%, transparent);
+  }
   .chip-warning {
     border-color: var(--destructive);
     color: var(--destructive);

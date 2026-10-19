@@ -26,8 +26,10 @@ import {
 import {
   clearTalentDraft,
   loadTalentDraft,
+  orderSkillsByGroup,
   saveTalentDraft,
   talentRequirementChecks,
+  TALENT_PAGE_SIZE,
   validateConnectionBody,
   validateTalentBody,
   type TalentBody,
@@ -90,6 +92,37 @@ function Chips({
   );
 }
 type SkillWallState = { skills: string[]; seekingSkills: string[] };
+
+// Public cooperation signal: one color/state per availability value, visible
+// to logged-out visitors as well (it lowers the cost of a wasted outreach).
+export function AvailabilityBadge({ availability }: { availability: number }) {
+  const label = TALENT_AVAILABILITY_LABELS[availability as TalentAvailability];
+  if (!label) return null;
+  return (
+    <span className="chip-hard chip-availability" data-state={availability}>
+      {label}
+    </span>
+  );
+}
+
+// Read-only wall chip (cards + detail): provide and seeking states rest in
+// distinct colors, mirroring the editor's dual-state wall (ADR-0013).
+export function SkillChip({
+  skill,
+  skillState,
+}: {
+  skill: string;
+  skillState: "provide" | "seeking";
+}) {
+  return (
+    <span
+      className={`chip-hard ${skillState === "provide" ? "chip-active" : "chip-seeking"}`}
+      data-skill-state={skillState}
+    >
+      {skillLabel(skill)}
+    </span>
+  );
+}
 
 // One wall, three states (ADR-0013): a chip cycles
 // 未选 → 我能提供 → 我想寻找 → 未选; the two selected states rest in the
@@ -242,16 +275,24 @@ function ProfileCard({ profile }: { profile: TalentProfile }) {
         <p className="mt-1 font-mono text-xs text-primary">
           {profile.headline}
         </p>
+        <div className="mt-2">
+          <AvailabilityBadge availability={profile.availability} />
+        </div>
         <p className="mt-4 line-clamp-3 text-sm text-muted-foreground">
           {profile.bio ?? ""}
         </p>
       </div>
       <div className="mt-6 flex flex-wrap gap-2">
-        {profile.skills.slice(0, 4).map((skill) => (
-          <span className="chip-hard" key={skill}>
-            {skillLabel(skill)}
-          </span>
+        {/* 提供 state first, looking-for fills the remaining slots. */}
+        {orderSkillsByGroup(profile.skills).slice(0, 4).map((skill) => (
+          <SkillChip key={skill} skill={skill} skillState="provide" />
         ))}
+        {orderSkillsByGroup(profile.seekingSkills ?? [])
+          .filter((skill) => !profile.skills.includes(skill))
+          .slice(0, 2)
+          .map((skill) => (
+            <SkillChip key={skill} skill={skill} skillState="seeking" />
+          ))}
       </div>
     </Link>
   );
@@ -329,7 +370,7 @@ export function TalentList({
           <input
             value={q}
             onChange={(event) => setQ(event.target.value)}
-             placeholder="搜索姓名、方向、技能或项目"
+            placeholder="搜索姓名、技能或项目"
             className="h-12 flex-1 border border-input bg-card px-4 outline-none focus:border-primary"
           />
           <button className="btn-hard btn-primary">搜索</button>
@@ -389,7 +430,7 @@ export function TalentList({
         <span className="text-primary">
           PAGE {String(params.page).padStart(2, "0")}
         </span>
-        {params.page * 20 < total && (
+        {params.page * TALENT_PAGE_SIZE < total && (
           <Link className="btn-hard btn-ghost" href={pageHref(params.page + 1)}>
             下一页 →
           </Link>
@@ -477,6 +518,9 @@ export function TalentDetail({
             {profile.founder?.nickname || `用户 #${profile.userId}`}
           </h1>
           <p className="mt-4 text-xl text-primary">{profile.headline}</p>
+          <div className="mt-4">
+            <AvailabilityBadge availability={profile.availability} />
+          </div>
           {profile.bio ? (
             <p className="mt-8 whitespace-pre-wrap text-lg leading-relaxed text-muted-foreground">
               {profile.bio}
@@ -498,12 +542,29 @@ export function TalentDetail({
               ))}
             </ul>
           ) : null}
-          <div className="mt-10 flex flex-wrap gap-2">
-            {profile.skills.map((skill) => (
-              <span className="chip-hard" key={skill}>
-                {skillLabel(skill)}
-              </span>
-            ))}
+          <div className="mt-10 space-y-8">
+            <div role="group" aria-label="我能提供" className="border-t border-border pt-6">
+              <h2 className="font-mono text-xs font-bold tracking-[0.12em] text-primary">
+                我能提供
+              </h2>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {orderSkillsByGroup(profile.skills).map((skill) => (
+                  <SkillChip key={skill} skill={skill} skillState="provide" />
+                ))}
+              </div>
+            </div>
+            {(profile.seekingSkills ?? []).length > 0 && (
+              <div role="group" aria-label="我想寻找" className="border-t border-border pt-6">
+                <h2 className="font-mono text-xs font-bold tracking-[0.12em] text-secondary">
+                  我想寻找
+                </h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {orderSkillsByGroup(profile.seekingSkills ?? []).map((skill) => (
+                    <SkillChip key={skill} skill={skill} skillState="seeking" />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           {profile.match ? (
              <div className="mt-10 border border-primary/50 bg-primary/5 p-5">

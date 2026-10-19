@@ -3,6 +3,7 @@ import {
   COLLABORATION_DURATIONS,
   CONNECTION_PURPOSES,
   TALENT_AVAILABILITY_LABELS,
+  TALENT_SKILL_GROUPS,
   TALENT_SKILLS,
   MAX_SEEKING_SKILLS,
   MAX_TALENT_SKILLS,
@@ -118,6 +119,25 @@ export function parseTalentParams(
     sort,
     page,
   };
+}
+
+// Sort wall values by the skill-wall group order (ADR-0013); skills outside
+// the wall vocabulary keep their original order at the end.
+export function orderSkillsByGroup(skills: string[]): string[] {
+  const rank = new Map<string, number>();
+  TALENT_SKILL_GROUPS.forEach((group) =>
+    group.skills.forEach((skill) => {
+      if (!rank.has(skill)) rank.set(skill, rank.size);
+    }),
+  );
+  return skills
+    .map((skill, index) => ({ skill, index, rank: rank.get(skill) }))
+    .sort(
+      (a, b) =>
+        (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER) ||
+        a.index - b.index,
+    )
+    .map((entry) => entry.skill);
 }
 
 export function isValidHttpUrl(value: string) {

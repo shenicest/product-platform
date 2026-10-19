@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   clearTalentDraft,
   loadTalentDraft,
+  orderSkillsByGroup,
   parseTalentParams,
   saveTalentDraft,
   talentDraftKey,
@@ -25,6 +26,24 @@ describe("talent utilities", () => {
       sort: "active",
       page: 1,
     });
+  });
+
+  it("leans on skill/合作方式 filters only: a legacy role param cannot come back as a filter", () => {
+    expect(parseTalentParams({ role: "产品", q: "AI" })).toEqual({
+      q: "AI",
+      skills: undefined,
+      duration: undefined,
+      sort: "new",
+      page: 1,
+    });
+  });
+
+  it("orders skills by the skill-wall group order, unknown values last, stable within ties", () => {
+    expect(
+      orderSkillsByGroup(["frontend", "unknown-skill", "productStrategy", "ui"]),
+    ).toEqual(["productStrategy", "ui", "frontend", "unknown-skill"]);
+    expect(orderSkillsByGroup(["visual", "ux", "ui"])).toEqual(["ui", "ux", "visual"]);
+    expect(orderSkillsByGroup([])).toEqual([]);
   });
 
   it("stores and clears the browser-only draft", () => {
