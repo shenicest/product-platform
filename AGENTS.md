@@ -18,6 +18,10 @@
   - [0007-follow-targets-user-with-founder-role.md](./docs/adr/0007-follow-targets-user-with-founder-role.md) — Follow 挂在 User 上（须有 founder 角色），不挂在 Project
   - [0008-no-denormalized-follower-count.md](./docs/adr/0008-no-denormalized-follower-count.md) — follower 数量按需 COUNT，不加冗余字段
   - [0009-stateless-detail-with-user-interaction-sets.md](./docs/adr/0009-stateless-detail-with-user-interaction-sets.md) — 列表/详情响应无用户态；前端持有 like/follow Set
+  - [0010-hackathon-connection-separate-table.md](./docs/adr/0010-hackathon-connection-separate-table.md) — 黑客松建联独立建表，共享枚举/加密/pair_key 原语
+  - [0011-unified-connection-daily-limits.md](./docs/adr/0011-unified-connection-daily-limits.md) — 建联每日限额统一表（scope 区分）
+  - [0012-project-form-field-consolidation.md](./docs/adr/0012-project-form-field-consolidation.md) — 项目表单字段级重构（破坏性，整库重置）
+  - [0013-talent-dual-state-skills-derived-direction.md](./docs/adr/0013-talent-dual-state-skills-derived-direction.md) — 人才技能双状态墙；方向由技能推导，不单独提问
 
 修改领域模型前必须先阅读 CONTEXT.md。
 

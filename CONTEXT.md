@@ -25,7 +25,7 @@ A User who has submitted at least one Project. Identity is explicitly granted (n
 _Avoid_: Creator, author, submitter, owner
 
 **Project**:
-A product submitted by a Founder for review and public display. The Project holds BOTH the lifecycle state AND the source-of-truth content directly — `id`, `user_id`, `status` (tinyint 0-5), all displayable content fields (name, tagline, description, cover, demo assets, stage, categories, contact info, etc.), and timestamps. No separate content table. Draft and revision-required edits modify the Project row directly. A Pending Review Project is read-only until the Operator acts. Post-live edits go through a ProjectEditProposal. Only `status=3` (Live) projects appear in public listings.
+A product submitted by a Founder for review and public display. The Project holds BOTH the lifecycle state AND the source-of-truth content directly — `id`, `user_id`, `status` (tinyint 0-5), all displayable content fields (name, tagline, problemStatement, cover, demo assets, stage, categories, private contact info, etc.), and timestamps. No separate content table. Draft and revision-required edits modify the Project row directly. A Pending Review Project is read-only until the Operator acts. Post-live edits go through a ProjectEditProposal. Only `status=3` (Live) projects appear in public listings.
 _Avoid_: Submission, entry, listing, Version, Snapshot, Revision
 
 **Project Status** (tinyint, single stored field on Project):
@@ -56,20 +56,44 @@ _Avoid_: Revision, Version, Snapshot, Edit, ChangeRequest, PullRequest
 - Reject proposal: proposal status → `2` (Rejected). Project row unchanged.
 - Require revision on proposal: proposal status → `3` (Revision Required). Founder edits the proposal's `changes` diff and resubmits (status back to `0`). No new proposal is created.
 - Constraint: at most one proposal in status `0` or `3` per Project at any time.
-- In 1.0, post-live proposals may change only `description`, `demoLink`, and `betaDescription`.
+- In 1.1, post-live proposals may change only `problemStatement`, `nextSteps`, `demoLink`, and `betaDescription`.
 
 **Comment**:
 A user's feedback on a Project. In 1.0, comments are NOT publicly displayed — only visible to the Founder and operators in their respective dashboards. No approval gate — submitted comments are immediately visible to Founder/operators. Machine-based content review runs asynchronously and sets `is_flagged` on violations. A user can submit multiple comments on the same project. Comments can only be submitted on Live (`status=3`) projects.
 _Avoid_: Feedback, Review, Reaction
 
 **Project Stage** (tinyint on Project):
-- `0` MVP阶段 — early validation
-- `1` 成长阶段 — has test version, test slots, etc.
+- `0` 想法验证 — idea validation, no product built yet
+- `1` 原型 — working prototype exists
+- `2` MVP — minimum viable product in testing
+- `3` 已上线有用户 — launched with real users
+- `4` 有收入 — generating revenue
+Five ascending stages; the numeric order encodes progression.
 _Avoid_: Phase, Level
 
 **Category**:
 A label for classifying projects. Stored as a JSON array directly on Project — the source of truth is the Project row itself, so no denormalized copy is needed. Homepage filtering reads the Project table directly (zero JOIN). A Project can have multiple categories (multi-select). Categories are a fixed set: 女性健康, 效率工具, 教育学习, 开发者工具, 生活方式, 其他.
 _Avoid_: Tag, Label, Topic, ProjectCategory
+
+**ProblemStatement**:
+A required long-text field on Project (30–300 characters) answering "为谁解决什么问题" — who the project serves and what problem it solves. Replaces the former separate `targetUsers` and `userProblem` fields, whose content overlapped heavily.
+_Avoid_: targetUsers, userProblem, description, story
+
+**Traction**:
+Three optional numeric fields on Project — `userCount`, `monthlyRevenue` (integer, CNY per month), `retentionRate` (integer percent 0–100, 30-day). Structured numbers that signal progress better than prose; early-stage projects may leave all three empty. Replaces the former required free-text `progress` narrative (now optional, ≤300 characters).
+_Avoid_: metrics, dataHighlights, growth numbers
+
+**Differentiation**:
+An optional one-liner on Project (≤100 characters): 和现有方案有什么不同.
+_Avoid_: moat, competitiveAdvantage
+
+**BusinessModel**:
+An optional field on Project (≤200 characters): 怎么赚钱.
+_Avoid_: monetization, revenueModel
+
+**Project contact info**:
+The Founder's contact channels on Project: `contactName` (required), plus `contactPhone` / `contactEmail` / `contactWechat` — at least one of the three required at submission. The former "11-digit mainland China only" phone rule is dropped; any non-empty value is accepted (overseas and remote founders). Contact info is private: never returned in list or detail responses to other Users; visible only to the Owner and Operators.
+_Avoid_: public contact
 
 **AuditRecord**:
 A record of an operator's action on a Project. Only created when an operator performs an action (approve, reject, require_revision, delist, restore). Founder's own actions (submit, save draft, create/edit proposal) are NOT recorded. Captures `action`, `reason`, `operator_id`, and `proposal_id` (nullable — set only when the action targets a post-live edit proposal). No `revision_id` — revisions no longer exist.
@@ -116,6 +140,25 @@ P0 TalentProfile creation has no server-side Draft state. Before first publicati
 `Suspended` is terminal in P0. There is no Operator restore or appeal workflow in Talent Plaza; the profile owner is directed to contact operations.
 
 P0 Operator capabilities for Talent Plaza are limited to searching/viewing TalentProfiles, suspending a profile with a reason, and viewing the suspension audit record. P0 has no skill-catalog management, User-level connection ban, in-product report inbox, contact-method access, or profile restoration.
+
+**TalentProfile fields** (v1.1):
+- `headline` — 一句话介绍, required, 4–50 characters (same rule as the Project tagline)
+- `bio` — 关于我, 30–500 characters; required UNLESS the User provides at least one work link (bio and links form an at-least-one pair)
+- `links` — 作品/主页链接, 0–3 URLs, optional
+- `skills` — 我能提供的技能标签, 3–10 entries from the Skill catalog (required)
+- `seekingSkills` — 我想寻找的技能标签, 0–5 entries from the same Skill catalog (optional). A tag may not appear in both lists
+- `domains` — 关注领域, shares the Category vocabulary
+- `durations` — 合作方式, from COLLABORATION_DURATIONS
+- `availability` — 当前状态, single-select TalentAvailability (required)
+There is no `roles`/方向 field — direction is derived from the skill groups of `skills` and never asked separately.
+_Avoid_: direction, roles, resume/CV fields
+
+**TalentAvailability** (tinyint on TalentProfile):
+- `0` 积极寻找合作 — actively looking for collaboration
+- `1` 开放聊聊 — open to conversations
+- `2` 仅接受一次咨询 — only accepts one-off consultations
+Required single-select; displayed on the profile so both sides can filter out futile outreach.
+_Avoid_: status (that's TalentProfileStatus), mood
 
 **HackathonConnectionRequest**:
 A User's bidirectional-authorization connection request targeting an external Hackathon Project (from the event database, not the platform `projects` table). The sender is any authenticated User (no TalentProfile or Founder role required); the receiver is the project's configured HackathonProjectContact at request creation time (locked on the row — later contact reassignment does not change existing requests). Status reuses the `ConnectionRequestStatus` numeric semantics (Pending 0 / Accepted 1 / Ignored 2 / Cancelled 3) but is stored in its own table — it does NOT extend the Talent `ConnectionRequest` (see ADR-0010). The purpose is a fixed enum shared via `HACKATHON_CONNECTION_PURPOSES`: 试用产品, 合作交流, 加入项目, 提供专业帮助, 寻求反馈, 其他. The sender authorizes contact info when creating the request (encrypted, AES-GCM); the receiver authorizes on accept. At most one Pending request per sender per project (`pair_key` is unique while Pending and NULLed on terminal states, same pattern as Talent). An Accepted request in either direction against the same project blocks new requests. Ignored requests may be re-sent after a 7-day cooldown. When the project is hidden, Pending requests become Cancelled; Accepted connections are retained.
