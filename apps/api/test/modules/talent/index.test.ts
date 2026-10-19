@@ -25,11 +25,12 @@ function profile(overrides: Record<string, unknown> = {}) {
     headline: '全栈产品搭档',
     bio: '擅长从用户研究到产品交付，希望与认真解决真实问题的团队长期合作。',
     city: '上海',
-    roles: ['开发'],
+    links: ['https://github.com/shenicest'],
     skills: ['frontend', 'backend', 'fullstack'],
     seekingSkills: [],
     domains: ['效率工具'],
     durations: ['长期合作'],
+    availability: 0,
     ...overrides,
   }
 }
@@ -97,11 +98,47 @@ describe('Talent Plaza API', () => {
     const owner = user()
     expect((await publish(owner, profile({ headline: '短' }))).status).toBe(422)
     expect((await publish(owner, profile({ skills: ['frontend', 'backend'] }))).status).toBe(400)
+    expect((await publish(owner, profile({ bio: undefined, links: [] }))).status).toBe(400)
+    expect((await publish(owner, profile({ links: ['ftp://example.com/works'] }))).status).toBe(400)
+    expect((await publish(owner, profile({ availability: 7 }))).status).toBe(422)
     const invalidAfterDedupe = await db.select().from(talentProfiles).where(eq(talentProfiles.userId, owner))
     expect(invalidAfterDedupe).toHaveLength(0)
-    const valid = await publish(owner, profile({ skills: ['frontend', 'frontend', 'backend', 'fullstack'], seekingSkills: [] }))
+    const valid = await publish(owner, profile({
+      skills: ['frontend', 'frontend', 'backend', 'fullstack'],
+      seekingSkills: [],
+    }))
     expect(valid.status).toBe(200)
-    expect((await valid.json()).skills).toEqual(['frontend', 'backend', 'fullstack'])
+    const published = await valid.json()
+    expect(published.skills).toEqual(['frontend', 'backend', 'fullstack'])
+    expect(published.roles).toBeUndefined()
+    expect(published.availability).toBe(0)
+    expect(published.links).toEqual(['https://github.com/shenicest'])
+  })
+
+  it('ignores the retired roles list parameter and applies the new array rules to the body', async () => {
+    const owner = user()
+    expect((await publish(owner, profile({ bio: '太短', links: undefined }))).status).toBe(422)
+    expect((await publish(owner, profile({ links: ['https://a.com/1', 'https://a.com/2', 'https://a.com/3', 'https://a.com/4'] }))).status).toBe(422)
+    expect((await publish(owner, profile({ domains: [] }))).status).toBe(400)
+    expect((await publish(owner, profile({ durations: [] }))).status).toBe(400)
+    expect((await publish(owner, profile({ skills: ['made-up', 'frontend', 'backend'] }))).status).toBe(422)
+  })
+
+  it('no longer filters by the retired roles parameter', async () => {
+    const dev = user(); const product = user()
+    await publish(dev, profile({ headline: '遗留参数检索甲', skills: ['frontend', 'backend', 'fullstack'] }))
+    await publish(product, profile({ headline: '遗留参数检索乙', skills: ['productStrategy', 'needsAnalysis', 'userResearch'] }))
+    const roleQuery = await request('/talents/?q=%E9%81%97%E7%95%99%E5%8F%82%E6%95%B0%E6%A3%80%E7%B4%A2&role=%E5%BC%80%E5%8F%91')
+    expect(roleQuery.status).toBe(200)
+    const { total } = await roleQuery.json()
+    expect(total).toBe(2)
+  })
+
+  it('keeps a tag out of both skill states by normalizing seekingSkills', async () => {
+    const owner = user()
+    const response = await publish(owner, profile({ skills: ['frontend', 'backend', 'fullstack'], seekingSkills: ['frontend'] }))
+    expect(response.status).toBe(200)
+    expect((await response.json()).seekingSkills).toEqual([])
   })
 
   it('normalizes contacts and enforces the fixed purpose and message contract', async () => {

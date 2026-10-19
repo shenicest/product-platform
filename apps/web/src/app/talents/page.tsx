@@ -8,7 +8,6 @@ export default async function TalentsPage(props: { searchParams: Promise<Record<
   const params = parseTalentParams(search)
   const query = new URLSearchParams({ sort: params.sort, offset: String((params.page - 1) * TALENT_PAGE_SIZE), limit: String(TALENT_PAGE_SIZE) })
   if (params.q) query.set('q', params.q)
-  if (params.role) query.set('role', params.role)
   if (params.skills) query.set('skills', params.skills)
   if (params.duration) query.set('duration', params.duration)
   const result = await getTalents(query.toString())

@@ -26,7 +26,8 @@ const profile: TalentProfile = {
   headline: "寻找开发搭档",
   bio: "这是一段足够长的人才简介，用来描述我的经验、工作方式以及正在寻找的合作方向。",
   city: "上海",
-  roles: ["产品"],
+  links: ["https://github.com/lab"],
+  availability: 0,
   skills: ["productStrategy", "needsAnalysis", "userResearch"],
   seekingSkills: ["frontend"],
   domains: ["效率工具"],
@@ -60,6 +61,10 @@ describe("TalentDetail connection dialog", () => {
     expect(screen.getByRole("link", { name: /公开项目/ })).toHaveAttribute(
       "href",
       "/projects/568",
+    );
+    expect(screen.getByRole("link", { name: "https://github.com/lab" })).toHaveAttribute(
+      "href",
+      "https://github.com/lab",
     );
   });
 

@@ -1,23 +1,33 @@
 import { t } from 'elysia'
-import { CATEGORIES, COLLABORATION_DURATIONS, CONNECTION_PURPOSES, TALENT_ROLES, TALENT_SKILLS } from '@shenicest/shared'
+import {
+  CATEGORIES,
+  COLLABORATION_DURATIONS,
+  CONNECTION_PURPOSES,
+  TALENT_SKILLS,
+  TalentAvailability,
+} from '@shenicest/shared'
 
 const literalArray = <const T extends readonly string[]>(values: T) => t.Array(t.Union(values.map((value) => t.Literal(value)) as [any, ...any[]]))
 
+const availabilityLiterals = Object.values(TalentAvailability) as [TalentAvailability, ...TalentAvailability[]]
+
+// `links` entries are raw strings at the DB contract layer; the http(s)
+// format check lives in the service (XSS boundary, mirrors project links).
 export const TalentProfileBody = t.Object({
-  headline: t.String({ minLength: 2, maxLength: 30 }),
-  bio: t.String({ minLength: 30, maxLength: 500 }),
+  headline: t.String({ minLength: 4, maxLength: 50 }),
+  bio: t.Optional(t.String({ minLength: 30, maxLength: 500 })),
+  links: t.Optional(t.Array(t.String({ minLength: 1, maxLength: 500 }), { maxItems: 3 })),
   city: t.Optional(t.String({ maxLength: 100 })),
-  roles: literalArray(TALENT_ROLES),
   skills: literalArray(TALENT_SKILLS),
   seekingSkills: t.Optional(literalArray(TALENT_SKILLS)),
   domains: literalArray(CATEGORIES),
   durations: literalArray(COLLABORATION_DURATIONS),
+  availability: t.Union(availabilityLiterals.map((value) => t.Literal(value)) as [any, ...any[]]),
 })
 export type TalentProfileBody = typeof TalentProfileBody.static
 
 export const TalentListQuery = t.Object({
   q: t.Optional(t.String()),
-  role: t.Optional(t.String()),
   skills: t.Optional(t.String()),
   duration: t.Optional(t.String()),
   sort: t.Optional(t.Union([t.Literal('new'), t.Literal('active')])),

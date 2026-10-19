@@ -87,6 +87,21 @@ export const TalentProfileStatus = {
 } as const
 export type TalentProfileStatus = (typeof TalentProfileStatus)[keyof typeof TalentProfileStatus]
 
+// Current-collaboration-availability signal (Public CTA on TalentProfile).
+// Stored as a tinyint column; labels are display-only.
+export const TalentAvailability = {
+  ActivelySeeking: 0,
+  OpenToChat: 1,
+  ConsultOnly: 2,
+} as const
+export type TalentAvailability = (typeof TalentAvailability)[keyof typeof TalentAvailability]
+
+export const TALENT_AVAILABILITY_LABELS: Record<TalentAvailability, string> = {
+  [TalentAvailability.ActivelySeeking]: '积极寻找合作',
+  [TalentAvailability.OpenToChat]: '开放聊聊',
+  [TalentAvailability.ConsultOnly]: '仅接受一次咨询',
+}
+
 export const ConnectionRequestStatus = {
   Pending: 0,
   Accepted: 1,
@@ -126,8 +141,9 @@ export function skillKey(value: string): TalentSkill | string {
   return byLabel ?? value
 }
 
-// Cap on how many skills a seekingSkills array may carry (projects) and the
-// shared wall enforces in the UI. Kept next to the vocabulary it bounds.
+// Caps on how many skills each wall state may carry (shared by the API rules
+// and the editor UI). Kept next to the vocabulary they bound.
+export const MAX_TALENT_SKILLS = 10
 export const MAX_SEEKING_SKILLS = 5
 
 export type TalentSkillGroup = { direction: string; skills: readonly TalentSkill[] }
@@ -142,9 +158,6 @@ export const TALENT_SKILL_GROUPS: readonly TalentSkillGroup[] = [
   { direction: '数据', skills: ['dataAnalysis', 'businessAnalysis'] },
   { direction: '商务/职能', skills: ['businessStrategy', 'fundraising', 'legal', 'finance', 'industryResearch'] },
 ]
-
-export const TALENT_ROLES = ['产品', '设计', '增长', '运营', '开发', '数据', '商务/职能'] as const
-export type TalentRole = (typeof TALENT_ROLES)[number]
 
 export const COLLABORATION_DURATIONS = ['一次咨询', '短期项目', '长期合作'] as const
 export type CollaborationDuration = (typeof COLLABORATION_DURATIONS)[number]

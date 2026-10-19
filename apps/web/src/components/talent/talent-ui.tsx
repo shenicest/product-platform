@@ -8,9 +8,12 @@ import {
   CATEGORIES,
   COLLABORATION_DURATIONS,
   CONNECTION_PURPOSES,
-  TALENT_ROLES,
+  TALENT_AVAILABILITY_LABELS,
   TALENT_SKILL_GROUPS,
+  MAX_TALENT_SKILLS,
+  MAX_SEEKING_SKILLS,
   skillLabel,
+  TalentAvailability,
   TalentProfileStatus,
 } from "@shenicest/shared";
 import { useAuth } from "@/components/auth-provider";
@@ -24,8 +27,9 @@ import {
   clearTalentDraft,
   loadTalentDraft,
   saveTalentDraft,
-  validateTalentBody,
+  talentRequirementChecks,
   validateConnectionBody,
+  validateTalentBody,
   type TalentBody,
   type TalentManagement,
   type TalentProfile,
@@ -35,12 +39,14 @@ import {
 const empty: TalentBody = {
   headline: "",
   bio: "",
+  links: [],
   city: "",
-  roles: [],
   skills: [],
   seekingSkills: [],
   domains: [],
   durations: [],
+  // Editor sentinel: no availability picked yet (never a valid enum value).
+  availability: -1,
 };
 const identity = (value: string) => value;
 function Chips({
@@ -83,15 +89,43 @@ function Chips({
     </div>
   );
 }
-function SkillGroups({
-  selected,
+type SkillWallState = { skills: string[]; seekingSkills: string[] };
+
+// One wall, three states (ADR-0013): a chip cycles
+// 未选 → 我能提供 → 我想寻找 → 未选; the two selected states rest in the
+// distinct `skills` / `seekingSkills` arrays the submit body already uses.
+function SkillWall({
+  state,
   onChange,
-  max,
 }: {
-  selected: string[];
-  onChange: (value: string[]) => void;
-  max: number;
+  state: SkillWallState;
+  onChange: (next: SkillWallState) => void;
 }) {
+  function stateOf(skill: string): "provide" | "seeking" | "none" {
+    if (state.skills.includes(skill)) return "provide";
+    if (state.seekingSkills.includes(skill)) return "seeking";
+    return "none";
+  }
+  function toggle(skill: string) {
+    const { skills, seekingSkills } = state;
+    if (skills.includes(skill)) {
+      if (seekingSkills.length >= MAX_SEEKING_SKILLS) {
+        // Cap reached: cycle ends at 未选 instead of forcing 我想寻找.
+        onChange({ skills: skills.filter((item) => item !== skill), seekingSkills });
+        return;
+      }
+      onChange({ skills: skills.filter((item) => item !== skill), seekingSkills: [...seekingSkills, skill] });
+      return;
+    }
+    if (seekingSkills.includes(skill)) {
+      onChange({ skills, seekingSkills: seekingSkills.filter((item) => item !== skill) });
+      return;
+    }
+    if (skills.length >= MAX_TALENT_SKILLS) return;
+    onChange({ skills: [...skills, skill], seekingSkills });
+  }
+  const stateLabel = (chipState: "provide" | "seeking" | "none") =>
+    chipState === "provide" ? "，我能提供" : chipState === "seeking" ? "，我想寻找" : "";
   return (
     <div className="divide-y divide-border border-y border-border">
       {TALENT_SKILL_GROUPS.map((group) => (
@@ -102,18 +136,93 @@ function SkillGroups({
           <span className="pt-1 font-mono text-xs font-bold text-primary">
             {group.direction}
           </span>
-          <Chips
-            values={[...group.skills]}
-            selected={selected}
-            onChange={onChange}
-            max={max}
-            label={skillLabel}
-          />
+          <div className="flex flex-wrap gap-2">
+            {[...group.skills].map((skill) => {
+              const chipState = stateOf(skill);
+              return (
+                <button
+                  type="button"
+                  key={skill}
+                  data-state={chipState}
+                  aria-pressed={chipState !== "none"}
+                  aria-label={`${skillLabel(skill)}${stateLabel(chipState)}`}
+                  onClick={() => toggle(skill)}
+                  className={`chip-hard ${
+                    chipState === "provide"
+                      ? "chip-active"
+                      : chipState === "seeking"
+                        ? "chip-seeking"
+                        : ""
+                  }`}
+                >
+                  {skillLabel(skill)}
+                </button>
+              );
+            })}
+          </div>
         </div>
       ))}
     </div>
   );
 }
+
+function LinksEditor({
+  links,
+  onChange,
+}: {
+  links: string[];
+  onChange: (links: string[]) => void;
+}) {
+  return (
+    <div>
+      <div className="flex items-end justify-between gap-3 text-sm">
+        <span className="font-bold text-foreground">作品链接（0-3 个）</span>
+        <span className="font-mono text-[10px] text-muted-foreground">
+          {links.length} / 3
+        </span>
+      </div>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+        GitHub、作品集网站、个人主页……作品比长文更有说服力。
+      </p>
+      <div className="space-y-2">
+        {links.map((link, index) => (
+          <div className="mt-2 flex gap-2" key={index}>
+            <input
+              value={link}
+              inputMode="url"
+              aria-label={`作品链接 ${index + 1}`}
+              placeholder="https://github.com/yourname"
+              onChange={(event) =>
+                onChange(
+                  links.map((value, i) => (i === index ? event.target.value : value)),
+                )
+              }
+              className="h-12 w-full border border-input bg-background px-4 outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary"
+            />
+            <button
+              type="button"
+              aria-label={`移除作品链接 ${index + 1}`}
+              onClick={() => onChange(links.filter((_, i) => i !== index))}
+              className="btn-hard btn-ghost shrink-0"
+            >
+              移除
+            </button>
+          </div>
+        ))}
+      </div>
+      {links.length < 3 ? (
+        <button
+          type="button"
+          className="btn-hard btn-ghost mt-3"
+          onClick={() => onChange([...links, ""])}
+        >
+          + 添加作品链接
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
 function ProfileCard({ profile }: { profile: TalentProfile }) {
   return (
     <Link
@@ -134,7 +243,7 @@ function ProfileCard({ profile }: { profile: TalentProfile }) {
           {profile.headline}
         </p>
         <p className="mt-4 line-clamp-3 text-sm text-muted-foreground">
-          {profile.bio}
+          {profile.bio ?? ""}
         </p>
       </div>
       <div className="mt-6 flex flex-wrap gap-2">
@@ -156,7 +265,6 @@ export function TalentList({
   total: number;
   params: {
     q?: string;
-    role?: string;
     skills?: string;
     duration?: string;
     sort: string;
@@ -227,17 +335,6 @@ export function TalentList({
           <button className="btn-hard btn-primary">搜索</button>
         </form>
         <div className="flex flex-wrap gap-2">
-          <select
-             aria-label="方向"
-            value={params.role || ""}
-            onChange={(event) => go({ role: event.target.value, page: "1" })}
-            className="h-10 border border-input bg-card px-3 text-sm"
-          >
-             <option value="">所有方向</option>
-            {TALENT_ROLES.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
           <select
              aria-label="合作方式"
             value={params.duration || ""}
@@ -380,9 +477,27 @@ export function TalentDetail({
             {profile.founder?.nickname || `用户 #${profile.userId}`}
           </h1>
           <p className="mt-4 text-xl text-primary">{profile.headline}</p>
-          <p className="mt-8 whitespace-pre-wrap text-lg leading-relaxed text-muted-foreground">
-            {profile.bio}
-          </p>
+          {profile.bio ? (
+            <p className="mt-8 whitespace-pre-wrap text-lg leading-relaxed text-muted-foreground">
+              {profile.bio}
+            </p>
+          ) : null}
+          {profile.links?.length ? (
+            <ul className="mt-6 space-y-2">
+              {profile.links.map((link) => (
+                <li key={link}>
+                  <a
+                    href={link}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="break-all text-sm text-primary underline"
+                  >
+                    {link}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : null}
           <div className="mt-10 flex flex-wrap gap-2">
             {profile.skills.map((skill) => (
               <span className="chip-hard" key={skill}>
@@ -655,13 +770,14 @@ export function TalentEditor({
     initial
       ? {
           headline: initial.headline,
-          bio: initial.bio,
+          bio: initial.bio ?? "",
+          links: initial.links ?? [],
           city: initial.city || "",
-          roles: initial.roles,
           skills: initial.skills,
           seekingSkills: initial.seekingSkills,
           domains: initial.domains,
           durations: initial.durations,
+          availability: initial.availability,
         }
       : empty,
   );
@@ -681,14 +797,21 @@ export function TalentEditor({
     setBody(next);
     if (!initial) saveTalentDraft(userId, next);
   }
+  const workLinks = body.links.map((link) => link.trim()).filter(Boolean);
+  const bio = (body.bio ?? "").trim();
   async function submit(mode: "publish" | "update" | "resume") {
-    const errors = validateTalentBody(body);
+    const payload: TalentBody = {
+      ...body,
+      bio: bio || undefined,
+      links: workLinks,
+    };
+    const errors = validateTalentBody(payload);
     if (Object.keys(errors).length) {
       setError(Object.values(errors)[0]);
       return;
     }
     setSaving(true);
-    const result = await saveTalent(body, mode);
+    const result = await saveTalent(payload, mode);
     setSaving(false);
     if (result.error) setError(result.error.body.error.message);
     else {
@@ -697,17 +820,21 @@ export function TalentEditor({
       setError("已保存");
     }
   }
+  // A single merged state write keeps body/draft consistent when the patch
+  // touches both wall arrays at once.
+  function updateWall(next: SkillWallState) {
+    const nextBody = { ...body, skills: next.skills, seekingSkills: next.seekingSkills };
+    setBody(nextBody);
+    if (!initial) saveTalentDraft(userId, nextBody);
+  }
   const suspensionReason = initial?.suspensionAudit?.find(
     (record) => typeof record.reason === "string",
   )?.reason;
-  const requirements = [
-    body.headline.trim().length >= 2,
-    body.bio.trim().length >= 30,
-    body.roles.length >= 1,
-    body.skills.length >= 3,
-    body.domains.length >= 1,
-    body.durations.length >= 1,
-  ];
+  const requirements = talentRequirementChecks({
+    ...body,
+    bio: bio || undefined,
+    links: workLinks,
+  });
   const completedRequirements = requirements.filter(Boolean).length;
   const completion = Math.round(
     (completedRequirements / requirements.length) * 100,
@@ -781,9 +908,10 @@ export function TalentEditor({
           </div>
           <nav aria-label="档案填写进度" className="p-3">
             {[
-              { href: "#profile-basic", label: "01 基础介绍", done: requirements[0] && requirements[1] },
-              { href: "#profile-capability", label: "02 我的能力", done: requirements[2] && requirements[3] },
-              { href: "#profile-collaboration", label: "03 合作意向", done: requirements[4] && requirements[5] },
+              { href: "#profile-basic", label: "01 基础介绍", done: requirements[0] },
+              { href: "#profile-story", label: "02 关于我和作品", done: requirements[1] },
+              { href: "#profile-skills", label: "03 技能墙", done: requirements[2] },
+              { href: "#profile-collaboration", label: "04 合作意向", done: requirements[3] && requirements[4] && requirements[5] },
             ].map((item) => (
               <a
                 key={item.href}
@@ -807,14 +935,14 @@ export function TalentEditor({
             id="profile-basic"
             number="01"
             title="先让别人快速认识你"
-            description="用一句清楚的定位抓住注意力，再用具体经历说明你做过什么、擅长解决什么问题。"
+            description="用一句清楚的定位抓住注意力，更准确地说，让人知道你能提供什么、正在专注于什么。"
           >
             <div className="grid gap-7 sm:grid-cols-2">
               <Field
                 label="一句话介绍"
-                hint="2-30 字，建议使用「角色 + 擅长方向」"
+                hint="4-50 字，建议使用「角色 + 擅长方向」"
                 placeholder="例如：擅长从 0 到 1 的 AI 产品经理"
-                maxLength={30}
+                maxLength={50}
                 value={body.headline}
                 onChange={(v) => update("headline", v)}
               />
@@ -825,62 +953,61 @@ export function TalentEditor({
                 value={body.city || ""}
                 onChange={(v) => update("city", v)}
               />
-              <div className="sm:col-span-2">
-                <Field
-                  label="关于我"
-                  hint="30-500 字。写出你的经验、代表成果和想做的事，比泛泛的自我评价更有说服力。"
-                  placeholder="例如：过去 4 年负责开发者工具产品，从用户研究到商业化落地都深度参与……"
-                  maxLength={500}
-                  area
-                  value={body.bio}
-                  onChange={(v) => update("bio", v)}
-                />
-              </div>
             </div>
           </EditorSection>
 
           <EditorSection
-            id="profile-capability"
+            id="profile-story"
             number="02"
-            title="标记你真正能交付的能力"
-            description="方向决定别人如何找到你，技能帮助对方理解你能在项目中承担什么。少而准确，比全部选满更有效。"
+            title="讲讲你的经历和作品"
+            description="或者认真写下「关于我」，或者贴上作品链接，至少填写其一。两者俱全，你的档案更有分量。"
           >
-            <div className="space-y-9">
-              <fieldset>
-                <legend className="mb-3 flex w-full items-center justify-between gap-3 text-sm font-bold">
-                  <span>方向（至少 1 个）</span>
-                  <span className="font-mono text-xs font-normal text-primary">已选 {body.roles.length} / 3</span>
-                </legend>
-                <p className="mb-4 text-xs text-muted-foreground">选择你希望在合作中承担的主要角色。</p>
-                <Chips values={TALENT_ROLES} selected={body.roles} onChange={(v) => update("roles", v)} max={3} />
-              </fieldset>
-              <fieldset>
-                <legend className="mb-3 flex w-full items-center justify-between gap-3 text-sm font-bold">
-                  <span>技能（至少 3 项）</span>
-                  <span className="font-mono text-xs font-normal text-primary">已选 {body.skills.length} / 10</span>
-                </legend>
-                <p className="mb-4 text-xs text-muted-foreground">优先选择你有实际项目经验、可以独立完成的技能。</p>
-                <SkillGroups selected={body.skills} onChange={(v) => update("skills", v)} max={10} />
-              </fieldset>
+            <div className="grid gap-9 lg:grid-cols-[1.2fr_1fr]">
+              <div>
+                <Field
+                  label="关于我"
+                  hint="30-500 字。可以套用句式：我做了 X 年 Y，擅长 Z，最近在探索 W。"
+                  maxLength={500}
+                  area
+                  placeholder="例如：我做了 4 年开发者工具产品，擅长从用户研究到商业化落地，最近在探索 AI 辅助产品工作流。"
+                  value={body.bio ?? ""}
+                  onChange={(v) => update("bio", v)}
+                />
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                  更多句式参考：「我在 X 行业做了 Y 年，最得意的项目是 Z」/「我擅长
+                  X，帮过 Y 个团队解决过 Z」。
+                </p>
+              </div>
+              <LinksEditor links={body.links} onChange={(v) => update("links", v)} />
+            </div>
+          </EditorSection>
+
+          <EditorSection
+            id="profile-skills"
+            number="03"
+            title="一面技能墙，两个状态"
+            description="点一下标记「我能提供」，再点一下变为「我想寻找」。同一技能只能占据一个状态，方向由这些技能自然决定。"
+          >
+            <div className="space-y-5">
+              <p className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-xs text-primary">
+                <span>我能提供 {body.skills.length} / {MAX_TALENT_SKILLS}（至少 3 项）</span>
+                <span>我想寻找 {(body.seekingSkills || []).length} / {MAX_SEEKING_SKILLS}（可选）</span>
+              </p>
+              <SkillWall
+                state={{ skills: body.skills, seekingSkills: body.seekingSkills || [] }}
+                onChange={updateWall}
+              />
             </div>
           </EditorSection>
 
           <EditorSection
             id="profile-collaboration"
-            number="03"
+            number="04"
             title="说明你想遇见怎样的合作"
-            description="让别人知道你关注什么、缺少什么，以及你愿意投入多长时间，减少无效沟通。"
+            description="让别人知道你关注什么、愿意投入多长时间、以及当前是否方便碰撞，减少无效沟通。"
           >
             <div className="space-y-9">
-              <fieldset>
-                <legend className="mb-3 flex w-full items-center justify-between gap-3 text-sm font-bold">
-                  <span>希望一起做什么（可选）</span>
-                  <span className="font-mono text-xs font-normal text-primary">已选 {(body.seekingSkills || []).length} / 5</span>
-                </legend>
-                <p className="mb-4 text-xs text-muted-foreground">选择你希望在未来合作中补齐或遇见的能力。</p>
-                <SkillGroups selected={body.seekingSkills || []} onChange={(v) => update("seekingSkills", v)} max={5} />
-              </fieldset>
-              <div className="grid gap-8 border-t border-border pt-8 sm:grid-cols-2">
+              <div className="grid gap-8 sm:grid-cols-2">
                 <fieldset>
                   <legend className="mb-3 flex w-full items-center justify-between gap-3 text-sm font-bold">
                     <span>关注领域（至少 1 个）</span>
@@ -898,6 +1025,30 @@ export function TalentEditor({
                   <Chips values={COLLABORATION_DURATIONS} selected={body.durations} onChange={(v) => update("durations", v)} max={3} />
                 </fieldset>
               </div>
+              <fieldset>
+                <legend className="mb-3 flex w-full items-center justify-between gap-3 text-sm font-bold">
+                  <span>当前状态（单选）</span>
+                </legend>
+                <p className="mb-4 text-xs text-muted-foreground">
+                  公开展示在档案上，帮助对方判断这次沟通是否值得发起。
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {Object.values(TalentAvailability).map((value) => {
+                    const isActive = body.availability === value;
+                    return (
+                      <button
+                        type="button"
+                        key={value}
+                        aria-pressed={isActive}
+                        onClick={() => update("availability", value)}
+                        className={`chip-hard ${isActive ? "chip-active" : ""}`}
+                      >
+                        {TALENT_AVAILABILITY_LABELS[value]}
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
             </div>
           </EditorSection>
 

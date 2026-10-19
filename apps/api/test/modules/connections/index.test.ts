@@ -48,11 +48,12 @@ const talentProfileBody = {
   headline: '全栈产品搭档',
   bio: '擅长从用户研究到产品交付，希望与认真解决真实问题的团队长期合作。',
   city: '上海',
-  roles: ['开发'],
+  links: ['https://github.com/shenicest'],
   skills: ['frontend', 'backend', 'fullstack'],
   seekingSkills: [],
   domains: ['效率工具'],
   durations: ['长期合作'],
+  availability: 0,
 }
 
 const talentMessage = '希望一起推进这个产品并验证市场需求，认真讨论合作方式并尽快开始执行。'

@@ -176,6 +176,13 @@
       "when": 1792394452168,
       "tag": "0024_add-project-v2-fields",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "5",
+      "when": 1792421317891,
+      "tag": "0025_talent-profile-v2",
+      "breakpoints": true
     }
   ]
 }

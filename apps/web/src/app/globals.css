@@ -349,6 +349,12 @@
     border-color: var(--primary);
     color: var(--primary);
   }
+  .chip-seeking {
+    border-color: var(--secondary);
+    color: var(--secondary);
+    border-style: dashed;
+    background: color-mix(in srgb, var(--secondary) 12%, transparent);
+  }
   .chip-warning {
     border-color: var(--destructive);
     color: var(--destructive);
