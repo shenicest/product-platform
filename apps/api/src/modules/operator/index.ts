@@ -315,7 +315,7 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     operatorOnly: true,
     detail: {
       summary: 'Platform statistics',
-      description: 'Aggregated project counts: total, by status (Draft/PendingReview/RevisionRequired/Live/Delisted/Rejected), by stage (MVP/Growth), and by category.',
+      description: 'Aggregated project counts: total, by status (Draft/PendingReview/RevisionRequired/Live/Delisted/Rejected), by stage (Idea/Prototype/Mvp/Launched/Revenue), and by category.',
       tags: ['Operator'],
       operationId: 'operator.getStats',
     },

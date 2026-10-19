@@ -32,9 +32,9 @@ describe('parseOperatorProjectParams', () => {
   })
 
   it('parses valid stages', () => {
-    expect(parseOperatorProjectParams({ stage: String(ProjectStage.MVP) })).toEqual({
+    expect(parseOperatorProjectParams({ stage: String(ProjectStage.Mvp) })).toEqual({
       page: 1,
-      stage: ProjectStage.MVP,
+      stage: ProjectStage.Mvp,
     })
   })
 
@@ -78,7 +78,7 @@ describe('parseOperatorProjectParams', () => {
     expect(
       parseOperatorProjectParams({
         status: String(ProjectStatus.PendingReview),
-        stage: String(ProjectStage.Growth),
+        stage: String(ProjectStage.Launched),
         category: '效率工具',
         q: '  ai ',
         sort: 'updated_at',
@@ -88,7 +88,7 @@ describe('parseOperatorProjectParams', () => {
     ).toEqual({
       page: 3,
       status: ProjectStatus.PendingReview,
-      stage: ProjectStage.Growth,
+      stage: ProjectStage.Launched,
       category: '效率工具',
       q: 'ai',
       sort: 'updated_at',
@@ -105,10 +105,10 @@ describe('parseOperatorProposalParams', () => {
   it('accepts stage and category', () => {
     expect(
       parseOperatorProposalParams({
-        stage: String(ProjectStage.MVP),
+        stage: String(ProjectStage.Mvp),
         category: '开发者工具',
       })
-    ).toEqual({ page: 1, stage: ProjectStage.MVP, category: '开发者工具' })
+    ).toEqual({ page: 1, stage: ProjectStage.Mvp, category: '开发者工具' })
   })
 
   it('drops unknown stage and category values', () => {
@@ -151,7 +151,7 @@ describe('hasActiveOperatorProjectFilters', () => {
 
   it('detects each field individually', () => {
     expect(hasActiveOperatorProjectFilters({ status: ProjectStatus.PendingReview })).toBe(true)
-    expect(hasActiveOperatorProjectFilters({ stage: ProjectStage.MVP })).toBe(true)
+    expect(hasActiveOperatorProjectFilters({ stage: ProjectStage.Idea })).toBe(true)
     expect(hasActiveOperatorProjectFilters({ category: '效率工具' })).toBe(true)
     expect(hasActiveOperatorProjectFilters({ q: 'ai' })).toBe(true)
   })
@@ -161,7 +161,7 @@ describe('hasActiveOperatorProjectFilters', () => {
     expect(hasActiveOperatorProjectFilters({ order: 'asc' })).toBe(false)
   })
 
-  it('treats stage=0 (MVP) as active', () => {
-    expect(hasActiveOperatorProjectFilters({ stage: ProjectStage.MVP })).toBe(true)
+  it('treats stage=0 (Idea) as active', () => {
+    expect(hasActiveOperatorProjectFilters({ stage: ProjectStage.Idea })).toBe(true)
   })
 })

@@ -95,8 +95,11 @@ function toggleCategory(current: string[], category: string): string[] {
 }
 
 const STAGE_OPTIONS = [
-  { value: String(ProjectStage.MVP), label: 'MVP 阶段' },
-  { value: String(ProjectStage.Growth), label: '成长阶段' },
+  { value: String(ProjectStage.Idea), label: '想法验证' },
+  { value: String(ProjectStage.Prototype), label: '原型' },
+  { value: String(ProjectStage.Mvp), label: 'MVP' },
+  { value: String(ProjectStage.Launched), label: '已上线有用户' },
+  { value: String(ProjectStage.Revenue), label: '有收入' },
 ]
 
 function focusFirstError(errors: FormErrors) {

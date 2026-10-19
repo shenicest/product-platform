@@ -24,9 +24,12 @@ function validateChanges(changes: Record<string, unknown>): ValidationError | nu
   if (keys.length === 0) return new ValidationError('changes must not be empty')
   const unknown = keys.filter((key) => !PROPOSAL_EDITABLE_PROJECT_FIELD_SET.has(key))
   if (unknown.length > 0) return new ValidationError(`Unknown field(s) in changes: ${unknown.join(', ')}`)
-  if ('description' in changes) {
-    const length = typeof changes.description === 'string' ? [...changes.description.trim()].length : 0
-    if (length < 100 || length > 2000) return new ValidationError('项目介绍至少100字，至多2000字')
+  // Length rules live in the frontend; the backend only enforces value types and
+  // the http(s) protocol on demoLink (an XSS boundary for rendered links).
+  for (const field of ['problemStatement', 'nextSteps', 'betaDescription'] as const) {
+    if (field in changes && typeof changes[field] !== 'string') {
+      return new ValidationError(`${field} 必须是文本`)
+    }
   }
   if ('demoLink' in changes && changes.demoLink !== null && changes.demoLink !== '') {
     try {
@@ -35,9 +38,6 @@ function validateChanges(changes: Record<string, unknown>): ValidationError | nu
     } catch {
       return new ValidationError('请输入正确的链接')
     }
-  }
-  if ('betaDescription' in changes && typeof changes.betaDescription !== 'string') {
-    return new ValidationError('内测说明格式不正确')
   }
   return null
 }

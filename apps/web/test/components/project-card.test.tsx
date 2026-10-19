@@ -15,18 +15,21 @@ function makeProject(overrides: Partial<Project> = {}): Project {
     status: 3,
     name: 'Nova',
     tagline: 'A fast build tool',
-    description: null,
     coverUrl: 'https://cdn.example.com/covers/7.png',
     demoImages: null,
     demoVideoUrl: null,
     demoLink: null,
-    stage: ProjectStage.MVP,
+    stage: ProjectStage.Mvp,
     categories: ['开发者工具'],
-    targetUsers: null,
-    userProblem: null,
+    problemStatement: null,
     progress: null,
     nextSteps: null,
-    messageToUsers: null,
+    differentiation: null,
+    businessModel: null,
+    userCount: null,
+    monthlyRevenue: null,
+    retentionRate: null,
+    seekingSkills: null,
     isOpenForBeta: null,
     betaDescription: null,
     contactName: null,
@@ -79,7 +82,7 @@ describe('ProjectCard', () => {
 
   it('renders badges for stage and categories', () => {
     render(<ProjectCard project={makeProject()} />)
-    expect(screen.getByText('MVP 阶段')).toBeInTheDocument()
+    expect(screen.getByText('MVP')).toBeInTheDocument()
     expect(screen.getByText('开发者工具')).toBeInTheDocument()
   })
 

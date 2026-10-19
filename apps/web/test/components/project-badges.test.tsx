@@ -14,14 +14,14 @@ describe('ProjectBadges', () => {
     expect(container.firstChild).toBeNull()
   })
 
-  it('renders a stage badge for MVP', () => {
-    render(<ProjectBadges stage={ProjectStage.MVP} categories={null} />)
-    expect(screen.getByText('MVP 阶段')).toBeInTheDocument()
+  it('renders a stage badge for Mvp', () => {
+    render(<ProjectBadges stage={ProjectStage.Mvp} categories={null} />)
+    expect(screen.getByText('MVP')).toBeInTheDocument()
   })
 
-  it('renders a stage badge for Growth', () => {
-    render(<ProjectBadges stage={ProjectStage.Growth} categories={null} />)
-    expect(screen.getByText('成长阶段')).toBeInTheDocument()
+  it('renders a stage badge for Revenue', () => {
+    render(<ProjectBadges stage={ProjectStage.Revenue} categories={null} />)
+    expect(screen.getByText('有收入')).toBeInTheDocument()
   })
 
   it('renders each category as a chip', () => {
@@ -34,16 +34,16 @@ describe('ProjectBadges', () => {
 
   it('renders stage and categories together', () => {
     render(
-      <ProjectBadges stage={ProjectStage.MVP} categories={['开发者工具']} />
+      <ProjectBadges stage={ProjectStage.Mvp} categories={['开发者工具']} />
     )
-    expect(screen.getByText('MVP 阶段')).toBeInTheDocument()
+    expect(screen.getByText('MVP')).toBeInTheDocument()
     expect(screen.getByText('开发者工具')).toBeInTheDocument()
   })
 
   it('applies the passed className', () => {
     const { container } = render(
       <ProjectBadges
-        stage={ProjectStage.MVP}
+        stage={ProjectStage.Mvp}
         categories={null}
         className="custom-class"
       />
@@ -55,7 +55,7 @@ describe('ProjectBadges', () => {
     // stage=42 is not in STAGE_LABELS; STAGE_LABELS[42] is undefined.
     render(<ProjectBadges stage={42 as number} categories={['开发者工具']} />)
     expect(screen.getByText('开发者工具')).toBeInTheDocument()
-    expect(screen.queryByText('MVP 阶段')).not.toBeInTheDocument()
-    expect(screen.queryByText('成长阶段')).not.toBeInTheDocument()
+    expect(screen.queryByText('MVP')).not.toBeInTheDocument()
+    expect(screen.queryByText('有收入')).not.toBeInTheDocument()
   })
 })

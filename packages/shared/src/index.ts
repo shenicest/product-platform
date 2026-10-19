@@ -17,8 +17,11 @@ export const ProposalStatus = {
 export type ProposalStatus = (typeof ProposalStatus)[keyof typeof ProposalStatus]
 
 export const ProjectStage = {
-  MVP: 0,
-  Growth: 1,
+  Idea: 0,
+  Prototype: 1,
+  Mvp: 2,
+  Launched: 3,
+  Revenue: 4,
 } as const
 export type ProjectStage = (typeof ProjectStage)[keyof typeof ProjectStage]
 

@@ -10,6 +10,7 @@ import {
   EDITABLE_PROJECT_FIELD_SET,
   InvalidTransitionError,
   MissingRequiredFieldError,
+  PRIVATE_CONTACT_FIELDS,
   ProjectNotFoundError,
   ProjectStatus,
   SUBMISSION_REQUIRED_FIELDS,
@@ -40,15 +41,20 @@ function pickEditable(data: Record<string, unknown>): ProjectUpdate {
   return result as ProjectUpdate
 }
 
+// Contact fields are private (ADR-0012): returns a copy of the row with the
+// contact fields nulled out. Used for public list/detail responses whenever the
+// viewer is neither the Owner nor an Operator.
+function hideContacts<T extends ProjectRow>(project: T): T {
+  const hidden = { ...project }
+  for (const field of PRIVATE_CONTACT_FIELDS) hidden[field] = null
+  return hidden
+}
+
 function isFieldEmpty(value: unknown): boolean {
   if (value === null || value === undefined) return true
   if (typeof value === 'string') return value.trim() === ''
   if (Array.isArray(value)) return value.length === 0
   return false
-}
-
-function lengthOf(value: unknown): number {
-  return typeof value === 'string' ? [...value.trim()].length : 0
 }
 
 function isValidUrl(value: unknown): boolean {
@@ -65,45 +71,37 @@ function invalidField(field: string, message: string) {
   return new MissingRequiredFieldError(field, message, 'INVALID_FIELD')
 }
 
-// Returns the first required field that is empty (in form-display order), or null
-// when the project is complete enough to submit. `betaDescription` is only required
-// when the project is open for beta.
+// Returns the first submission-blocking problem (in form-display order), or null
+// when the project is complete enough to submit. Length rules live in the
+// frontend; the backend only enforces required fields, the contact at-least-one
+// rule, enum membership, and http(s) URL format (an XSS boundary for rendered
+// links, not a length rule). `betaDescription` is only required when the project
+// is open for beta.
 export function validateProjectForSubmission(project: ProjectRow): MissingRequiredFieldError | null {
   for (const field of SUBMISSION_REQUIRED_FIELDS) {
     if (isFieldEmpty(project[field])) return new MissingRequiredFieldError(field)
   }
 
-  const nameLength = lengthOf(project.name)
-  const nameMax = /\p{Script=Han}/u.test(project.name) ? 30 : 60
-  if (nameLength < 2 || nameLength > nameMax) return invalidField('name', '项目名称长度不符合要求')
-  if (lengthOf(project.tagline) < 10 || lengthOf(project.tagline) > 40) {
-    return invalidField('tagline', '一句话介绍需为10-40个字符')
-  }
-  if (project.stage !== ProjectStage.MVP && project.stage !== ProjectStage.Growth) {
+  if (!Object.values(ProjectStage).includes(project.stage as ProjectStage)) {
     return invalidField('stage', '请选择正确的项目阶段')
   }
   if (!project.categories?.every((category) => CATEGORIES.includes(category as typeof CATEGORIES[number]))) {
     return invalidField('categories', '请选择正确的项目品类')
   }
-  if (lengthOf(project.description) < 100 || lengthOf(project.description) > 2000) {
-    return invalidField('description', '项目介绍至少100字，至多2000字')
-  }
-  for (const field of ['targetUsers', 'userProblem', 'progress'] as const) {
-    const length = lengthOf(project[field])
-    if (length < 20 || length > 500) return invalidField(field, '内容需为20-500字')
-  }
-  if (lengthOf(project.nextSteps) > 500) return invalidField('nextSteps', '下一步计划最多500字')
-  if (!/^1[3-9]\d{9}$/.test(project.contactPhone?.trim() ?? '')) {
-    return invalidField('contactPhone', '请输入正确的手机号')
+  if (
+    isFieldEmpty(project.contactPhone) &&
+    isFieldEmpty(project.contactEmail) &&
+    isFieldEmpty(project.contactWechat)
+  ) {
+    // Reported against the first contact channel so the form can map the error
+    // back to a concrete field.
+    return new MissingRequiredFieldError('contactPhone', '请至少填写一种联系方式（电话/邮箱/微信）')
   }
   for (const field of ['coverUrl', 'demoVideoUrl', 'demoLink'] as const) {
     if (!isValidUrl(project[field])) return invalidField(field, '请输入正确的链接')
   }
   if (project.demoImages && (project.demoImages.length > 5 || project.demoImages.some((url) => !isValidUrl(url)))) {
     return invalidField('demoImages', 'Demo图片最多上传5张，且地址必须有效')
-  }
-  if (project.contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(project.contactEmail)) {
-    return invalidField('contactEmail', '请输入正确的邮箱')
   }
   if (project.isOpenForBeta === true && isFieldEmpty(project.betaDescription)) {
     return new MissingRequiredFieldError('betaDescription')
@@ -144,7 +142,9 @@ export class ProjectService {
     }
     if (query.q) {
       const pattern = `%${query.q}%`
-      conditions.push(or(like(projects.name, pattern), like(projects.contactName, pattern), like(projects.teamName, pattern))!)
+      // contactName is private (ADR-0012), so the public keyword search only
+      // covers name and teamName.
+      conditions.push(or(like(projects.name, pattern), like(projects.teamName, pattern))!)
     }
     const where = and(...conditions)
 
@@ -157,7 +157,7 @@ export class ProjectService {
       this.db.select({ value: count() }).from(projects).where(where),
     ])
     const data = await Promise.all(projectsList.map(async (project): Promise<ProjectListItem> => ({
-      ...project,
+      ...hideContacts(project),
       founder: await this.userProfile.getPublicProfile(project.userId),
     })))
     return { data, total: totalRows[0]?.value ?? 0 }
@@ -173,16 +173,20 @@ export class ProjectService {
   }
 
   // Public detail view: the visible project enriched with the founder's public
-  // profile (null when the founder has none).
+  // profile (null when the founder has none). Contact fields stay visible only
+  // to the Owner and Operators; everyone else gets them nulled out (ADR-0012).
   async getProjectDetail(userId: string | null, projectId: number): Promise<ProjectDetail | ProjectNotFoundError> {
     const project = await this.getVisibleProject(userId, projectId)
     if (project instanceof ProjectNotFoundError) return project
+    const viewerIsPrivileged =
+      (userId !== null && project.userId === userId) ||
+      (userId !== null && await this.userIdentity.hasRole(userId, Role.Operator))
     const [profile, followerRows] = await Promise.all([
       this.userProfile.getPublicProfile(project.userId),
       this.db.select({ value: count() }).from(follows).where(eq(follows.followeeUserId, project.userId)),
     ])
     const founder = profile ? { ...profile, userId: project.userId, followerCount: followerRows[0]?.value ?? 0 } : null
-    return { ...project, founder }
+    return { ...(!viewerIsPrivileged ? hideContacts(project) : project), founder }
   }
 
   async createProject(userId: string, data: Record<string, unknown>): Promise<ProjectRow> {

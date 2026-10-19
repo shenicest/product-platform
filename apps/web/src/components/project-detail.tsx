@@ -129,21 +129,24 @@ function DemoAssets({ project }: { project: ProjectDetail }) {
 export function ProjectDetail({ project, backHref = '/', showLike = true }: { project: ProjectDetail; backHref?: string; showLike?: boolean }) {
   const coverUrl = nonEmpty(project.coverUrl)
   const tagline = nonEmpty(project.tagline)
-  const description = nonEmpty(project.description)
   const teamName = nonEmpty(project.teamName)
 
   const sections = [
-    { title: '产品介绍', content: description },
-    { title: '目标用户', content: nonEmpty(project.targetUsers) },
-    { title: '解决的问题', content: nonEmpty(project.userProblem) },
+    { title: '项目背景与问题', content: nonEmpty(project.problemStatement) },
     { title: '当前进展', content: nonEmpty(project.progress) },
     { title: '下一步计划', content: nonEmpty(project.nextSteps) },
-    { title: '想对用户说的话', content: nonEmpty(project.messageToUsers) },
+    { title: '差异化优势', content: nonEmpty(project.differentiation) },
+    { title: '商业模式', content: nonEmpty(project.businessModel) },
   ].filter((section): section is { title: string; content: string } =>
     Boolean(section.content),
   )
 
   const betaDescription = nonEmpty(project.betaDescription)
+  const traction = [
+    project.userCount !== null && project.userCount !== undefined ? { label: '用户数', value: project.userCount.toLocaleString() } : null,
+    project.monthlyRevenue !== null && project.monthlyRevenue !== undefined ? { label: '月收入', value: `¥${project.monthlyRevenue.toLocaleString()}` } : null,
+    project.retentionRate !== null && project.retentionRate !== undefined ? { label: '留存率', value: `${project.retentionRate}%` } : null,
+  ].filter((item): item is { label: string; value: string } => item !== null)
 
   return (
     <article className="detail-page mx-auto w-full max-w-[1440px] px-5 py-8 sm:px-8 lg:px-16">
@@ -211,6 +214,30 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
             />
           ))}
         </div>
+      ) : null}
+
+      {traction.length ? (
+        <section className="mt-12 border border-border p-6">
+          <div className="flex flex-wrap gap-8">
+            {traction.map((item) => (
+              <div key={item.label}>
+                <div className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">{item.label}</div>
+                <div className="mt-1 text-2xl font-bold">{item.value}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {project.seekingSkills?.length ? (
+        <section className="mt-12">
+          <h2 className="text-lg font-bold">寻求帮助</h2>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {project.seekingSkills.map((skill) => (
+              <span key={skill} className="chip-hard">{skill}</span>
+            ))}
+          </div>
+        </section>
       ) : null}
 
       {project.isOpenForBeta ? (

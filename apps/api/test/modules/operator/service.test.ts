@@ -208,11 +208,11 @@ describe('OperatorService', () => {
         name: 'Product',
         tagline: 'original valid tagline',
       })
-      const changedDescription = `${validProjectBody().description} 补充修改。`
-      const proposal = await proposalService.createProposal(project.id, { description: changedDescription })
+      const changedProblemStatement = `${validProjectBody().problemStatement} 补充修改。`
+      const proposal = await proposalService.createProposal(project.id, { problemStatement: changedProblemStatement })
       await service.approveProposal(TEST_OPERATOR, (proposal as { id: number }).id)
       const updated = await projectService.getProject(project.id)
-      expect(updated!.description).toBe(changedDescription)
+      expect(updated!.problemStatement).toBe(changedProblemStatement)
       expect(updated!.tagline).toBe('original valid tagline')
       expect(updated!.name).toBe('Product')
     })

@@ -93,15 +93,15 @@ describe('FilterBar — stage chips', () => {
   it('sets the stage param on click', async () => {
     const user = userEvent.setup()
     render(<FilterBar />)
-    await user.click(screen.getByRole('button', { name: 'MVP 阶段' }))
-    expect(replace).toHaveBeenCalledWith('/?stage=0', { scroll: false })
+    await user.click(screen.getByRole('button', { name: 'MVP' }))
+    expect(replace).toHaveBeenCalledWith('/?stage=2', { scroll: false })
   })
 
   it('toggles the stage param off when clicked twice', async () => {
-    currentSearch = 'stage=0'
+    currentSearch = 'stage=2'
     const user = userEvent.setup()
     render(<FilterBar />)
-    await user.click(screen.getByRole('button', { name: 'MVP 阶段' }))
+    await user.click(screen.getByRole('button', { name: 'MVP' }))
     expect(replace).toHaveBeenCalledWith('/', { scroll: false })
   })
 })

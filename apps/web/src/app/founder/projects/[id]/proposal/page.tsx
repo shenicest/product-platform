@@ -55,11 +55,12 @@ export default async function ProjectProposalPage(
       <ProjectProposalForm
         projectId={projectId}
         liveData={{
-          description: project.description ?? '',
+          problemStatement: project.problemStatement ?? '',
+          nextSteps: project.nextSteps ?? '',
           demoLink: project.demoLink ?? '',
           betaDescription: project.betaDescription ?? '',
         }}
-        initialChanges={active?.changes as Partial<{ description: string; demoLink: string; betaDescription: string }>}
+        initialChanges={active?.changes as Partial<{ problemStatement: string; nextSteps: string; demoLink: string; betaDescription: string }>}
         proposalId={active?.id}
       />
     </div>

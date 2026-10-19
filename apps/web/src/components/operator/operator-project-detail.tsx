@@ -164,28 +164,16 @@ export function OperatorProjectDetail({
           <p className="mt-4 text-lg text-muted-foreground">{project.tagline}</p>
         ) : null}
 
-        {project.description ? (
+        {project.problemStatement ? (
           <div className="mt-4">
-            <h3 className="font-mono text-[10px] tracking-[0.12em] text-primary">DESCRIPTION</h3>
+            <h3 className="font-mono text-[10px] tracking-[0.12em] text-primary">PROBLEM STATEMENT</h3>
             <p className="mt-2 max-w-[65ch] text-sm leading-[1.7] text-muted-foreground whitespace-pre-line">
-              {project.description}
+              {project.problemStatement}
             </p>
           </div>
         ) : null}
 
         <div className="mt-6 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-          {project.targetUsers ? (
-            <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">目标用户</dt>
-              <dd className="mt-1">{project.targetUsers}</dd>
-            </div>
-          ) : null}
-          {project.userProblem ? (
-            <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">解决的问题</dt>
-              <dd className="mt-1">{project.userProblem}</dd>
-            </div>
-          ) : null}
           {project.progress ? (
             <div>
               <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">当前进展</dt>
@@ -198,10 +186,22 @@ export function OperatorProjectDetail({
               <dd className="mt-1">{project.nextSteps}</dd>
             </div>
           ) : null}
-          {project.messageToUsers ? (
+          {project.differentiation ? (
             <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">想对用户说的话</dt>
-              <dd className="mt-1 whitespace-pre-line">{project.messageToUsers}</dd>
+              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">差异化优势</dt>
+              <dd className="mt-1">{project.differentiation}</dd>
+            </div>
+          ) : null}
+          {project.businessModel ? (
+            <div>
+              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">商业模式</dt>
+              <dd className="mt-1">{project.businessModel}</dd>
+            </div>
+          ) : null}
+          {project.seekingSkills?.length ? (
+            <div>
+              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">寻求帮助</dt>
+              <dd className="mt-1">{project.seekingSkills.join('、')}</dd>
             </div>
           ) : null}
           {project.isOpenForBeta !== null ? (

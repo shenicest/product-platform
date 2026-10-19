@@ -1,7 +1,11 @@
 import { t } from 'elysia'
 import { InsertProject, SelectProject } from '../../db/schema'
 import { PublicFounder, PublicProfile } from '../user/model'
-import { CATEGORIES } from '@shenicest/shared'
+import { CATEGORIES, ProjectStage, TALENT_SKILLS } from '@shenicest/shared'
+
+// Domain enum lives in @shenicest/shared (single source of truth); re-exported
+// here so module-internal consumers keep a stable import path.
+export { ProjectStage }
 
 export const ProjectStatus = {
   Draft: 0,
@@ -12,12 +16,6 @@ export const ProjectStatus = {
   Rejected: 5,
 } as const
 export type ProjectStatus = (typeof ProjectStatus)[keyof typeof ProjectStatus]
-
-export const ProjectStage = {
-  MVP: 0,
-  Growth: 1,
-} as const
-export type ProjectStage = (typeof ProjectStage)[keyof typeof ProjectStage]
 
 export const AuditAction = {
   Approve: 'approve',
@@ -34,18 +32,21 @@ export type AuditAction = (typeof AuditAction)[keyof typeof AuditAction]
 export const EDITABLE_PROJECT_FIELDS = [
   'name',
   'tagline',
-  'description',
   'coverUrl',
   'demoImages',
   'demoVideoUrl',
   'demoLink',
   'stage',
   'categories',
-  'targetUsers',
-  'userProblem',
+  'problemStatement',
   'progress',
   'nextSteps',
-  'messageToUsers',
+  'differentiation',
+  'businessModel',
+  'userCount',
+  'monthlyRevenue',
+  'retentionRate',
+  'seekingSkills',
   'isOpenForBeta',
   'betaDescription',
   'contactName',
@@ -58,8 +59,19 @@ export type EditableProjectField = (typeof EDITABLE_PROJECT_FIELDS)[number]
 
 export const EDITABLE_PROJECT_FIELD_SET = new Set<string>(EDITABLE_PROJECT_FIELDS)
 
+// Private contact fields: visible only to the Owner and Operators. The service
+// nulls these out in public list/detail responses for any other viewer (ADR-0012).
+export const PRIVATE_CONTACT_FIELDS = [
+  'contactName',
+  'contactPhone',
+  'contactEmail',
+  'contactWechat',
+] as const
+
+// Post-live proposals may only touch these four fields (ADR-0012).
 export const PROPOSAL_EDITABLE_PROJECT_FIELDS = [
-  'description',
+  'problemStatement',
+  'nextSteps',
   'demoLink',
   'betaDescription',
 ] as const
@@ -68,34 +80,41 @@ export const PROPOSAL_EDITABLE_PROJECT_FIELD_SET = new Set<string>(PROPOSAL_EDIT
 // Fields that must be filled before a Project can be submitted for review, ordered
 // as the submission form displays them so the first missing field reported matches
 // what the Founder sees. `betaDescription` is conditionally required when
-// `isOpenForBeta` is true and is checked separately in the service.
+// `isOpenForBeta` is true and is checked separately in the service; the contact
+// at-least-one rule (phone/email/wechat) is also checked separately.
 export const SUBMISSION_REQUIRED_FIELDS = [
   'name',
   'tagline',
   'categories',
   'stage',
-  'description',
+  'problemStatement',
+  'nextSteps',
   'coverUrl',
-  'targetUsers',
-  'userProblem',
-  'progress',
-  'messageToUsers',
-  'isOpenForBeta',
   'contactName',
-  'contactPhone',
 ] as const
 export type SubmissionRequiredField = (typeof SUBMISSION_REQUIRED_FIELDS)[number]
 
 // Create + save-draft body: `name` is required (the minimum field), every other
 // editable field is optional so a Founder can fill the project in incrementally.
 // `name` stays required because InsertProject marks the not-null column required.
-const ProjectDraftBase = t.Omit(t.Pick(InsertProject, [...EDITABLE_PROJECT_FIELDS]), ['stage', 'categories'])
+const ProjectDraftBase = t.Omit(t.Pick(InsertProject, [...EDITABLE_PROJECT_FIELDS]), ['stage', 'categories', 'seekingSkills'])
 export const ProjectDraftBody = t.Intersect([
   ProjectDraftBase,
   t.Object({
-    stage: t.Optional(t.Union([t.Literal(ProjectStage.MVP), t.Literal(ProjectStage.Growth), t.Null()])),
+    stage: t.Optional(t.Union([
+      t.Literal(ProjectStage.Idea),
+      t.Literal(ProjectStage.Prototype),
+      t.Literal(ProjectStage.Mvp),
+      t.Literal(ProjectStage.Launched),
+      t.Literal(ProjectStage.Revenue),
+      t.Null(),
+    ])),
     categories: t.Optional(t.Union([
       t.Array(t.Union(CATEGORIES.map((category) => t.Literal(category))), { uniqueItems: true }),
+      t.Null(),
+    ])),
+    seekingSkills: t.Optional(t.Union([
+      t.Array(t.Union(TALENT_SKILLS.map((skill) => t.Literal(skill))), { uniqueItems: true, maxItems: 5 }),
       t.Null(),
     ])),
   }),
@@ -133,7 +152,7 @@ export type FieldErrorResponse = typeof FieldErrorResponse.static
 
 export const ProjectListQuery = t.Object({
   category: t.Optional(t.String({ description: 'Filter by category name' })),
-  stage: t.Optional(t.Numeric({ description: 'Filter by stage: 0=MVP, 1=Growth' })),
+  stage: t.Optional(t.Numeric({ description: 'Filter by stage: 0=Idea, 1=Prototype, 2=Mvp, 3=Launched, 4=Revenue' })),
   q: t.Optional(t.String({ description: 'Keyword search on project name and tagline' })),
   sort: t.Optional(t.Union([t.Literal('latest'), t.Literal('recently_updated')], { description: 'Sort order (default: latest)' })),
   offset: t.Optional(t.Numeric({ minimum: 0, description: 'Number of records to skip (default: 0)' })),

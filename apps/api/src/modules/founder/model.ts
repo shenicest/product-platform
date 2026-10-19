@@ -4,7 +4,7 @@ import { DomainError } from '../project/model'
 
 export const FounderProjectQuery = t.Object({
   status: t.Optional(t.Numeric({ description: 'Filter by status: 0=Draft, 1=PendingReview, 2=RevisionRequired, 3=Live, 4=Delisted, 5=Rejected' })),
-  stage: t.Optional(t.Numeric({ description: 'Filter by stage: 0=MVP, 1=Growth' })),
+  stage: t.Optional(t.Numeric({ description: 'Filter by stage: 0=Idea, 1=Prototype, 2=Mvp, 3=Launched, 4=Revenue' })),
   q: t.Optional(t.String({ description: 'Keyword search on project name and tagline' })),
   offset: t.Optional(t.Numeric({ description: 'Number of records to skip (default: 0)' })),
   limit: t.Optional(t.Numeric({ description: 'Page size (default: 20)' })),

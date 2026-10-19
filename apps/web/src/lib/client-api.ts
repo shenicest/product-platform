@@ -36,18 +36,21 @@ export interface ProjectData {
   likeCount: number
   name: string
   tagline: string | null
-  description: string | null
   coverUrl: string | null
   demoImages: string[] | null
   demoVideoUrl: string | null
   demoLink: string | null
   stage: number | null
   categories: string[] | null
-  targetUsers: string | null
-  userProblem: string | null
+  problemStatement: string | null
   progress: string | null
   nextSteps: string | null
-  messageToUsers: string | null
+  differentiation: string | null
+  businessModel: string | null
+  userCount: number | null
+  monthlyRevenue: number | null
+  retentionRate: number | null
+  seekingSkills: string[] | null
   isOpenForBeta: boolean | null
   betaDescription: string | null
   contactName: string | null

@@ -497,10 +497,10 @@ describe('Operator routes', () => {
     })
 
     it('keys byStatus/byStage by enum name, not numeric value', async () => {
-      await createLive({ name: 'Stats Named Keys', stage: 1 })
+      await createLive({ name: 'Stats Named Keys', stage: 2 })
       const body = await (await operatorGet('/stats')).json()
       expect(body.byStatus['Live']).toBeGreaterThanOrEqual(1)
-      expect(body.byStage['Growth']).toBeGreaterThanOrEqual(1)
+      expect(body.byStage['Mvp']).toBeGreaterThanOrEqual(1)
       expect(body.byStatus[String(ProjectStatus.Live)]).toBeUndefined()
     })
   })

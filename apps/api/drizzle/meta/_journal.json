@@ -162,6 +162,20 @@
       "when": 1788791024825,
       "tag": "0022_cuddly_robbie_robertson",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "5",
+      "when": 1792394449018,
+      "tag": "0023_drop-old-project-fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1792394452168,
+      "tag": "0024_add-project-v2-fields",
+      "breakpoints": true
     }
   ]
 }

@@ -8,7 +8,6 @@ import { server } from '../msw/server'
 const push = vi.fn()
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push, refresh: vi.fn() }) }))
 
-const description = '这是一段完整的项目介绍，用于说明项目是什么、解决什么问题以及当前进度。为了满足提交要求，这段内容需要达到一百个字符以上，并包含足够清晰的信息。项目已经完成基础原型和首轮用户访谈，接下来会继续验证核心需求、完善产品功能，并根据真实反馈持续改进使用体验。'
 
 describe('ProjectProposalForm', () => {
   it('submits only changed allowed fields', async () => {
@@ -18,7 +17,7 @@ describe('ProjectProposalForm', () => {
       return HttpResponse.json({ id: 1, projectId: 7, changes: {}, status: 0 })
     }))
     const user = userEvent.setup()
-    render(<ProjectProposalForm projectId={7} liveData={{ description, demoLink: '', betaDescription: '' }} />)
+    render(<ProjectProposalForm projectId={7} liveData={{ problemStatement: '现有方案监控成本高。', nextSteps: '扩大测试范围。', demoLink: '', betaDescription: '' }} />)
 
     await user.type(screen.getByLabelText('Demo 访问链接'), 'https://example.com/demo')
     await user.click(screen.getByRole('button', { name: '提交修改提案' }))
@@ -38,7 +37,7 @@ describe('ProjectProposalForm', () => {
       <ProjectProposalForm
         projectId={7}
         proposalId={3}
-        liveData={{ description, demoLink: '', betaDescription: '' }}
+        liveData={{ problemStatement: '现有方案监控成本高。', nextSteps: '扩大测试范围。', demoLink: '', betaDescription: '' }}
         initialChanges={{ demoLink: 'https://example.com/old' }}
       />,
     )

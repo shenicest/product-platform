@@ -25,18 +25,19 @@ describe('parseListParams', () => {
   })
 
   it('parses stage as a number when valid', () => {
-    expect(parseListParams({ stage: String(ProjectStage.MVP) })).toEqual({
+    expect(parseListParams({ stage: String(ProjectStage.Idea) })).toEqual({
       page: 1,
-      stage: ProjectStage.MVP,
+      stage: ProjectStage.Idea,
     })
-    expect(parseListParams({ stage: String(ProjectStage.Growth) })).toEqual({
+    expect(parseListParams({ stage: String(ProjectStage.Revenue) })).toEqual({
       page: 1,
-      stage: ProjectStage.Growth,
+      stage: ProjectStage.Revenue,
     })
   })
 
   it('ignores stage values outside the enum', () => {
-    expect(parseListParams({ stage: '2' })).toEqual({ page: 1 })
+    expect(parseListParams({ stage: '9' })).toEqual({ page: 1 })
+    expect(parseListParams({ stage: '-1' })).toEqual({ page: 1 })
     expect(parseListParams({ stage: 'abc' })).toEqual({ page: 1 })
     expect(parseListParams({ stage: '' })).toEqual({ page: 1 })
   })
@@ -77,7 +78,7 @@ describe('parseListParams', () => {
     expect(
       parseListParams({
         category: '效率工具',
-        stage: String(ProjectStage.Growth),
+        stage: String(ProjectStage.Launched),
         q: '  ai  ',
         sort: 'recently_updated',
         page: '3',
@@ -85,7 +86,7 @@ describe('parseListParams', () => {
     ).toEqual({
       page: 3,
       category: '效率工具',
-      stage: ProjectStage.Growth,
+      stage: ProjectStage.Launched,
       q: 'ai',
       sort: 'recently_updated',
     })
@@ -99,12 +100,12 @@ describe('hasActiveFilters', () => {
 
   it('detects each filter individually', () => {
     expect(hasActiveFilters({ category: '开发者工具' })).toBe(true)
-    expect(hasActiveFilters({ stage: ProjectStage.MVP })).toBe(true)
+    expect(hasActiveFilters({ stage: ProjectStage.Mvp })).toBe(true)
     expect(hasActiveFilters({ q: 'ai' })).toBe(true)
   })
 
-  it('treats stage=0 as active (MVP is a real filter)', () => {
-    expect(hasActiveFilters({ stage: ProjectStage.MVP })).toBe(true)
+  it('treats stage=0 as active (Idea is a real filter)', () => {
+    expect(hasActiveFilters({ stage: ProjectStage.Idea })).toBe(true)
   })
 
   it('does not treat sort-only as an active filter', () => {
@@ -117,8 +118,9 @@ describe('label maps', () => {
     for (const sort of SORTS) expect(SORT_LABELS[sort]).toBeTruthy()
   })
 
-  it('covers both stages', () => {
-    expect(STAGE_LABELS[ProjectStage.MVP]).toBeTruthy()
-    expect(STAGE_LABELS[ProjectStage.Growth]).toBeTruthy()
+  it('covers every stage value', () => {
+    for (const stage of Object.values(ProjectStage)) {
+      expect(STAGE_LABELS[stage]).toBeTruthy()
+    }
   })
 })

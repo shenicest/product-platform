@@ -5,8 +5,10 @@ import { useRouter } from 'next/navigation'
 import { createProjectProposal, updateProjectProposal } from '@/lib/client-api'
 import { FormField, FormSection, TextArea, TextInput } from '@/components/submit/form-fields'
 
+// Post-live proposals may only touch these fields (ADR-0012).
 interface ProposalFields {
-  description: string
+  problemStatement: string
+  nextSteps: string
   demoLink: string
   betaDescription: string
 }
@@ -53,15 +55,10 @@ export function ProjectProposalForm({
 
   async function submit() {
     const nextErrors: typeof errors = {}
-    const descriptionLength = [...form.description.trim()].length
-    if (descriptionLength < 100 || descriptionLength > 2000) {
-      nextErrors.description = '项目介绍至少100字，至多2000字'
-    }
     if (!isHttpUrl(form.demoLink)) nextErrors.demoLink = '请输入正确的链接'
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors)
-      const first = nextErrors.description ? 'description' : 'demoLink'
-      requestAnimationFrame(() => document.getElementById(first)?.focus())
+      requestAnimationFrame(() => document.getElementById('demoLink')?.focus())
       return
     }
 
@@ -92,16 +89,26 @@ export function ProjectProposalForm({
         </div>
       ) : null}
       <FormSection index={1} title="可修改内容">
-        <FormField label="项目详细说明" htmlFor="description" required error={errors.description}>
+        <FormField label="项目背景与问题" htmlFor="problemStatement" required error={errors.problemStatement}>
           <TextArea
-            id="description"
-            name="description"
-            value={form.description}
-            onChange={(value) => update('description', value)}
-            rows={8}
-            maxLength={2000}
+            id="problemStatement"
+            name="problemStatement"
+            value={form.problemStatement}
+            onChange={(value) => update('problemStatement', value)}
+            rows={6}
             required
-            error={errors.description}
+            error={errors.problemStatement}
+          />
+        </FormField>
+        <FormField label="下一步计划" htmlFor="nextSteps" required error={errors.nextSteps}>
+          <TextArea
+            id="nextSteps"
+            name="nextSteps"
+            value={form.nextSteps}
+            onChange={(value) => update('nextSteps', value)}
+            rows={4}
+            required
+            error={errors.nextSteps}
           />
         </FormField>
         <FormField label="Demo 访问链接" htmlFor="demoLink" error={errors.demoLink}>

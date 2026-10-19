@@ -16,7 +16,7 @@ export type ProposalIdParams = typeof ProposalIdParams.static
 
 export const OperatorProjectQuery = t.Object({
   status: t.Optional(t.Numeric({ description: 'Filter by status: 0=Draft, 1=PendingReview, 2=RevisionRequired, 3=Live, 4=Delisted, 5=Rejected' })),
-  stage: t.Optional(t.Numeric({ description: 'Filter by stage: 0=MVP, 1=Growth' })),
+  stage: t.Optional(t.Numeric({ description: 'Filter by stage: 0=Idea, 1=Prototype, 2=Mvp, 3=Launched, 4=Revenue' })),
   category: t.Optional(t.String({ description: 'Filter by category name' })),
   q: t.Optional(t.String({ description: 'Keyword search on project name and founder name' })),
   sort: t.Optional(t.Union([t.Literal('created_at'), t.Literal('updated_at')], { description: 'Sort field (default: created_at)' })),
@@ -28,7 +28,7 @@ export type OperatorProjectQuery = typeof OperatorProjectQuery.static
 
 export const OperatorProposalQuery = t.Object({
   projectId: t.Optional(t.Numeric({ description: 'Filter by project ID' })),
-  stage: t.Optional(t.Numeric({ description: 'Filter by project stage: 0=MVP, 1=Growth' })),
+  stage: t.Optional(t.Numeric({ description: 'Filter by project stage: 0=Idea, 1=Prototype, 2=Mvp, 3=Launched, 4=Revenue' })),
   category: t.Optional(t.String({ description: 'Filter by project category' })),
   offset: t.Optional(t.Numeric({ description: 'Number of records to skip (default: 0)' })),
   limit: t.Optional(t.Numeric({ description: 'Page size (default: 20)' })),
@@ -65,7 +65,7 @@ export type AuditRecordListResponse = typeof AuditRecordListResponse.static
 export const StatsResponse = t.Object({
   totalProjects: t.Number({ description: 'Total number of projects on the platform' }),
   byStatus: t.Record(t.String(), t.Number(), { description: 'Project count keyed by status name (Draft, PendingReview, RevisionRequired, Live, Delisted, Rejected)' }),
-  byStage: t.Record(t.String(), t.Number(), { description: 'Project count keyed by stage name (MVP, Growth)' }),
+  byStage: t.Record(t.String(), t.Number(), { description: 'Project count keyed by stage name (Idea, Prototype, Mvp, Launched, Revenue)' }),
   byCategory: t.Record(t.String(), t.Number(), { description: 'Project count keyed by category name' }),
 })
 export type StatsResponse = typeof StatsResponse.static

@@ -137,19 +137,19 @@ describe('ProjectService', () => {
   describe('saveDraft', () => {
     it('updates a draft row in place (same id, still Draft)', async () => {
       const project = await createDraft({ name: 'Before' })
-      const result = await service.saveDraft(project.id, { name: 'After', description: 'draft body' })
+      const result = await service.saveDraft(project.id, { name: 'After', problemStatement: 'draft body' })
       expect(result).not.toBeInstanceOf(InvalidTransitionError)
-      const updated = result as { id: number; status: number; name: string; description: string | null }
+      const updated = result as { id: number; status: number; name: string; problemStatement: string | null }
       expect(updated.id).toBe(project.id)
       expect(updated.status).toBe(ProjectStatus.Draft)
       expect(updated.name).toBe('After')
-      expect(updated.description).toBe('draft body')
+      expect(updated.problemStatement).toBe('draft body')
     })
 
     it('saves draft multiple times on the same row (no new records)', async () => {
       const project = await createDraft({ name: 'v1' })
       await service.saveDraft(project.id, { name: 'v2', tagline: 'tagline' })
-      await service.saveDraft(project.id, { name: 'v3', description: 'body' })
+      await service.saveDraft(project.id, { name: 'v3', problemStatement: 'body' })
       const rows = await db
         .select()
         .from(projects)
@@ -159,26 +159,26 @@ describe('ProjectService', () => {
       expect(after!.id).toBe(project.id)
       expect(after!.name).toBe('v3')
       expect(after!.tagline).toBe('tagline')
-      expect(after!.description).toBe('body')
+      expect(after!.problemStatement).toBe('body')
     })
 
     it('allows editing while Revision Required', async () => {
       const project = await createPending()
       await operatorService.requireProjectRevision(TEST_OPERATOR, project.id, 'fix it')
-      const result = await service.saveDraft(project.id, { description: 'reworked' })
+      const result = await service.saveDraft(project.id, { problemStatement: 'reworked' })
       expect(result).not.toBeInstanceOf(InvalidTransitionError)
-      expect((result as { description: string }).description).toBe('reworked')
+      expect((result as { problemStatement: string }).problemStatement).toBe('reworked')
     })
 
     it('rejects editing while Pending Review', async () => {
       const project = await createPending()
-      const result = await service.saveDraft(project.id, { description: 'x' })
+      const result = await service.saveDraft(project.id, { problemStatement: 'x' })
       expect(result).toBeInstanceOf(InvalidTransitionError)
     })
 
     it('rejects editing a live project', async () => {
       const project = await createLive()
-      const result = await service.saveDraft(project.id, { description: 'x' })
+      const result = await service.saveDraft(project.id, { problemStatement: 'x' })
       expect(result).toBeInstanceOf(InvalidTransitionError)
     })
 
@@ -206,10 +206,10 @@ describe('ProjectService', () => {
     })
 
     it('treats whitespace-only strings as empty', async () => {
-      const project = await createDraft(validProjectBody({ description: '   ' }))
+      const project = await createDraft(validProjectBody({ problemStatement: '   ' }))
       const result = await service.submitForReview(project.id)
       expect(result).toBeInstanceOf(MissingRequiredFieldError)
-      expect((result as MissingRequiredFieldError).field).toBe('description')
+      expect((result as MissingRequiredFieldError).field).toBe('problemStatement')
     })
 
     it('does not transition status when a required field is missing', async () => {
@@ -238,18 +238,32 @@ describe('ProjectService', () => {
       expect((result as { status: number }).status).toBe(ProjectStatus.PendingReview)
     })
 
-    it('rejects a tagline shorter than 10 characters', async () => {
-      const project = await createDraft(validProjectBody({ tagline: '太短' }))
-      const result = await service.submitForReview(project.id)
-      expect(result).toBeInstanceOf(MissingRequiredFieldError)
-      expect((result as MissingRequiredFieldError).field).toBe('tagline')
-    })
-
-    it('rejects an invalid contact phone', async () => {
-      const project = await createDraft(validProjectBody({ contactPhone: '12345' }))
+    it('reports contactPhone when no contact channel is provided', async () => {
+      // Phone/email/wechat follow an at-least-one rule; the error is reported
+      // against the first channel so the form can map it to a field.
+      const project = await createDraft(validProjectBody({ contactPhone: null }))
       const result = await service.submitForReview(project.id)
       expect(result).toBeInstanceOf(MissingRequiredFieldError)
       expect((result as MissingRequiredFieldError).field).toBe('contactPhone')
+    })
+
+    it('accepts an email as the only contact channel', async () => {
+      const project = await createDraft(validProjectBody({ contactPhone: null, contactEmail: 'founder@example.com' }))
+      const result = await service.submitForReview(project.id)
+      expect((result as { status: number }).status).toBe(ProjectStatus.PendingReview)
+    })
+
+    it('accepts a short tagline (length rules live in the frontend)', async () => {
+      const project = await createDraft(validProjectBody({ tagline: '太短' }))
+      const result = await service.submitForReview(project.id)
+      expect((result as { status: number }).status).toBe(ProjectStatus.PendingReview)
+    })
+
+    it('rejects a non-http(s) demoLink', async () => {
+      const project = await createDraft(validProjectBody({ demoLink: 'javascript:alert(1)' }))
+      const result = await service.submitForReview(project.id)
+      expect(result).toBeInstanceOf(MissingRequiredFieldError)
+      expect((result as MissingRequiredFieldError).field).toBe('demoLink')
     })
 
     it('rejects an unknown project stage', async () => {

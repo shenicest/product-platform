@@ -35,8 +35,8 @@ export async function generateMetadata(
 
   const description = project.tagline
     ? truncate(project.tagline, METADATA_DESCRIPTION_MAX_LENGTH)
-    : project.description
-      ? truncate(project.description, METADATA_DESCRIPTION_MAX_LENGTH)
+    : project.problemStatement
+      ? truncate(project.problemStatement, METADATA_DESCRIPTION_MAX_LENGTH)
       : undefined;
 
   return {

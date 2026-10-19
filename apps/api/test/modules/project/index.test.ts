@@ -146,14 +146,14 @@ describe('Project routes', () => {
 
       const res1 = await draftAs(FOUNDER, created.id, { name: 'v2', tagline: 'tagline' })
       expect(res1.status).toBe(200)
-      const res2 = await draftAs(FOUNDER, created.id, { name: 'v3', description: 'body' })
+      const res2 = await draftAs(FOUNDER, created.id, { name: 'v3', problemStatement: 'body' })
       expect(res2.status).toBe(200)
 
       const updated = await res2.json()
       expect(updated.id).toBe(created.id)
       expect(updated.name).toBe('v3')
       expect(updated.tagline).toBe('tagline')
-      expect(updated.description).toBe('body')
+      expect(updated.problemStatement).toBe('body')
 
       const rows = await db.select().from(projects).where(eq(projects.id, created.id))
       expect(rows).toHaveLength(1)
@@ -410,14 +410,15 @@ describe('Project routes', () => {
       expect(body.data[0].name).toContain(unique)
     })
 
-    it('searches by contact name', async () => {
+    it('does not leak contact info via keyword search', async () => {
+      // contactName is private (ADR-0012); the public keyword search must not
+      // match on it, and list items must hide contact fields entirely.
       const unique = `contact-${crypto.randomUUID().slice(0, 8)}`
       await createLiveProject(FOUNDER, { name: 'Contact Search', contactName: unique })
 
       const res = await app.handle(new Request(`http://localhost/projects?q=${unique}`))
       const body = await res.json()
-      expect(body.data.length).toBeGreaterThanOrEqual(1)
-      expect(body.data[0].contactName).toContain(unique)
+      expect(body.data).toHaveLength(0)
     })
 
     it('searches by team name', async () => {
@@ -497,7 +498,7 @@ describe('Project routes', () => {
       expect(body.total).toBe(0)
     })
 
-    it('includes expected fields in each list item', async () => {
+    it('includes expected fields and hides contacts in each list item', async () => {
       await createLiveProject(FOUNDER, {
         name: 'Fields Check',
         tagline: 'a valid project tagline',
@@ -505,6 +506,7 @@ describe('Project routes', () => {
         stage: 0,
         categories: ['效率工具'],
         contactName: 'Founder Nick',
+        contactEmail: 'founder@example.com',
       })
 
       const res = await app.handle(new Request('http://localhost/projects?q=Fields Check'))
@@ -516,7 +518,11 @@ describe('Project routes', () => {
       expect(item.tagline).toBe('a valid project tagline')
       expect(item.stage).toBe(0)
       expect(item.categories).toContain('效率工具')
-      expect(item.contactName).toBe('Founder Nick')
+      expect(item.problemStatement).toBeTypeOf('string')
+      expect(item.nextSteps).toBeTypeOf('string')
+      // Contact fields are nulled out for public list viewers (ADR-0012).
+      expect(item.contactName).toBeNull()
+      expect(item.contactEmail).toBeNull()
     })
   })
 })

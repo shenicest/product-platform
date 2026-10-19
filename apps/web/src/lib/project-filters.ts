@@ -11,8 +11,11 @@ export const SORT_LABELS: Record<Sort, string> = {
 }
 
 export const STAGE_LABELS: Record<number, string> = {
-  [ProjectStage.MVP]: 'MVP 阶段',
-  [ProjectStage.Growth]: '成长阶段',
+  [ProjectStage.Idea]: '想法验证',
+  [ProjectStage.Prototype]: '原型',
+  [ProjectStage.Mvp]: 'MVP',
+  [ProjectStage.Launched]: '已上线有用户',
+  [ProjectStage.Revenue]: '有收入',
 }
 
 export type SearchParams = Record<string, string | string[] | undefined>
@@ -43,8 +46,8 @@ export function parseListParams(searchParams: SearchParams): ListParams {
   const stageRaw = first(searchParams.stage)
   if (stageRaw !== undefined && stageRaw !== '') {
     const stage = Number(stageRaw)
-    if (stage === ProjectStage.MVP || stage === ProjectStage.Growth) {
-      params.stage = stage
+    if ((Object.values(ProjectStage) as number[]).includes(stage)) {
+      params.stage = stage as ProjectStage
     }
   }
 

@@ -31,8 +31,11 @@ export const PROPOSAL_STATUS_COLORS: Record<number, string> = {
 }
 
 export const STAGE_LABELS: Record<number, string> = {
-  [ProjectStage.MVP]: 'MVP',
-  [ProjectStage.Growth]: '成长',
+  [ProjectStage.Idea]: '想法验证',
+  [ProjectStage.Prototype]: '原型',
+  [ProjectStage.Mvp]: 'MVP',
+  [ProjectStage.Launched]: '已上线有用户',
+  [ProjectStage.Revenue]: '有收入',
 }
 
 export const AUDIT_ACTION_LABELS: Record<string, string> = {
@@ -102,7 +105,7 @@ export function parseOperatorProjectParams(
   const stage = first(searchParams.stage)
   if (stage !== undefined && stage !== '') {
     const n = Number(stage)
-    if (n === ProjectStage.MVP || n === ProjectStage.Growth) {
+    if ((Object.values(ProjectStage) as number[]).includes(n)) {
       params.stage = n
     }
   }
@@ -139,7 +142,7 @@ export function parseOperatorProposalParams(
   const stage = first(searchParams.stage)
   if (stage !== undefined && stage !== '') {
     const n = Number(stage)
-    if (n === ProjectStage.MVP || n === ProjectStage.Growth) {
+    if ((Object.values(ProjectStage) as number[]).includes(n)) {
       params.stage = n
     }
   }

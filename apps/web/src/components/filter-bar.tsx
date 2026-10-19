@@ -113,7 +113,7 @@ export function FilterBar() {
           </Chip>
         ))}
         <span className="mx-2 h-4 w-px bg-border" aria-hidden />
-        {[ProjectStage.MVP, ProjectStage.Growth].map((value) => (
+        {(Object.values(ProjectStage) as number[]).map((value) => (
           <Chip
             key={value}
             active={stage === String(value)}
