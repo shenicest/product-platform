@@ -74,6 +74,20 @@ export const projectModule = new Elysia()
       200: 'Project.ProjectListResponse',
     },
   })
+  .get('/projects/featured', async () => {
+    return projectService.listFeaturedLiveProjects()
+  }, {
+    detail: {
+      summary: 'List featured projects',
+      description: 'Operator-curated homepage featured projects, ordered by configuration. Returns only Live projects; when no entries are configured (or none are Live) the list is empty. Public — no authentication required.',
+      tags: ['Project'],
+      operationId: 'project.listFeatured',
+      security: [],
+    },
+    response: {
+      200: 'Project.ProjectListResponse',
+    },
+  })
   .put('/projects/:id/draft', async ({ user, params, body }) => {
     const owned = await projectService.getProject(params.id)
     if (!owned) return status(404, errorBody(new ProjectNotFoundError(params.id)))

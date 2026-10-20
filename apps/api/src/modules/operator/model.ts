@@ -62,6 +62,40 @@ export const AuditRecordListResponse = t.Object({
 })
 export type AuditRecordListResponse = typeof AuditRecordListResponse.static
 
+export const MAX_FEATURED_PROJECTS = 50
+
+export const FeaturedProjectIdsBody = t.Object({
+  projectIds: t.Array(t.Numeric({ minimum: 1 }), {
+    maxItems: MAX_FEATURED_PROJECTS,
+    uniqueItems: true,
+    description: 'Ordered list of Live project IDs to feature on the homepage. Replaces the existing configuration; an empty array clears it.',
+  }),
+})
+export type FeaturedProjectIdsBody = typeof FeaturedProjectIdsBody.static
+
+export const FeaturedProjectItem = t.Composite([
+  SelectProject,
+  t.Object({
+    sortOrder: t.Number({ description: 'Position in the featured list (0-based)' }),
+  }),
+])
+export type FeaturedProjectItem = typeof FeaturedProjectItem.static
+
+export const FeaturedProjectListResponse = t.Object({
+  data: t.Array(FeaturedProjectItem),
+  total: t.Number(),
+})
+export type FeaturedProjectListResponse = typeof FeaturedProjectListResponse.static
+
+export class FeaturedProjectValidationError extends Error {
+  readonly code = 'INVALID_FEATURED_PROJECT'
+
+  constructor(message: string) {
+    super(message)
+    this.name = new.target.name
+  }
+}
+
 export const StatsResponse = t.Object({
   totalProjects: t.Number({ description: 'Total number of projects on the platform' }),
   byStatus: t.Record(t.String(), t.Number(), { description: 'Project count keyed by status name (Draft, PendingReview, RevisionRequired, Live, Delisted, Rejected)' }),

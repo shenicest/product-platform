@@ -6,6 +6,7 @@ import { getSessionUser } from '@/server/auth'
 const NAV_ITEMS = [
   { href: '/operator', label: '总览' },
   { href: '/operator/projects', label: '项目' },
+  { href: '/operator/featured', label: '精选' },
   { href: '/operator/proposals', label: '提案' },
   { href: '/operator/audit-records', label: '审计' },
   { href: '/operator/talents', label: '人才' },

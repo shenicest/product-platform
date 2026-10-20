@@ -1,4 +1,4 @@
-import { getLiveProjects } from "@/server/projects";
+import { getFeaturedProjects, getLiveProjects } from "@/server/projects";
 import { ProjectCard } from "@/components/project-card";
 import { FilterBar } from "@/components/filter-bar";
 import { Pagination } from "@/components/pagination";
@@ -14,13 +14,11 @@ import Link from 'next/link'
 
 export const dynamic = "force-dynamic";
 
-const FEATURED_POOL_SIZE = 5;
-
 export default async function HomePage(props: PageProps<"/">) {
   const searchParams = await props.searchParams;
   const { category, stage, q, sort, page } = parseListParams(searchParams);
 
-  const [{ data: projects, total }, { data: featuredPool }] =
+  const [{ data: projects, total }, { data: heroPool }, { data: featuredProjects }] =
     await Promise.all([
       getLiveProjects({
         category,
@@ -30,7 +28,8 @@ export default async function HomePage(props: PageProps<"/">) {
         offset: (page - 1) * PAGE_SIZE,
         limit: PAGE_SIZE,
       }),
-      getLiveProjects({ limit: FEATURED_POOL_SIZE }),
+      getLiveProjects({ limit: 1 }),
+      getFeaturedProjects(),
     ]);
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -39,9 +38,9 @@ export default async function HomePage(props: PageProps<"/">) {
   return (
     <PublicInteractionBoundary>
       <div className="w-full">
-      <HeroSection project={featuredPool[0]} />
+      <HeroSection project={heroPool[0]} />
 
-      <FeaturedSection projects={featuredPool.slice(1)} />
+      <FeaturedSection projects={featuredProjects} />
 
       <section
         id="all-projects"

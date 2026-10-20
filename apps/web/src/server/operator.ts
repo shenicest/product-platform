@@ -54,6 +54,31 @@ export const getOperatorProjects = cache(async (query: OperatorProjectQuery = {}
 
 export type OperatorProject = Awaited<ReturnType<typeof getOperatorProjects>>['data'][number]
 
+export const getOperatorFeaturedProjects = cache(async () => {
+  const token = await getOperatorToken()
+  const client = api.operator['featured-projects'] as unknown as {
+    get: (opts: { headers?: Record<string, string> }) => Promise<{
+      data: FeaturedProjectResponse | null
+      error: { status: number } | null
+    }>
+  }
+  const { data, error } = await client.get({ headers: authHeaders(token) })
+  if (error) {
+    throw new OperatorApiError('Failed to load featured projects', typeof error.status === 'number' ? error.status : 500)
+  }
+  if (!data) {
+    throw new OperatorApiError('Failed to load featured projects', 500)
+  }
+  return data
+})
+
+interface FeaturedProjectResponse {
+  data: (OperatorProject & { sortOrder: number })[]
+  total: number
+}
+
+export type OperatorFeaturedProject = FeaturedProjectResponse['data'][number]
+
 export interface OperatorProposalQuery {
   projectId?: number
   stage?: number

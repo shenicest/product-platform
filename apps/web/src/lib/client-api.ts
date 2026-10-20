@@ -249,3 +249,7 @@ export function sendProjectConnection(
   body: { purpose: string; message: string; wechat?: string; phone?: string; email?: string },
 ) { return request<ProjectConnectionStatus>('POST', `/projects/${projectId}/connections`, body) }
 export function getMyProjectConnection(projectId: number) { return request<MyProjectConnectionStatus>('GET', `/projects/${projectId}/connections/me`) }
+
+export function saveFeaturedProjects(projectIds: number[]) {
+  return request<{ data: Array<ProjectData & { sortOrder: number }>; total: number }>('PUT', '/operator/featured-projects', { projectIds })
+}

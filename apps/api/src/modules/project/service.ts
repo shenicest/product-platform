@@ -1,5 +1,5 @@
-import { and, count, desc, eq, inArray, like, or, sql } from 'drizzle-orm'
-import { follows, projects } from '../../db/schema'
+import { and, asc, count, desc, eq, inArray, like, or, sql } from 'drizzle-orm'
+import { featuredProjects, follows, projects } from '../../db/schema'
 import type { Database } from '../../db'
 import { UserIdentityService } from '../user-identity/service'
 import { Role } from '../user-identity/model'
@@ -123,6 +123,22 @@ export class ProjectService {
 
   async listLiveProjects(query: ProjectListQuery) {
     return this.listLiveProjectsForFounders(query)
+  }
+
+  // Operator-curated homepage list. Entries whose project is no longer Live
+  // are skipped (not deleted) so the config survives a temporary delist.
+  async listFeaturedLiveProjects() {
+    const rows = await this.db
+      .select({ project: projects })
+      .from(featuredProjects)
+      .innerJoin(projects, eq(featuredProjects.projectId, projects.id))
+      .where(eq(projects.status, ProjectStatus.Live))
+      .orderBy(asc(featuredProjects.sortOrder), asc(featuredProjects.id))
+    const data = await Promise.all(rows.map(async ({ project }): Promise<ProjectListItem> => ({
+      ...hideContacts(project),
+      founder: await this.userProfile.getPublicProfile(project.userId),
+    })))
+    return { data, total: data.length }
   }
 
   async listFollowingLiveProjects(followerUserId: string, query: ProjectListQuery) {

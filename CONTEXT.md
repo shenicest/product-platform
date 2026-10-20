@@ -75,6 +75,10 @@ _Avoid_: Phase, Level
 A label for classifying projects. Stored as a JSON array directly on Project — the source of truth is the Project row itself, so no denormalized copy is needed. Homepage filtering reads the Project table directly (zero JOIN). A Project can have multiple categories (multi-select). Categories are a fixed set: 女性健康, 效率工具, 教育学习, 开发者工具, 生活方式, 其他.
 _Avoid_: Tag, Label, Topic, ProjectCategory
 
+**Featured Project**:
+An operator-curated entry on the homepage's 精选项目 (Featured) section, stored in the `featured_projects` table as `projectId` + `sortOrder`. The operator configures the ordered list in the operator backend; the public homepage displays up to four per batch and lets visitors cycle through the remaining entries with 换一批. Only Live projects are eligible for configuration, and entries whose project leaves Live are omitted from the public response (but kept so the config survives a delist/restore). **No configured entries means the entire Featured section is hidden** — there is no automatic fallback. This is separate from the homepage hero recommendation.
+_Avoid_: Recommended project, promoted project, homepage config
+
 **ProblemStatement**:
 A required long-text field on Project (30–300 characters) answering "为谁解决什么问题" — who the project serves and what problem it solves. Replaces the former separate `targetUsers` and `userProblem` fields, whose content overlapped heavily.
 _Avoid_: targetUsers, userProblem, description, story
