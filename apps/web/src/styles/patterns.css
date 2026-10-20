@@ -130,6 +130,65 @@
     letter-spacing: 0.22em;
   }
 
+  /* tagline 落在插画上，而插画在这条线附近正好是花朵最密的一段 ——
+   * 深色小字压在彩色花瓣上几乎读不出来。给它垫一块白色磨砂玻璃：
+   * 底色取「抬升面 + 半透明」，模糊把花瓣糊成一片柔和的色雾，
+   * 文字就有了干净的落脚点，又不会像实心色块那样在插画上开个天窗。
+   *
+   * 背板随入场一起淡入（`data-phase` 由 BlurText 提供）：文字还在模糊的
+   * 起始帧时背板不该先亮起来，否则会出现「一块白板、上面没字」的一瞬。
+   * 出场（loop / hover / click 重播）时跟着退回透明。
+   *
+   * 用 --shadow-tag 而不是 --shadow-float：和上面的绽放标签同一个理由 ——
+   * 大模糊半径会让这行 11~19px 的小字发虚。 */
+  .cover__tagline[data-phase] {
+    /* 背板必须贴着文字，不能拉满整行 —— `.cover__tagline` 是块级 flex
+     * 容器，默认宽度等于版心，直接加底色会变成横贯首屏的一条白杠。
+     * `fit-content` 让它只包住这行字，`margin-inline: auto` 负责居中。 */
+    width: fit-content;
+    margin-inline: auto;
+    padding: 7px 20px;
+    border: 1px solid color-mix(in srgb, var(--bg-elevated) 70%, transparent);
+    border-radius: var(--boom-radius-pill);
+    background: color-mix(in srgb, var(--bg-elevated) 62%, transparent);
+    backdrop-filter: blur(10px) saturate(115%);
+    box-shadow: var(--shadow-tag);
+    transition:
+      background-color 420ms var(--boom-ease),
+      border-color 420ms var(--boom-ease),
+      box-shadow 420ms var(--boom-ease);
+  }
+
+  .cover__tagline[data-phase='from'],
+  .cover__tagline[data-phase='out'] {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  /* 不支持 backdrop-filter 的浏览器：磨砂退化成实心浅色底，
+   * 至少保证文字仍然可读，而不是直接透出花哨的插画。 */
+  @supports not (backdrop-filter: blur(1px)) {
+    .cover__tagline[data-phase] {
+      background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+    }
+  }
+
+  /* tagline 由 TrueFocus 渲染：它自己的字号是 3rem（组件库默认值），
+   * 直接套在首屏上会撑爆版面。这里把 .cover__tagline 的字号与字重转发成
+   * TrueFocus 的 --tf-* 变量，视觉上就还是原来那行 tagline。
+   *
+   * 用 `--tf-word-size: inherit` 不行 —— 自定义属性继承的是字符串而不是
+   * 计算后的值，`inherit` 在这里等于没设。所以显式重述同一组 clamp()。
+   * 词间距同步收紧：TrueFocus 默认 gap 1em，对 12~19px 的小字太松，
+   * 会把三段拉开得比设计稿宽不少。 */
+  .cover__tagline.true-focus {
+    --tf-word-size: clamp(12px, 1.35vw, 19px);
+    --tf-word-weight: 700;
+    --tf-word-leading: 1.65;
+    --tf-gap: 0.5em;
+  }
+
   .cover__description {
     margin: 0;
     color: var(--fg-muted);
@@ -319,6 +378,11 @@
       margin: 15px 0 8px;
       font-size: 11px;
       letter-spacing: 0.04em;
+    }
+
+    /* 小屏上首屏本来就挤，磨砂背板的内边距与圆角跟着收一档。 */
+    .cover__tagline[data-phase] {
+      padding: 6px 14px;
     }
 
     .cover__description {

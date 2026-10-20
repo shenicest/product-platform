@@ -1,0 +1,114 @@
+/* ============================================================================
+ * TrueFocus —— React Bits「True Focus」焦点框文字
+ * ----------------------------------------------------------------------------
+ * 上游是 JavaScript + 独立 CSS 的版本。落进这个项目时做了三处本地化：
+ *
+ * 1. 类名一律加 `true-focus` 前缀。上游的 `.corner` / `.top-left` /
+ *    `.bottom-right` 是全局通用名，直接抄进来会误伤其它组件的同名类。
+ * 2. 颜色不写死。全部走 `--tf-*` 变量，兜底值取 L2 语义 token（--brand），
+ *    因此换肤时自动跟随，本文件不出现任何裸色值。
+ * 3. 尺寸用 `var(--tf-*, 兜底)` 的写法，而不是在 `.true-focus` 上声明默认值 ——
+ *    这样调用方可以在**祖先**元素上覆盖（例如首屏按视口缩放字号），
+ *    自定义属性照常继承下来，不必去提高选择器权重跟本文件打架。
+ *
+ * 本文件不进 `@layer components`：它由组件自己 import，注入顺序不保证在
+ * globals.css 之后，进层反而可能打乱 layer 的首次声明顺序。类名足够独特，
+ * 不依赖层级也能与设计系统共存。
+ * ========================================================================== */
+
+.true-focus {
+  position: relative;
+  display: flex;
+  gap: var(--tf-gap, 1em);
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  outline: none;
+  user-select: none;
+}
+
+.true-focus__word {
+  position: relative;
+  font-size: var(--tf-word-size, 3rem);
+  font-weight: var(--tf-word-weight, 900);
+  line-height: var(--tf-word-leading, 1.15);
+  letter-spacing: inherit;
+  outline: none;
+  user-select: none;
+}
+
+/* 只有 manualMode 才真的能点/悬停换焦点。自动轮播时给 pointer 光标
+ * 会让用户误以为可以点，所以按模式区分。 */
+.true-focus--manual .true-focus__word {
+  cursor: pointer;
+}
+
+.true-focus__frame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.true-focus__highlight {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: var(--tf-radius, 6px);
+  background-color: var(--tf-highlight-color, var(--brand-wash));
+  pointer-events: none;
+}
+
+.true-focus__box {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  border: var(--tf-border-width, 3px) solid
+    var(--tf-border-color, var(--brand));
+  border-radius: var(--tf-radius, 6px);
+  filter: drop-shadow(0 0 4px var(--tf-glow-color, transparent));
+}
+
+.true-focus__underline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border-radius: calc(var(--tf-border-width, 3px) / 2);
+  background-color: var(--tf-border-color, var(--brand));
+  filter: drop-shadow(0 0 4px var(--tf-glow-color, transparent));
+}
+
+.true-focus__corner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  box-sizing: border-box;
+  width: var(--tf-corner-size, 16px);
+  height: var(--tf-corner-size, 16px);
+  border: var(--tf-border-width, 3px) solid
+    var(--tf-border-color, var(--brand));
+  border-radius: 3px;
+  filter: drop-shadow(0 0 4px var(--tf-glow-color, transparent));
+}
+
+/* 四角各自只留两条边，拼成一个「⌜ ⌝ ⌞ ⌟」的取景框。 */
+.true-focus__corner--top-left {
+  border-right: none;
+  border-bottom: none;
+}
+
+.true-focus__corner--top-right {
+  border-left: none;
+  border-bottom: none;
+}
+
+.true-focus__corner--bottom-left {
+  border-right: none;
+  border-top: none;
+}
+
+.true-focus__corner--bottom-right {
+  border-left: none;
+  border-top: none;
+}

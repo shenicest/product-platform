@@ -70,7 +70,9 @@ const TALENTS = [
     headline: '全栈工程师 · 想做有温度的产品',
     bio: '五年 Web 全栈经验，独立做过三个副业产品，擅长把想法快速做成能用的原型。想找一位懂设计的伙伴，一起做面向女性的工具类产品。',
     city: '上海',
-    roles: ['开发', '产品'],
+    // TalentAvailability.ActivelySeeking — direction is derived from skills
+    // (ADR 0013), so a profile no longer carries explicit roles.
+    availability: 0,
     skills: ['frontend', 'backend', 'fullstack', 'ai'],
     seekingSkills: ['ui', 'visual'],
     domains: ['效率工具', '女性健康'],
@@ -83,7 +85,7 @@ const TALENTS = [
     headline: '产品设计师 · 专注 B 端与工具类体验',
     bio: '八年设计经验，从 0 到 1 带过两款 SaaS 产品的设计体系。擅长把复杂流程压缩成三步，喜欢和工程师坐在一起改稿。寻找有真实用户的产品深度参与。',
     city: '杭州',
-    roles: ['设计', '产品'],
+    availability: 0, // TalentAvailability.ActivelySeeking
     skills: ['ui', 'ux', 'visual', 'userResearch'],
     seekingSkills: ['frontend', 'productStrategy'],
     domains: ['效率工具', '开发者工具'],
@@ -96,7 +98,7 @@ const TALENTS = [
     headline: '增长负责人 · 内容与社群双轮驱动',
     bio: '从 0 做到 50 万注册用户，主要靠内容选题和社群冷启动。相信早期增长不是投放，而是把产品讲到目标用户听得懂。想加入一个已经有人愿意付费的项目。',
     city: '北京',
-    roles: ['增长', '运营'],
+    availability: 1, // TalentAvailability.OpenToChat
     skills: ['growthStrategy', 'contentPlanning', 'socialMedia', 'seo'],
     seekingSkills: ['productStrategy', 'dataAnalysis'],
     domains: ['教育学习', '生活方式'],
@@ -109,7 +111,7 @@ const TALENTS = [
     headline: '数据分析师 · 用数据回答产品问题',
     bio: '六年在消费与教育行业做数据分析，习惯先定义问题再取数。能搭指标体系、写 SQL、做看板，也能把结论讲给非技术同事听。希望参与早期产品的度量体系搭建。',
     city: '深圳',
-    roles: ['数据', '运营'],
+    availability: 2, // TalentAvailability.ConsultOnly
     skills: ['dataAnalysis', 'businessAnalysis', 'userResearch'],
     seekingSkills: ['productStrategy', 'backend'],
     domains: ['教育学习', '效率工具'],
@@ -122,7 +124,7 @@ const TALENTS = [
     headline: '社区运营 · 把冷启动社群做热',
     bio: '做过三个产品的社区冷启动，擅长设计激励规则和线下活动。认为社区运营的核心是让早期用户互相认识，而不是官方一直说话。寻找需要从零建社区的团队。',
     city: '成都',
-    roles: ['运营', '增长'],
+    availability: 1, // TalentAvailability.OpenToChat
     skills: ['communityOperations', 'userOperations', 'eventOperations', 'customerSuccess'],
     seekingSkills: ['contentCreation', 'brandCommunication'],
     domains: ['生活方式', '女性健康'],
@@ -137,7 +139,7 @@ const TALENTS = [
     headline: '连续创业者 · 正在做第二款产品',
     bio: '做过两款面向女性的工具类产品，第一款跑到月收入两万后停掉，现在专注做隐私优先的记录工具。需要一位设计合伙人补齐体验，也欢迎增长和数据方向的朋友交流。',
     city: '上海',
-    roles: ['产品', '商务/职能'],
+    availability: 0, // TalentAvailability.ActivelySeeking
     skills: ['productStrategy', 'businessStrategy', 'fundraising', 'needsAnalysis'],
     seekingSkills: ['ui', 'ux', 'growthStrategy'],
     domains: ['女性健康', '效率工具'],
@@ -291,20 +293,21 @@ async function seedTalentProfiles(db) {
   for (const t of TALENTS) {
     await db.execute(
       `INSERT INTO talent_profiles
-         (user_id, status, headline, bio, city, roles, skills, seeking_skills, domains, durations)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         (user_id, status, headline, bio, city, links, availability, skills, seeking_skills, domains, durations)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON DUPLICATE KEY UPDATE
          status = VALUES(status), headline = VALUES(headline), bio = VALUES(bio),
-         city = VALUES(city), roles = VALUES(roles), skills = VALUES(skills),
-         seeking_skills = VALUES(seeking_skills), domains = VALUES(domains),
-         durations = VALUES(durations)`,
+         city = VALUES(city), links = VALUES(links), availability = VALUES(availability),
+         skills = VALUES(skills), seeking_skills = VALUES(seeking_skills),
+         domains = VALUES(domains), durations = VALUES(durations)`,
       [
         t.userId,
         0, // TalentProfileStatus.Published
         t.headline,
         t.bio,
         t.city,
-        JSON.stringify(t.roles),
+        JSON.stringify(t.links ?? []),
+        t.availability ?? 0, // TalentAvailability.ActivelySeeking
         JSON.stringify(t.skills),
         JSON.stringify(t.seekingSkills),
         JSON.stringify(t.domains),

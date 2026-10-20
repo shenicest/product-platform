@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import { BloomPop } from '@/components/ui/bloom-pop'
+import { BlurText } from '@/components/ui/blur-text'
+
 
 /**
  * 首屏。
@@ -35,8 +37,20 @@ export function HeroSection() {
           <span className="cover__chinese">产品生长之地</span>
         </h1>
 
-        <p className="cover__tagline">新产品 · 新世界 · 早期 AI 产品社区</p>
-        <p className="cover__description">让好想法被发现，让创造自然生长。</p>
+        <BlurText
+          text="新产品 · 新世界 · 早期 AI 产品社区"
+          effect="blur"
+          animateBy="words"
+          direction="top"
+          staggerFrom="start"
+          trigger="load"
+          delay={110}
+          stepDuration={0.5}
+          blur={8}
+          distance={24}
+          className="cover__tagline"
+        />
+        {/* <p className="cover__description">让好想法被发现，让创造自然生长。</p> */}
 
         <div className="cover__actions">
           <Link href="#all-projects" className="ui-btn ui-btn--primary">
