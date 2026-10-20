@@ -11,7 +11,7 @@ Next.js App Router 前端，对接后端 API（`@shenicest/api`）。Server 端�
 - **Fonts**: Harmony（中文主体）、Monocraft（代码/英文）、DSEG7（数字显示）
 - **API Client**: `@elysiajs/eden` 的 `treaty`（Server 端）、`fetch` 封装（Client 端）
 - **Auth**: JWT 以 httpOnly cookie（key: `shenicest_token`）存储，`AuthProvider` 提供全局上下文
-- **Shared**: 领域枚举从 `@shenicest/shared` 引入（`ProjectStatus` / `ProposalStatus` / `ProjectStage` / `Role` / `CATEGORIES`）
+- **Shared**: 领域枚举从 `@shenicest/shared` 引入（`ProjectStatus` / `ProposalStatus` / `ProjectStage` / `Role` / `CATEGORIES` / `TalentAvailability` / `TALENT_AVAILABILITY_LABELS` / `TALENT_SKILLS` / `TALENT_SKILL_GROUPS` / `COLLABORATION_DURATIONS` / `TalentProfileStatus`）
 
 ## Route Map
 
@@ -31,6 +31,10 @@ Next.js App Router 前端，对接后端 API（`@shenicest/api`）。Server 端�
 | `/operator/proposals` | Server + Client UI | Operator 提案审核队列（`status=0` Pending） |
 | `/operator/proposals/[id]` | Server + Client UI | Operator 单提案详情：提案级审核动作（approve / reject / require-revision） |
 | `/operator/audit-records` | Server + Client UI | Operator 审核记录查询（按项目、时间范围过滤） |
+| `/talents` | Server + Client Filter | 人才广场：Published 档案列表（搜索/技能/合作方式筛选/排序/分页） |
+| `/talents/[userId]` | Server | 人才档案详情页（仅 Published 公开；含 match 块，当双方都 Published 时返回） |
+| `/talents/me/edit` | Server + Client Form | 人才档案编辑器（登录用户，4 板块表单，创建/更新/暂停） |
+| `/connections` | Server + Client UI | 我的建联：发送 + 接收的 ConnectionRequest 列表（含 pending 计数） |
 
 ## Page Specifications
 
@@ -42,11 +46,11 @@ Next.js App Router 前端，对接后端 API（`@shenicest/api`）。Server 端�
 - Hero 区域：展示第一个 featured 项目
 - Featured 区域：展示 2-5 号 featured 项目
 - 全部项目列表：
-  - 筛选：category（多选）、stage（单选）、q（搜索）
+  - 筛选：category（多选切换）、stage（五档单选：0 想法验证 / 1 原型 / 2 MVP / 3 已上线有用户 / 4 有收入）、q（搜索）
   - 排序：latest、recently_updated
   - 分页：每页 20 条
   - 空状态：无筛选结果 vs 无项目
-- 每张卡片带 `LikeButton`（读 `useLikes()`，显示 `projects.like_count`）
+- 每张卡片带 `LikeButton`（读 `useLikes()`，显示 `projects.like_count`）；卡片不展示联系方式（联系方式隐私过滤，仅 Owner/Operator 可见）
 
 **组件**:
 - `HeroSection` — Server Component
@@ -67,29 +71,35 @@ Next.js App Router 前端，对接后端 API（`@shenicest/api`）。Server 端�
 
 ### 项目提交 (`/submit`)
 
-**数据获取**: Server Component 渲染页面，Client Component 处理多步骤表单
+**数据获取**: Server Component 渲染页面，Client Component 处理 6 板块表单
 
 **功能**:
-- 多步骤表单（基础信息 → 展示资料 → 项目说明 → 用户参与 → 联系信息）
-- 图片/视频上传（`components/submit/image-uploader.tsx`、`video-uploader.tsx`）
+- 6 板块表单（与 ADR-0012 字段级重构对齐）：
+  1. **项目速览** — 项目名称、团队名称、一句话介绍（4-50 字）、分类（多选）、产品阶段（五档单选 0-4）
+  2. **项目故事** — 为谁解决什么问题（`problemStatement`，30-300 字，必填）、差异化（选填 ≤100 字）
+  3. **进展与前景** — 下一步计划（`nextSteps`，必填 ≤300 字）、数据亮点（`userCount`/`monthlyRevenue`/`retentionRate` 三个选填整数，早期项目可全空）、商业模式（选填 ≤200 字）、当前进展（选填 ≤300 字）
+  4. **展示资料** — 封面图（必填，图片上传）、演示截图（选填，最多 5 张）、产品链接（http(s)）、视频链接（B站/YouTube 等 http(s) URL 粘贴，替代原文件上传）
+  5. **招募与合作** — 是否招募 Beta（勾选后 `betaDescription` 必填）、正在寻找的角色（`seekingSkills`，≤5 个技能标签勾选墙）
+  6. **联系方式** — 联系人姓名（必填）、电话/邮箱/微信（三选一至少填一项；联系方式仅平台与运营可见）
+- 图片上传（`components/submit/image-uploader.tsx`），视频走 URL 粘贴
 - 保存草稿（`POST /projects` 或 `PUT /projects/:id/draft`）
 - 提交审核（`PUT /projects/:id/submit`）
-- 表单验证（必填字段、字数限制）
+- 表单验证（必填字段、字数限制、技能标签上限）
 
 **组件**:
-- `ProjectSubmissionForm` — Client Component
+- `ProjectSubmissionForm` — Client Component（`FormSection` 渲染 6 板块）
 - `FormFields` — Client Component（各字段输入组件）
-- `ImageUploader` / `VideoUploader` — Client Component
+- `ImageUploader` — Client Component（图片上传；视频改为 URL 输入框，无 `VideoUploader`）
 
 ### 项目详情 (`/projects/[id]`)
 
 **数据获取**: Server Component，通过 `server/projects.ts` 的 `getProject(id)`（eden treaty）
 
 **功能**:
-- 展示项目完整信息（基础信息、展示资料、项目说明、联系信息）
+- 展示项目完整信息，按 ADR-0012 新结构分块渲染：项目速览（名称/团队/一句话/分类/阶段）、项目故事（`problemStatement`、差异化）、进展与前景（`nextSteps`、数据亮点 `userCount`/`monthlyRevenue`/`retentionRate` 三态、商业模式、`progress`）、展示资料（封面/截图/产品链接/视频链接）、招募与合作（Beta 招募、`seekingSkills` 标签）、联系方式（仅 Owner/Operator 可见，其他访问者过滤为空）
 - Founder 公开信息（从 shared users 表读取，可能为 `null`），通过 `FounderCard` 渲染，含 follower 数与 `FollowButton`
-- 项目阶段/分类 badges
-- Demo 媒体展示（图片/视频/链接）
+- 项目阶段/分类 badges（阶段为五档 0-4）
+- Demo 媒体展示（图片/视频 URL 嵌入/产品链接）
 - 顶部/侧边 `LikeButton`，显示 `like_count`
 - 响应本身不含 `isLiked` / `isFollowing`；前端由 `UserInteractionProvider` 的 Set 决定（详见 ADR-0009）
 - 非 Live 项目对普通用户返回 404；Founder/Operator 可完整查看
@@ -185,19 +195,71 @@ Next.js App Router 前端，对接后端 API（`@shenicest/api`）。Server 端�
 - 分页展示所有审核动作
 - 按项目、时间范围过滤
 
+### 人才广场 (`/talents`)
+
+**数据获取**: Server Component，通过 `server/talent.ts` 中 `cache()` 包装的 `getTalents()`（`GET /talents`）
+
+**功能**:
+- Published 档案列表
+- 筛选：`q`（搜索 headline/bio/技能/founder/projects）、`skills`（技能标签，逗号分隔，接受 key 与中文 label）、`duration`（合作方式单选）、`sort`（`new` / `active`）
+- 排序 + 分页
+- 每张档案卡展示：founder 公开信息（昵称/头像，可能为 `null`）、headline、availability 徽章（`AvailabilityBadge`，三态颜色区分）、所在城市（含「远程」）、`skills`/`seekingSkills` 双状态技能墙标签、Live 项目列表
+- 列表响应无用户态；match 仅在详情页当双方都 Published 时返回，不在列表展示
+
+**组件**:
+- `TalentList` — Server Component 容器（`components/talent/talent-ui.tsx`）
+- `AvailabilityBadge` — Server Component（三态徽章，按 `TalentAvailability` 着色）
+
+### 人才档案详情 (`/talents/[userId]`)
+
+**数据获取**: Server Component，通过 `server/talent.ts` 的 `getTalent(userId)`（`GET /talents/:userId`）
+
+**功能**:
+- 展示 Published 档案完整信息：headline、bio（如有）、links（如有）、城市、availability 徽章、技能墙（双状态标签）、domains、durations、Live 项目列表
+- 当访问者已登录且也拥有 Published 档案时，额外展示 `match` 块（匹配分 + 可读理由）；零分显示「暂无明显匹配」。访问者未登录 / 无 Published 档案时无 match 块
+- 非 Published 档案 → 404
+- 建联入口（`ConnectionNav`），引导跳转 `/connections`
+
+### 人才档案编辑器 (`/talents/me/edit`)
+
+**数据获取**: Server Component，通过 `server/talent.ts` 的 `getMyTalent()`（`GET /talents/me`）；Client Component 处理 4 板块编辑表单
+
+**功能**:
+- 4 板块编辑器（与 ADR-0013 对齐）：
+  1. **先让别人快速认识你** — 一句话介绍（headline，4-50 字）、所在城市（可选，可填「远程」）
+  2. **讲讲你的经历和作品** — 关于我（bio，30-500 字）与 作品链接（links，0-3 个 http(s) URL）二选一至少填一个
+  3. **一面技能墙，两个状态** — 单面技能墙三态切换：未选 → 我能提供 → 我想寻找 → 未选；同一技能不能同时占据两个状态；`skills` 3-10 项必填、`seekingSkills` 0-5 项选填；方向由技能组推导，不再单独提问
+  4. **说明你想遇见怎样的合作** — 关注领域（domains，1-3）、合作方式（durations，1-3）、当前状态（availability 单选三态）
+- 提交：`POST /talents/me`（首次发布或重新发布）、`PUT /talents/me`（更新）、`POST /talents/me/pause`（暂停）
+- 无服务端 Draft 状态：首次发布前编辑数据仅存浏览器本地，首次 publish 才落库
+- 无方向字段（ADR-0013：方向由 skills 推导，列表页方向筛选已移除，仅保留技能文本搜索）
+
+**组件**:
+- `TalentEditor` — Client Component（`components/talent/talent-ui.tsx`），4 板块 `EditorSection` + `SkillWall` + `LinksEditor`
+- `SkillWall` — Client Component（三态点选墙）
+
+### 我的建联 (`/connections`)
+
+**数据获取**: Server Component，通过 `server/talent.ts` 的 `getMyConnections()`（`GET /talents/connections`）
+
+**功能**:
+- 列出当前用户发送 + 接收的 ConnectionRequest（含 `pendingReceived` 计数）
+- 接收方可 `accept` / `ignore` Pending 请求；Accepted 请求可查看双方联系方式
+- 建联每日限额：Published 档案 10/天，无档案 3/天
+
 ## Component Architecture
 
 ### Server Components（默认）
 
 - 所有 `page.tsx` 与 `layout.tsx`
-- 纯展示组件：`ProjectCard`、`ProjectDetail`、`HeroSection`、`FeaturedSection`、`Pagination`、`ProjectBadges`、`NotFoundShell`、`FounderCard`
-- 数据获取层：`server/projects.ts`、`server/founder.ts`、`server/operator.ts`、`server/auth.ts`、`server/interactions.ts`（`getMyLikes` / `getMyFollows`）
+- 纯展示组件：`ProjectCard`、`ProjectDetail`、`HeroSection`、`FeaturedSection`、`Pagination`、`ProjectBadges`、`NotFoundShell`、`FounderCard`、`TalentList`、`AvailabilityBadge`
+- 数据获取层：`server/projects.ts`、`server/founder.ts`、`server/operator.ts`、`server/auth.ts`、`server/interactions.ts`（`getMyLikes` / `getMyFollows`）、`server/talent.ts`（`getTalents` / `getTalent` / `getMyTalent` / `getMyConnections`）
 
 ### Client Components（`'use client'`）
 
 - 交互组件：`FilterBar`、`AuthProvider`、`AuthNav`、`UserInteractionProvider`、`LikeButton`、`FollowButton`
-- 表单：`ProjectSubmissionForm`、`FormFields`、`ImageUploader`、`VideoUploader`
-- Dashboard：`FounderDashboard`、`OperatorDashboard`、`OperatorProjects`、`OperatorProjectDetail`、`OperatorProposals`、`OperatorProposalDetail`、`OperatorAuditRecords`
+- 表单：`ProjectSubmissionForm`、`FormFields`、`ImageUploader`、`TalentEditor`、`SkillWall`、`LinksEditor`、`ConnectionNav`
+- Dashboard：`FounderDashboard`、`OperatorDashboard`、`OperatorProjects`、`OperatorProjectDetail`、`OperatorProposals`、`OperatorProposalDetail`、`OperatorAuditRecords`、`OperatorTalents`
 
 ### Shared Components
 
@@ -264,7 +326,7 @@ Client Component → lib/client-api.ts → fetch('/api/...') → Next.js rewrite
 - **购买支持**: 购买/支持入口 UI 与支付流程
 - **黑客松活动专区**: 活动页面、人气榜单
 - **国际化 (i18n)**: 仅中文
-- **推送/邮件通知**: 状态变更后无异步通知
+- **推送/邮件通知**: 状态变更后无异步通知（人才建联 Accepted 会发一次 best-effort 邮件给发送方）
 
 ## Future Considerations
 

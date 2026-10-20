@@ -31,7 +31,7 @@ The system uses an external auth service for JWT tokens, so this backend only co
 6. As a Founder, I want to see the operator's revision requirements when my project needs changes, so that I know what to improve
 7. As a Founder, I want to edit my project after receiving revision requirements, so that I can address the feedback and resubmit
 8. As a Founder, I want to see the rejection reason when my project is rejected, so that I understand why it wasn't approved
-9. As a Founder, I want to edit my live project's description and demo link, so that I can keep information up-to-date
+9. As a Founder, I want to edit my live project's problemStatement/nextSteps/demoLink/betaDescription, so that I can keep information up-to-date
 10. As a Founder, I want my edits to a live project to create a proposal for review (recording only the changed fields), so that the old version remains visible while changes are evaluated
 11. As a Founder, I want to see all my projects in a dashboard, so that I can track their status and progress
 12. As a Founder, I want to filter my projects by status (draft, pending, live, etc.), so that I can focus on projects needing attention
@@ -42,7 +42,7 @@ The system uses an external auth service for JWT tokens, so this backend only co
 
 15. As a visitor (no login), I want to browse all live projects, so that I can discover interesting new products
 16. As a visitor, I want to filter projects by category, so that I can find products in areas I care about
-17. As a visitor, I want to filter projects by stage (MVP vs growth), so that I can find products at the maturity level I'm interested in
+17. As a visitor, I want to filter projects by stage (five ascending stages 0-4), so that I can find products at the maturity level I'm interested in
 18. As a visitor, I want to search projects by name or founder name, so that I can find specific products or creators
 19. As a visitor, I want to combine multiple filters, so that I can narrow down results precisely
 20. As a visitor, I want to sort projects by latest, most commented, or recently updated, so that I can browse in my preferred order
@@ -145,20 +145,24 @@ Because the Project row IS the content row, `categories` and `stage` are already
 
 ### Schema Design
 
-- **`projects` table**: `id`, `user_id`, `status` (tinyint 0-5), `name`, `tagline`, `description`, `cover_url`, `demo_images` (JSON), `demo_video_url`, `demo_link`, `stage` (tinyint 0-1), `categories` (JSON), `target_users`, `user_problem`, `progress`, `next_steps`, `message_to_users`, `is_open_for_beta`, `beta_description`, `contact_name`, `contact_phone`, `contact_email`, `contact_wechat`, `team_name`, `like_count` (int, default 0), `created_at`, `updated_at`. Index on `(user_id)`, `(status)`, `(stage)`, and a generated-column or JSON index on `categories` for filtering.
+- **`projects` table**: `id`, `user_id`, `status` (tinyint 0-5), `name`, `tagline` (4–50 chars), `cover_url`, `demo_images` (JSON), `demo_video_url` (http(s) link — B站/YouTube URL paste, replaces the former file upload), `demo_link`, `stage` (tinyint 0-4: 0 想法验证 / 1 原型 / 2 MVP / 3 已上线有用户 / 4 有收入 — five ascending stages), `categories` (JSON), `problem_statement` (30–300 chars, merges the former `target_users` + `user_problem`), `progress` (optional ≤300 chars), `next_steps` (required ≤300 chars), `differentiation` (optional ≤100), `business_model` (optional ≤200), `user_count` / `monthly_revenue` (CNY/month) / `retention_rate` (% 30-day) — three optional traction integers, `seeking_skills` (JSON, ≤5 keys from the shared `TALENT_SKILLS` catalog), `is_open_for_beta`, `beta_description`, `contact_name` (required), `contact_phone` / `contact_email` / `contact_wechat` (three nullable columns, at-least-one required at submission; phone no longer restricted to 11-digit mainland numbers), `team_name`, `like_count` (int, default 0), `created_at`, `updated_at`. The former `description` and `message_to_users` columns are dropped. Index on `(user_id)`, `(status)`, `(stage)`. Contact columns are **private** — filtered out of list/detail responses for any caller who is not the owner or an Operator (see ADR-0012).
 - **`project_edit_proposals` table**: `id`, `project_id`, `changes` (JSON — partial diff of changed content fields and their new values), `status` (tinyint 0-3), `reason` (text, nullable — operator's reason on reject/require_revision), `reviewed_by` (varchar, nullable — operator `user_id`), `reviewed_at` (timestamp, nullable), `created_at`, `updated_at`. Unique constraint on `project_id` WHERE `status IN (0, 3)` (at most one pending/revision-required proposal per project — enforced at application level if the DB doesn't support partial unique indexes).
 - **`user_identities` table**: `id`, `user_id`, `role` (varchar), `created_at`. Unique constraint on `(user_id, role)`.
 - **`project_likes` table**: `id`, `user_id` (varchar), `project_id` (int), `created_at`. Unique constraint on `(user_id, project_id)`. Index on `(project_id)` and `(user_id)`.
 - **`follows` table**: `id`, `follower_user_id` (varchar), `followee_user_id` (varchar), `created_at`. Unique constraint on `(follower_user_id, followee_user_id)`. Index on `(followee_user_id)` and `(follower_user_id)`.
 - **`comments` table** _(合约保留，v1.0 未实现；无迁移文件)_：`id`, `project_id`, `user_id`, `comment_type` (varchar), `content` (text), `can_contact` (boolean), `contact_info` (varchar, nullable), `is_flagged` (boolean), `created_at`
 - **`audit_records` table**: `id`, `project_id`, `operator_id`, `action` (varchar: approve, require_revision, reject, delist, restore), `proposal_id` (nullable, set only when the action targets a post-live edit proposal), `reason` (text, nullable), `created_at`
+- **`talent_profiles` table** _(Talent Plaza)_：`id`, `user_id` (unique), `status` (tinyint 0-2: Published/Paused/Suspended), `headline`, `bio` (nullable), `city` (nullable; 「远程」 denotes remote), `links` (JSON, ≤3 URLs), `availability` (tinyint 0-2: ActivelySeeking/OpenToChat/ConsultOnly), `skills` (JSON 3-10 keys), `seeking_skills` (JSON 0-5 keys, disjoint from `skills`), `domains` (JSON 1-3 from `CATEGORIES`), `durations` (JSON 1-3 from `COLLABORATION_DURATIONS`), `published_at`, `created_at`, `updated_at`. Index on `(status, updated_at)`; unique on `user_id`. No `roles` column (direction is derived).
+- **`connection_requests` table** _(Talent Plaza)_：`id`, `sender_user_id`, `receiver_user_id`, `pair_key` (unique while Pending, NULL on terminal), `project_id` (nullable), `purpose`, `message`, `sender_contact` (encrypted), `receiver_contact` (encrypted, set on accept), `status` (tinyint 0-3: Pending/Accepted/Ignored/Cancelled), `accepted_at`, `handled_at`, `created_at`. Index on `(sender_user_id, created_at)`, `(receiver_user_id, status)`, `(sender_user_id, receiver_user_id, status)`.
+- **`talent_moderation_records` table**：`id`, `talent_profile_id`, `operator_id`, `action` ('suspend'), `reason`, `created_at`. Index on `talent_profile_id`.
+- **`connection_daily_limits` table**：`scope` (TalentConnection / HackathonConnection), `sender_user_id`, `beijing_date`, `successful_count`. Per-sender per-day quota with a higher cap for Published-profile senders.
 
 ### API Contracts
 
 - **Project submission (pre-live)**:
   - `POST /projects`: Create a new Project row (`status=0`), grant founder role. Body: initial draft fields (minimum `name`).
   - `PUT /projects/:id/draft`: Update the Project row in place. Validates minimum fields (`name`). Allowed while `status` is `0` (Draft) or `2` (Revision Required). Pending Review is read-only.
-  - `PUT /projects/:id/submit`: Validate all required fields, transition `status` to `1` (Pending Review). Allowed from `0` or `2`.
+  - `PUT /projects/:id/submit`: Validate all required fields, transition `status` to `1` (Pending Review). Allowed from `0` or `2`. Required fields (in form order): `name`, `tagline`, `categories`, `stage` (0-4), `problemStatement`, `nextSteps`, `coverUrl`, `contactName`; plus `betaDescription` when `isOpenForBeta=true`; plus the contact at-least-one rule (`contactPhone`/`contactEmail`/`contactWechat` — at least one non-empty). `seekingSkills` (≤5 keys from `TALENT_SKILLS`), traction trio, `differentiation`, `businessModel`, `progress`, `demoVideoUrl` (http(s) URL) and `demoLink` are optional.
 
 - **Post-live edit proposals**:
   - `POST /projects/:id/proposals`: Create a proposal (`status=0` Pending). Body: `{ changes }` — a JSON object of changed content fields. Precondition: project `status=3` (Live) and no other proposal in `0`/`3` for this project.
@@ -167,10 +171,10 @@ Because the Project row IS the content row, `categories` and `stage` are already
   - `GET /projects/:id/proposals/:proposalId`: View a single proposal (founder on own project; operator on any).
 
 - **Project detail**:
-  - `GET /projects/:id`: Return the Project content directly, enriched with `founder` — the founder's public profile (`userId`, `nickname`, `avatarUrl`, `followerCount`) read from the shared users table and local follows count, or `null` when the founder has no profile there. `status=3` → public. Non-Live → 404 for regular users, full content for founder/operator. The response does not include caller-specific `isLiked` or `isFollowing` fields.
+  - `GET /projects/:id`: Return the Project content directly, enriched with `founder` — the founder's public profile (`userId`, `nickname`, `avatarUrl`, `followerCount`) read from the shared users table and local follows count, or `null` when the founder has no profile there. `status=3` → public. Non-Live → 404 for regular users, full content for founder/operator. The response does not include caller-specific `isLiked` or `isFollowing` fields. **Contact fields** (`contactName`/`contactPhone`/`contactEmail`/`contactWechat`) are private: returned only when the caller is the owner or an Operator; nullified for everyone else.
 
 - **Project list**:
-  - `GET /projects`: Paginated list of `status=3` (Live) projects. Query params: `category`, `stage`, `q` (search), `sort`, `cursor`/`offset`, `limit`. Each item includes public Founder data and a batched follower count. The endpoint remains caller-stateless and does not include `isLiked` or `isFollowing`.
+  - `GET /projects`: Paginated list of `status=3` (Live) projects. Query params: `category`, `stage` (0-4, five stages), `q` (search), `sort`, `cursor`/`offset`, `limit`. Each item includes public Founder data and a batched follower count. The endpoint remains caller-stateless and does not include `isLiked` or `isFollowing`. Contact fields are private and never present in list items.
 
 - **Founder backend**:
   - `GET /founder/projects`: List own projects with filters (status, stage, search).
@@ -211,6 +215,35 @@ Because the Project row IS the content row, `categories` and `stage` are already
   - `GET /me/follows`: Return the current user's full followed-founder user ID list. Response: `{ followed_founder_user_ids: string[] }`. No pagination.
   - `GET /me/following/projects`: Paginated list of Live projects from Founders the current user follows. Query params mirror `GET /projects` (`sort`, `cursor`/`offset`, `limit`). Ordered by `submitted_at DESC` by default.
 
+### Talent Plaza
+
+A User's structured public profile for cooperation matching, independent of the Founder role. Fields (ADR-0013): `headline` (4–50 chars), `bio` (30–500 chars, required UNLESS at least one `links` entry is provided — bio and links form an at-least-one pair), `links` (0–3 http(s) URLs), `city` (optional; the literal 「远程」 denotes remote collaboration), `skills` (3–10 keys from the shared `TALENT_SKILLS` catalog — 「我能提供」), `seekingSkills` (0–5 keys from the same catalog — 「我想寻找」; a key may not appear in both lists), `domains` (1–3 from `CATEGORIES`), `durations` (1–3 from `COLLABORATION_DURATIONS`), `availability` (single-select `TalentAvailability`: 0 积极寻找合作 / 1 开放聊聊 / 2 仅接受一次咨询). There is no `roles`/方向 field — direction is derived from the skill groups of `skills`. TalentProfile status (`TalentProfileStatus` tinyint): 0 Published / 1 Paused / 2 Suspended. Published profiles are discoverable; Paused hides a profile from discovery but the User may still initiate connections and process Pending requests; Suspended is terminal in P0.
+
+- **Profile management**:
+  - `POST /talents/me`: Publish (create or re-publish) the caller's profile. Body: `TalentProfileBody`. Required fields: `headline`, `skills`, `domains`, `durations`, `availability`; plus the bio-or-links at-least-one rule. Degrades gracefully when the caller has no row in the shared users table (`founder: null`).
+  - `PUT /talents/me`: Update the caller's Published/Paused profile (same body rules). A Suspended profile is terminal and rejects edits.
+  - `GET /talents/me`: Return the caller's profile for the editor (with suspension audit when present).
+  - `POST /talents/me/pause`: Pause a Published profile (hidden from discovery; the User retains connection privileges).
+  - `GET /talents`: Public list of `status=Published` profiles. Query params: `q` (free-text search across headline/bio/skills/founder/projects), `skills` (comma-separated; accepts keys or display labels), `duration` (single value), `sort` (`new` | `active`), `offset`, `limit`. Each item enriches with the receiver's public founder profile and their Live projects. The response is caller-stateless (no per-viewer match).
+  - `GET /talents/:userId`: Public detail of a Published profile. When the caller is authenticated and also has a Published profile, the response additionally includes a `match` block (score + readable reasons) — see Talent matching below. Non-Published profiles → 404.
+
+- **Connection requests**:
+  - `POST /talents/connections`: Sender creates a request to a receiver with a Published profile. Body: `receiverUserId`, optional `projectId` (must be Live and owned by the sender), `purpose` (from `CONNECTION_PURPOSES`), `message` (30–500 chars), and sender contact authorization (`wechat` and/or `email` — at-least-one, encrypted at rest). Self-requests → 400. At most one Pending request per pair; an Accepted request in either direction blocks new requests.
+  - `GET /talents/connections`: List the caller's sent + received requests (with `pendingReceived` count).
+  - `GET /talents/connections/:id`: View a single request (sender or receiver only).
+  - `PUT /talents/connections/:id/accept`: Receiver accepts a Pending request, authorizing their own contact info. Idempotent on already-Accepted.
+  - `PUT /talents/connections/:id/ignore`: Receiver ignores a Pending request. Idempotent on already-Ignored.
+  - `GET /talents/connections/:id/contacts`: Only on Accepted requests; returns both sides' decrypted contact info (sender and receiver).
+
+- **Operator backend (Talent)**:
+  - `GET /operator/talents`: List all profiles with filters (`q`, `status`, `offset`, `limit`).
+  - `GET /operator/talents/:userId`: View any profile (with suspension audit).
+  - `POST /operator/talents/:userId/suspend`: Body: `{ reason }`. Sets status to Suspended (terminal in P0). Pending connection requests on the profile are Cancelled. Creates a `talent_moderation_records` audit row.
+  - `GET /operator/talents/:userId/suspension-audit`: Suspension audit history for the profile.
+
+- **Talent matching**:
+  P0 matching is a detail-page aid, not a list-ranking mechanism. A `match` block (score + readable reasons) is returned on `GET /talents/:userId` only when both the viewer and the target have Published TalentProfiles; it is hidden otherwise (visitor, user without a profile, or either side in a non-Published state). A zero score renders as 「暂无明显匹配」 rather than a numeric score.
+
 ### Access Control
 
 - **Public routes**: `GET /projects`, `GET /projects/:id` (with conditional visibility). `POST /projects/:id/comments` requires auth.
@@ -221,7 +254,7 @@ Because the Project row IS the content row, `categories` and `stage` are already
 ### Validation
 
 - **Project submission**: All required fields validated on submit. Draft only requires `name`.
-- **Proposal submission**: `changes` must be a non-empty JSON object whose keys are valid editable content field names and whose values pass per-field validation. Empty `changes` or unknown keys are rejected.
+- **Proposal submission**: `changes` must be a non-empty JSON object whose keys are valid editable content field names and whose values pass per-field validation. In v1.1, post-live proposals may only touch `problemStatement`, `nextSteps`, `demoLink`, and `betaDescription` (the proposal whitelist — see ADR-0012); unknown keys or empty `changes` are rejected.
 - **Comment submission**: `content` required (max 500 chars), `comment_type` must be valid enum, `contact_info` required when `can_contact=true`.
 - **Like**: target project must exist. Creating a like requires `status=3` (Live); unlike is allowed on any status.
 - **Follow**: target `userId` must exist and currently hold `role=founder` for creation. Self-follow (`follower_user_id == followee_user_id`) is rejected on both POST. Unfollow is allowed even if the target no longer holds `founder`.
@@ -285,9 +318,9 @@ The following features are explicitly excluded from v1.0:
 - **Non-like project counters**: No `view_count`, `vote_count`, or `share_count` fields (deferred to 2.0). `like_count` *is* present on Project in v1.0.
 - **Project form field**: No "project form" (hardware/software/hybrid) field.
 - **Activity association**: No "belonging to activity" field on projects.
-- **User profile management**: Backend consumes external auth, doesn't manage user profiles.
-- **Notification system**: No email or in-app notifications for review results.
-- **File upload service**: Assumes external file storage (S3, etc.) with URLs stored in database.
+- **User profile management**: Backend consumes external auth and never writes to the shared users table at runtime (only the dev seed and tests insert fixture rows there). Talent Plaza manages structured talent profiles (a separate `talent_profiles` table), not the shared User record.
+- **Notification system**: No email or in-app notifications for review results. (Talent connection outcomes do send a best-effort notification email to the sender's platform-account address when accepted.)
+- **File upload service**: Assumes external file storage (S3/COS, etc.) with URLs stored in database. Demo video is now a URL paste (B站/YouTube) rather than a file upload (ADR-0012); images still go through the upload pipeline.
 - **Full content snapshots / version history**: Proposals record only the changed-field diff and do not retain prior full content snapshots. Reconstructing the full prior version of a project is not supported in v1.0 (deferred to 2.0+ if needed).
 
 ## Further Notes

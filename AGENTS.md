@@ -81,7 +81,7 @@ packages/
 
 ## Shared Package
 
-- `@shenicest/shared` 存放前后端共用的领域常量（ProjectStatus、ProposalStatus、ProjectStage、Role、CATEGORIES），取值必须与 CONTEXT.md 一致
+- `@shenicest/shared` 存放前后端共用的领域常量与类型（ProjectStatus、ProposalStatus、ProjectStage、Role、CATEGORIES、TalentAvailability / TALENT_AVAILABILITY_LABELS、TalentProfileStatus、TALENT_SKILLS / TALENT_SKILL_GROUPS / skillLabel / skillKey、COLLABORATION_DURATIONS、CONNECTION_PURPOSES 等），取值必须与 CONTEXT.md 一致
 - 纯 TypeScript，不依赖 elysia/drizzle；后端与前端都通过 workspace 依赖引入
 - Next.js 侧已在 `next.config.ts` 配置 `transpilePackages`
 - API 请求/响应类型目前仍在 api 的 model.ts 中；前端需要时逐步抽取到 shared

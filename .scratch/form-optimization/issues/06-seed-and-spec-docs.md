@@ -4,14 +4,14 @@
 
 **Blocked by:** 02 — 提交表单 v2：Web 提交/编辑体验；03 — 项目浏览面 v2；05 — 人才广场 v2
 
-**Status:** ready-for-agent
+**Status:** DONE. seed.ts 新增 5 条人才档案（user 11–15）与共享 users 资料，项目 demo 补齐 YouTube/邮箱+电话等组合；后端/前端规格同步项目 v2 字段、联系方式隐私、提案白名单、stage 五档与 Talent Plaza 端点/页面；AGENTS.md shared 常量清单更新。api 366/366、web 266/266、typecheck/lint/build 全绿。
 
-- [ ] seed 项目数据覆盖 stage 五档、traction 三种完整度（全空/部分/全填）、seekingSkills 多样样本、三选一联系方式不同组合、视频链接形态；运行 `bun run seed` 后列表/详情/筛选立即可演示
-- [ ] seed 人才档案覆盖 availability 三态、bio-only 与 links-only 两种二选一样本、双状态技能（含单边/双边分布）、多城市含「远程」
-- [ ] `docs/spec-v1-backend-api.md` 同步：项目/人才端点的字段集、必填规则、联系方式隐私过滤、提案白名单、stage 五档、availability
-- [ ] `docs/spec-v1-frontend.md` 同步：提交表单 6 板块、详情页新结构、筛选五档、人才编辑器 4 板块与三态墙、广场展示变化
-- [ ] AGENTS.md 复核（领域文档列表与 ADR 索引已含 0012/0013，无需再动结构）
-- [ ] `bun run test`（api+web）与 `bun run build` 全绿
+- [x] seed 项目数据覆盖 stage 五档、traction 三种完整度（全空/部分/全填）、seekingSkills 多样样本、三选一联系方式不同组合、视频链接形态；运行 `bun run seed` 后列表/详情/筛选立即可演示
+- [x] seed 人才档案覆盖 availability 三态、bio-only 与 links-only 两种二选一样本、双状态技能（含单边/双边分布）、多城市含「远程」
+- [x] `docs/spec-v1-backend-api.md` 同步：项目/人才端点的字段集、必填规则、联系方式隐私过滤、提案白名单、stage 五档、availability
+- [x] `docs/spec-v1-frontend.md` 同步：提交表单 6 板块、详情页新结构、筛选五档、人才编辑器 4 板块与三态墙、广场展示变化
+- [x] AGENTS.md 复核（领域文档列表与 ADR 索引已含 0012/0013，无需再动结构）
+- [x] `bun run test`（api+web）与 `bun run build` 全绿
 
 **Implementation notes:**
 - seed 即演示数据：优先「一眼能看出新结构」的样本（如 traction 指标条三态、技能双状态），数量不必多
