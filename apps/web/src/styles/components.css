@@ -328,6 +328,25 @@
     outline-offset: 2px;
   }
 
+  /* 「我想寻找」技能：更浅的底 + 虚线描边。
+   * 虚线在这里不是装饰——实心 = 我已经有的，虚线空位 = 我还在找的，
+   * 所以即使不看颜色、不分辨色相，形状本身也在讲这件事（ADR-0013）。
+   * 需要压过 .ui-chip[aria-pressed='true']（编辑器的技能墙按钮是
+   * aria-pressed 的切换键），所以带上 aria-pressed 变体并放在其后。 */
+  .ui-chip--seeking,
+  .ui-chip--seeking[aria-pressed='true'] {
+    background: var(--chip-seeking-bg);
+    border-color: var(--chip-seeking-line);
+    border-style: dashed;
+    color: var(--chip-seeking-fg);
+  }
+
+  .ui-chip--seeking.ui-chip--interactive:hover {
+    background: var(--chip-seeking-bg-hover);
+    border-color: var(--chip-seeking-line-hover);
+    color: var(--chip-seeking-fg);
+  }
+
   /* ---------------------------------------------------------------------------
    * 表单控件
    * ------------------------------------------------------------------------- */

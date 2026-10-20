@@ -121,13 +121,9 @@
    * 首屏背景（设计稿 .cover-art 用的就是这张无文字版）。
    * 组件只消费 var(--cover-image)，换插画只动这里。
    *
-   * 用 image-set 让浏览器按 DPR 与视口挑最小够用的那张：
-   * 手机拿 768px 版，普通桌面拿 1280px，高分辨率屏才拿 1920px。 */
-  --cover-art: image-set(
-    url('/brand/boomland-art-768.webp') 1x,
-    url('/brand/boomland-art-1280.webp') 1.5x,
-    url('/brand/boomland-art-1920.webp') 2x
-  );
+   * 引用 public/brand 下的静态图片，不要内联 base64 —— 内联会显著放大
+   * 样式表体积，且浏览器无法单独缓存、无法按 DPR 重采样。 */
+  --cover-art: url('/brand/boomland-art.jpg');
 
   /* 首屏柔光：把中央文字区压亮，保证标题在插画上可读。
    * 它带颜色，所以放在 L0 而不是 patterns.css。

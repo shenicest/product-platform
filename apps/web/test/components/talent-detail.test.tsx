@@ -73,6 +73,14 @@ describe("TalentDetail connection dialog", () => {
       "seeking",
     );
     expect(seekingSection).toContainElement(screen.getByText("数据分析"));
+    // The two states must read differently: provide is the solid brand chip,
+    // seeking is the lighter dashed `seeking` tone.
+    expect(screen.getByText("前端").closest("[data-skill-state]")).toHaveClass(
+      "ui-chip--active",
+    );
+    expect(
+      screen.getByText("数据分析").closest("[data-skill-state]"),
+    ).toHaveClass("ui-chip--seeking");
     // Provide wall sorts by the skill-wall group order (产品 before 开发).
     const provideChips = Array.from(
       provideSection.querySelectorAll("[data-skill-state]"),

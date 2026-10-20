@@ -130,6 +130,19 @@
   --chip-fg: var(--fg-muted);
   --chip-line: var(--border);
 
+  /* 「我想寻找」技能（ADR-0013 的 seekingSkills）专用档：
+   * 更浅的底 + 虚线描边，与「我能提供」的实心粉色形成对照——
+   * 实心 = 我有的，虚线空位 = 我在找的。
+   * 文字取 sky-deep（#1c527f）而不是 sky-text（#2f79bd）：后者压在
+   * sky-wash 上只有 4.11:1，够不到 11px 小字要求的 4.5:1；
+   * sky-deep 是 7.37:1。描边用 sky-text，4.11:1 已超过非文字
+   * 控件要求的 3:1，虚线段在浅底上依然看得见。 */
+  --chip-seeking-bg: var(--sky-wash);
+  --chip-seeking-bg-hover: var(--sky-soft);
+  --chip-seeking-fg: var(--sky-deep);
+  --chip-seeking-line: var(--sky-text);
+  --chip-seeking-line-hover: var(--sky-deep);
+
   --card-bg: var(--bg-elevated);
   --card-line: var(--border);
   --card-shadow: var(--boom-shadow-card);

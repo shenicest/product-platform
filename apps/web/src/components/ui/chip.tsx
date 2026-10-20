@@ -1,11 +1,20 @@
 import { cn } from '@/lib/utils'
 
-export type ChipTone = 'neutral' | 'accent' | 'sky' | 'success' | 'warning' | 'danger'
+export type ChipTone =
+  | 'neutral'
+  | 'accent'
+  | 'sky'
+  | 'seeking'
+  | 'success'
+  | 'warning'
+  | 'danger'
 
 const TONE: Record<ChipTone, string> = {
   neutral: '',
   accent: 'ui-chip--active',
   sky: 'ui-chip--blue',
+  // 虚线 + 更浅的底：表示「我还在找的」而不是「我已经有的」。
+  seeking: 'ui-chip--seeking',
   success: 'ui-chip--success',
   warning: 'ui-chip--warning',
   danger: 'ui-chip--danger',

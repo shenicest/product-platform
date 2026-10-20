@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Role } from '@shenicest/shared'
 import { useAuth } from '@/components/auth-provider'
 import { getConnections } from '@/lib/client-api'
@@ -23,6 +23,42 @@ const MENU_ITEM =
 export function UserMenu() {
   const { user, loading, logout } = useAuth()
   const [pending, setPending] = useState(0)
+  const menuRef = useRef<HTMLDetailsElement>(null)
+
+  /**
+   * 点击菜单之外的任何地方都收起菜单。
+   *
+   * `<details>` 原生只在点击 `<summary>` 时切换，点别处不会关，所以补一个
+   * 文档级监听。用 `pointerdown` 而非 `click`：按下的瞬间就收起，不等一次
+   * 完整的按下-抬起，手感更接近原生菜单；同时外部元素自身的 click 照常触发，
+   * 不会因为「先关菜单」把这次点击吃掉。
+   *
+   * 只在已展开时处理，且 `contains` 命中菜单内部（含 summary）时直接返回 ——
+   * 点 summary 的关闭交给原生行为，避免我们自己关一次、原生再切回来。
+   *
+   * 监听挂在捕获阶段：别的组件若在 pointerdown 上调用了 stopPropagation，
+   * 冒泡阶段就收不到，菜单会关不掉。捕获阶段先于目标处理，不受影响。
+   */
+  useEffect(() => {
+    const onPointerDown = (event: PointerEvent) => {
+      const menu = menuRef.current
+      if (!menu?.open) return
+      if (event.target instanceof Node && menu.contains(event.target)) return
+      menu.open = false
+    }
+    document.addEventListener('pointerdown', onPointerDown, true)
+    return () => document.removeEventListener('pointerdown', onPointerDown, true)
+  }, [])
+
+  /**
+   * 点菜单里的链接时先收起菜单。
+   *
+   * 头部挂在根 layout 上，客户端跳转不会卸载它；不主动关的话，跳转后菜单
+   * 仍会停在新页面上展开着。
+   */
+  const closeMenu = () => {
+    if (menuRef.current) menuRef.current.open = false
+  }
 
   useEffect(() => {
     if (!user) return
@@ -56,7 +92,7 @@ export function UserMenu() {
   const username = user.email ?? `用户 #${user.user_id}`
 
   return (
-    <details className="relative shrink-0">
+    <details ref={menuRef} className="relative shrink-0">
       <summary className="cursor-pointer list-none whitespace-nowrap font-mono text-label text-muted-foreground transition-colors hover:text-brand-text [&::-webkit-details-marker]:hidden">
         {username}{' '}
         <span aria-hidden className="text-brand-text">
@@ -68,7 +104,7 @@ export function UserMenu() {
        * 这里不叠加 Tailwind 的 shadow-* —— 那是与皮肤无关的固定投影，
        * 会让 rock / night 皮肤下的浮层失去同一套层次语言。 */}
       <Card static className="absolute top-full right-0 z-50 mt-3 min-w-48 p-2">
-        <Link href="/connections" className={MENU_ITEM}>
+        <Link href="/connections" className={MENU_ITEM} onClick={closeMenu}>
           <span>连接记录</span>
           {pending > 0 ? (
             <Chip tone="accent" aria-label={`${pending} 个待处理连接`}>
@@ -77,16 +113,16 @@ export function UserMenu() {
           ) : null}
         </Link>
 
-        <Link href="/talents/me/edit" className={MENU_ITEM}>
+        <Link href="/talents/me/edit" className={MENU_ITEM} onClick={closeMenu}>
           编辑我的档案
         </Link>
         {isFounder ? (
-          <Link href="/founder/dashboard" className={MENU_ITEM}>
+          <Link href="/founder/dashboard" className={MENU_ITEM} onClick={closeMenu}>
             创始人后台
           </Link>
         ) : null}
         {isOperator ? (
-          <Link href="/operator" className={MENU_ITEM}>
+          <Link href="/operator" className={MENU_ITEM} onClick={closeMenu}>
             运营后台
           </Link>
         ) : null}

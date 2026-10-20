@@ -46,6 +46,11 @@ describe("TalentList (plaza surfaces)", () => {
     const seeking = screen.getByText("前端").closest("[data-skill-state]");
     expect(provided).toHaveAttribute("data-skill-state", "provide");
     expect(seeking).toHaveAttribute("data-skill-state", "seeking");
+    // Provide = solid brand chip; seeking = the lighter, dashed `seeking` tone.
+    expect(provided).toHaveClass("ui-chip--active");
+    expect(provided).not.toHaveClass("ui-chip--seeking");
+    expect(seeking).toHaveClass("ui-chip--seeking");
+    expect(seeking).not.toHaveClass("ui-chip--active");
 
     expect(screen.getByLabelText("合作方式")).toBeInTheDocument();
     expect(screen.queryByLabelText("方向")).not.toBeInTheDocument();

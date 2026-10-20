@@ -46,9 +46,15 @@ describe('TalentEditor (v2 dual-state skill wall)', () => {
     const provide = screen.getByRole('button', { name: '产品策略' })
     expect(provide).toHaveAttribute('data-state', 'none')
     await user.click(provide)
-    expect(screen.getByRole('button', { name: '产品策略，我能提供' })).toHaveAttribute('data-state', 'provide')
+    const providing = screen.getByRole('button', { name: '产品策略，我能提供' })
+    expect(providing).toHaveAttribute('data-state', 'provide')
+    expect(providing).toHaveClass('ui-chip--active')
     await user.click(screen.getByRole('button', { name: '产品策略，我能提供' }))
-    expect(screen.getByRole('button', { name: '产品策略，我想寻找' })).toHaveAttribute('data-state', 'seeking')
+    const seeking = screen.getByRole('button', { name: '产品策略，我想寻找' })
+    expect(seeking).toHaveAttribute('data-state', 'seeking')
+    // Seeking must not inherit the pressed/active brand look.
+    expect(seeking).toHaveClass('ui-chip--seeking')
+    expect(seeking).not.toHaveClass('ui-chip--active')
     await user.click(screen.getByRole('button', { name: '产品策略，我想寻找' }))
     expect(screen.getByRole('button', { name: '产品策略' })).toHaveAttribute('data-state', 'none')
 

@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import type { ReactNode } from "react";
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   CATEGORIES,
   COLLABORATION_DURATIONS,
@@ -15,14 +15,14 @@ import {
   skillLabel,
   TalentAvailability,
   TalentProfileStatus,
-} from "@shenicest/shared";
-import { useAuth } from "@/components/auth-provider";
+} from '@shenicest/shared';
+import { useAuth } from '@/components/auth-provider';
 import {
   pauseTalent,
   saveTalent,
   sendTalentConnection,
   suspendTalent,
-} from "@/lib/client-api";
+} from '@/lib/client-api';
 import {
   clearTalentDraft,
   loadTalentDraft,
@@ -36,17 +36,22 @@ import {
   type TalentManagement,
   type TalentProfile,
   type TalentProject,
-} from "@/lib/talent";
-import { Button, ButtonLink } from "@/components/ui/button";
-import { Chip, ChipButton, chipClass, type ChipTone } from "@/components/ui/chip";
-import { Card, Panel } from "@/components/ui/surface";
-import { Eyebrow } from "@/components/ui/typography";
+} from '@/lib/talent';
+import { Button, ButtonLink } from '@/components/ui/button';
+import {
+  Chip,
+  ChipButton,
+  chipClass,
+  type ChipTone,
+} from '@/components/ui/chip';
+import { Card, Panel } from '@/components/ui/surface';
+import { Eyebrow } from '@/components/ui/typography';
 
 const empty: TalentBody = {
-  headline: "",
-  bio: "",
+  headline: '',
+  bio: '',
   links: [],
-  city: "",
+  city: '',
   skills: [],
   seekingSkills: [],
   domains: [],
@@ -78,7 +83,7 @@ function Chips({
             key={value}
             disabled={isDisabled}
             aria-pressed={isSelected}
-            tone={isSelected ? "accent" : "neutral"}
+            tone={isSelected ? 'accent' : 'neutral'}
             className="disabled:cursor-not-allowed! disabled:opacity-50"
             onClick={() =>
               onChange(
@@ -100,9 +105,9 @@ type SkillWallState = { skills: string[]; seekingSkills: string[] };
 // Public cooperation signal: one color/state per availability value, visible
 // to logged-out visitors as well (it lowers the cost of a wasted outreach).
 const AVAILABILITY_TONE: Record<TalentAvailability, ChipTone> = {
-  [TalentAvailability.ActivelySeeking]: "accent",
-  [TalentAvailability.OpenToChat]: "neutral",
-  [TalentAvailability.ConsultOnly]: "sky",
+  [TalentAvailability.ActivelySeeking]: 'accent',
+  [TalentAvailability.OpenToChat]: 'neutral',
+  [TalentAvailability.ConsultOnly]: 'sky',
 };
 
 export function AvailabilityBadge({ availability }: { availability: number }) {
@@ -110,7 +115,7 @@ export function AvailabilityBadge({ availability }: { availability: number }) {
   if (!label) return null;
   return (
     <Chip
-      tone={AVAILABILITY_TONE[availability as TalentAvailability] ?? "neutral"}
+      tone={AVAILABILITY_TONE[availability as TalentAvailability] ?? 'neutral'}
       data-state={availability}
     >
       {label}
@@ -120,16 +125,18 @@ export function AvailabilityBadge({ availability }: { availability: number }) {
 
 // Read-only wall chip (cards + detail): provide and seeking states rest in
 // distinct colors, mirroring the editor's dual-state wall (ADR-0013).
+// Seeking is the lighter, dashed chip: a solid chip is something the person
+// already has, an empty dashed slot is something they are still looking for.
 export function SkillChip({
   skill,
   skillState,
 }: {
   skill: string;
-  skillState: "provide" | "seeking";
+  skillState: 'provide' | 'seeking';
 }) {
   return (
     <Chip
-      tone={skillState === "provide" ? "accent" : "sky"}
+      tone={skillState === 'provide' ? 'accent' : 'seeking'}
       data-skill-state={skillState}
     >
       {skillLabel(skill)}
@@ -147,31 +154,44 @@ function SkillWall({
   state: SkillWallState;
   onChange: (next: SkillWallState) => void;
 }) {
-  function stateOf(skill: string): "provide" | "seeking" | "none" {
-    if (state.skills.includes(skill)) return "provide";
-    if (state.seekingSkills.includes(skill)) return "seeking";
-    return "none";
+  function stateOf(skill: string): 'provide' | 'seeking' | 'none' {
+    if (state.skills.includes(skill)) return 'provide';
+    if (state.seekingSkills.includes(skill)) return 'seeking';
+    return 'none';
   }
   function toggle(skill: string) {
     const { skills, seekingSkills } = state;
     if (skills.includes(skill)) {
       if (seekingSkills.length >= MAX_SEEKING_SKILLS) {
         // Cap reached: cycle ends at 未选 instead of forcing 我想寻找.
-        onChange({ skills: skills.filter((item) => item !== skill), seekingSkills });
+        onChange({
+          skills: skills.filter((item) => item !== skill),
+          seekingSkills,
+        });
         return;
       }
-      onChange({ skills: skills.filter((item) => item !== skill), seekingSkills: [...seekingSkills, skill] });
+      onChange({
+        skills: skills.filter((item) => item !== skill),
+        seekingSkills: [...seekingSkills, skill],
+      });
       return;
     }
     if (seekingSkills.includes(skill)) {
-      onChange({ skills, seekingSkills: seekingSkills.filter((item) => item !== skill) });
+      onChange({
+        skills,
+        seekingSkills: seekingSkills.filter((item) => item !== skill),
+      });
       return;
     }
     if (skills.length >= MAX_TALENT_SKILLS) return;
     onChange({ skills: [...skills, skill], seekingSkills });
   }
-  const stateLabel = (chipState: "provide" | "seeking" | "none") =>
-    chipState === "provide" ? "，我能提供" : chipState === "seeking" ? "，我想寻找" : "";
+  const stateLabel = (chipState: 'provide' | 'seeking' | 'none') =>
+    chipState === 'provide'
+      ? '，我能提供'
+      : chipState === 'seeking'
+        ? '，我想寻找'
+        : '';
   return (
     <div className="divide-y divide-border border-y border-border">
       {TALENT_SKILL_GROUPS.map((group) => (
@@ -190,16 +210,16 @@ function SkillWall({
                   type="button"
                   key={skill}
                   data-state={chipState}
-                  aria-pressed={chipState !== "none"}
+                  aria-pressed={chipState !== 'none'}
                   aria-label={`${skillLabel(skill)}${stateLabel(chipState)}`}
                   onClick={() => toggle(skill)}
                   className={chipClass({
                     tone:
-                      chipState === "provide"
-                        ? "accent"
-                        : chipState === "seeking"
-                          ? "sky"
-                          : "neutral",
+                      chipState === 'provide'
+                        ? 'accent'
+                        : chipState === 'seeking'
+                          ? 'seeking'
+                          : 'neutral',
                     interactive: true,
                   })}
                 >
@@ -242,7 +262,9 @@ function LinksEditor({
               placeholder="https://github.com/yourname"
               onChange={(event) =>
                 onChange(
-                  links.map((value, i) => (i === index ? event.target.value : value)),
+                  links.map((value, i) =>
+                    i === index ? event.target.value : value,
+                  ),
                 )
               }
               className="h-12 w-full border border-input bg-background px-4 outline-none transition-colors placeholder:text-muted-foreground/50 focus:border-primary"
@@ -266,7 +288,7 @@ function LinksEditor({
           variant="ghost"
           size="sm"
           className="mt-3"
-          onClick={() => onChange([...links, ""])}
+          onClick={() => onChange([...links, ''])}
         >
           + 添加作品链接
         </Button>
@@ -280,13 +302,13 @@ function ProfileCard({ profile }: { profile: TalentProfile }) {
     <Card className="group h-full">
       <Link
         href={`/talents/${profile.userId}`}
-        className="flex min-h-64 flex-1 flex-col justify-between gap-6 p-5"
+        className="flex min-h-64 flex-1 flex-col justify-between p-5"
       >
         <div>
           <div className="flex items-start justify-between gap-3">
             <span className="eyebrow">PEOPLE / {profile.userId}</span>
             <span className="font-mono text-meta text-muted-foreground">
-              {profile.city || "REMOTE"}
+              {profile.city || 'REMOTE'}
             </span>
           </div>
           <h2 className="mt-5 text-xl font-bold text-foreground transition-colors group-hover:text-brand-text">
@@ -295,19 +317,21 @@ function ProfileCard({ profile }: { profile: TalentProfile }) {
           <p className="mt-1 font-mono text-meta text-brand-text">
             {profile.headline}
           </p>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
+            <AvailabilityBadge availability={profile.availability} />
+          </div>
           <p className="mt-4 line-clamp-3 text-body-sm text-muted-foreground">
             {profile.bio}
           </p>
         </div>
         <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <AvailabilityBadge availability={profile.availability} />
-          </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {/* 提供 state first, looking-for fills the remaining slots. */}
-            {orderSkillsByGroup(profile.skills).slice(0, 4).map((skill) => (
-              <SkillChip key={skill} skill={skill} skillState="provide" />
-            ))}
+            {orderSkillsByGroup(profile.skills)
+              .slice(0, 4)
+              .map((skill) => (
+                <SkillChip key={skill} skill={skill} skillState="provide" />
+              ))}
             {orderSkillsByGroup(profile.seekingSkills ?? [])
               .filter((skill) => !profile.skills.includes(skill))
               .slice(0, 2)
@@ -322,7 +346,13 @@ function ProfileCard({ profile }: { profile: TalentProfile }) {
 }
 
 const SearchIcon = (
-  <svg aria-hidden viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+  <svg
+    aria-hidden
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+  >
     <circle cx="11" cy="11" r="7" />
     <path d="m20 20-3.6-3.6" strokeLinecap="round" />
   </svg>
@@ -344,21 +374,21 @@ export function TalentList({
   };
 }) {
   const router = useRouter();
-  const [q, setQ] = useState(params.q || "");
+  const [q, setQ] = useState(params.q || '');
   function go(changes: Record<string, string>) {
     const next = new URLSearchParams();
     const merged = { ...params, ...changes };
     Object.entries(merged).forEach(([key, value]) => {
-      if (value && key !== "page") next.set(key, String(value));
+      if (value && key !== 'page') next.set(key, String(value));
     });
     router.push(`/talents?${next}`);
   }
   function pageHref(page: number) {
     const next = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
-      if (value !== undefined && key !== "page") next.set(key, String(value));
+      if (value !== undefined && key !== 'page') next.set(key, String(value));
     });
-    if (page > 1) next.set("page", String(page));
+    if (page > 1) next.set('page', String(page));
     return `/talents?${next}`;
   }
   return (
@@ -379,13 +409,16 @@ export function TalentList({
           <Card static>
             <div className="card-body card-body--roomy">
               <p className="font-mono text-meta text-brand-text">
-                {String(total).padStart(3, "0")} PEOPLE IN THE NETWORK
+                {String(total).padStart(3, '0')} PEOPLE IN THE NETWORK
               </p>
               <p className="text-body-sm text-muted-foreground">
                 让别人知道你能做什么，以及想参与什么。
               </p>
               <ButtonLink href="/talents/me/edit" block className="mt-2">
-                展示我的能力 <span className="ui-btn__arrow" aria-hidden>→</span>
+                点击开始找共鸣{' '}
+                <span className="ui-btn__arrow" aria-hidden>
+                  →
+                </span>
               </ButtonLink>
             </div>
           </Card>
@@ -396,7 +429,7 @@ export function TalentList({
             className="flex flex-col gap-2 sm:flex-row"
             onSubmit={(event) => {
               event.preventDefault();
-              go({ q, page: "1" });
+              go({ q, page: '1' });
             }}
           >
             <div className="ui-search flex-1">
@@ -414,9 +447,9 @@ export function TalentList({
             <div className="w-44">
               <select
                 aria-label="合作方式"
-                value={params.duration || ""}
+                value={params.duration || ''}
                 onChange={(event) =>
-                  go({ duration: event.target.value, page: "1" })
+                  go({ duration: event.target.value, page: '1' })
                 }
                 className="ui-select"
               >
@@ -429,23 +462,25 @@ export function TalentList({
             <div className="w-56">
               <input
                 aria-label="技能"
-                defaultValue={params.skills || ""}
-                onBlur={(event) => go({ skills: event.target.value, page: "1" })}
+                defaultValue={params.skills || ''}
+                onBlur={(event) =>
+                  go({ skills: event.target.value, page: '1' })
+                }
                 placeholder="技能（逗号分隔）"
                 className="ui-input"
               />
             </div>
             <ChipButton
-              aria-pressed={params.sort === "active"}
-              tone={params.sort === "active" ? "accent" : "neutral"}
+              aria-pressed={params.sort === 'active'}
+              tone={params.sort === 'active' ? 'accent' : 'neutral'}
               onClick={() =>
                 go({
-                  sort: params.sort === "active" ? "new" : "active",
-                  page: "1",
+                  sort: params.sort === 'active' ? 'new' : 'active',
+                  page: '1',
                 })
               }
             >
-              {params.sort === "active" ? "最近活跃" : "最近加入"} · 排序
+              {params.sort === 'active' ? '最近活跃' : '最近加入'} · 排序
             </ChipButton>
           </div>
         </div>
@@ -461,21 +496,15 @@ export function TalentList({
 
         <div className="mt-12 flex items-center justify-center gap-4 font-mono text-meta">
           {params.page > 1 && (
-            <ButtonLink
-              variant="ghost"
-              href={pageHref(params.page - 1)}
-            >
+            <ButtonLink variant="ghost" href={pageHref(params.page - 1)}>
               ← 上一页
             </ButtonLink>
           )}
           <span className="text-brand-text">
-            PAGE {String(params.page).padStart(2, "0")}
+            PAGE {String(params.page).padStart(2, '0')}
           </span>
           {params.page * TALENT_PAGE_SIZE < total && (
-            <ButtonLink
-              variant="ghost"
-              href={pageHref(params.page + 1)}
-            >
+            <ButtonLink variant="ghost" href={pageHref(params.page + 1)}>
               下一页 →
             </ButtonLink>
           )}
@@ -497,30 +526,30 @@ export function TalentDetail({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (
-        sessionStorage.getItem("shenicest_pending_talent_connect") !==
+        sessionStorage.getItem('shenicest_pending_talent_connect') !==
         profile.userId
       )
         return;
-      sessionStorage.removeItem("shenicest_pending_talent_connect");
+      sessionStorage.removeItem('shenicest_pending_talent_connect');
       setOpen(true);
     });
     return () => window.clearTimeout(timer);
   }, [profile.userId]);
   const [form, setForm] = useState({
-    purpose: "",
-    message: "",
-    wechat: "",
-    email: "",
-    projectId: "",
+    purpose: '',
+    message: '',
+    wechat: '',
+    email: '',
+    projectId: '',
   });
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [sendSuccess, setSendSuccess] = useState(false);
   const [sending, setSending] = useState(false);
   const own = String(user?.user_id) === profile.userId;
   async function connect() {
     if (!user) {
       sessionStorage.setItem(
-        "shenicest_pending_talent_connect",
+        'shenicest_pending_talent_connect',
         profile.userId,
       );
       router.push(`/login?returnTo=/talents/${profile.userId}`);
@@ -548,7 +577,7 @@ export function TalentDetail({
     else {
       setOpen(false);
       setSendSuccess(true);
-      setError("");
+      setError('');
     }
   }
   return (
@@ -585,7 +614,11 @@ export function TalentDetail({
               </ul>
             ) : null}
             <div className="mt-10 space-y-8">
-              <div role="group" aria-label="我能提供" className="border-t border-border pt-6">
+              <div
+                role="group"
+                aria-label="我能提供"
+                className="border-t border-border pt-6"
+              >
                 <h2 className="font-mono text-meta font-bold tracking-[0.12em] text-brand-text">
                   我能提供
                 </h2>
@@ -596,14 +629,24 @@ export function TalentDetail({
                 </div>
               </div>
               {(profile.seekingSkills ?? []).length > 0 && (
-                <div role="group" aria-label="我想寻找" className="border-t border-border pt-6">
+                <div
+                  role="group"
+                  aria-label="我想寻找"
+                  className="border-t border-border pt-6"
+                >
                   <h2 className="font-mono text-meta font-bold tracking-[0.12em] text-sky-text">
                     我想寻找
                   </h2>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {orderSkillsByGroup(profile.seekingSkills ?? []).map((skill) => (
-                      <SkillChip key={skill} skill={skill} skillState="seeking" />
-                    ))}
+                    {orderSkillsByGroup(profile.seekingSkills ?? []).map(
+                      (skill) => (
+                        <SkillChip
+                          key={skill}
+                          skill={skill}
+                          skillState="seeking"
+                        />
+                      ),
+                    )}
                   </div>
                 </div>
               )}
@@ -613,12 +656,12 @@ export function TalentDetail({
                 <Eyebrow>POSSIBLE OVERLAP</Eyebrow>
                 <p className="mt-2 text-2xl font-bold text-foreground">
                   {profile.match.score === 0
-                    ? "暂时没有明显交集"
+                    ? '暂时没有明显交集'
                     : `${profile.match.score}% 可能契合`}
                 </p>
                 {profile.match.reasons.length > 0 && (
                   <p className="mt-2 text-body-sm text-muted-foreground">
-                    {profile.match.reasons.join(" · ")}
+                    {profile.match.reasons.join(' · ')}
                   </p>
                 )}
               </div>
@@ -655,7 +698,7 @@ export function TalentDetail({
             <Card static>
               <div className="card-body card-body--roomy">
                 <p className="font-mono text-meta text-muted-foreground">
-                  {profile.city || "REMOTE"} / {profile.durations.join(" · ")}
+                  {profile.city || 'REMOTE'} / {profile.durations.join(' · ')}
                 </p>
                 {!own && !sendSuccess && (
                   <Button block className="mt-4" onClick={connect}>
@@ -689,7 +732,10 @@ export function TalentDetail({
             aria-labelledby="connection-dialog-title"
           >
             <Panel className="max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto">
-              <h2 id="connection-dialog-title" className="text-xl font-bold text-foreground">
+              <h2
+                id="connection-dialog-title"
+                className="text-xl font-bold text-foreground"
+              >
                 发起一次连接
               </h2>
               <p className="mt-2 text-body-sm text-muted-foreground">
@@ -768,12 +814,8 @@ export function TalentDetail({
                 </label>
                 {error && <p className="ui-note ui-note--danger">{error}</p>}
                 <div className="flex gap-2">
-                  <Button
-                    onClick={send}
-                    disabled={sending}
-                    className="flex-1"
-                  >
-                    {sending ? "发送中..." : "发送连接"}
+                  <Button onClick={send} disabled={sending} className="flex-1">
+                    {sending ? '发送中...' : '发送连接'}
                   </Button>
                   <Button variant="ghost" onClick={() => setOpen(false)}>
                     取消
@@ -805,7 +847,7 @@ function Field({
   placeholder?: string;
   maxLength?: number;
 }) {
-  const Tag = area ? "textarea" : "input";
+  const Tag = area ? 'textarea' : 'input';
   return (
     <label className="ui-field">
       <span className="flex items-end justify-between gap-3">
@@ -822,7 +864,7 @@ function Field({
         placeholder={placeholder}
         maxLength={maxLength}
         onChange={(event) => onChange(event.target.value)}
-        className={area ? "ui-textarea" : "ui-input"}
+        className={area ? 'ui-textarea' : 'ui-input'}
       />
     </label>
   );
@@ -867,9 +909,9 @@ export function TalentEditor({
     initial
       ? {
           headline: initial.headline,
-          bio: initial.bio ?? "",
+          bio: initial.bio ?? '',
           links: initial.links ?? [],
-          city: initial.city || "",
+          city: initial.city || '',
           skills: initial.skills,
           seekingSkills: initial.seekingSkills,
           domains: initial.domains,
@@ -879,7 +921,7 @@ export function TalentEditor({
       : empty,
   );
   const [status, setStatus] = useState(initial?.status);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   useEffect(() => {
     if (initial) return;
@@ -895,8 +937,8 @@ export function TalentEditor({
     if (!initial) saveTalentDraft(userId, next);
   }
   const workLinks = body.links.map((link) => link.trim()).filter(Boolean);
-  const bio = (body.bio ?? "").trim();
-  async function submit(mode: "publish" | "update" | "resume") {
+  const bio = (body.bio ?? '').trim();
+  async function submit(mode: 'publish' | 'update' | 'resume') {
     const payload: TalentBody = {
       ...body,
       bio: bio || undefined,
@@ -914,18 +956,22 @@ export function TalentEditor({
     else {
       setStatus(result.data?.status);
       clearTalentDraft(userId);
-      setError("已保存");
+      setError('已保存');
     }
   }
   // A single merged state write keeps body/draft consistent when the patch
   // touches both wall arrays at once.
   function updateWall(next: SkillWallState) {
-    const nextBody = { ...body, skills: next.skills, seekingSkills: next.seekingSkills };
+    const nextBody = {
+      ...body,
+      skills: next.skills,
+      seekingSkills: next.seekingSkills,
+    };
     setBody(nextBody);
     if (!initial) saveTalentDraft(userId, nextBody);
   }
   const suspensionReason = initial?.suspensionAudit?.find(
-    (record) => typeof record.reason === "string",
+    (record) => typeof record.reason === 'string',
   )?.reason;
   const requirements = talentRequirementChecks({
     ...body,
@@ -941,11 +987,13 @@ export function TalentEditor({
       <section className="section section--flush">
         <div className="shell shell--text">
           <Eyebrow>PROFILE SUSPENDED</Eyebrow>
-          <h1 className="mt-4 text-4xl font-black text-foreground">档案已停用</h1>
+          <h1 className="mt-4 text-4xl font-black text-foreground">
+            档案已停用
+          </h1>
           <p className="mt-5 text-muted-foreground">
             这是终态，无法继续编辑或恢复。请联系运营处理。
           </p>
-          {typeof suspensionReason === "string" && (
+          {typeof suspensionReason === 'string' && (
             <p className="ui-note ui-note--danger mt-4">
               停用原因：{suspensionReason}
             </p>
@@ -971,7 +1019,9 @@ export function TalentEditor({
             </Link>
             <Eyebrow className="mt-8">PROFILE / SIGNAL BUILDER</Eyebrow>
             <h1 className="mt-3 max-w-3xl text-h1 font-black leading-[.95] tracking-[-0.04em] text-balance text-foreground">
-              {initial ? "让合适的人，更快看懂你。" : "告诉大家，你擅长做什么。"}
+              {initial
+                ? '让合适的人，更快看懂你。'
+                : '告诉大家，你擅长做什么。'}
             </h1>
             <p className="mt-5 max-w-2xl text-body leading-relaxed text-muted-foreground sm:text-body-lg">
               一份清晰的人才档案，会出现在人才广场中。别人可以根据你的能力、关注方向和合作方式，判断是否值得发起连接。
@@ -979,7 +1029,9 @@ export function TalentEditor({
           </div>
           <div className="rounded-lg border border-brand-line bg-brand-wash p-5">
             <Eyebrow>PUBLIC PROFILE</Eyebrow>
-            <p className="mt-3 font-bold text-foreground">这里填写的内容会公开展示</p>
+            <p className="mt-3 font-bold text-foreground">
+              这里填写的内容会公开展示
+            </p>
             <p className="mt-2 text-body-sm leading-relaxed text-muted-foreground">
               联系方式不会公开，只有你接受连接请求后，对方才能看到你授权的信息。
             </p>
@@ -1004,12 +1056,24 @@ export function TalentEditor({
             </div>
             <nav aria-label="档案填写进度" className="p-3">
               {[
-                { href: "#profile-basic", label: "01 基础介绍", done: requirements[0] },
-                { href: "#profile-story", label: "02 关于我和作品", done: requirements[1] },
-                { href: "#profile-skills", label: "03 技能墙", done: requirements[2] },
                 {
-                  href: "#profile-collaboration",
-                  label: "04 合作意向",
+                  href: '#profile-basic',
+                  label: '01 基础介绍',
+                  done: requirements[0],
+                },
+                {
+                  href: '#profile-story',
+                  label: '02 关于我和作品',
+                  done: requirements[1],
+                },
+                {
+                  href: '#profile-skills',
+                  label: '03 技能墙',
+                  done: requirements[2],
+                },
+                {
+                  href: '#profile-collaboration',
+                  label: '04 合作意向',
                   done: requirements[3] && requirements[4] && requirements[5],
                 },
               ].map((item) => (
@@ -1020,10 +1084,12 @@ export function TalentEditor({
                 >
                   <span>{item.label}</span>
                   <span
-                    className={item.done ? "text-brand-text" : "text-muted-foreground"}
-                    aria-label={item.done ? "已完成" : "未完成"}
+                    className={
+                      item.done ? 'text-brand-text' : 'text-muted-foreground'
+                    }
+                    aria-label={item.done ? '已完成' : '未完成'}
                   >
-                    {item.done ? "●" : "○"}
+                    {item.done ? '●' : '○'}
                   </span>
                 </a>
               ))}
@@ -1044,14 +1110,14 @@ export function TalentEditor({
                   placeholder="例如：擅长从 0 到 1 的 AI 产品经理"
                   maxLength={50}
                   value={body.headline}
-                  onChange={(v) => update("headline", v)}
+                  onChange={(v) => update('headline', v)}
                 />
                 <Field
                   label="所在城市（可选）"
                   hint="远程协作也可以直接填写「远程」"
                   placeholder="例如：上海 / 远程"
-                  value={body.city || ""}
-                  onChange={(v) => update("city", v)}
+                  value={body.city || ''}
+                  onChange={(v) => update('city', v)}
                 />
               </div>
             </EditorSection>
@@ -1070,15 +1136,18 @@ export function TalentEditor({
                     maxLength={500}
                     area
                     placeholder="例如：我做了 4 年开发者工具产品，擅长从用户研究到商业化落地，最近在探索 AI 辅助产品工作流。"
-                    value={body.bio ?? ""}
-                    onChange={(v) => update("bio", v)}
+                    value={body.bio ?? ''}
+                    onChange={(v) => update('bio', v)}
                   />
                   <p className="mt-2 text-meta leading-relaxed text-muted-foreground">
-                    更多句式参考：「我在 X 行业做了 Y 年，最得意的项目是 Z」/「我擅长
-                    X，帮过 Y 个团队解决过 Z」。
+                    更多句式参考：「我在 X 行业做了 Y 年，最得意的项目是
+                    Z」/「我擅长 X，帮过 Y 个团队解决过 Z」。
                   </p>
                 </div>
-                <LinksEditor links={body.links} onChange={(v) => update("links", v)} />
+                <LinksEditor
+                  links={body.links}
+                  onChange={(v) => update('links', v)}
+                />
               </div>
             </EditorSection>
 
@@ -1091,14 +1160,19 @@ export function TalentEditor({
               <div className="space-y-5">
                 <p className="flex flex-wrap gap-x-6 gap-y-1 font-mono text-meta text-brand-text">
                   <span>
-                    我能提供 {body.skills.length} / {MAX_TALENT_SKILLS}（至少 3 项）
+                    我能提供 {body.skills.length} / {MAX_TALENT_SKILLS}（至少 3
+                    项）
                   </span>
                   <span>
-                    我想寻找 {(body.seekingSkills || []).length} / {MAX_SEEKING_SKILLS}（可选）
+                    我想寻找 {(body.seekingSkills || []).length} /{' '}
+                    {MAX_SEEKING_SKILLS}（可选）
                   </span>
                 </p>
                 <SkillWall
-                  state={{ skills: body.skills, seekingSkills: body.seekingSkills || [] }}
+                  state={{
+                    skills: body.skills,
+                    seekingSkills: body.seekingSkills || [],
+                  }}
                   onChange={updateWall}
                 />
               </div>
@@ -1125,7 +1199,7 @@ export function TalentEditor({
                     <Chips
                       values={CATEGORIES}
                       selected={body.domains}
-                      onChange={(v) => update("domains", v)}
+                      onChange={(v) => update('domains', v)}
                       max={3}
                     />
                   </fieldset>
@@ -1142,7 +1216,7 @@ export function TalentEditor({
                     <Chips
                       values={COLLABORATION_DURATIONS}
                       selected={body.durations}
-                      onChange={(v) => update("durations", v)}
+                      onChange={(v) => update('durations', v)}
                       max={3}
                     />
                   </fieldset>
@@ -1161,8 +1235,8 @@ export function TalentEditor({
                         <ChipButton
                           key={value}
                           aria-pressed={isActive}
-                          tone={isActive ? "accent" : "neutral"}
-                          onClick={() => update("availability", value)}
+                          tone={isActive ? 'accent' : 'neutral'}
+                          onClick={() => update('availability', value)}
                         >
                           {TALENT_AVAILABILITY_LABELS[value]}
                         </ChipButton>
@@ -1175,7 +1249,9 @@ export function TalentEditor({
 
             <div className="flex flex-col justify-between gap-5 rounded-lg border border-brand-line bg-brand-wash p-5 sm:flex-row sm:items-center">
               <div>
-                <p className="font-bold text-foreground">让做过的产品替你说话</p>
+                <p className="font-bold text-foreground">
+                  让做过的产品替你说话
+                </p>
                 <p className="mt-2 max-w-2xl text-body-sm leading-relaxed text-muted-foreground">
                   你提交并成功上线的项目，会自动展示在公开人才档案中，让其他人更直接地了解你的产品和实践经历。
                 </p>
@@ -1188,15 +1264,19 @@ export function TalentEditor({
             <footer className="ui-panel sm:flex sm:items-center sm:justify-between sm:gap-6">
               <div>
                 <p className="font-bold text-foreground">
-                  {initial ? "保存后，公开档案将立即更新" : "准备好后，公开你的档案"}
+                  {initial
+                    ? '保存后，公开档案将立即更新'
+                    : '准备好后，公开你的档案'}
                 </p>
                 <p className="mt-1 text-meta text-muted-foreground">
-                  {initial ? "你可以随时回来修改或暂时隐藏。" : "未完成时会自动保存在当前浏览器。"}
+                  {initial
+                    ? '你可以随时回来修改或暂时隐藏。'
+                    : '未完成时会自动保存在当前浏览器。'}
                 </p>
                 {error ? (
                   <p
                     role="status"
-                    className={`mt-3 text-body-sm ${error === "已保存" ? "text-brand-text" : "text-danger-text"}`}
+                    className={`mt-3 text-body-sm ${error === '已保存' ? 'text-brand-text' : 'text-danger-text'}`}
                   >
                     {error}
                   </p>
@@ -1209,19 +1289,19 @@ export function TalentEditor({
                     submit(
                       initial
                         ? status === TalentProfileStatus.Paused
-                          ? "resume"
-                          : "update"
-                        : "publish",
+                          ? 'resume'
+                          : 'update'
+                        : 'publish',
                     )
                   }
                 >
                   {saving
-                    ? "保存中..."
+                    ? '保存中...'
                     : status === TalentProfileStatus.Paused
-                      ? "保存并重新公开"
+                      ? '保存并重新公开'
                       : initial
-                        ? "保存更新"
-                        : "公开档案"}
+                        ? '保存更新'
+                        : '公开档案'}
                 </Button>
                 {status === TalentProfileStatus.Published && (
                   <Button
@@ -1249,10 +1329,12 @@ export function OperatorTalentActions({
 }: {
   profile: TalentManagement;
 }) {
-  const [reason, setReason] = useState("");
-  const [message, setMessage] = useState("");
+  const [reason, setReason] = useState('');
+  const [message, setMessage] = useState('');
   if (profile.status === TalentProfileStatus.Suspended)
-    return <p className="mt-8 text-danger-text">该档案已停用，P0 不支持恢复。</p>;
+    return (
+      <p className="mt-8 text-danger-text">该档案已停用，P0 不支持恢复。</p>
+    );
   return (
     <Panel className="mt-8 border-danger-line!">
       <Eyebrow className="text-danger-text!">MODERATION</Eyebrow>
@@ -1268,12 +1350,16 @@ export function OperatorTalentActions({
           className="self-start border-danger-line! text-danger-text!"
           onClick={async () => {
             const result = await suspendTalent(profile.userId, reason);
-            setMessage(result.error ? result.error.body.error.message : "已停用");
+            setMessage(
+              result.error ? result.error.body.error.message : '已停用',
+            );
           }}
         >
           停用档案
         </Button>
-        {message && <p className="text-body-sm text-muted-foreground">{message}</p>}
+        {message && (
+          <p className="text-body-sm text-muted-foreground">{message}</p>
+        )}
       </div>
     </Panel>
   );

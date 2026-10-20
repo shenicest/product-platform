@@ -1,13 +1,13 @@
-import Link from 'next/link'
-import { UserMenu } from '@/components/user-menu'
-import { SheNicestLogo } from '@/components/brand-logos'
+import Link from 'next/link';
+import { UserMenu } from '@/components/user-menu';
+import { SheNicestLogo } from '@/components/brand-logos';
 
 const NAV = [
   { href: '/', label: '产品共生' },
   { href: '/talents', label: '共鸣之地' },
   { href: '/hackathon', label: '黑客松' },
   { href: '/following', label: '我的关注' },
-]
+];
 
 /**
  * 站点头部：左侧 SheNicest 品牌标、中间主导航、右侧操作区。
@@ -45,7 +45,7 @@ export function SiteHeader() {
         </Link>
 
         <nav
-          className="site-nav order-last w-full min-[900px]:order-none min-[900px]:w-auto"
+          className="pl-4 site-nav order-last w-full min-[900px]:order-none min-[900px]:w-auto justify-start"
           aria-label="主导航"
         >
           {NAV.map((item) => (
@@ -63,5 +63,5 @@ export function SiteHeader() {
         </div>
       </div>
     </header>
-  )
+  );
 }
