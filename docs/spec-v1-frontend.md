@@ -326,7 +326,7 @@ Client Component → lib/client-api.ts → fetch('/api/...') → Next.js rewrite
 - **购买支持**: 购买/支持入口 UI 与支付流程
 - **黑客松活动专区**: 活动页面、人气榜单
 - **国际化 (i18n)**: 仅中文
-- **推送/邮件通知**: 状态变更后无异步通知（人才建联 Accepted 会发一次 best-effort 邮件给发送方）
+- **推送/邮件通知**: 无实时推送（建联类邮件为异步 best-effort：项目方收到新申请提醒，接受后发送方收到结果提醒）
 
 ## Future Considerations
 

@@ -193,7 +193,7 @@ export function getTalentConnections() { return request<{ data: TalentConnection
 export function sendTalentConnection(body: { receiverUserId: string; projectId?: number; purpose: string; message: string; wechat?: string; email?: string }) { return request<TalentConnection>('POST', '/talents/connections', body) }
 export function acceptTalentConnection(id: number, body: { wechat?: string; email?: string }) { return request<TalentConnection>('POST', `/talents/connections/${id}/accept`, body) }
 export function ignoreTalentConnection(id: number) { return request<TalentConnection>('POST', `/talents/connections/${id}/ignore`) }
-export function getConnections(query?: { source?: 'all' | 'talent' | 'hackathon'; direction?: 'all' | 'sent' | 'received' }) {
+export function getConnections(query?: { source?: 'all' | 'talent' | 'hackathon' | 'project'; direction?: 'all' | 'sent' | 'received' }) {
   const params = new URLSearchParams()
   if (query?.source && query.source !== 'all') params.set('source', query.source)
   if (query?.direction && query.direction !== 'all') params.set('direction', query.direction)
@@ -204,6 +204,9 @@ export function acceptHackathonConnection(id: number, body: { wechat?: string; e
 export function ignoreHackathonConnection(id: number) { return request<ConnectionItem>('POST', `/connections/hackathon/${id}/ignore`) }
 export function getHackathonContacts(id: number) { return request<ConnectionItem['contacts']>('GET', `/connections/hackathon/${id}/contacts`) }
 export function getTalentContacts(id: number) { return request<TalentConnection['contacts']>('GET', `/talents/connections/${id}/contacts`) }
+export function acceptProjectConnection(id: number, body: { wechat?: string; phone?: string; email?: string }) { return request<ConnectionItem>('POST', `/connections/projects/${id}/accept`, body) }
+export function ignoreProjectConnection(id: number) { return request<ConnectionItem>('POST', `/connections/projects/${id}/ignore`) }
+export function getProjectContacts(id: number) { return request<ConnectionItem['contacts']>('GET', `/connections/projects/${id}/contacts`) }
 export function listOperatorTalents(query: Record<string, string | number | undefined>) { return request<TalentManagement[]>('GET', `/operator/talents?${new URLSearchParams(Object.entries(query).filter(([, value]) => value !== undefined).map(([key, value]) => [key, String(value)]))}`) }
 export function getOperatorTalent(userId: string) { return request<TalentManagement>('GET', `/operator/talents/${encodeURIComponent(userId)}`) }
 export function getTalentAudit(userId: string) { return request<Array<Record<string, unknown>>>('GET', `/operator/talents/${encodeURIComponent(userId)}/suspension-audit`) }
@@ -227,3 +230,22 @@ export function sendHackathonConnection(
   body: { purpose: string; message: string; wechat?: string; email?: string },
 ) { return request<HackathonConnectionStatus>('POST', `/hackathon/projects/${projectId}/connections`, body) }
 export function getMyHackathonConnection(projectId: number) { return request<MyHackathonConnectionStatus>('GET', `/hackathon/projects/${projectId}/connections/me`) }
+
+export interface ProjectConnectionStatus {
+  id: number
+  status: number
+  createdAt: string
+}
+// Envelope from GET /projects/:id/connections/me: the latest request plus the
+// flags the detail page needs to hide the connect button (project not Live, or
+// the viewer is the owner).
+export interface MyProjectConnectionStatus {
+  data: ProjectConnectionStatus | null
+  receiverConfigured: boolean
+  viewerIsReceiver: boolean
+}
+export function sendProjectConnection(
+  projectId: number,
+  body: { purpose: string; message: string; wechat?: string; phone?: string; email?: string },
+) { return request<ProjectConnectionStatus>('POST', `/projects/${projectId}/connections`, body) }
+export function getMyProjectConnection(projectId: number) { return request<MyProjectConnectionStatus>('GET', `/projects/${projectId}/connections/me`) }

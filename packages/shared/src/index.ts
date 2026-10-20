@@ -169,3 +169,10 @@ export const HACKATHON_CONNECTION_PURPOSES = [
   '试用产品', '合作交流', '加入项目', '提供专业帮助', '寻求反馈', '其他',
 ] as const
 export type HackathonConnectionPurpose = (typeof HACKATHON_CONNECTION_PURPOSES)[number]
+
+// Platform-Project connections reuse the hackathon contact-intent vocabulary:
+// both surfaces answer "why do you want to reach this project team?".
+export const PROJECT_CONNECTION_PURPOSES = [
+  '试用产品', '合作交流', '加入项目', '提供专业帮助', '寻求反馈', '其他',
+] as const
+export type ProjectConnectionPurpose = (typeof PROJECT_CONNECTION_PURPOSES)[number]

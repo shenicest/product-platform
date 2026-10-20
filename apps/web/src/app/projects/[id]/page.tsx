@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getProject } from "@/server/projects";
 import { ProjectDetail } from "@/components/project-detail";
 import { PublicInteractionBoundary } from '@/components/public-interaction-boundary'
+import { getMyProjectConnectionStatus } from '@/server/project-connections'
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,11 @@ export default async function ProjectPage(props: PageProps<"/projects/[id]">) {
   const { id } = await props.params;
   const project = await loadProject(id);
   if (!project) notFound();
+  const connectGate = await getMyProjectConnectionStatus(project.id);
 
-  return <PublicInteractionBoundary><ProjectDetail project={project} /></PublicInteractionBoundary>;
+  return (
+    <PublicInteractionBoundary>
+      <ProjectDetail project={project} connectGate={connectGate} />
+    </PublicInteractionBoundary>
+  );
 }

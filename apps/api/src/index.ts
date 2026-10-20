@@ -6,6 +6,7 @@ import { SmtpMailer } from './lib/mail/smtp-mailer'
 import { HackathonService } from './modules/hackathon/service'
 import { MailWorker } from './worker/mail-worker'
 import { createHackathonConnectionContentResolver } from './worker/hackathon-connection-content'
+import { createProjectConnectionContentResolver } from './worker/project-connection-content'
 
 app.listen(Number(process.env.PORT) || 3000)
 
@@ -17,18 +18,23 @@ if (process.env.NOTIFICATION_WORKER !== 'off') {
   const pollIntervalMs = Number(process.env.NOTIFICATION_POLL_INTERVAL_MS) || 30000
 
   const hackathonService = new HackathonService(eventManagementDb, db)
+  const hackathonContent = createHackathonConnectionContentResolver({
+    db,
+    getProjectSummary: async (hackathonProjectId) => {
+      const project = await hackathonService.getProject(hackathonProjectId)
+      return project ? { name: project.name } : null
+    },
+    webBaseUrl,
+  })
+  const projectContent = createProjectConnectionContentResolver({ db, webBaseUrl })
   const worker = new MailWorker({
     db,
     mailer: new SmtpMailer(),
     pollIntervalMs,
-    resolveContent: createHackathonConnectionContentResolver({
-      db,
-      getProjectSummary: async (hackathonProjectId) => {
-        const project = await hackathonService.getProject(hackathonProjectId)
-        return project ? { name: project.name } : null
-      },
-      webBaseUrl,
-    }),
+    resolveContent: (task) =>
+      task.notificationType.startsWith('project_connection_')
+        ? projectContent(task)
+        : hackathonContent(task),
   })
   worker.start()
   console.log(`Mail worker started (poll every ${pollIntervalMs}ms)`)

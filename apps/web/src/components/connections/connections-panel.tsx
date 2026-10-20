@@ -5,9 +5,11 @@ import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
   acceptHackathonConnection,
+  acceptProjectConnection,
   acceptTalentConnection,
   getConnections,
   ignoreHackathonConnection,
+  ignoreProjectConnection,
   ignoreTalentConnection,
 } from '@/lib/client-api'
 import { connectionItemStatusLabel, connectionSourceLabel, type ConnectionItem } from '@/lib/connections'
@@ -15,12 +17,13 @@ import { ConnectionRequestStatus } from '@shenicest/shared'
 
 // Unified connections record panel (ticket 07). Contacts live only in
 // component memory; they are never written to URL, localStorage, or analytics.
-type SourceFilter = 'all' | 'talent' | 'hackathon'
-const SOURCE_FILTERS: SourceFilter[] = ['all', 'talent', 'hackathon']
+type SourceFilter = 'all' | 'talent' | 'hackathon' | 'project'
+const SOURCE_FILTERS: SourceFilter[] = ['all', 'talent', 'hackathon', 'project']
 const SOURCE_FILTER_LABELS: Record<SourceFilter, string> = {
   all: '全部',
   talent: '人才',
   hackathon: '黑客松',
+  project: '项目',
 }
 type View = 'received' | 'sent'
 const VIEW_LABELS: Record<View, string> = {
@@ -161,7 +164,8 @@ function ConnectionCard({
         </div>
         <span className="chip-hard">{connectionItemStatusLabel(connection.status, view === 'sent')}</span>
       </div>
-      {connection.source === 'hackathon' && connection.target.type === 'hackathon_project' && (
+      {(connection.source === 'hackathon' || connection.source === 'project') &&
+      (connection.target.type === 'hackathon_project' || connection.target.type === 'project') && (
         <p className="mt-4 border-l-2 border-primary pl-3 text-sm">
           项目：
           {connection.target.unavailable || !connection.target.url ? (
@@ -206,7 +210,9 @@ function ConnectionCard({
                 const result =
                   connection.source === 'hackathon'
                     ? await ignoreHackathonConnection(connection.id)
-                    : await ignoreTalentConnection(connection.id)
+                    : connection.source === 'project'
+                      ? await ignoreProjectConnection(connection.id)
+                      : await ignoreTalentConnection(connection.id)
                 if (result.error) onError(result.error.body.error.message)
                 else onDone()
               }}
@@ -232,9 +238,11 @@ function ContactAuthorizeForm({
   onCancel: () => void;
 }) {
   const [wechat, setWechat] = useState('')
+  const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
+  const isProject = connection.source === 'project'
   return (
     <div className="mt-4 border border-primary/50 p-4">
       <p className="text-sm">接受后双方才能查看授权联系方式。</p>
@@ -246,6 +254,16 @@ function ContactAuthorizeForm({
           onChange={(event) => setWechat(event.target.value)}
           className="border border-input bg-background px-3 py-2"
         />
+        {isProject && (
+          <input
+            type="tel"
+            placeholder="手机号"
+            value={phone}
+            aria-label="手机号"
+            onChange={(event) => setPhone(event.target.value)}
+            className="border border-input bg-background px-3 py-2"
+          />
+        )}
         <input
           placeholder="邮箱"
           aria-label="邮箱"
@@ -260,8 +278,12 @@ function ContactAuthorizeForm({
           className="btn-hard btn-primary"
           disabled={saving}
           onClick={async () => {
-            if (!wechat.trim() && !email.trim()) {
-              setError('至少提供微信或邮箱')
+            if (!wechat.trim() && !email.trim() && !(isProject && phone.trim())) {
+              setError(isProject ? '请至少填写微信、手机号或邮箱中的一项' : '至少提供微信或邮箱')
+              return
+            }
+            if (isProject && phone.trim() && !/^[+\d][\d\s()-]*$/.test(phone.trim())) {
+              setError('手机号格式不正确')
               return
             }
             setSaving(true)
@@ -269,7 +291,12 @@ function ContactAuthorizeForm({
             const result =
               connection.source === 'hackathon'
                 ? await acceptHackathonConnection(connection.id, contact)
-                : await acceptTalentConnection(connection.id, contact)
+                : connection.source === 'project'
+                  ? await acceptProjectConnection(connection.id, {
+                      ...contact,
+                      phone: phone.trim() || undefined,
+                    })
+                  : await acceptTalentConnection(connection.id, contact)
             setSaving(false)
             if (result.error) setError(result.error.body.error.message)
             else onDone()
@@ -285,12 +312,17 @@ function ContactAuthorizeForm({
   )
 }
 
-function ContactRows({ contacts }: { contacts: { wechat: string | null; email: string | null } }) {
+function ContactRows({ contacts }: { contacts: { wechat: string | null; phone?: string | null; email: string | null } }) {
   return (
     <>
       {contacts.wechat && (
         <button className="block font-mono text-xs text-primary" onClick={() => navigator.clipboard.writeText(contacts.wechat!)}>
           微信：{contacts.wechat} · 复制
+        </button>
+      )}
+      {contacts.phone && (
+        <button className="block font-mono text-xs text-primary" onClick={() => navigator.clipboard.writeText(contacts.phone!)}>
+          手机号：{contacts.phone} · 复制
         </button>
       )}
       {contacts.email && (

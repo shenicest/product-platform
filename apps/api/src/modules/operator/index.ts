@@ -12,6 +12,7 @@ import {
   type DomainError,
 } from '../project/model'
 import { ProposalNotFoundError } from '../proposal/model'
+import { projectConnectionService } from '../project-connection'
 import { ErrorCode, ErrorMessage, ErrorResponse } from '../../common'
 import {
   AuditRecordListResponse,
@@ -124,6 +125,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     const result = await operatorService.delistProject(user.userId, params.id, body.reason)
     if (result instanceof ProjectNotFoundError) return status(404, errorBody(result))
     if (result instanceof InvalidTransitionError) return status(400, errorBody(result))
+    // Delisting hides the project from discovery; Pending connection requests
+    // share that visibility gate and end with it (ADR-0014).
+    await projectConnectionService.cancelPendingByProject(params.id)
     return result
   }, {
     operatorOnly: true,

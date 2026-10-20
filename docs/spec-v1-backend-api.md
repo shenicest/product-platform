@@ -155,7 +155,8 @@ Because the Project row IS the content row, `categories` and `stage` are already
 - **`talent_profiles` table** _(Talent Plaza)_：`id`, `user_id` (unique), `status` (tinyint 0-2: Published/Paused/Suspended), `headline`, `bio` (nullable), `city` (nullable; 「远程」 denotes remote), `links` (JSON, ≤3 URLs), `availability` (tinyint 0-2: ActivelySeeking/OpenToChat/ConsultOnly), `skills` (JSON 3-10 keys), `seeking_skills` (JSON 0-5 keys, disjoint from `skills`), `domains` (JSON 1-3 from `CATEGORIES`), `durations` (JSON 1-3 from `COLLABORATION_DURATIONS`), `published_at`, `created_at`, `updated_at`. Index on `(status, updated_at)`; unique on `user_id`. No `roles` column (direction is derived).
 - **`connection_requests` table** _(Talent Plaza)_：`id`, `sender_user_id`, `receiver_user_id`, `pair_key` (unique while Pending, NULL on terminal), `project_id` (nullable), `purpose`, `message`, `sender_contact` (encrypted), `receiver_contact` (encrypted, set on accept), `status` (tinyint 0-3: Pending/Accepted/Ignored/Cancelled), `accepted_at`, `handled_at`, `created_at`. Index on `(sender_user_id, created_at)`, `(receiver_user_id, status)`, `(sender_user_id, receiver_user_id, status)`.
 - **`talent_moderation_records` table**：`id`, `talent_profile_id`, `operator_id`, `action` ('suspend'), `reason`, `created_at`. Index on `talent_profile_id`.
-- **`connection_daily_limits` table**：`scope` (TalentConnection / HackathonConnection), `sender_user_id`, `beijing_date`, `successful_count`. Per-sender per-day quota with a higher cap for Published-profile senders.
+- **`connection_daily_limits` table**：`scope` (TalentConnection / HackathonConnection / ProjectConnection), `sender_user_id`, `beijing_date`, `successful_count`. Per-sender per-day quota; Talent has a higher cap for Published-profile senders, Hackathon and Project connections use 3/day.
+- **`project_connection_requests` table** _(platform Project connections, ADR-0014)_：`id`, `project_id`, `receiver_user_id` (project owner snapshotted at creation), `sender_user_id`, `purpose`, `message`, `sender_contact` (encrypted), `receiver_contact` (encrypted, set on accept), `status` (tinyint 0-3: Pending/Accepted/Ignored/Cancelled), `pair_key` (unique while Pending, NULL on terminal), `created_at`, `accepted_at`, `handled_at`. Index on `(project_id, status)`, `(sender_user_id, project_id, status)`, `(receiver_user_id, status, created_at)`.
 
 ### API Contracts
 
@@ -234,6 +235,14 @@ A User's structured public profile for cooperation matching, independent of the 
   - `PUT /talents/connections/:id/accept`: Receiver accepts a Pending request, authorizing their own contact info. Idempotent on already-Accepted.
   - `PUT /talents/connections/:id/ignore`: Receiver ignores a Pending request. Idempotent on already-Ignored.
   - `GET /talents/connections/:id/contacts`: Only on Accepted requests; returns both sides' decrypted contact info (sender and receiver).
+
+- **Platform-Project connection requests** (ADR-0014):
+  - `POST /projects/:id/connections`: Any authenticated User may contact the owner of a Live Project. Body: `purpose` (from `PROJECT_CONNECTION_PURPOSES`), `message` (30–500 chars), and sender contact authorization (`wechat`, `phone`, and/or `email` — at-least-one, encrypted). Self-contact → 409; one Pending per sender/project; Accepted blocks new requests; Ignored has a 7-day retry cooldown; 3 successful creates per Beijing day.
+  - `GET /projects/:id/connections/me`: Latest request status plus `receiverConfigured` (project is Live) and `viewerIsReceiver` (viewer owns it) gating flags.
+  - `POST /connections/projects/:id/accept`: Receiver/owner accepts and authorizes their own contact (`wechat`, `phone`, and/or `email` — at-least-one). A non-Live project cancels the Pending request and returns 409.
+  - `POST /connections/projects/:id/ignore`: Receiver/owner ignores a Pending request.
+  - `GET /connections/projects/:id/contacts`: Accepted requests only; both parties read the two authorized contact payloads.
+  - `GET /connections`: The unified aggregate now includes `source: 'project'` entries with `target.type: 'project'`.
 
 - **Operator backend (Talent)**:
   - `GET /operator/talents`: List all profiles with filters (`q`, `status`, `offset`, `limit`).

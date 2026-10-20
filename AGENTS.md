@@ -22,6 +22,7 @@
   - [0011-unified-connection-daily-limits.md](./docs/adr/0011-unified-connection-daily-limits.md) — 建联每日限额统一表（scope 区分）
   - [0012-project-form-field-consolidation.md](./docs/adr/0012-project-form-field-consolidation.md) — 项目表单字段级重构（破坏性，整库重置）
   - [0013-talent-dual-state-skills-derived-direction.md](./docs/adr/0013-talent-dual-state-skills-derived-direction.md) — 人才技能双状态墙；方向由技能推导，不单独提问
+  - [0014-platform-project-connection-requests.md](./docs/adr/0014-platform-project-connection-requests.md) — 平台项目建联独立建表，复用建联原语与通知
 
 修改领域模型前必须先阅读 CONTEXT.md。
 

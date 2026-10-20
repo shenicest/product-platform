@@ -1,0 +1,24 @@
+import { t } from 'elysia'
+import { PROJECT_CONNECTION_PURPOSES } from '@shenicest/shared'
+
+export const CreateConnectionBody = t.Object({
+  purpose: t.Union(PROJECT_CONNECTION_PURPOSES.map((value) => t.Literal(value)) as [any, ...any[]]),
+  message: t.String({ minLength: 30, maxLength: 500 }),
+  wechat: t.Optional(t.String({ minLength: 1, maxLength: 64 })),
+  phone: t.Optional(t.String({ minLength: 1, maxLength: 32 })),
+  email: t.Optional(t.String({ minLength: 1, maxLength: 254 })),
+})
+export type CreateConnectionBody = typeof CreateConnectionBody.static
+
+export const ConnectionProjectParams = t.Object({ id: t.Numeric() })
+export type ConnectionProjectParams = typeof ConnectionProjectParams.static
+
+export const ConnectionIdParams = t.Object({ id: t.Numeric() })
+export type ConnectionIdParams = typeof ConnectionIdParams.static
+
+export const AcceptConnectionBody = t.Object({
+  wechat: t.Optional(t.String({ minLength: 1, maxLength: 64 })),
+  phone: t.Optional(t.String({ minLength: 1, maxLength: 32 })),
+  email: t.Optional(t.String({ minLength: 1, maxLength: 254 })),
+})
+export type AcceptConnectionBody = typeof AcceptConnectionBody.static
