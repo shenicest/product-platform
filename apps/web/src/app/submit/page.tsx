@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
-import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
+import { getSessionUser } from '@/server/auth'
+import { getOwnProfile } from '@/server/founder'
 import { ProjectSubmissionForm } from '@/components/submit/project-submission-form'
 import { Eyebrow } from '@/components/ui/typography'
 
@@ -12,9 +13,15 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 export default async function SubmitPage() {
-  const jar = await cookies()
-  const token = jar.get('shenicest_token')?.value
-  if (!token) redirect('/login')
+  const user = await getSessionUser()
+  if (!user) redirect('/login')
+
+  // Resolve the nickname here rather than letting the form fetch `/api/me` after
+  // hydration. The prefill then ships inside the server-rendered markup, so the
+  // page is complete without JavaScript — which is also what makes it capturable
+  // by scripts/html-snapshot.mjs, whose whole premise is a single GET.
+  const profile = await getOwnProfile()
+
   return (
     <div className="shell py-12">
       <div className="mx-auto w-full max-w-3xl">
@@ -28,7 +35,10 @@ export default async function SubmitPage() {
             确认无误后提交审核，通过后将在平台公开展示。
           </p>
         </header>
-        <ProjectSubmissionForm />
+        <ProjectSubmissionForm
+          serverAuthenticated
+          initialNickname={profile?.nickname ?? null}
+        />
       </div>
     </div>
   )

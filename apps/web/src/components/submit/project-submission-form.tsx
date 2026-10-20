@@ -179,13 +179,42 @@ function focusFirstError(errors: FormErrors) {
 export function ProjectSubmissionForm({
   projectId,
   initialData,
+  initialNickname,
+  serverAuthenticated = false,
 }: {
   projectId?: number
   initialData?: Record<string, unknown>
+  /**
+   * The account nickname, resolved on the server by the page that renders this
+   * form. Passing it in is what lets the contact-name prefill be part of the
+   * server-rendered markup instead of arriving after hydration — a static
+   * snapshot of the page would otherwise capture an empty contact field.
+   */
+  initialNickname?: string | null
+  /**
+   * Set by pages that already verified the session server-side. Without it the
+   * form has to wait for `useAuth` to resolve before deciding whether to show
+   * the login prompt, which is again invisible to a static snapshot.
+   */
+  serverAuthenticated?: boolean
 }) {
   const router = useRouter()
   const { user, isAuthenticated } = useAuth()
-  const initialForm = initialData ? fromProjectData(initialData) : EMPTY_FORM
+  // The page may already have proven the session server-side; trust that over
+  // the client fetch, which resolves one render later.
+  const authenticated = serverAuthenticated || isAuthenticated
+
+  // Prefill happens here, not in a post-mount effect, when the nickname came
+  // from the server: that puts the value straight into the rendered markup.
+  // Only the client-only path — no server nickname — falls back to adjusting
+  // state during render once `useAuth` resolves (see below).
+  const initialForm: FormState = (() => {
+    const base = initialData ? fromProjectData(initialData) : EMPTY_FORM
+    if (!initialData && initialNickname && base.contactName.trim() === '') {
+      return { ...base, contactName: initialNickname }
+    }
+    return base
+  })()
   const [form, setForm] = useState<FormState>(initialForm)
   const [errors, setErrors] = useState<FormErrors>({})
   const [serverError, setServerError] = useState<string | null>(null)
@@ -195,11 +224,10 @@ export function ProjectSubmissionForm({
   const [submittedProjectId, setSubmittedProjectId] = useState<number | null>(null)
 
   // contactName is prefilled from the account nickname only when creating a new
-  // project — an existing draft's value is never overwritten. The profile
-  // arrives async after mount, so the prefill adjusts state during render,
-  // guarded to run at most once and to keep whatever the Founder already typed.
+  // project — an existing draft's value is never overwritten. `undefined` means
+  // "no prefill attempt yet"; `null` means "attempted, nothing to apply".
   const [prefilledNickname, setPrefilledNickname] = useState<string | null | undefined>(
-    initialData ? null : undefined,
+    initialData ? null : initialNickname !== undefined ? initialNickname : undefined,
   )
   const nickname = user?.nickname ?? null
   if (prefilledNickname === undefined && nickname !== null) {
@@ -316,7 +344,7 @@ export function ProjectSubmissionForm({
     }
   }, [form, savedProjectId])
 
-  if (!isAuthenticated) {
+  if (!authenticated) {
     return (
       <Panel className="flex flex-col items-center gap-4 text-center">
         <Eyebrow tone="accent">AUTH REQUIRED</Eyebrow>

@@ -41,6 +41,18 @@ function renderForm(initialData?: Record<string, unknown>) {
   )
 }
 
+/**
+ * The server-rendered path: the page resolved the session and the nickname
+ * before rendering, so the form must show both without waiting for /api/me.
+ */
+function renderServerResolved(props: { initialNickname?: string | null } = {}) {
+  return render(
+    <AuthProvider>
+      <ProjectSubmissionForm serverAuthenticated initialNickname={props.initialNickname ?? null} />
+    </AuthProvider>,
+  )
+}
+
 async function fillRequiredFields(
   user: ReturnType<typeof userEvent.setup>,
   { withContact = true }: { withContact?: boolean } = {},
@@ -101,6 +113,38 @@ describe('ProjectSubmissionForm', () => {
     server.use(http.get('/api/me', () => HttpResponse.json(ME_WITH_NICKNAME)))
     renderForm({ name: '草稿项目', contactName: '草稿联系人' })
     await waitFor(() => expect(screen.getByLabelText(/^联系人姓名/)).toHaveValue('草稿联系人'))
+  })
+
+  describe('server-resolved session (static-snapshot path)', () => {
+    it('renders the form on first paint with the server nickname already filled', () => {
+      // The client fetch deliberately answers "no user" here. The form must
+      // still render, because the page already resolved the session on the
+      // server. That is what makes the page correct without JavaScript, and
+      // capturable by scripts/html-snapshot.mjs, which only ever sends a GET.
+      server.use(http.get('/api/me', () => HttpResponse.json({})))
+      renderServerResolved({ initialNickname: '服务端昵称' })
+
+      expect(screen.getByLabelText(/^联系人姓名/)).toHaveValue('服务端昵称')
+      expect(screen.getByText('项目速览')).toBeInTheDocument()
+      expect(screen.queryByText('请先登录后再提交项目。')).toBeNull()
+    })
+
+    it('keeps the form visible even when the nickname is null', () => {
+      server.use(http.get('/api/me', () => HttpResponse.json({})))
+      renderServerResolved({ initialNickname: null })
+      expect(screen.getByLabelText(/^联系人姓名/)).toHaveValue('')
+      expect(screen.getByText('项目速览')).toBeInTheDocument()
+    })
+
+    it('still prefills from /api/me when the page passed no nickname', async () => {
+      server.use(http.get('/api/me', () => HttpResponse.json(ME_WITH_NICKNAME)))
+      render(
+        <AuthProvider>
+          <ProjectSubmissionForm />
+        </AuthProvider>,
+      )
+      await waitFor(() => expect(screen.getByLabelText(/^联系人姓名/)).toHaveValue('测试昵称'))
+    })
   })
 
   it('blocks submission with client-side validation errors and no network call', async () => {

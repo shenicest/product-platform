@@ -60,6 +60,7 @@ export default async function EditDraftPage(props: PageProps<'/projects/[id]/edi
       ) : null}
 
       <ProjectSubmissionForm
+        serverAuthenticated
         projectId={projectId}
         initialData={project as unknown as Record<string, unknown>}
       />

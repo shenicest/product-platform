@@ -24,6 +24,30 @@ export const getAuthToken = cache(async () => {
   return jar.get('shenicest_token')?.value ?? null
 })
 
+/**
+ * The signed-in user's own public profile (nickname / avatarUrl).
+ *
+ * Kept separate from `getSessionUser` on purpose: only the submission form needs
+ * the nickname, and folding this call into the session helper would add a round
+ * trip to every page that merely guards on being logged in.
+ *
+ * Never throws — a missing profile row or an API hiccup degrades to nulls, the
+ * same way the `/api/me` proxy route behaves.
+ */
+export const getOwnProfile = cache(async () => {
+  const token = await getAuthToken()
+  if (!token) return null
+  try {
+    const { data, error } = await api.founder.profile.get({
+      headers: { cookie: `shenicest_token=${token}` },
+    })
+    if (error || !data) return null
+    return data
+  } catch {
+    return null
+  }
+})
+
 export const getFounderProjects = cache(async (query: FounderProjectQuery = {}) => {
   const token = await getAuthToken()
   const headers = token ? { cookie: `shenicest_token=${token}` } : undefined

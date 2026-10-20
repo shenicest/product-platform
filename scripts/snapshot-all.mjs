@@ -65,7 +65,10 @@ const COOKIE_OVERRIDE = process.env.SNAPSHOT_COOKIE ?? null
 const PAGES = [
   { name: '01-home', path: '/', title: '首页' },
   { name: '02-project-detail', path: '/projects/1', title: '项目详情', expect: '月事轻记' },
-  { name: '03-submit', path: '/submit', title: '项目提交', user: '1', expect: '提交项目' },
+  // The page header alone proves nothing: it renders even when the form below
+  // is replaced by the login prompt. '项目速览' is the first section heading of
+  // the form itself, so it only appears when the real form was captured.
+  { name: '03-submit', path: '/submit', title: '项目提交', user: '1', expect: '项目速览' },
   { name: '04-talents', path: '/talents', title: '人才广场', expect: '林一舟' },
   // The editor has two headings (with/without an existing profile), so the
   // stable marker is the eyebrow above them.
