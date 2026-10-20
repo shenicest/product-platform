@@ -96,8 +96,8 @@ export function ConnectionRequestButton({
   function validate() {
     const errors: Record<string, string> = {}
     if (!purposes.includes(form.purpose)) errors.purpose = '请选择联系目的'
-    if (form.message.trim().length < 30 || form.message.trim().length > 500) {
-      errors.message = '留言请输入 30-500 个字符'
+    if (form.message.trim().length < 10 || form.message.trim().length > 500) {
+      errors.message = '留言请输入 10-500 个字符'
     }
     const hasContact = contactFields.some((field) => form[field].trim())
     if (!hasContact) {
@@ -209,10 +209,10 @@ export function ConnectionRequestButton({
                 </select>
               </label>
               <label className="block font-mono text-meta tracking-[0.08em] text-muted-foreground">
-                留言（30-500 字）
+                留言（10-500 字）
                 <textarea
                   required
-                  minLength={30}
+                  minLength={10}
                   maxLength={500}
                   value={form.message}
                   onChange={(event) => setForm({ ...form, message: event.target.value })}

@@ -3,7 +3,7 @@ import { PROJECT_CONNECTION_PURPOSES } from '@shenicest/shared'
 
 export const CreateConnectionBody = t.Object({
   purpose: t.Union(PROJECT_CONNECTION_PURPOSES.map((value) => t.Literal(value)) as [any, ...any[]]),
-  message: t.String({ minLength: 30, maxLength: 500 }),
+  message: t.String({ minLength: 10, maxLength: 500 }),
   wechat: t.Optional(t.String({ minLength: 1, maxLength: 64 })),
   phone: t.Optional(t.String({ minLength: 1, maxLength: 32 })),
   email: t.Optional(t.String({ minLength: 1, maxLength: 254 })),

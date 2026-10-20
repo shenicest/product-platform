@@ -331,7 +331,7 @@ export class TalentService {
   async send(senderUserId: string, body: ConnectionBody) {
     if (senderUserId === body.receiverUserId) throw new TalentError('CANNOT_CONNECT_SELF', 'Cannot send a request to yourself')
     if (!CONNECTION_PURPOSES.includes(body.purpose)) throw new TalentError('INVALID_PURPOSE', 'Purpose is not supported')
-    if (body.message.trim().length < 30 || body.message.trim().length > 500) throw new TalentError('INVALID_MESSAGE', 'Message must be 30-500 characters')
+    if (body.message.trim().length < 10 || body.message.trim().length > 500) throw new TalentError('INVALID_MESSAGE', 'Message must be 30-500 characters')
     const senderContact = authorizedContact(body)
     try {
       return await this.db.transaction(async (tx) => {
