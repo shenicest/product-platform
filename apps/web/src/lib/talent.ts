@@ -212,8 +212,8 @@ export function validateConnectionBody(body: {
     )
   )
     errors.purpose = "请选择交流方向";
-  if (body.message.trim().length < 30 || body.message.trim().length > 500)
-    errors.message = "留言请输入 30-500 个字符";
+  if (body.message.trim().length < 10 || body.message.trim().length > 500)
+    errors.message = "留言请输入 10-500 个字符";
   if (!body.wechat?.trim() && !body.email?.trim())
     errors.contact = "至少提供微信或邮箱";
   return errors;

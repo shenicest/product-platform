@@ -40,7 +40,7 @@ export const ConnectionBody = t.Object({
   receiverUserId: t.String(),
   projectId: t.Optional(t.Numeric()),
   purpose: t.Union(CONNECTION_PURPOSES.map((value) => t.Literal(value)) as [any, ...any[]]),
-  message: t.String({ minLength: 30, maxLength: 500 }),
+  message: t.String({ minLength: 10, maxLength: 500 }),
   wechat: t.Optional(t.String({ minLength: 1, maxLength: 64 })),
   email: t.Optional(t.String({ minLength: 1, maxLength: 254 })),
 })

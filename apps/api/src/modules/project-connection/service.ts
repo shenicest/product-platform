@@ -87,8 +87,8 @@ export class ProjectConnectionService {
       throw new ProjectConnectionError('INVALID_PURPOSE', '请选择有效的联系目的')
     }
     const message = body.message.trim()
-    if (message.length < 30 || message.length > 500 || hasControlChars(message)) {
-      throw new ProjectConnectionError('INVALID_MESSAGE', '留言必须为 30-500 个字符，且不能包含控制字符')
+    if (message.length < 10 || message.length > 500 || hasControlChars(message)) {
+      throw new ProjectConnectionError('INVALID_MESSAGE', '留言必须为 10-500 个字符，且不能包含控制字符')
     }
     const senderContact = authorizedContact(body)
     try {
