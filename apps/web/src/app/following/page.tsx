@@ -6,6 +6,7 @@ import { getFollowingProjects } from '@/server/projects'
 import { getSessionUser } from '@/server/auth'
 import { getMyFollows } from '@/server/interactions'
 import { PAGE_SIZE, parseListParams } from '@/lib/project-filters'
+import { Eyebrow } from '@/components/ui/typography'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,13 +50,17 @@ export default async function FollowingPage(props: PageProps<'/following'>) {
 
   return (
     <PublicInteractionBoundary>
-      <section className="mx-auto w-full max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
-        <header className="mb-8 flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <p className="eyebrow">FOLLOWING</p>
-            <h1 className="mt-2 text-[clamp(28px,3vw,40px)] font-bold leading-[1.15]">关注动态</h1>
+      <section className="shell py-16 sm:py-20">
+        <header className="section-head">
+          <div className="min-w-0">
+            <Eyebrow>FOLLOWING</Eyebrow>
+            <h1 className="section-head__title">关注动态</h1>
           </div>
-          <p className="pb-1 font-mono text-xs text-muted-foreground">TOTAL: <b className="font-digits font-normal text-primary">{total}</b> PROJECTS LIVE</p>
+          <p className="section-head__aside">
+            TOTAL:
+            <b className="font-digits text-lg font-normal text-brand-text">{total}</b>
+            PROJECTS LIVE
+          </p>
         </header>
         <FollowingProjectGrid projects={projects} />
         <Pagination page={page} totalPages={totalPages} searchParams={searchParams} basePath="/following" />

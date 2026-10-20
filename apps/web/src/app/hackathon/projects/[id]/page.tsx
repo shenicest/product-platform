@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { getHackathonProject } from '@/server/projects'
 import { normalizeHackathonTrack, stripTrackAppendix } from '@/lib/hackathon-project'
 import { HackathonTagEvaluator } from '@/components/hackathon-tag-evaluator'
@@ -10,6 +11,8 @@ import { HackathonConnectButton } from '@/components/hackathon-connection-dialog
 import { getMyHackathonConnectionStatus } from '@/server/hackathon-connections'
 import { DemoEmbed } from '@/components/demo-embed'
 import { HackathonProjectEditor } from '@/components/hackathon-project-editor'
+import { ButtonAnchor } from '@/components/ui/button'
+import { Eyebrow } from '@/components/ui/typography'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,46 +27,136 @@ export default async function HackathonProjectPage(props: PageProps<'/hackathon/
   if (!project) notFound()
   const track = normalizeHackathonTrack(project.track, project.name)
   const connectGate = await getMyHackathonConnectionStatus(project.id)
-  return <PublicInteractionBoundary><main className="detail-page mx-auto w-full max-w-[1440px] px-5 py-8 sm:px-8 lg:px-16">
-    <a className="detail-back" href="/hackathon">← 返回项目展厅</a>
-    <header className="detail-hero mt-8">
-      <div>
-        <p className="eyebrow">FEATURED PROJECT / EVENT 04</p>
-        <h1 className="detail-title mt-4 text-[clamp(40px,5vw,70px)] font-bold leading-[.96]">{project.name}</h1>
-        {project.tagline ? <p className="detail-tagline mt-4">{project.tagline}</p> : null}
-      </div>
-      <div className="detail-summary" aria-label="项目概要">
-        <div><span>PROJECT ID</span><strong>#{String(project.id).padStart(4, '0')}</strong></div>
-         <div><span>TRACK</span><strong>{track ? track.toUpperCase() : '未分类'}</strong></div>
-        {project.teamName ? <div><span>TEAM</span><strong>{project.teamName}</strong></div> : null}
-        <div className="detail-summary-action"><span>SUPPORT THIS PROJECT</span><HackathonLikeButton projectId={project.id} count={project.likeCount} /></div>
-      </div>
-    </header>
+  return (
+    <PublicInteractionBoundary>
+      <main className="shell py-8">
+        <Link
+          href="/hackathon"
+          className="font-mono text-meta tracking-[0.08em] text-muted-foreground transition-colors hover:text-brand-text"
+        >
+          ← 返回项目展厅
+        </Link>
 
-    <div className="detail-layout mt-12">
-      <article className="detail-main">
-        <div className="detail-cover-wrap"><HackathonCover url={project.coverUrl} name={project.name} projectId={project.id} className="detail-cover" /></div>
-        <section className="detail-section" aria-labelledby="intro-title">
-          <div className="detail-section-heading"><span>01</span><h2 id="intro-title">项目介绍</h2></div>
-          <p className="detail-copy whitespace-pre-line">{visibleDescription(project.description)}</p>
-        </section>
-        {project.teamName ? <section className="detail-section detail-team" aria-labelledby="team-title"><div className="detail-section-heading"><span>02</span><h2 id="team-title">团队</h2></div><p className="detail-copy">{project.teamName}</p></section> : null}
-         {track ? <HackathonTagEvaluator projectId={project.id} track={track} initialTagCounts={project.tagCounts} initialMyTagIds={project.myTagIds} /> : null}
-      </article>
-      <aside className="detail-aside">
-        <div className="detail-aside-heading"><span>TRY IT OUT</span><span className="detail-status"><i aria-hidden /> LIVE</span></div>
-        {project.demoLink ? <div className="detail-demo">
-          <DemoEmbed className="h-[620px] w-full bg-white" src={project.demoLink} title={`${project.name} Demo`} />
-          <p className="border-t border-border bg-[#111116] p-3 text-center text-xs text-muted-foreground">如果 Demo 无法显示，请 <a className="underline" href={project.demoLink} target="_blank" rel="noopener noreferrer">打开产品 Demo</a>。</p>
-        </div> : <div className="showcase-empty">暂无 Demo 链接</div>}
-         <div className="detail-links">
-          {project.demoLink ? <a className="detail-link detail-link-primary" href={project.demoLink} target="_blank" rel="noreferrer">打开产品 Demo <span aria-hidden>↗</span></a> : null}
-           {project.githubUrl ? <a className="detail-link" href={project.githubUrl} target="_blank" rel="noreferrer">查看 GitHub <span aria-hidden>↗</span></a> : null}
-           <HackathonHideButton projectId={project.id} />
-         </div>
-         <HackathonConnectButton projectId={project.id} initialStatus={connectGate} />
-         <HackathonProjectEditor project={project} />
-       </aside>
-    </div>
-  </main></PublicInteractionBoundary>
+        <header className="mt-8 grid gap-8 border-b border-border pb-9 lg:grid-cols-[minmax(0,1fr)_minmax(250px,.42fr)] lg:items-end">
+          <div className="min-w-0">
+            <Eyebrow>FEATURED PROJECT / EVENT 04</Eyebrow>
+            <h1 className="detail-title">{project.name}</h1>
+            {project.tagline ? <p className="detail-tagline">{project.tagline}</p> : null}
+          </div>
+
+          {/* 摘要区：值行不用 `.mono`（它自带 color/font-size，会盖掉工具类），
+              改用 font-mono 工具类组合，保证 label 尺寸与前景色可控。 */}
+          <dl className="grid grid-cols-2 rounded-lg border border-border bg-card" aria-label="项目概要">
+            <div className="min-w-0 border-b border-border py-3 px-4">
+              <dt className="font-mono text-meta tracking-[0.1em] text-muted-foreground">PROJECT ID</dt>
+              <dd className="mt-1.5 truncate font-mono text-label font-bold text-foreground">
+                #{String(project.id).padStart(4, '0')}
+              </dd>
+            </div>
+            <div className="min-w-0 border-b border-border py-3 px-4">
+              <dt className="font-mono text-meta tracking-[0.1em] text-muted-foreground">TRACK</dt>
+              <dd className="mt-1.5 truncate font-mono text-label font-bold text-foreground">
+                {track ? track.toUpperCase() : '未分类'}
+              </dd>
+            </div>
+            {project.teamName ? (
+              <div className="col-span-2 min-w-0 border-b border-border py-3 px-4">
+                <dt className="font-mono text-meta tracking-[0.1em] text-muted-foreground">TEAM</dt>
+                <dd className="mt-1.5 truncate font-mono text-label font-bold text-foreground">
+                  {project.teamName}
+                </dd>
+              </div>
+            ) : null}
+            <div className="col-span-2 py-3 px-4">
+              <dt className="font-mono text-meta tracking-[0.1em] text-muted-foreground">
+                SUPPORT THIS PROJECT
+              </dt>
+              <dd className="mt-2.5">
+                <HackathonLikeButton projectId={project.id} count={project.likeCount} />
+              </dd>
+            </div>
+          </dl>
+        </header>
+
+        <div className="detail-layout mt-12">
+          <article>
+            <HackathonCover
+              url={project.coverUrl}
+              name={project.name}
+              projectId={project.id}
+              priority
+              className="card-cover--wide rounded-lg border border-border"
+            />
+
+            <section className="detail-section" aria-labelledby="intro-title">
+              <h2 id="intro-title" className="detail-section__title">
+                <span className="detail-section__index">01</span>
+                项目介绍
+              </h2>
+              <p className="detail-copy whitespace-pre-line">{visibleDescription(project.description)}</p>
+            </section>
+
+            {project.teamName ? (
+              <section className="detail-section" aria-labelledby="team-title">
+                <h2 id="team-title" className="detail-section__title">
+                  <span className="detail-section__index">02</span>
+                  团队
+                </h2>
+                <p className="detail-copy">{project.teamName}</p>
+              </section>
+            ) : null}
+
+            {track ? <HackathonTagEvaluator projectId={project.id} track={track} initialTagCounts={project.tagCounts} initialMyTagIds={project.myTagIds} /> : null}
+          </article>
+
+          <aside className="detail-aside">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <span className="font-mono text-meta tracking-[0.1em] text-muted-foreground">TRY IT OUT</span>
+              <span className="inline-flex items-center gap-2 font-mono text-meta tracking-[0.1em] text-brand-text">
+                <i aria-hidden className="detail-callout__dot" /> LIVE
+              </span>
+            </div>
+
+            {project.demoLink ? (
+              <div className="demo-shell mt-4">
+                <div className="demo-shell__bar">
+                  <i className="demo-shell__dot" aria-hidden />
+                  <i className="demo-shell__dot" aria-hidden />
+                  <i className="demo-shell__dot" aria-hidden />
+                  <span className="demo-shell__url">{project.demoLink.replace(/^https?:\/\//, '')}</span>
+                </div>
+                <DemoEmbed className="demo-shell__frame h-[620px]" src={project.demoLink} title={`${project.name} Demo`} />
+                <p className="border-t border-border bg-secondary p-3 text-center text-meta text-muted-foreground">
+                  如果 Demo 无法显示，请{' '}
+                  <a className="text-brand-text underline underline-offset-2" href={project.demoLink} target="_blank" rel="noopener noreferrer">
+                    打开产品 Demo
+                  </a>
+                  。
+                </p>
+              </div>
+            ) : (
+              <div className="ui-empty mt-4">暂无 Demo 链接</div>
+            )}
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {project.demoLink ? (
+                <ButtonAnchor href={project.demoLink} target="_blank" rel="noreferrer" variant="primary" size="sm">
+                  打开产品 Demo <span className="ui-btn__arrow" aria-hidden>↗</span>
+                </ButtonAnchor>
+              ) : null}
+              {project.githubUrl ? (
+                <ButtonAnchor href={project.githubUrl} target="_blank" rel="noreferrer" variant="secondary" size="sm">
+                  查看 GitHub <span className="ui-btn__arrow" aria-hidden>↗</span>
+                </ButtonAnchor>
+              ) : null}
+              <HackathonHideButton projectId={project.id} />
+            </div>
+
+            <HackathonConnectButton projectId={project.id} initialStatus={connectGate} />
+            <HackathonProjectEditor project={project} />
+          </aside>
+        </div>
+      </main>
+    </PublicInteractionBoundary>
+  )
 }

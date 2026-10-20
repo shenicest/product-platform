@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getOperatorProject, getOperatorProjectProposals } from '@/server/operator'
 import { OperatorProjectDetail } from '@/components/operator/operator-project-detail'
+import { Eyebrow } from '@/components/ui/typography'
 import { projectIdLabel } from '@/lib/utils'
 import { OPERATOR_STATUS_LABELS } from '@/lib/operator-filters'
 
@@ -39,10 +40,10 @@ export default async function OperatorProjectDetailPage(
   return (
     <div>
       <header className="mb-8">
-        <p className="eyebrow">
+        <Eyebrow>
           {projectIdLabel(projectId)} / {OPERATOR_STATUS_LABELS[project.status] ?? '未知'}
-        </p>
-        <h2 className="mt-3 text-[clamp(24px,3vw,32px)] font-bold leading-[1.15]">
+        </Eyebrow>
+        <h2 className="mt-3 text-[clamp(24px,3vw,32px)] leading-[1.15] font-bold">
           {project.name}
         </h2>
       </header>

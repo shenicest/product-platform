@@ -8,6 +8,9 @@ import { projectIdLabel } from '@/lib/utils'
 import { LikeButton } from '@/components/like-button'
 import { FounderCard } from '@/components/founder-card'
 import { DemoEmbed } from '@/components/demo-embed'
+import { Chip } from '@/components/ui/chip'
+import { ButtonAnchor } from '@/components/ui/button'
+import { Eyebrow } from '@/components/ui/typography'
 
 function nonEmpty(value: string | null | undefined): string | null {
   const trimmed = value?.trim()
@@ -24,16 +27,12 @@ function DetailSection({
   content: string
 }) {
   return (
-    <section>
-      <h2 className="flex items-baseline gap-3 text-lg font-bold">
-        <span className="font-mono text-[11px] tracking-[0.08em] text-primary">
-          {String(index).padStart(2, '0')}
-        </span>
+    <section className="detail-section">
+      <h2 className="detail-section__title">
+        <span className="detail-section__index">{String(index).padStart(2, '0')}</span>
         {title}
       </h2>
-      <p className="mt-3 max-w-[65ch] text-base leading-[1.7] text-muted-foreground whitespace-pre-line">
-        {content}
-      </p>
+      <p className="detail-copy">{content}</p>
     </section>
   )
 }
@@ -49,29 +48,35 @@ function DemoAssets({ project }: { project: ProjectDetail }) {
   const video = demoVideoUrl ? resolveDemoVideo(demoVideoUrl) : null
 
   return (
-    <section className="detail-demo mt-12 border border-border bg-card">
-      <div className="flex items-center justify-between border-b border-border px-5 py-3">
-        <h2 className="font-mono text-xs tracking-[0.12em] text-primary">
-          DEMO / SIGNAL
-        </h2>
+    <section className="ui-panel">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <Eyebrow tone="accent">DEMO / SIGNAL</Eyebrow>
         {demoLink ? (
-          <a
+          <ButtonAnchor
             href={demoLink}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-hard btn-primary px-4 py-2 text-xs"
+            variant="primary"
+            size="sm"
           >
-            试用产品 <span aria-hidden>→</span>
-          </a>
+            试用产品 <span className="ui-btn__arrow" aria-hidden>→</span>
+          </ButtonAnchor>
         ) : null}
       </div>
-      <div className="space-y-4 p-5">
+
+      <div className="flex flex-col gap-4">
         {video?.kind === 'iframe' ? (
-          <div className="aspect-video w-full overflow-hidden border border-border bg-muted">
+          <div className="demo-shell">
+            <div className="demo-shell__bar">
+              <i className="demo-shell__dot" aria-hidden />
+              <i className="demo-shell__dot" aria-hidden />
+              <i className="demo-shell__dot" aria-hidden />
+              <span className="demo-shell__url">VIDEO / EMBED</span>
+            </div>
             <iframe
               src={video.src}
               title={`${project.name} 演示视频`}
-              className="h-full w-full"
+              className="demo-shell__frame aspect-video"
               allowFullScreen
             />
           </div>
@@ -81,18 +86,19 @@ function DemoAssets({ project }: { project: ProjectDetail }) {
             src={video.src}
             controls
             preload="metadata"
-            className="aspect-video w-full border border-border bg-muted"
+            className="aspect-video w-full rounded-md border border-border bg-muted"
           />
         ) : null}
         {video?.kind === 'link' && demoVideoUrl ? (
-          <a
+          <ButtonAnchor
             href={demoVideoUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-hard btn-secondary w-fit"
+            variant="secondary"
+            className="w-fit"
           >
-            观看演示视频 <span aria-hidden>→</span>
-          </a>
+            观看演示视频 <span className="ui-btn__arrow" aria-hidden>→</span>
+          </ButtonAnchor>
         ) : null}
 
         {demoImages.length ? (
@@ -106,18 +112,27 @@ function DemoAssets({ project }: { project: ProjectDetail }) {
                 src={src}
                 alt={`${project.name} 演示图 ${index + 1}`}
                 loading="lazy"
-                className="aspect-video w-full border border-border bg-muted object-cover"
+                className="aspect-video w-full rounded-md border border-border bg-muted object-cover"
               />
             ))}
           </div>
         ) : null}
+
         {demoLink ? (
-          <div className="overflow-hidden border border-border bg-[#111116]">
-            <div className="flex h-7 items-center gap-1.5 border-b border-border px-2 font-mono text-[10px] text-muted-foreground">
-              <i className="size-1.5 rounded-full bg-[#4a4a52]" /><i className="size-1.5 rounded-full bg-[#4a4a52]" /><i className="size-1.5 rounded-full bg-[#4a4a52]" />
-              <span className="truncate pl-2">{demoLink.replace(/^https?:\/\//, '')}</span>
+          <div className="demo-shell">
+            <div className="demo-shell__bar">
+              <i className="demo-shell__dot" aria-hidden />
+              <i className="demo-shell__dot" aria-hidden />
+              <i className="demo-shell__dot" aria-hidden />
+              <span className="demo-shell__url">
+                {demoLink.replace(/^https?:\/\//, '')}
+              </span>
             </div>
-            <DemoEmbed src={demoLink} title={`${project.name} 产品 Demo`} className="h-[560px] w-full border-0 bg-white" />
+            <DemoEmbed
+              src={demoLink}
+              title={`${project.name} 产品 Demo`}
+              className="demo-shell__frame h-[560px]"
+            />
           </div>
         ) : null}
       </div>
@@ -153,129 +168,121 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
   const traction = tractionMetrics(project)
 
   return (
-    <article className="detail-page mx-auto w-full max-w-[1440px] px-5 py-8 sm:px-8 lg:px-16">
+    <article className="shell py-8">
       <Link
         href={backHref}
-        className="font-mono text-xs tracking-[0.08em] text-muted-foreground transition-colors hover:text-primary"
+        className="font-mono text-meta tracking-[0.08em] text-muted-foreground transition-colors hover:text-brand-text"
       >
         ← BACK / {backHref === '/' ? 'INDEX' : 'DASHBOARD'}
       </Link>
 
-      <div className="detail-crumb mb-8">PROJECTS / PROJECT {project.id}</div>
+      <p className="detail-crumb mt-6 mb-8">PROJECTS / PROJECT {project.id}</p>
+
       <div className="detail-layout">
-      <div>
-      <header className="mt-8">
-        {coverUrl ? (
-          <div className="scan-frame border border-foreground/40 bg-card p-2">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={coverUrl}
-              alt={project.name}
-              className="aspect-video w-full border border-border bg-muted object-cover"
-            />
-          </div>
-        ) : null}
+        <div>
+          <header>
+            {coverUrl ? (
+              <div className="rounded-lg border border-border bg-card p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={coverUrl}
+                  alt={project.name}
+                  className="aspect-video w-full rounded-sm bg-muted object-cover"
+                />
+              </div>
+            ) : null}
 
-        <div className="mt-8">
-           <p className="eyebrow">FEATURED PROJECT / {projectIdLabel(project.id)}</p>
-           <h1 className="detail-title mt-3 text-[clamp(40px,5vw,70px)] font-bold leading-[.96]">
-            {project.name}
-          </h1>
-          {tagline ? (
-            <p className="mt-3 text-lg leading-[1.7] text-muted-foreground">
-              {tagline}
-            </p>
-          ) : null}
-           {showLike ? <div className="detail-actions mt-5"><LikeButton projectId={project.id} likeCount={project.likeCount} /></div> : null}
+            <div className="mt-8">
+              <Eyebrow>FEATURED PROJECT / {projectIdLabel(project.id)}</Eyebrow>
+              <h1 className="detail-title">{project.name}</h1>
+              {tagline ? <p className="detail-tagline">{tagline}</p> : null}
 
-          {project.founder ? <FounderCard founder={project.founder} projectName={project.name} /> : null}
+              {showLike ? (
+                <div className="mt-5">
+                  <LikeButton projectId={project.id} likeCount={project.likeCount} />
+                </div>
+              ) : null}
 
-          {project.stage !== null ||
-          project.categories?.length ||
-          teamName ? (
-            <div className="mt-5 flex flex-wrap items-center gap-1.5">
-              <ProjectBadges
-                stage={project.stage}
-                categories={project.categories}
-                className="contents"
-              />
-              {teamName ? (
-                <span className="chip-hard">{teamName}</span>
+              {project.founder ? (
+                <FounderCard founder={project.founder} projectName={project.name} />
+              ) : null}
+
+              {project.stage !== null || project.categories?.length || teamName ? (
+                <div className="detail-badges mt-5">
+                  <ProjectBadges
+                    stage={project.stage}
+                    categories={project.categories}
+                    className="contents"
+                  />
+                  {teamName ? <Chip>{teamName}</Chip> : null}
+                </div>
               ) : null}
             </div>
+          </header>
+
+          {sections.length ? (
+            <div>
+              {sections.map((section, index) => (
+                <DetailSection
+                  key={section.title}
+                  index={index + 1}
+                  title={section.title}
+                  content={section.content}
+                />
+              ))}
+            </div>
           ) : null}
-        </div>
-      </header>
 
-      {sections.length ? (
-        <div className="mt-12 space-y-10">
-          {sections.map((section, index) => (
-            <DetailSection
-              key={section.title}
-              index={index + 1}
-              title={section.title}
-              content={section.content}
-            />
-          ))}
-        </div>
-      ) : null}
+          {traction.length ? (
+            <section className="detail-metrics mt-12">
+              {traction.map((item) => (
+                <div key={item.label}>
+                  <div className="detail-metric__label">{item.label}</div>
+                  <div className="detail-metric__value">{item.value}</div>
+                </div>
+              ))}
+            </section>
+          ) : null}
 
-      {traction.length ? (
-        <section className="mt-12 border border-border p-6">
-          <div className="flex flex-wrap gap-8">
-            {traction.map((item) => (
-              <div key={item.label}>
-                <div className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">{item.label}</div>
-                <div className="mt-1 text-2xl font-bold">{item.value}</div>
+          {project.seekingSkills?.length ? (
+            <section className="detail-section">
+              <h2 className="detail-section__title">寻求帮助</h2>
+              <div className="detail-badges mt-3">
+                {project.seekingSkills.map((skill) => (
+                  <Chip key={skill}>{skillLabel(skill)}</Chip>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {project.seekingSkills?.length ? (
-        <section className="mt-12">
-          <h2 className="text-lg font-bold">寻求帮助</h2>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {project.seekingSkills.map((skill) => (
-              <span key={skill} className="chip-hard">{skillLabel(skill)}</span>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {project.isOpenForBeta ? (
-        <section className="mt-12 border-2 border-primary p-6">
-          <h2 className="flex items-center gap-2.5 text-lg font-bold">
-            <i
-              aria-hidden
-              className="size-2.5 bg-primary shadow-[0_0_12px_var(--primary)]"
-            />
-            正在招募 Beta 用户
-          </h2>
-          {betaDescription ? (
-            <p className="mt-3 max-w-[65ch] text-base leading-[1.7] text-muted-foreground whitespace-pre-line">
-              {betaDescription}
-            </p>
+            </section>
           ) : null}
-        </section>
-      ) : null}
 
-      {contacts.length ? (
-        <section className="mt-12">
-          <h2 className="text-lg font-bold">联系方式</h2>
-          <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-sm text-muted-foreground">
-            {contacts.map((contact) => (
-              <span key={contact.label}>
-                <span className="font-mono text-[10px] tracking-[0.08em]">{contact.label}</span>
-                <span className="ml-2 text-foreground">{contact.value}</span>
-              </span>
-            ))}
-          </div>
-        </section>
-      ) : null}
-      </div>
-      <aside className="detail-aside"><DemoAssets project={project} /></aside>
+          {project.isOpenForBeta ? (
+            <section className="detail-callout">
+              <h2 className="detail-callout__title">
+                <i aria-hidden className="detail-callout__dot" />
+                正在招募 Beta 用户
+              </h2>
+              {betaDescription ? <p className="detail-copy">{betaDescription}</p> : null}
+            </section>
+          ) : null}
+
+          {contacts.length ? (
+            <section className="detail-section">
+              <h2 className="detail-section__title">联系方式</h2>
+              <div className="mt-3 flex flex-wrap gap-x-8 gap-y-2 text-body-sm text-muted-foreground">
+                {contacts.map((contact) => (
+                  <span key={contact.label}>
+                    <span className="mono">{contact.label}</span>
+                    <span className="ml-2 text-foreground">{contact.value}</span>
+                  </span>
+                ))}
+              </div>
+            </section>
+          ) : null}
+        </div>
+
+        <aside className="detail-aside">
+          <DemoAssets project={project} />
+        </aside>
       </div>
     </article>
   )

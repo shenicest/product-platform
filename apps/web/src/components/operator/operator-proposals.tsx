@@ -2,19 +2,29 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { CATEGORIES } from '@shenicest/shared'
-import { cn, projectIdLabel } from '@/lib/utils'
+import { CATEGORIES, ProposalStatus } from '@shenicest/shared'
+import { projectIdLabel } from '@/lib/utils'
 import { Pagination } from '@/components/pagination'
+import { Chip, ChipButton, type ChipTone } from '@/components/ui/chip'
+import { Card, EmptyState } from '@/components/ui/surface'
+import { Eyebrow } from '@/components/ui/typography'
 import type { OperatorProposal } from '@/server/operator'
 import {
   OPERATOR_PAGE_SIZE,
   PROPOSAL_STATUS_LABELS,
-  PROPOSAL_STATUS_COLORS,
   STAGE_LABELS,
   type OperatorProposalListParams,
 } from '@/lib/operator-filters'
 
-function Chip({
+/** 提案状态 → 标签色调（只映射语义，不写颜色）。 */
+const PROPOSAL_STATUS_TONES: Record<number, ChipTone> = {
+  [ProposalStatus.Pending]: 'warning',
+  [ProposalStatus.Approved]: 'success',
+  [ProposalStatus.Rejected]: 'neutral',
+  [ProposalStatus.RevisionRequired]: 'warning',
+}
+
+function FilterChip({
   active,
   children,
   onClick,
@@ -24,53 +34,36 @@ function Chip({
   onClick: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'chip-hard cursor-pointer transition-colors',
-        active
-          ? 'chip-active'
-          : 'hover:border-primary/60 hover:text-foreground'
-      )}
-    >
+    <ChipButton tone={active ? 'accent' : 'neutral'} aria-pressed={active} onClick={onClick}>
       {children}
-    </button>
+    </ChipButton>
   )
 }
 
 function ProposalRow({ proposal }: { proposal: OperatorProposal }) {
   return (
-    <Link
-      href={`/operator/proposals/${proposal.id}`}
-      className="group flex flex-col gap-3 border border-border bg-card p-4 transition-[transform,box-shadow] duration-150 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_var(--secondary)] sm:flex-row sm:items-center sm:gap-4"
-    >
-      <div className="flex flex-1 flex-col gap-1.5">
+    <Card className="group">
+      <Link
+        href={`/operator/proposals/${proposal.id}`}
+        className="flex flex-col gap-3 p-4 outline-none sm:flex-row sm:items-center sm:gap-4"
+      >
+        <div className="flex flex-1 flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="card-id">#{proposal.id}</span>
+            <Chip tone={PROPOSAL_STATUS_TONES[proposal.status] ?? 'neutral'} dot>
+              {PROPOSAL_STATUS_LABELS[proposal.status] ?? '未知'}
+            </Chip>
+          </div>
+          <p className="mono">项目 {projectIdLabel(proposal.projectId)}</p>
+        </div>
+
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs text-primary">
-            #{proposal.id}
-          </span>
-          <span
-            className={cn(
-              'inline-flex items-center px-2 py-1 font-mono text-[10px] tracking-[0.08em]',
-              PROPOSAL_STATUS_COLORS[proposal.status] ?? 'bg-muted text-muted-foreground'
-            )}
-          >
-            {PROPOSAL_STATUS_LABELS[proposal.status] ?? '未知'}
+          <span className="mono">
+            {new Date(proposal.createdAt).toLocaleString('zh-CN')}
           </span>
         </div>
-        <p className="font-mono text-xs text-muted-foreground">
-          项目 {projectIdLabel(proposal.projectId)}
-        </p>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <span className="font-mono text-[10px] text-muted-foreground">
-          {new Date(proposal.createdAt).toLocaleString('zh-CN')}
-        </span>
-      </div>
-    </Link>
+      </Link>
+    </Card>
   )
 }
 
@@ -100,22 +93,18 @@ export function OperatorProposalsClient({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="mb-6">
-        <p className="eyebrow">PROPOSAL QUEUE</p>
-        <h2 className="mt-2 text-[clamp(24px,3vw,32px)] font-bold leading-[1.15]">
+    <div className="flex flex-col gap-6">
+      <header>
+        <Eyebrow>PROPOSAL QUEUE</Eyebrow>
+        <h2 className="mt-2 text-[clamp(24px,3vw,32px)] leading-[1.15] font-bold">
           提案审核
         </h2>
-        <p className="mt-1 font-mono text-xs text-muted-foreground">
-          共 {total} 个待审核提案
-        </p>
-      </div>
+        <p className="mono mt-1">共 {total} 个待审核提案</p>
+      </header>
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">
-          STAGE:
-        </span>
-        <Chip
+        <span className="mono">STAGE:</span>
+        <FilterChip
           active={stage === undefined}
           onClick={() =>
             navigate((params) => {
@@ -124,9 +113,9 @@ export function OperatorProposalsClient({
           }
         >
           全部
-        </Chip>
+        </FilterChip>
         {Object.entries(STAGE_LABELS).map(([value, label]) => (
-          <Chip
+          <FilterChip
             key={value}
             active={stage === Number(value)}
             onClick={() =>
@@ -137,15 +126,13 @@ export function OperatorProposalsClient({
             }
           >
             {label}
-          </Chip>
+          </FilterChip>
         ))}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        <span className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">
-          CATEGORY:
-        </span>
-        <Chip
+        <span className="mono">CATEGORY:</span>
+        <FilterChip
           active={category === undefined}
           onClick={() =>
             navigate((params) => {
@@ -154,9 +141,9 @@ export function OperatorProposalsClient({
           }
         >
           全部
-        </Chip>
+        </FilterChip>
         {CATEGORIES.map((cat) => (
-          <Chip
+          <FilterChip
             key={cat}
             active={category === cat}
             onClick={() =>
@@ -167,22 +154,15 @@ export function OperatorProposalsClient({
             }
           >
             {cat}
-          </Chip>
+          </FilterChip>
         ))}
       </div>
 
       {initialProposals.length === 0 ? (
-        <div className="border border-dashed border-border py-24 text-center">
-          <p className="font-mono text-xs tracking-[0.12em] text-primary">
-            NO PROPOSALS
-          </p>
-          <p className="mt-3 text-base text-muted-foreground">
-            暂无待审核的提案
-          </p>
-        </div>
+        <EmptyState title="NO PROPOSALS" description="暂无待审核的提案" />
       ) : (
         <>
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
             {initialProposals.map((proposal) => (
               <ProposalRow key={proposal.id} proposal={proposal} />
             ))}

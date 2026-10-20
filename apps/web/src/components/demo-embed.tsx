@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { ButtonAnchor } from '@/components/ui/button'
 
 export function DemoEmbed({ src, title, className }: { src: string; title: string; className?: string }) {
   const [failed, setFailed] = useState(false)
@@ -8,10 +9,10 @@ export function DemoEmbed({ src, title, className }: { src: string; title: strin
   if (failed) {
     return (
       <div className="flex min-h-[240px] flex-col items-center justify-center gap-4 p-6 text-center">
-        <p className="text-sm text-muted-foreground">该产品不支持在当前页面内嵌，请打开产品 Demo 体验。</p>
-        <a href={src} target="_blank" rel="noopener noreferrer" className="btn-hard btn-primary px-4 py-2 text-xs">
-          打开产品 Demo <span aria-hidden>↗</span>
-        </a>
+        <p className="text-body-sm text-muted-foreground">该产品不支持在当前页面内嵌，请打开产品 Demo 体验。</p>
+        <ButtonAnchor href={src} target="_blank" rel="noopener noreferrer" variant="primary" size="sm">
+          打开产品 Demo <span className="ui-btn__arrow" aria-hidden>↗</span>
+        </ButtonAnchor>
       </div>
     )
   }

@@ -1,0 +1,1028 @@
+/* ============================================================================
+ * L3 · PATTERNS  —  page-level composition
+ * ----------------------------------------------------------------------------
+ * 页面骨架（首屏、分区标题、卡片网格、详情页布局、后台外壳）。
+ * 与 components.css 同样的约束：只引用 L2 语义 token。
+ * ========================================================================== */
+
+@layer components {
+  /* ---------------------------------------------------------------------------
+   * 版心
+   * ------------------------------------------------------------------------- */
+
+  .shell {
+    width: 100%;
+    max-width: 1440px;
+    margin-inline: auto;
+    padding-inline: var(--boom-space-gutter);
+  }
+
+  .shell--narrow {
+    max-width: 1120px;
+  }
+
+  .shell--text {
+    max-width: 760px;
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 首屏：天空 + 山体 + 山花（设计稿的 cover-hero）
+   * ------------------------------------------------------------------------- */
+
+  /* 设计稿的导航栏是透明悬浮的，首屏从视口顶端开始铺满 100svh。
+   * 本站导航栏是实心吸顶（用户决定），首屏只能从它下方开始 —— 所以高度
+   * 扣掉 --boom-header-h，折叠线才和设计稿落在同一条视口位置。
+   * 首屏高度不再是整屏，凡是设计稿里按整屏百分比定位的浮件（bloom 标签）
+   * 都改用 svh 表达，见下方注释。 */
+  .cover {
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    min-height: calc(700px - var(--boom-header-h));
+    height: calc(100svh - var(--boom-header-h));
+    max-height: calc(1200px - var(--boom-header-h));
+    background: var(--cover-base);
+    text-align: center;
+  }
+
+  /* 插画层：像素天空 + 花朵山体。
+   *
+   * 向上多铺一个导航栏的高度：设计稿的插画是按「整屏」cover 的，而本站
+   * 首屏比视口矮一个导航栏。让插画层向上溢出到导航栏底下（导航栏不透明，
+   * 遮住的部分看不见），插画的缩放比例与裁切就和设计稿逐像素一致。
+   * 不这样写，cover 会按 927px 而不是 1000px 计算，山体会整体缩小。 */
+  .cover__art {
+    position: absolute;
+    inset: calc(-1 * var(--boom-header-h)) 0 0;
+    z-index: -3;
+    background-image: var(--cover-image);
+    /* 设计稿 .cover-art 的逐值翻译。缩放/定位/平铺是结构，不随配色变化，
+     * 所以不经过 L2 token —— 只有插画本身（--cover-image）属于配色。 */
+    background-size: cover;
+    background-position: 50% 100%;
+    background-repeat: no-repeat;
+  }
+
+  /* 柔光层：把中央文字区压亮，保证标题与副标在插画上依然可读。
+   * 具体遮罩形状由 L0 提供 --cover-veil。
+   * 与插画层同样向上溢出，椭圆光斑的圆心才落在设计稿的位置。 */
+  .cover__light {
+    position: absolute;
+    inset: calc(-1 * var(--boom-header-h)) 0 0;
+    z-index: -2;
+    pointer-events: none;
+    background: var(--cover-mask);
+  }
+
+  /* 中央排版轴：横向与设计稿同为 min(100%, 1200px)。
+   * 顶部内边距扣掉导航栏高度 —— 设计稿的 clamp(95px, 12.4svh, 150px) 是从
+   * **视口顶端**量的，本站首屏起点低了导航栏那么高。 */
+  .cover__inner {
+    position: relative;
+    z-index: 2;
+    width: min(100%, 1200px);
+    padding: calc(clamp(95px, 12.4svh, 150px) - var(--boom-header-h)) 24px 0;
+  }
+
+  .cover__title {
+    margin: 0;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  /* 巨型字标：拉丁字形必须用 Arial Black（设计稿原样）。
+   * 不用 var(--font-display)：HarmonySN-900 的字宽与字重都不一样，
+   * 在 172px 下差别一眼可见。 */
+  .cover__word {
+    display: block;
+    color: var(--cover-word);
+    font-family: 'Arial Black', Arial, sans-serif;
+    font-size: clamp(112px, 12vw, 194px);
+    font-weight: 900;
+    line-height: 0.77;
+    letter-spacing: -0.07em;
+  }
+
+  /* 两行各自横向拉宽 —— 那个"超宽 BoomLand"效果的来源。 */
+  .cover__word > span {
+    display: block;
+    transform: scaleX(1.62);
+    transform-origin: center;
+  }
+
+  .cover__chinese {
+    display: block;
+    margin-top: 21px;
+    font-size: clamp(32px, 3.6vw, 58px);
+    letter-spacing: 0.055em;
+    line-height: 1.2;
+    text-shadow: 0 1px 20px
+      color-mix(in srgb, var(--bg-elevated) 44%, transparent);
+  }
+
+  .cover__tagline {
+    margin: 13px 0 6px;
+    font-size: clamp(12px, 1.35vw, 19px);
+    font-weight: 700;
+    letter-spacing: 0.22em;
+  }
+
+  .cover__description {
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: clamp(12px, 1.1vw, 15px);
+    letter-spacing: 0.12em;
+  }
+
+  .cover__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 20px;
+  }
+
+  /* 设计稿的按钮比默认 .ui-btn 更宽、更松。 */
+  .cover__actions .ui-btn {
+    min-width: 152px;
+    min-height: 44px;
+    padding: 11px 25px;
+    gap: 24px;
+  }
+
+  /* 设计稿的箭头是 21px（默认 .ui-btn__arrow 只有 1.1em ≈ 14px）。
+   * 它同时把按钮撑到 45px 高 —— 设计稿的实际高度就是这么来的。 */
+  .cover__actions .ui-btn__arrow {
+    font-size: 21px;
+    font-weight: 400;
+    line-height: 1;
+  }
+
+  /* 次按钮：磨砂玻璃。设计稿是 #ffffffa8 底 + #778496 边，
+   * 这里用"抬升面 + 66% 不透明度"表达，换肤时自动跟随。 */
+  .cover__actions .ui-btn--secondary {
+    background: color-mix(in srgb, var(--bg-elevated) 66%, transparent);
+    border-color: var(--border-strong);
+    backdrop-filter: blur(8px);
+  }
+
+  /* 插画上的浮标：「✿ 好想法，正在开花」 */
+  .cover__bloom-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 14px;
+    border: 1px solid var(--bg-elevated);
+    border-radius: var(--boom-radius-pill);
+    background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
+    /* 用 --shadow-tag 而不是 --shadow-float：后者的 45px 模糊半径会让
+     * 这枚 11px 的小字掉出次像素抗锯齿，整块标签看起来发虚。 */
+    box-shadow: var(--shadow-tag);
+    color: var(--fg);
+    font-size: 11px;
+    line-height: 1.65;
+    transform: rotate(6deg);
+  }
+
+  /* 花朵字符比正文大一号，撑起标签的高度（设计稿的 .flower 是 22px）。 */
+  .cover__bloom-tag .flower {
+    font-size: 22px;
+  }
+
+  /* .bloom-label 自带 position:relative（悬停开花需要），
+   * 会盖掉上面的绝对定位 —— 用组合选择器把它拿回来。
+   *
+   * 纵向锚点用 svh 而不是设计稿的 23%：首屏比整屏矮一个导航栏，百分比会
+   * 按那个矮盒子算，标签就飘高了；而 `bottom` 是从首屏底边量的，首屏底边
+   * 正好是视口底边，所以换成 23svh 就与设计稿等价。 */
+  .cover__bloom-tag.bloom-label {
+    position: absolute;
+    left: calc(50% + 235px);
+    bottom: 23svh;
+    z-index: 3;
+  }
+
+  /* 落在插画上的白字：颜色与描边光都来自皮肤。 */
+  .cover__scroll {
+    position: absolute;
+    left: 50%;
+    bottom: 20px;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    color: var(--cover-ink);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-decoration: none;
+    text-shadow: 0 1px 8px var(--cover-ink-halo);
+    transform: translateX(-50%);
+    transition: opacity var(--boom-duration) var(--boom-ease);
+  }
+
+  .cover__scroll:hover {
+    opacity: 0.82;
+  }
+
+  .cover__scroll-line {
+    width: 1px;
+    height: 26px;
+    background: color-mix(in srgb, var(--cover-ink) 70%, transparent);
+  }
+
+  .cover__index {
+    position: absolute;
+    bottom: 23px;
+    left: clamp(24px, 4.5vw, 88px);
+    color: var(--cover-ink);
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-shadow: 0 1px 7px var(--cover-ink-halo);
+  }
+
+  /* 宽屏 / 矮屏：设计稿的两组尺寸修正 */
+  @media (min-aspect-ratio: 2/1) and (min-width: 761px) {
+    .cover {
+      min-height: 760px;
+    }
+
+    .cover__inner {
+      padding-top: 100px;
+    }
+  }
+
+  @media (max-height: 780px) and (min-width: 761px) {
+    .cover__inner {
+      padding-top: 94px;
+    }
+
+    .cover__word {
+      font-size: clamp(112px, 10.4vw, 148px);
+    }
+
+    .cover__chinese {
+      margin-top: 18px;
+      font-size: clamp(32px, 3.2vw, 47px);
+    }
+
+    .cover__tagline {
+      margin-top: 11px;
+    }
+
+    .cover__actions {
+      margin-top: 16px;
+    }
+  }
+
+  @media (max-width: 1100px) {
+    .cover__bloom-tag.bloom-label {
+      left: calc(50% + 190px);
+    }
+  }
+
+  @media (max-width: 760px) {
+    .cover {
+      min-height: calc(730px - var(--boom-header-h));
+      max-height: calc(1050px - var(--boom-header-h));
+    }
+
+    .cover__art {
+      background-position: center bottom;
+    }
+
+    .cover__inner {
+      padding: calc(117px - var(--boom-header-h)) 20px 0;
+    }
+
+    .cover__word {
+      font-size: clamp(78px, 19.5vw, 136px);
+      line-height: 0.82;
+      letter-spacing: -0.075em;
+    }
+
+    .cover__word > span {
+      transform: scaleX(1.43);
+    }
+
+    .cover__chinese {
+      margin-top: 22px;
+      font-size: clamp(28px, 6.9vw, 42px);
+      letter-spacing: 0;
+    }
+
+    .cover__tagline {
+      margin: 15px 0 8px;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+    }
+
+    .cover__description {
+      font-size: 11px;
+      letter-spacing: 0.04em;
+    }
+
+    .cover__actions {
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .cover__actions .ui-btn {
+      min-width: 0;
+      min-height: 43px;
+      padding: 11px 20px;
+      font-size: 12px;
+      gap: 19px;
+    }
+
+    .cover__bloom-tag {
+      padding: 7px 11px;
+      font-size: 10px;
+    }
+
+    .cover__bloom-tag.bloom-label {
+      left: auto;
+      right: 24px;
+      bottom: 25svh;
+    }
+
+    .cover__scroll {
+      bottom: 16px;
+      gap: 7px;
+      font-size: 9px;
+    }
+
+    .cover__scroll-line {
+      height: 20px;
+    }
+
+    .cover__index {
+      display: none;
+    }
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 分区标题
+   * ------------------------------------------------------------------------- */
+
+  .section {
+    padding-block: clamp(48px, 7vw, 88px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section--flush {
+    border-bottom: 0;
+  }
+
+  .section-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.72fr);
+    gap: clamp(16px, 3vw, 44px);
+    align-items: end;
+    margin-bottom: clamp(24px, 3vw, 40px);
+  }
+
+  .section-head__title {
+    margin: 8px 0 0;
+    color: var(--fg);
+    font-size: clamp(26px, 3.4vw, 44px);
+    font-weight: 900;
+    line-height: 1.16;
+    letter-spacing: -0.03em;
+  }
+
+  /* 页面级大标题：比 section-head 高一档，但比 Hero 的 display 收敛。
+   * 中文标题在 display 尺寸下容易折成四行，所以页头单独一档。 */
+  .page-title {
+    margin: 12px 0 0;
+    max-width: 22ch;
+    color: var(--fg);
+    font-size: clamp(2rem, 4.2vw, 3.25rem);
+    font-weight: 900;
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  .page-lead {
+    margin: var(--boom-space-4) 0 0;
+    max-width: 60ch;
+    color: var(--fg-muted);
+    font-size: var(--boom-text-body);
+    line-height: 1.8;
+  }
+
+  .section-head__lead {
+    margin: 0;
+    max-width: 46ch;
+    color: var(--fg-muted);
+    font-size: var(--boom-text-body-sm);
+    line-height: 1.85;
+  }
+
+  .section-head__aside {
+    display: flex;
+    align-items: baseline;
+    gap: var(--boom-space-2);
+    padding-bottom: 4px;
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: var(--boom-text-label);
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 卡片网格
+   * ------------------------------------------------------------------------- */
+
+  .card-grid {
+    display: grid;
+    gap: var(--boom-space-4);
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  @media (min-width: 640px) {
+    .card-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .card-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .card-grid--two {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  @media (min-width: 900px) {
+    .card-grid--two {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  /* 项目卡：封面 + 主体 + 页脚 */
+  .card-cover {
+    position: relative;
+    overflow: hidden;
+    background: var(--bg-sunken);
+  }
+
+  .card-cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* 封面高度对齐设计稿：`.product-cover` 是固定 170px（不是宽高比），
+   * 卡片因此比"4:3 封面"矮一截，一屏能读到更多卡片。 */
+  .card-cover--tall {
+    height: 170px;
+  }
+
+  .card-cover--wide {
+    aspect-ratio: 16 / 9;
+  }
+
+  .card-cover--placeholder {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    color: var(--fg-subtle);
+    font-family: var(--font-mono);
+    font-size: var(--boom-text-meta);
+    letter-spacing: 0.08em;
+  }
+
+  .card-body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--boom-space-2);
+    /* 设计稿 .product-body 的内边距是 20px，四边一致。 */
+    padding: 20px;
+  }
+
+  .card-body--roomy {
+    padding: var(--boom-space-5);
+  }
+
+  /* 卡片标题行：设计稿 .product-heading —— 标题与点赞按钮同一行，
+   * 按钮贴右、不参与标题的换行。标题过长时自己折行，按钮固定 38px 不被压缩。 */
+  .card-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--boom-space-3);
+  }
+
+  /* 卡片标题：设计稿 .product-heading h3 是 17px / 700 / 行高 1.3。 */
+  .card-title {
+    margin: 0;
+    min-width: 0;
+    color: var(--fg);
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  /* 卡片正文：设计稿 .product-body>p 是 14px / 1.9，与标题留 10px。 */
+  .card-text {
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: 14px;
+    line-height: 1.9;
+  }
+
+  /* 页脚：设计稿 .product-footer 用一条最淡的分隔线把元信息与主体分开，
+   * 线在整条页脚之上、左右与内边距对齐。 */
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--boom-space-3);
+    margin: 0 20px;
+    border-top: 1px solid var(--border-soft);
+    padding: 15px 0 20px;
+  }
+
+  .card-footer--bordered {
+    align-items: center;
+    padding-top: var(--boom-space-4);
+    border-top: 1px solid var(--border-soft);
+    margin: 0 var(--boom-space-4) var(--boom-space-4);
+    padding-inline: 0;
+  }
+
+  .card-id {
+    color: var(--brand-text);
+    font-family: var(--font-mono);
+    font-size: var(--boom-text-meta);
+    letter-spacing: 0.08em;
+  }
+
+  .card-meta {
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: var(--boom-text-label);
+  }
+
+  .card-meta__name {
+    display: block;
+    margin-top: 2px;
+    overflow: hidden;
+    color: var(--fg);
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* 精选角标：贴在封面左上，带像素阶梯缺口 */
+  .card-flag {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: var(--boom-radius-xs);
+    background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+    padding: 5px 9px;
+    color: var(--fg);
+    font-size: var(--boom-text-meta);
+    backdrop-filter: blur(6px);
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 项目详情页
+   * ------------------------------------------------------------------------- */
+
+  .detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: clamp(32px, 5vw, 72px);
+    align-items: start;
+  }
+
+  @media (min-width: 1024px) {
+    .detail-layout {
+      grid-template-columns: minmax(0, 1fr) minmax(340px, 0.62fr);
+    }
+  }
+
+  .detail-aside {
+    min-width: 0;
+  }
+
+  @media (min-width: 1024px) {
+    .detail-aside {
+      position: sticky;
+      top: 104px;
+    }
+  }
+
+  .detail-crumb {
+    color: var(--fg-subtle);
+    font-family: var(--font-mono);
+    font-size: var(--boom-text-meta);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .detail-title {
+    margin: 12px 0 0;
+    color: var(--fg);
+    font-size: clamp(34px, 5vw, 64px);
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: -0.045em;
+  }
+
+  .detail-tagline {
+    margin: 14px 0 0;
+    max-width: 62ch;
+    color: var(--fg-muted);
+    font-size: var(--boom-text-body-lg);
+    line-height: 1.7;
+  }
+
+  .detail-section {
+    margin-top: clamp(32px, 4vw, 56px);
+  }
+
+  .detail-section__title {
+    display: flex;
+    align-items: baseline;
+    gap: var(--boom-space-3);
+    margin: 0;
+    color: var(--fg);
+    font-size: var(--boom-text-h3);
+    font-weight: 700;
+  }
+
+  .detail-section__index {
+    color: var(--brand-text);
+    font-family: var(--font-mono);
+    font-size: var(--boom-text-meta);
+    letter-spacing: 0.08em;
+  }
+
+  .detail-copy {
+    margin: 12px 0 0;
+    max-width: 68ch;
+    color: var(--fg-muted);
+    font-size: var(--boom-text-body-lg);
+    line-height: 1.8;
+    white-space: pre-line;
+  }
+
+  .detail-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--boom-space-2);
+  }
+
+  /* 数据条 */
+  .detail-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    gap: clamp(20px, 3vw, 40px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--bg-elevated);
+    padding: var(--boom-space-5);
+  }
+
+  .detail-metric__label {
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: var(--boom-text-meta);
+    letter-spacing: 0.08em;
+  }
+
+  .detail-metric__value {
+    margin-top: 4px;
+    color: var(--fg);
+    font-size: 1.5rem;
+    font-weight: 700;
+  }
+
+  /* 招募 / 强调区块 */
+  .detail-callout {
+    margin-top: clamp(32px, 4vw, 56px);
+    border: 1px solid var(--brand-line);
+    border-radius: var(--radius-card);
+    background: var(--brand-wash);
+    padding: var(--boom-space-5);
+  }
+
+  .detail-callout__title {
+    display: flex;
+    align-items: center;
+    gap: var(--boom-space-2);
+    margin: 0;
+    color: var(--fg);
+    font-size: var(--boom-text-h3);
+    font-weight: 700;
+  }
+
+  .detail-callout__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--brand);
+    box-shadow: 0 0 12px var(--brand);
+  }
+
+  /* Demo 窗口外壳 */
+  .demo-shell {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    background: var(--bg-elevated);
+  }
+
+  .demo-shell__bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 34px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg-sunken);
+    padding: 0 12px;
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: var(--boom-text-meta);
+  }
+
+  .demo-shell__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--border-strong);
+  }
+
+  .demo-shell__url {
+    overflow: hidden;
+    padding-left: 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .demo-shell__frame {
+    display: block;
+    width: 100%;
+    border: 0;
+    background: var(--bg-elevated);
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 后台外壳（运营 / 创始人）
+   * ------------------------------------------------------------------------- */
+
+  .console-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--boom-space-2);
+    margin-bottom: var(--boom-space-6);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: var(--boom-space-4);
+  }
+
+  .console-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--boom-text-body-sm);
+  }
+
+  .console-table th {
+    border-bottom: 1px solid var(--border-strong);
+    padding: 10px 12px;
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: var(--boom-text-meta);
+    letter-spacing: 0.08em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .console-table td {
+    border-bottom: 1px solid var(--border-soft);
+    padding: 12px;
+    color: var(--fg);
+    vertical-align: top;
+  }
+
+  .console-table tbody tr:hover {
+    background: var(--bg-sunken);
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 页头 / 页脚
+   * ------------------------------------------------------------------------- */
+
+  .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(18px);
+  }
+
+  .site-header__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--boom-space-4);
+    /* 与首屏的负 margin 同源：--boom-header-h 是整个页头的总高度
+     * （这里的内容高度 + 下面那条 1px 分隔线）。改一处即可。 */
+    min-height: calc(var(--boom-header-h) - 1px);
+    padding-block: var(--boom-space-3);
+  }
+
+  @media (min-width: 900px) {
+    .site-header__row {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+  }
+
+  .site-wordmark {
+    font-family: var(--font-mono);
+    font-size: 1.3rem;
+    line-height: 1;
+    letter-spacing: -0.02em;
+    color: var(--fg);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .site-wordmark b {
+    color: var(--brand);
+    font-weight: 400;
+  }
+
+  .site-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--boom-space-4);
+    overflow-x: auto;
+    color: var(--fg-muted);
+    font-size: var(--boom-text-body-sm);
+  }
+
+  .site-nav a {
+    flex: none;
+    color: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: color var(--boom-duration) var(--boom-ease);
+  }
+
+  .site-nav a:hover {
+    color: var(--brand-text);
+  }
+
+  .site-nav a[aria-current='page'] {
+    color: var(--brand-text);
+    font-weight: 700;
+  }
+
+  .site-footer {
+    border-top: 1px solid var(--border);
+    background: var(--bg-elevated);
+  }
+
+  .site-footer__row {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: var(--boom-space-2);
+    padding-block: var(--boom-space-5);
+    color: var(--fg-muted);
+    font-family: var(--font-mono);
+    font-size: var(--boom-text-meta);
+    letter-spacing: 0.04em;
+  }
+
+  @media (min-width: 720px) {
+    .site-footer__row {
+      flex-direction: row;
+      align-items: center;
+    }
+  }
+
+  .site-footer__links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 14px;
+  }
+
+  .site-footer__links a {
+    color: inherit;
+    text-decoration: none;
+    transition: color var(--boom-duration) var(--boom-ease);
+  }
+
+  .site-footer__links a:hover {
+    color: var(--brand-text);
+  }
+
+  .site-footer__status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--boom-space-2);
+  }
+
+  .site-footer__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 10px var(--success);
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 花朵装饰：悬停时从小标签旁绽开（纯装饰，不进无障碍树）
+   * ------------------------------------------------------------------------- */
+
+  .bloom-label {
+    position: relative;
+    isolation: isolate;
+    overflow: visible;
+  }
+
+  .bloom-pop {
+    position: absolute;
+    left: calc(100% - 5px);
+    top: calc(50% - 21px);
+    z-index: 8;
+    width: 34px;
+    height: 34px;
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-9px, 13px) rotate(-145deg) scale(0.08);
+    transform-origin: 50% 80%;
+    /* 设计稿：收起 320ms cubic-bezier(.4,0,.25,1)，展开 620ms 回弹。
+     * 投影由皮肤提供（--bloom-halo），深色皮肤要换成纯黑才压得住。 */
+    transition:
+      opacity 160ms ease,
+      transform 320ms var(--boom-ease);
+    filter: drop-shadow(var(--bloom-halo));
+  }
+
+  .bloom-pop svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+
+  .bloom-label:focus-visible .bloom-pop {
+    opacity: 1;
+    transform: translate(0, -3px) rotate(18deg) scale(1);
+    transition:
+      opacity 180ms var(--boom-ease),
+      transform 620ms var(--boom-ease-bloom);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .bloom-label:hover .bloom-pop {
+      opacity: 1;
+      transform: translate(0, -3px) rotate(18deg) scale(1);
+      transition:
+        opacity 180ms var(--boom-ease),
+        transform 620ms var(--boom-ease-bloom);
+    }
+  }
+
+  /* ---------------------------------------------------------------------------
+   * 响应式收敛
+   * ------------------------------------------------------------------------- */
+
+  @media (max-width: 900px) {
+    .section-head {
+      grid-template-columns: minmax(0, 1fr);
+      align-items: start;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .card-footer {
+      align-items: stretch;
+    }
+
+    .detail-metrics {
+      gap: var(--boom-space-4);
+    }
+  }
+
+}

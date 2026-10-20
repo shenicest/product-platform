@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Scratch directory used as TMPDIR by the vitest run (the host temp dir is
+    // not writable in this environment). Never part of the build output.
+    ".tmp/**",
   ]),
 ]);
 

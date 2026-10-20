@@ -1,5 +1,6 @@
 import { STAGE_LABELS } from '@/lib/project-filters'
 import { cn } from '@/lib/utils'
+import { Chip } from '@/components/ui/chip'
 
 export function ProjectBadges({
   stage,
@@ -15,13 +16,9 @@ export function ProjectBadges({
 
   return (
     <div className={cn('flex flex-wrap gap-1.5', className)}>
-      {stageLabel ? (
-        <span className="chip-hard chip-active">{stageLabel}</span>
-      ) : null}
+      {stageLabel ? <Chip tone="accent">{stageLabel}</Chip> : null}
       {categories?.map((category) => (
-        <span key={category} className="chip-hard">
-          {category}
-        </span>
+        <Chip key={category}>{category}</Chip>
       ))}
     </div>
   )

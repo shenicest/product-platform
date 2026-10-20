@@ -2,10 +2,12 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { CATEGORIES, ProjectStage } from '@shenicest/shared'
-import { cn } from '@/lib/utils'
 import { SORTS, SORT_LABELS, STAGE_LABELS } from '@/lib/project-filters'
+import { Button } from '@/components/ui/button'
+import { ChipButton } from '@/components/ui/chip'
 
-function Chip({
+/** 页内筛选按钮：选中态用 accent chip，保留 aria-pressed 供测试与读屏使用。 */
+function FilterChip({
   active,
   children,
   onClick,
@@ -15,20 +17,14 @@ function Chip({
   onClick: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <ChipButton
+      tone={active ? 'accent' : 'neutral'}
+      dot={active}
       aria-pressed={active}
-      className={cn(
-        'chip-hard cursor-pointer transition-colors',
-        active
-          ? 'chip-active'
-          : 'hover:border-primary/60 hover:text-foreground'
-      )}
+      onClick={onClick}
     >
-      {active ? <i aria-hidden /> : null}
       {children}
-    </button>
+    </ChipButton>
   )
 }
 
@@ -60,7 +56,7 @@ export function FilterBar() {
   return (
     <div className="mb-10 flex flex-col gap-5">
       <form
-        className="flex flex-col gap-3 sm:flex-row"
+        className="flex flex-col gap-3 sm:flex-row sm:items-center"
         onSubmit={(event) => {
           event.preventDefault()
           const value = new FormData(event.currentTarget).get('q')
@@ -71,56 +67,77 @@ export function FilterBar() {
           })
         }}
       >
-        <input
-          name="q"
-          defaultValue={q}
-          placeholder="搜索项目名称、团队或负责人"
-          className="h-11 flex-1 border border-input bg-card px-3.5 text-base outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
-        />
-        <div className="flex gap-3">
-          <select
-            value={sort}
-            aria-label="排序方式"
-            onChange={(event) => {
-              const value = event.target.value
-              navigate((params) => {
-                if (value === 'latest') params.delete('sort')
-                else params.set('sort', value)
-              })
-            }}
-            className="h-11 cursor-pointer border border-input bg-card px-3 text-sm outline-none transition-colors focus:border-primary"
-          >
-            {SORTS.map((value) => (
-              <option key={value} value={value}>
-                {SORT_LABELS[value]}
-              </option>
-            ))}
-          </select>
-          <button type="submit" className="btn-hard btn-primary px-6 py-3">
-            搜索
-          </button>
+        <div className="ui-search flex-1">
+          <svg viewBox="0 0 24 24" aria-hidden>
+            <circle
+              cx="11"
+              cy="11"
+              r="6.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            />
+            <path
+              d="m16 16 4.5 4.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          </svg>
+          <input
+            name="q"
+            type="search"
+            defaultValue={q}
+            aria-label="搜索项目名称、团队或负责人"
+            placeholder="搜索项目名称、团队或负责人"
+          />
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="w-36 shrink-0">
+            <select
+              value={sort}
+              aria-label="排序方式"
+              onChange={(event) => {
+                const value = event.target.value
+                navigate((params) => {
+                  if (value === 'latest') params.delete('sort')
+                  else params.set('sort', value)
+                })
+              }}
+              className="ui-select"
+            >
+              {SORTS.map((value) => (
+                <option key={value} value={value}>
+                  {SORT_LABELS[value]}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button type="submit">搜索</Button>
         </div>
       </form>
 
       <div className="flex flex-wrap items-center gap-2">
         {CATEGORIES.map((item) => (
-          <Chip
+          <FilterChip
             key={item}
             active={category === item}
             onClick={() => toggleParam('category', item, category)}
           >
             {item}
-          </Chip>
+          </FilterChip>
         ))}
         <span className="mx-2 h-4 w-px bg-border" aria-hidden />
         {(Object.values(ProjectStage) as number[]).map((value) => (
-          <Chip
+          <FilterChip
             key={value}
             active={stage === String(value)}
             onClick={() => toggleParam('stage', String(value), stage)}
           >
             {STAGE_LABELS[value]}
-          </Chip>
+          </FilterChip>
         ))}
       </div>
     </div>

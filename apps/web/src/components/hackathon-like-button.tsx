@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useOptionalAuth } from '@/components/auth-provider'
 import { useUserInteraction } from '@/components/user-interaction-provider'
+import { ChipButton } from '@/components/ui/chip'
+import { HeartIcon } from '@/components/ui/heart-icon'
 
 export function HackathonLikeButton({ projectId, count }: { projectId: number; count: number }) {
   const router = useRouter()
@@ -32,5 +34,19 @@ export function HackathonLikeButton({ projectId, count }: { projectId: number; c
     }
   }
 
-  return <button type="button" aria-label={liked ? '取消黑客松项目点赞' : '为黑客松项目点赞'} className={`hackathon-like ${liked ? 'active' : ''}`} onClick={toggle} disabled={pending} aria-pressed={liked}>{liked ? '♥' : '♡'} {likeCount} LIKES</button>
+  return (
+    <ChipButton
+      aria-label={liked ? '取消黑客松项目点赞' : '为黑客松项目点赞'}
+      aria-pressed={liked}
+      className="font-mono"
+      onClick={toggle}
+      disabled={pending}
+    >
+      <HeartIcon
+        filled={liked}
+        className={liked ? 'size-3.5 text-brand motion-safe:scale-110' : 'size-3.5'}
+      />{' '}
+      {likeCount} LIKES
+    </ChipButton>
+  )
 }

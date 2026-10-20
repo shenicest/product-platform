@@ -1,6 +1,7 @@
 import Link from 'next/link'
-import { cn } from '@/lib/utils'
 import type { SearchParams } from '@/lib/project-filters'
+import { buttonClass } from '@/components/ui/button'
+import { chipClass } from '@/components/ui/chip'
 
 interface PaginationProps {
   page: number
@@ -36,6 +37,11 @@ function getPageWindow(page: number, totalPages: number): (number | string)[] {
   return result
 }
 
+/** 上一页 / 下一步这类边缘导航：幽灵按钮。 */
+const EDGE = buttonClass({ variant: 'ghost', size: 'sm', className: 'font-mono' })
+/** 不可点时的同一枚外观。`.ui-btn[aria-disabled]` 负责淡出，这里只挡掉悬浮态。 */
+const EDGE_DISABLED = `${EDGE} pointer-events-none`
+
 export function Pagination({ page, totalPages, searchParams, basePath = '/' }: PaginationProps) {
   if (totalPages <= 1) return null
 
@@ -52,19 +58,14 @@ export function Pagination({ page, totalPages, searchParams, basePath = '/' }: P
     return qs ? `${path}?${qs}` : path
   }
 
-  const edgeLink =
-    'flex h-9 items-center border border-border px-3.5 font-mono text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary'
-  const edgeDisabled =
-    'flex h-9 items-center border border-border px-3.5 font-mono text-xs text-muted-foreground/40'
-
   return (
-    <nav aria-label="分页" className="mt-12 flex items-center justify-center gap-2">
+    <nav aria-label="分页" className="mt-12 flex flex-wrap items-center justify-center gap-2">
       {page > 1 ? (
-        <Link href={hrefFor(page - 1)} className={edgeLink}>
+        <Link href={hrefFor(page - 1)} className={EDGE}>
           ← PREV
         </Link>
       ) : (
-        <span aria-disabled="true" className={edgeDisabled}>
+        <span aria-disabled="true" className={EDGE_DISABLED}>
           ← PREV
         </span>
       )}
@@ -75,28 +76,30 @@ export function Pagination({ page, totalPages, searchParams, basePath = '/' }: P
             key={item}
             href={hrefFor(item)}
             aria-current={item === page ? 'page' : undefined}
-            className={cn(
-              'flex h-9 w-9 items-center justify-center border font-mono text-xs transition-colors',
-              item === page
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border text-muted-foreground hover:border-primary hover:text-primary'
-            )}
+            className={chipClass({
+              tone: item === page ? 'accent' : 'neutral',
+              interactive: true,
+              className: 'h-9 min-w-9 justify-center font-mono',
+            })}
           >
             {String(item).padStart(2, '0')}
           </Link>
         ) : (
-          <span key={item} className="px-1 font-mono text-xs text-muted-foreground">
+          <span
+            key={item}
+            className="px-1 font-mono text-label text-muted-foreground"
+          >
             …
           </span>
         )
       )}
 
       {page < totalPages ? (
-        <Link href={hrefFor(page + 1)} className={edgeLink}>
+        <Link href={hrefFor(page + 1)} className={EDGE}>
           NEXT →
         </Link>
       ) : (
-        <span aria-disabled="true" className={edgeDisabled}>
+        <span aria-disabled="true" className={EDGE_DISABLED}>
           NEXT →
         </span>
       )}

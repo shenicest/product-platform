@@ -8,26 +8,15 @@ export const OPERATOR_STATUS_LABELS: Record<number, string> = {
   [ProjectStatus.Rejected]: '已驳回',
 }
 
-export const OPERATOR_STATUS_COLORS: Record<number, string> = {
-  [ProjectStatus.PendingReview]: 'bg-primary/10 text-primary',
-  [ProjectStatus.RevisionRequired]: 'bg-amber-500/10 text-amber-600',
-  [ProjectStatus.Live]: 'bg-emerald-500/10 text-emerald-600',
-  [ProjectStatus.Delisted]: 'bg-rose-500/10 text-rose-600',
-  [ProjectStatus.Rejected]: 'bg-slate-500/10 text-slate-500',
-}
+// 状态配色不在这里：颜色属于主题层，由组件用 ChipTone 决定
+// （success / warning / danger / neutral），这样换肤时自动跟随。
+// 见 docs/boomland-ui-system.md。
 
 export const PROPOSAL_STATUS_LABELS: Record<number, string> = {
   0: '待审核',
   1: '已通过',
   2: '已驳回',
   3: '需修改',
-}
-
-export const PROPOSAL_STATUS_COLORS: Record<number, string> = {
-  0: 'bg-primary/10 text-primary',
-  1: 'bg-emerald-500/10 text-emerald-600',
-  2: 'bg-slate-500/10 text-slate-500',
-  3: 'bg-amber-500/10 text-amber-600',
 }
 
 export const STAGE_LABELS: Record<number, string> = {

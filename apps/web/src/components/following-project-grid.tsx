@@ -3,7 +3,7 @@
 import { ProjectCard } from '@/components/project-card'
 import { useUserInteraction } from '@/components/user-interaction-provider'
 import type { Project } from '@/server/projects'
-import Link from 'next/link'
+import { ButtonLink } from '@/components/ui/button'
 
 export function FollowingProjectGrid({ projects }: { projects: Project[] }) {
   const { following } = useUserInteraction()
@@ -11,16 +11,22 @@ export function FollowingProjectGrid({ projects }: { projects: Project[] }) {
 
   if (followedProjects.length === 0) {
     return (
-      <div className="border border-dashed border-border py-24 text-center">
-        <h2 className="text-xl font-bold">你还没有关注任何 Founder</h2>
-        <p className="mt-3 text-sm text-muted-foreground">关注 Founder 后，他们发布的所有 Live 项目都会汇集在这里。</p>
-        <Link href="/" className="btn-hard btn-primary mt-6">去发现 <span aria-hidden>→</span></Link>
+      <div className="ui-empty">
+        <h2 className="text-h3 font-bold text-foreground">你还没有关注任何 Founder</h2>
+        <p className="mt-3 text-body-sm text-muted-foreground">
+          关注 Founder 后，他们发布的所有 Live 项目都会汇集在这里。
+        </p>
+        <div className="mt-6 flex justify-center">
+          <ButtonLink href="/" variant="primary">
+            去发现 <span className="ui-btn__arrow" aria-hidden>→</span>
+          </ButtonLink>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="card-grid">
       {followedProjects.map((project) => (
         <ProjectCard key={project.id} project={project} />
       ))}

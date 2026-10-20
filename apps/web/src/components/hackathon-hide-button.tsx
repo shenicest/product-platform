@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useOptionalAuth } from '@/components/auth-provider'
 import { hideHackathonProject } from '@/lib/client-api'
+import { Button } from '@/components/ui/button'
 
 export function HackathonHideButton({ projectId }: { projectId: number }) {
   const auth = useOptionalAuth()
@@ -26,5 +27,9 @@ export function HackathonHideButton({ projectId }: { projectId: number }) {
     router.refresh()
   }
 
-  return <button type="button" className="detail-link" disabled={loading} onClick={hide}>{loading ? '下线中...' : '下线项目'}</button>
+  return (
+    <Button variant="ghost" size="sm" disabled={loading} onClick={hide}>
+      {loading ? '下线中...' : '下线项目'}
+    </Button>
+  )
 }

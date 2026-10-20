@@ -3,26 +3,21 @@
 import { useAuth } from '@/components/auth-provider'
 import Link from 'next/link'
 import { Role } from '@shenicest/shared'
+import { Button, ButtonLink } from '@/components/ui/button'
+import { Mono } from '@/components/ui/typography'
 
 export function AuthNav() {
   const { user, loading, logout } = useAuth()
 
   if (loading) {
-    return (
-      <span className="font-mono text-xs text-muted-foreground">
-        ...
-      </span>
-    )
+    return <Mono>...</Mono>
   }
 
   if (!user) {
     return (
-      <Link
-        href="/login"
-        className="btn-hard btn-secondary px-4 py-2 text-xs"
-      >
+      <ButtonLink href="/login" variant="secondary" size="sm">
         登录
-      </Link>
+      </ButtonLink>
     )
   }
 
@@ -34,7 +29,7 @@ export function AuthNav() {
       {isOperator ? (
         <Link
           href="/operator"
-          className="hidden font-mono text-xs text-destructive transition-colors hover:text-destructive/80 sm:inline"
+          className="hidden font-mono text-label text-danger transition-colors hover:text-danger-text sm:inline"
         >
           运营后台
         </Link>
@@ -42,20 +37,15 @@ export function AuthNav() {
       {isFounder ? (
         <Link
           href="/founder/dashboard"
-          className="hidden font-mono text-xs text-primary transition-colors hover:text-primary/80 sm:inline"
+          className="hidden font-mono text-label text-brand-text transition-colors hover:text-brand sm:inline"
         >
           创始人后台
         </Link>
       ) : null}
-      <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
-        {user.email ?? `#${user.user_id}`}
-      </span>
-      <button
-        onClick={logout}
-        className="font-mono text-xs text-muted-foreground transition-colors hover:text-primary"
-      >
+      <Mono className="hidden sm:inline">{user.email ?? `#${user.user_id}`}</Mono>
+      <Button variant="text" onClick={logout}>
         退出
-      </button>
+      </Button>
     </div>
   )
 }

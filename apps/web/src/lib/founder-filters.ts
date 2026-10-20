@@ -9,14 +9,9 @@ export const FOUNDER_STATUS_LABELS: Record<number, string> = {
   [ProjectStatus.Rejected]: '已驳回',
 }
 
-export const FOUNDER_STATUS_COLORS: Record<number, string> = {
-  [ProjectStatus.Draft]: 'bg-muted text-muted-foreground',
-  [ProjectStatus.PendingReview]: 'bg-primary/10 text-primary',
-  [ProjectStatus.RevisionRequired]: 'bg-amber-500/10 text-amber-600',
-  [ProjectStatus.Live]: 'bg-emerald-500/10 text-emerald-600',
-  [ProjectStatus.Delisted]: 'bg-rose-500/10 text-rose-600',
-  [ProjectStatus.Rejected]: 'bg-slate-500/10 text-slate-500',
-}
+// 状态配色不在这里：颜色属于主题层，由组件用 ChipTone 决定
+// （success / warning / danger / neutral），这样换肤时自动跟随。
+// 见 docs/boomland-ui-system.md。
 
 export interface FounderFilters {
   status?: number

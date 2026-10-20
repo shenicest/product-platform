@@ -2,6 +2,10 @@
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { Pagination } from '@/components/pagination'
+import { Button } from '@/components/ui/button'
+import { Chip, type ChipTone } from '@/components/ui/chip'
+import { Card, EmptyState } from '@/components/ui/surface'
+import { Eyebrow } from '@/components/ui/typography'
 import type { AuditRecord } from '@/server/operator'
 import {
   OPERATOR_PAGE_SIZE,
@@ -10,23 +14,18 @@ import {
 } from '@/lib/operator-filters'
 import { projectIdLabel } from '@/lib/utils'
 
-function ActionBadge({ action }: { action: string }) {
-  const label = AUDIT_ACTION_LABELS[action] ?? action
-  const isNegative = action === 'reject' || action === 'delist' || action === 'reject_proposal'
-  const isPositive = action === 'approve' || action === 'restore' || action === 'approve_proposal'
+/** 审计动作 → 标签色调（只映射语义，不写颜色）。 */
+function actionTone(action: string): ChipTone {
+  if (action === 'reject' || action === 'delist' || action === 'reject_proposal') return 'danger'
+  if (action === 'approve' || action === 'restore' || action === 'approve_proposal') return 'success'
+  return 'warning'
+}
 
+function ActionBadge({ action }: { action: string }) {
   return (
-    <span
-      className={`inline-flex items-center px-2 py-1 font-mono text-[10px] tracking-[0.08em] ${
-        isNegative
-          ? 'bg-rose-500/10 text-rose-600'
-          : isPositive
-          ? 'bg-emerald-500/10 text-emerald-600'
-          : 'bg-amber-500/10 text-amber-600'
-      }`}
-    >
-      {label}
-    </span>
+    <Chip tone={actionTone(action)}>
+      {AUDIT_ACTION_LABELS[action] ?? action}
+    </Chip>
   )
 }
 
@@ -55,19 +54,17 @@ export function OperatorAuditRecordsClient({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="mb-6">
-        <p className="eyebrow">AUDIT LOG</p>
-        <h2 className="mt-2 text-[clamp(24px,3vw,32px)] font-bold leading-[1.15]">
+    <div className="flex flex-col gap-6">
+      <header>
+        <Eyebrow>AUDIT LOG</Eyebrow>
+        <h2 className="mt-2 text-[clamp(24px,3vw,32px)] leading-[1.15] font-bold">
           审计记录
         </h2>
-        <p className="mt-1 font-mono text-xs text-muted-foreground">
-          共 {total} 条操作记录
-        </p>
-      </div>
+        <p className="mono mt-1">共 {total} 条操作记录</p>
+      </header>
 
       <form
-        className="flex flex-col gap-3 sm:flex-row"
+        className="flex flex-col gap-3 sm:flex-row sm:items-end"
         onSubmit={(event) => {
           event.preventDefault()
           const formData = new FormData(event.currentTarget)
@@ -97,79 +94,90 @@ export function OperatorAuditRecordsClient({
           })
         }}
       >
-        <input
-          name="projectId"
-          defaultValue={params.projectId ?? ''}
-          placeholder="项目 ID"
-          className="h-11 w-28 border border-input bg-card px-3.5 text-base outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
-        />
-        <div className="flex items-center gap-2">
-          <label className="font-mono text-[10px] text-muted-foreground">FROM</label>
+        <div className="sm:w-32">
           <input
+            name="projectId"
+            defaultValue={params.projectId ?? ''}
+            placeholder="项目 ID"
+            aria-label="项目 ID"
+            className="ui-input"
+          />
+        </div>
+        <div className="ui-field">
+          <label className="ui-label" htmlFor="audit-from">
+            FROM
+          </label>
+          <input
+            id="audit-from"
             name="from"
             type="date"
             defaultValue={params.from ?? ''}
-            className="h-11 border border-input bg-card px-3.5 text-sm outline-none transition-colors focus:border-primary"
+            className="ui-input"
           />
         </div>
-        <div className="flex items-center gap-2">
-          <label className="font-mono text-[10px] text-muted-foreground">TO</label>
+        <div className="ui-field">
+          <label className="ui-label" htmlFor="audit-to">
+            TO
+          </label>
           <input
+            id="audit-to"
             name="to"
             type="date"
             defaultValue={params.to ?? ''}
-            className="h-11 border border-input bg-card px-3.5 text-sm outline-none transition-colors focus:border-primary"
+            className="ui-input"
           />
         </div>
-        <button type="submit" className="btn-hard btn-primary px-6 py-3">
-          筛选
-        </button>
+        <Button type="submit">筛选</Button>
       </form>
 
       {initialRecords.length === 0 ? (
-        <div className="border border-dashed border-border py-24 text-center">
-          <p className="font-mono text-xs tracking-[0.12em] text-primary">
-            NO RECORDS
-          </p>
-          <p className="mt-3 text-base text-muted-foreground">
-            暂无审计记录
-          </p>
-        </div>
+        <EmptyState title="NO RECORDS" description="暂无审计记录" />
       ) : (
         <>
-          <div className="space-y-3">
-            {initialRecords.map((record) => (
-              <div
-                key={record.id}
-                className="flex flex-col gap-2 border border-border bg-card p-4 sm:flex-row sm:items-center sm:gap-4"
-              >
-                <ActionBadge action={record.action} />
-                <div className="flex flex-1 flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-primary">
-                      {projectIdLabel(record.projectId)}
-                    </span>
-                    {record.proposalId ? (
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        提案 #{record.proposalId}
-                      </span>
-                    ) : null}
-                  </div>
-                  {record.reason ? (
-                    <p className="text-sm text-muted-foreground">{record.reason}</p>
-                  ) : null}
-                </div>
-                <div className="flex flex-col items-end gap-0.5">
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    操作人 #{record.operatorId}
-                  </span>
-                  <span className="font-mono text-[10px] text-muted-foreground">
-                    {new Date(record.createdAt).toLocaleString('zh-CN')}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+          <Card static>
+            <div className="overflow-x-auto">
+              <table className="console-table">
+                <thead>
+                  <tr>
+                    <th scope="col">动作</th>
+                    <th scope="col">项目</th>
+                    <th scope="col">提案</th>
+                    <th scope="col">原因</th>
+                    <th scope="col">操作人</th>
+                    <th scope="col">时间</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {initialRecords.map((record) => (
+                    <tr key={record.id}>
+                      <td>
+                        <ActionBadge action={record.action} />
+                      </td>
+                      <td>
+                        <span className="card-id">{projectIdLabel(record.projectId)}</span>
+                      </td>
+                      <td>
+                        <span className="mono">
+                          {record.proposalId ? `#${record.proposalId}` : '—'}
+                        </span>
+                      </td>
+                      <td className="max-w-[42ch]">
+                        <span className="mono">{record.reason ? record.reason : '—'}</span>
+                      </td>
+                      <td>
+                        <span className="mono">#{record.operatorId}</span>
+                      </td>
+                      <td>
+                        <span className="mono whitespace-nowrap">
+                          {new Date(record.createdAt).toLocaleString('zh-CN')}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
           <Pagination
             page={page}
             totalPages={totalPages}

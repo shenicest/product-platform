@@ -1,0 +1,76 @@
+/* ============================================================================
+ * L1 · SCALES  —  colour-independent design scale
+ * ----------------------------------------------------------------------------
+ * 这一层**只**存放与颜色无关的设计尺度：间距、圆角、字号、动效。
+ *
+ * 没有颜色、没有阴影（阴影带色）、没有焦点色 —— 那些都属于 L0
+ * （styles/skins/boomland.css），因为它们表达的是配色而不是尺度：
+ *   · 阴影是带颜色的投影，和底色绑定；
+ *   · 焦点环要保证在该配色下可见，不能只靠一个通用深蓝。
+ *
+ * 本文件应始终不含任何色值字面量，test/styles/architecture.test.ts 会校验。
+ * ========================================================================== */
+
+:root {
+  /* ---- 页头高度 ------------------------------------------------------- *
+   * 实心吸顶导航栏的**总**高度（含底部分隔线）。
+   * `.cover` 用它把首屏顶到视口顶端，所以这个值必须与页头实际渲染高度一致，
+   * 否则首屏会上下错位（多出来的部分露出页面底色 / 折叠线上移）。
+   *
+   * 页头在 900px 以下会折成两行（导航换行），所以分两档。
+   * 改 `site-header` 的高度 / 换行断点时同步改这里。
+   * patterns.css 里 `.site-header__row` 也引用它，两处不会各说各话。 */
+  --boom-header-h: 73px;
+
+  /* ---- 间距节奏 · 8px 基数 -------------------------------------------- */
+  --boom-space-1: 4px;
+  --boom-space-2: 8px;
+  --boom-space-3: 12px;
+  --boom-space-4: 16px;
+  --boom-space-5: 24px;
+  --boom-space-6: 32px;
+  --boom-space-7: 48px;
+  --boom-space-8: 64px;
+  --boom-space-9: 80px;
+  --boom-space-gutter: clamp(20px, 4.5vw, 80px);
+
+  /* ---- 圆角 ---------------------------------------------------------- */
+  --boom-radius-xs: 6px;
+  --boom-radius-sm: 10px;
+  --boom-radius-md: 12px;
+  --boom-radius-lg: 16px;
+  --boom-radius-xl: 20px;
+  --boom-radius-2xl: 24px;
+  --boom-radius-pill: 9999px;
+
+  /* 卡片专用圆角：设计稿的 `.product-card` 是 18px。
+   * 单独一档而不是复用 --boom-radius-lg(16px) 或 -xl(20px) —— 设计稿里
+   * 卡片(18) / 面板(16) / 指标卡(15) 是三个不同的值，混用会一眼看出偏差。 */
+  --boom-radius-card: 18px;
+
+  /* ---- 字号 ---------------------------------------------------------- */
+  --boom-text-meta: 0.6875rem; /* 11px */
+  --boom-text-label: 0.75rem; /* 12px */
+  --boom-text-body-sm: 0.8125rem; /* 13px */
+  --boom-text-body: 0.9375rem; /* 15px */
+  --boom-text-body-lg: 1rem; /* 16px */
+  --boom-text-h3: 1.25rem; /* 20px */
+  --boom-text-h2: clamp(1.5rem, 2.4vw, 2.125rem);
+  --boom-text-h1: clamp(2rem, 4vw, 3.5rem);
+  --boom-text-display: clamp(3rem, 8vw, 7rem);
+
+  /* ---- 动效 ---------------------------------------------------------- */
+  --boom-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --boom-ease-bloom: cubic-bezier(0.22, 1.35, 0.35, 1);
+  --boom-duration-fast: 120ms;
+  --boom-duration: 200ms;
+  --boom-duration-slow: 320ms;
+}
+
+/* 页头在 900px 以下折成两行（导航换行），高度随之变高。
+ * 首屏的负 margin 依赖这个值，所以必须跟着断点走。 */
+@media (max-width: 899px) {
+  :root {
+    --boom-header-h: 90.4px;
+  }
+}

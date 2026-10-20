@@ -40,3 +40,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# scratch: used as TMPDIR by local vitest runs and for ad-hoc probes.
+# Never part of the source tree or the build output.
+/.tmp/

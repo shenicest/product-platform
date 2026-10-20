@@ -1,0 +1,181 @@
+/* ============================================================================
+ * L2 · SEMANTIC TOKENS  —  the colour contract
+ * ----------------------------------------------------------------------------
+ * 这一层是样式与组件唯一允许消费的颜色契约。
+ * 规则：
+ *   · 只允许引用 L0 的 --boom-*，不得出现裸色值。
+ *   · 改配色 = 改 L0 的 --boom-* 色阶，本层自动跟随。
+ *   · 组件 / 组件类只能引用本层的颜色 token。
+ *
+ * 命名分两组，互不冲突：
+ *   · --brand-*  BoomLand 自有语义（绽放粉 / 天空蓝 / 生长绿）
+ *   · shadcn 既有语义（--background / --primary / --accent …）
+ *     它们**派生自** --brand-* 与表面 token，不是独立真相源。
+ * ========================================================================== */
+
+:root {
+  /* ---- 表面 ---------------------------------------------------------- */
+  --bg: var(--boom-cloud-1);
+  --bg-elevated: var(--boom-cloud-0);
+  --bg-sunken: var(--boom-cloud-3);
+  --bg-inset: var(--boom-cloud-2);
+  --bg-overlay: var(--boom-overlay);
+
+  /* ---- 文字 ---------------------------------------------------------- */
+  --fg: var(--boom-ink-9);
+  --fg-muted: var(--boom-ink-5);
+  --fg-subtle: var(--boom-ink-4);
+  --fg-inverse: var(--boom-cloud-0);
+
+  /* ---- 描边 ---------------------------------------------------------- */
+  --border: var(--boom-line-3);
+  --border-soft: var(--boom-line-1);
+  --border-strong: var(--boom-line-4);
+  --border-focus: var(--boom-focus);
+
+  /* ---- 品牌主色：绽放粉（关键操作） ------------------------------------ */
+  --brand: var(--boom-pink-6);
+  --brand-hover: var(--boom-pink-5);
+  --brand-press: var(--boom-pink-7);
+  --brand-ink: var(--boom-ink-9);
+  --brand-soft: var(--boom-pink-3);
+  --brand-wash: var(--boom-pink-1);
+  --brand-line: var(--boom-pink-4);
+  --brand-text: var(--boom-pink-8);
+
+  /* ---- 品牌空间：天空蓝 ------------------------------------------------ */
+  --sky: var(--boom-sky-4);
+  --sky-soft: var(--boom-sky-1);
+  --sky-wash: var(--boom-cloud-3);
+  --sky-deep: var(--boom-sky-7);
+  --sky-text: var(--boom-sky-6);
+
+  /* ---- 状态 ---------------------------------------------------------- */
+  --success: var(--boom-moss-5);
+  --success-soft: var(--boom-moss-1);
+  --success-line: var(--boom-moss-2);
+  --success-text: var(--boom-moss-6);
+
+  --warning: var(--boom-amber-4);
+  --warning-soft: var(--boom-amber-1);
+  --warning-line: var(--boom-amber-2);
+  --warning-text: var(--boom-amber-5);
+
+  --danger: var(--boom-red-4);
+  --danger-soft: var(--boom-red-1);
+  --danger-line: var(--boom-red-2);
+  --danger-text: var(--boom-red-5);
+
+  /* ---- 焦点 ---------------------------------------------------------- */
+  --focus-ring: var(--boom-focus);
+
+  /* ---- 形状 / 层次 的语义别名 ----------------------------------------- */
+  --radius-card: var(--boom-radius-card);
+  --radius-panel: var(--boom-radius-lg);
+  --radius-field: var(--boom-radius-sm);
+  --radius-chip: var(--boom-radius-pill);
+  --radius-btn: var(--boom-radius-pill);
+
+  --shadow-card: var(--boom-shadow-1);
+  --shadow-card-hover: var(--boom-shadow-2);
+  --shadow-float: var(--boom-shadow-3);
+  --shadow-modal: var(--boom-shadow-4);
+  --shadow-accent: var(--boom-shadow-accent);
+
+  /* 小浮标（首屏「好想法，正在开花」这类胶囊）专用投影。
+   * 比 --shadow-float 收很多，原因不只是视觉：模糊半径过大会让
+   * Chromium 关掉浮标上小字的次像素抗锯齿，字就发虚。详见 boomland.css。 */
+  --shadow-tag: var(--boom-shadow-tag);
+  --bloom-halo: var(--boom-bloom-halo);
+
+  /* ---- 装饰 ---------------------------------------------------------- */
+  --deco-flower: var(--boom-flower);
+  --deco-pixel-grid: var(--boom-pixel-grid);
+
+  /* 首屏插画与其遮罩。L0 提供原始素材，这里只做语义别名，
+   * 让 patterns.css 不必直接引用 L0。
+   *
+   * 缩放/定位/平铺不再走变量：设计稿 .cover-art 就写死了
+   * `background-size: cover; background-position: 50% 100%`，
+   * 而且它们是结构属性、不随配色变化，所以直接留在 patterns.css 里。 */
+  --cover-image: var(--cover-art);
+  --cover-mask: var(--cover-veil);
+
+  /* 首屏排版轴的专用色：天空底色 / 巨型字标 / 落在插画上的小字与它的描边光。
+   * 同样由 L0 给原值（--boom-cover-*），这里只做语义别名。 */
+  --cover-base: var(--boom-cover-base);
+  --cover-word: var(--boom-cover-word);
+  --cover-ink: var(--boom-cover-ink);
+  --cover-ink-halo: var(--boom-cover-ink-halo);
+
+  /* ==========================================================================
+   * 组件私有语义（L3 组件类消费；皮肤无需关心）
+   * ======================================================================== */
+  --btn-primary-bg: var(--brand);
+  --btn-primary-fg: var(--brand-ink);
+  --btn-primary-bg-hover: var(--brand-hover);
+  --btn-primary-bg-press: var(--brand-press);
+  --btn-secondary-bg: var(--bg-elevated);
+  --btn-secondary-fg: var(--fg);
+  --btn-secondary-line: var(--border-strong);
+  --btn-ghost-bg: var(--bg-sunken);
+  --btn-ghost-fg: var(--fg);
+
+  --field-bg: var(--bg-elevated);
+  --field-fg: var(--fg);
+  --field-line: var(--border-strong);
+  --field-placeholder: var(--fg-subtle);
+
+  --chip-bg: var(--bg-inset);
+  --chip-fg: var(--fg-muted);
+  --chip-line: var(--border);
+
+  --card-bg: var(--bg-elevated);
+  --card-line: var(--border);
+  --card-shadow: var(--boom-shadow-card);
+  --card-shadow-hover: var(--boom-shadow-card-hover);
+  --card-line-hover: var(--brand-line);
+
+  /* ==========================================================================
+   * shadcn / Tailwind 兼容映射（派生，非真相源）
+   * 保证 `bg-card` `text-primary` `border-border` 等既有工具类继续有效。
+   * ======================================================================== */
+  --background: var(--bg);
+  --foreground: var(--fg);
+  --card: var(--bg-elevated);
+  --card-foreground: var(--fg);
+  --popover: var(--bg-elevated);
+  --popover-foreground: var(--fg);
+  --primary: var(--brand);
+  --primary-foreground: var(--brand-ink);
+  --secondary: var(--bg-sunken);
+  --secondary-foreground: var(--fg);
+  --muted: var(--bg-inset);
+  --muted-foreground: var(--fg-muted);
+  /* shadcn 的 accent 是"轻量强调底"。它必须与 globals.css 里
+   * `--color-accent` 指向同一个值，否则 `bg-accent`（Tailwind）和
+   * `var(--accent)`（shadcn 原语）会给出两种颜色。
+   * 这里取 brand-soft，与 @theme inline 保持一致；
+   * 更淡的 brand-wash 保留给 .ui-note--accent 之类的大面积铺底。 */
+  --accent: var(--brand-soft);
+  --accent-foreground: var(--brand-text);
+  --destructive: var(--danger);
+  --input: var(--border-strong);
+  --ring: var(--focus-ring);
+  --radius: var(--radius-card);
+
+  --sidebar: var(--bg-elevated);
+  --sidebar-foreground: var(--fg);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-ink);
+  --sidebar-accent: var(--bg-sunken);
+  --sidebar-accent-foreground: var(--fg);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--focus-ring);
+
+  --chart-1: var(--brand);
+  --chart-2: var(--sky);
+  --chart-3: var(--success);
+  --chart-4: var(--warning);
+  --chart-5: var(--fg-subtle);
+}

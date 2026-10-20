@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createProjectProposal, updateProjectProposal } from '@/lib/client-api'
 import { FormField, FormSection, TextArea, TextInput } from '@/components/submit/form-fields'
+import { Button } from '@/components/ui/button'
 
 // Post-live proposals may only touch these fields (ADR-0012).
 interface ProposalFields {
@@ -82,12 +83,8 @@ export function ProjectProposalForm({
   }
 
   return (
-    <div className="space-y-6">
-      {serverError ? (
-        <div className="border-2 border-destructive bg-card p-4 text-sm text-destructive">
-          {serverError}
-        </div>
-      ) : null}
+    <div className="flex flex-col gap-6">
+      {serverError ? <div className="ui-note ui-note--danger">{serverError}</div> : null}
       <FormSection index={1} title="可修改内容">
         <FormField label="项目背景与问题" htmlFor="problemStatement" required error={errors.problemStatement}>
           <TextArea
@@ -132,9 +129,9 @@ export function ProjectProposalForm({
           />
         </FormField>
       </FormSection>
-      <button type="button" onClick={submit} disabled={submitting} className="btn-hard btn-primary">
+      <Button onClick={submit} disabled={submitting} className="self-start">
         {submitting ? '提交中...' : proposalId ? '重新提交修改' : '提交修改提案'}
-      </button>
+      </Button>
     </div>
   )
 }

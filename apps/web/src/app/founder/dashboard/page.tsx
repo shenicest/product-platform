@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { FounderApiError, getFounderProjects, getFounderStats, type FounderProjectQuery } from '@/server/founder'
 import { FounderDashboard } from '@/components/founder/founder-dashboard'
+import { Eyebrow } from '@/components/ui/typography'
 import {
   FOUNDER_PAGE_SIZE,
   parseFounderParams,
@@ -66,13 +67,13 @@ export default async function FounderDashboardPage(
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
+    <div className="shell shell--narrow py-12 sm:py-16">
       <header className="mb-10">
-        <p className="eyebrow">FOUNDER DASHBOARD</p>
-        <h1 className="mt-3 text-[clamp(28px,4vw,40px)] font-bold leading-[1.1]">
+        <Eyebrow>FOUNDER DASHBOARD</Eyebrow>
+        <h1 className="mt-3 text-[clamp(28px,4vw,40px)] leading-[1.1] font-bold">
           创始人后台
         </h1>
-        <p className="mt-3 max-w-[60ch] text-base leading-[1.7] text-muted-foreground">
+        <p className="mt-3 max-w-[60ch] text-body leading-[1.7] text-muted-foreground">
           管理你提交的项目，追踪审核进度，并随时更新项目信息。
         </p>
       </header>

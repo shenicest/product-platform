@@ -1,7 +1,17 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
-import { getBathSlots, bookBathSlot, cancelBathSlot, checkoutBathSlot, getBathConfig, updateBathConfig } from '@/lib/client-api'
+import { useCallback, useEffect, useState } from 'react'
+import {
+  bookBathSlot,
+  cancelBathSlot,
+  checkoutBathSlot,
+  getBathConfig,
+  getBathSlots,
+  updateBathConfig,
+} from '@/lib/client-api'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { ChipButton } from '@/components/ui/chip'
 
 interface BathSlot {
   timeSlot: string
@@ -53,12 +63,6 @@ function getTodayStr() {
   return `${y}-${m}-${d}`
 }
 
-function formatDate(dateStr: string) {
-  const [, m, d] = dateStr.split('-')
-  const weekday = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][new Date(`${dateStr}T00:00:00`).getDay()]
-  return `${Number(m)}/${Number(d)} ${weekday}`
-}
-
 function timeOptions() {
   const options: string[] = []
   for (let h = 0; h < 24; h++) {
@@ -76,7 +80,7 @@ function hasStarted(dateStr: string, timeSlot: string, now: Date): boolean {
   return now >= new Date(`${dateStr}T${timeSlot}:00`)
 }
 
-export function BathBooking({ userId: _userId, email }: { userId: string; email: string | null }) {
+export function BathBooking({ email }: { email: string | null }) {
   const today = getTodayStr()
   const isAdmin = !!email && email.toLowerCase().endsWith('@shenicest.cn')
   const TIME_OPTIONS = timeOptions()
@@ -189,198 +193,279 @@ export function BathBooking({ userId: _userId, email }: { userId: string; email:
   const genderLabel = data?.gender === 'male' ? '♂ 男浴室' : data?.gender === 'female' ? '♀ 女浴室' : ''
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-8">
-      <h1 className="mb-2 text-2xl font-bold">🚿 洗澡间预约</h1>
-      <p className="mb-1 text-sm text-muted-foreground">
-         每人每天仅限预约 1 次，可选择 30 分钟或连续 60 分钟。
-      </p>
-      <p className="mb-4 font-mono text-sm">
-         日期：
-         <input type="date" min={config?.eventStart} max={config?.eventEnd} value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="rounded-md border border-border bg-background px-2 py-1 font-medium text-primary" />
-      </p>
-
-      {canSelectGender && (
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">浴室：</span>
-          <button
-            onClick={() => setGender('male')}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${gender === 'male' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
-          >
-            ♂ 男浴室
-          </button>
-          <button
-            onClick={() => setGender('female')}
-            className={`rounded-md px-4 py-1.5 text-sm font-medium transition-colors ${gender === 'female' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}
-          >
-            ♀ 女浴室
-          </button>
+    <div className="min-h-screen pb-16">
+      {/* 页头：天空蓝带，只做身份说明，不放操作 */}
+      <header className="border-b border-border bg-sky-soft">
+        <div className="shell shell--text py-8">
+          <p className="eyebrow">BATH HOUSE / RESERVATION</p>
+          <h1 className="mt-2 font-display text-3xl font-black tracking-tight">
+            🚿 洗澡间预约
+          </h1>
+          <p className="mt-3 text-body-sm text-muted-foreground">
+            每人每天仅限预约 1 次，可选择 30 分钟或连续 60 分钟。
+          </p>
         </div>
-      )}
+      </header>
 
-      {isAdmin && (
-        <div className="mb-6 rounded-lg border border-primary/40 bg-primary/5 px-4 py-4">
-          <h2 className="mb-3 text-sm font-semibold">管理员设置 — 预约开放时间</h2>
-          <div className="flex flex-wrap items-center gap-2">
-            <label className="text-sm text-muted-foreground">开始</label>
-            <input
-              type="date"
-              value={editStart}
-              onChange={(e) => setEditStart(e.target.value)}
-              className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-            />
-            <label className="text-sm text-muted-foreground">结束</label>
-            <input
-              type="date"
-              value={editEnd}
-              onChange={(e) => setEditEnd(e.target.value)}
-              className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-            />
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <label className="text-sm text-muted-foreground">每天</label>
-            <select
-              value={editDailyStart}
-              onChange={(e) => setEditDailyStart(e.target.value)}
-              className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-            >
-              {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <label className="text-sm text-muted-foreground">至</label>
-            <select
-              value={editDailyEnd}
-              onChange={(e) => setEditDailyEnd(e.target.value)}
-              className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
-            >
-              {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-            <label className="text-sm text-muted-foreground">（整点/半点）</label>
-            <button
-              onClick={handleSaveConfig}
-              disabled={configSaving}
-              className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-            >
-              {configSaving ? '保存中...' : '保存'}
-            </button>
-          </div>
-          {configMsg && <p className="mt-2 text-xs text-muted-foreground">{configMsg}</p>}
-          <p className="mt-2 text-xs text-muted-foreground/70">当前开放范围：{config?.eventStart ?? '-'} 至 {config?.eventEnd ?? '-'}，每天 {config?.dailyStart ?? '-'} - {config?.dailyEnd ?? '-'}</p>
-        </div>
-      )}
+      <div className="shell shell--text pt-6">
+        {/* 日期 + 浴室：预约的入口条件 */}
+        <section className="ui-card ui-card--static mb-4">
+          <div className="flex flex-wrap items-end gap-4 p-5">
+            <label className="ui-field w-44">
+              <span className="ui-label">日期</span>
+              <input
+                type="date"
+                min={config?.eventStart}
+                max={config?.eventEnd}
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="ui-input font-mono"
+              />
+            </label>
 
-      <div className="mb-6 rounded-lg border border-border bg-muted/30 px-4 py-4">
-        <h2 className="mb-2 text-sm font-semibold">预约须知</h2>
-        <ul className="space-y-1.5 text-sm text-muted-foreground">
-          <li>· 按时间段预约，尽量准时到达</li>
-          <li>· 洗漱不要超过自己的时段</li>
-          <li>· 预约开始后即可签退，请在预约结束后 3 分钟内完成签退</li>
-          <li>· 大家要自行带洗漱用品、浴巾</li>
-          <li>· 直接去 C 座前台报&quot;黑克松女生&quot;&quot;黑客松男生&quot;进对应的房间，前台会登记信息，然后帮我们开门。（记得带身份证）</li>
-          <li>· 酒店地址：北辰汇园酒店 C 座（酒店距离 1.7km）</li>
-        </ul>
-      </div>
-
-      {error && (
-        <div className="mb-4 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {error}
-        </div>
-      )}
-
-      {loading ? (
-        <div className="py-16 text-center text-muted-foreground">加载中...</div>
-      ) : !data ? (
-        <div className="py-16 text-center text-muted-foreground">无法加载数据</div>
-      ) : (
-        <>
-          <h2 className="mb-4 text-lg font-semibold">{genderLabel}</h2>
-
-          {data.myBooking && (
-            <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3">
-              <p className="text-sm">
-                您当天已预约：<span className="font-medium">{data.myBooking.timeSlot} - {addMinutes(data.myBooking.timeSlot, data.myBooking.durationSlots * 30)}</span>
-              </p>
-              {data.myBooking.checkedOutAt && <p className="mt-1 text-xs text-muted-foreground">已签退</p>}
-            </div>
-          )}
-
-          <div className="space-y-2">
-            {data.slots.map((slot) => {
-              const end_time = add30Min(slot.timeSlot)
-              const isDisabled = (data.myBooking && !slot.isMine) || actionLoading !== null
-              const isMySlot = slot.isMine
-              const isMyBookingStart = isMySlot && data.myBooking?.timeSlot === slot.timeSlot
-              const isPast = !slot.booked && isPastSlot(data.date, slot.timeSlot)
-              const started = hasStarted(data.date, slot.timeSlot, now)
-
-              return (
-                <div
-                  key={slot.timeSlot}
-                  className={`flex items-center justify-between rounded-lg border px-4 py-3 transition-colors ${
-                    slot.booked
-                      ? isMySlot
-                        ? 'border-primary/40 bg-primary/5'
-                        : 'border-border bg-muted/30'
-                      : isPast
-                        ? 'border-border bg-muted/10'
-                        : 'border-border hover:border-primary/30 hover:bg-muted/20'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-24 font-mono text-sm font-medium">
-                      {slot.timeSlot} - {end_time}
-                    </span>
-                    {slot.booked ? (
-                      <span className={`text-sm ${isMySlot ? 'font-medium text-primary' : 'text-muted-foreground'}`}>
-                        {isMySlot ? '我的预约' : (occupiedSlotName(data.date, data.gender, slot.timeSlot) ?? slot.name)}
-                      </span>
-                    ) : (
-                      <span className={`text-sm ${isPast ? 'text-muted-foreground/60' : 'text-muted-foreground'}`}>
-                        {isPast ? '已过可预约时段' : '可预约'}
-                      </span>
-                    )}
-                  </div>
-
-                  <div>
-                    {slot.booked && isMyBookingStart ? (
-                      data.myBooking?.checkedOutAt ? (
-                        <span className="text-xs text-muted-foreground">已签退</span>
-                      ) : started ? (
-                       <button
-                          onClick={() => slot.bookingId && handleCheckout(slot.bookingId)}
-                          disabled={actionLoading === 'checkout'}
-                          className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-                        >
-                          {actionLoading === 'checkout' ? '签退中...' : '签退'}
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => slot.bookingId && handleCancel(slot.bookingId)}
-                          disabled={actionLoading === 'cancel'}
-                          className="rounded-md border border-destructive/30 px-3 py-1 text-xs text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
-                        >
-                          {actionLoading === 'cancel' ? '取消中...' : '取消'}
-                        </button>
-                      )
-                    ) : !slot.booked && !isPast ? (
-                      <button
-                        onClick={() => handleBook(slot.timeSlot)}
-                        disabled={isDisabled}
-                        className="rounded-md bg-primary px-3 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-                      >
-                         {actionLoading === slot.timeSlot ? '预约中...' : durationSlots === 2 ? '预约 60 分钟' : '预约 30 分钟'}
-                      </button>
-                    ) : null}
-           </div>
-           {!data.myBooking && <div className="mt-4 flex items-center gap-2 text-sm">
-             <span className="text-muted-foreground">预约时长：</span>
-             <button onClick={() => setDurationSlots(1)} className={`rounded-md px-3 py-1 ${durationSlots === 1 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>30 分钟</button>
-             <button onClick={() => setDurationSlots(2)} className={`rounded-md px-3 py-1 ${durationSlots === 2 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>连续 60 分钟</button>
-           </div>}
+            {canSelectGender && (
+              <div className="ui-field" role="group" aria-label="浴室选择">
+                <span className="ui-label">浴室</span>
+                <div className="flex items-center gap-2">
+                  <ChipButton
+                    tone={gender === 'male' ? 'accent' : 'neutral'}
+                    aria-pressed={gender === 'male'}
+                    onClick={() => setGender('male')}
+                    className="min-h-9"
+                  >
+                    ♂ 男浴室
+                  </ChipButton>
+                  <ChipButton
+                    tone={gender === 'female' ? 'accent' : 'neutral'}
+                    aria-pressed={gender === 'female'}
+                    onClick={() => setGender('female')}
+                    className="min-h-9"
+                  >
+                    ♀ 女浴室
+                  </ChipButton>
                 </div>
-              )
-            })}
+              </div>
+            )}
           </div>
-        </>
-      )}
+        </section>
+
+        {/* 管理员：预约开放时间 */}
+        {isAdmin && (
+          <section className="mb-4 rounded-lg border border-brand-line bg-brand-wash p-5">
+            <p className="eyebrow eyebrow--accent">ADMIN / OPEN WINDOW</p>
+            <h2 className="mt-2 text-body-lg font-bold">管理员设置 — 预约开放时间</h2>
+
+            <div className="mt-4 flex flex-wrap items-end gap-3">
+              <label className="ui-field w-44">
+                <span className="ui-label">开始</span>
+                <input
+                  type="date"
+                  value={editStart}
+                  onChange={(e) => setEditStart(e.target.value)}
+                  className="ui-input font-mono"
+                />
+              </label>
+              <label className="ui-field w-44">
+                <span className="ui-label">结束</span>
+                <input
+                  type="date"
+                  value={editEnd}
+                  onChange={(e) => setEditEnd(e.target.value)}
+                  className="ui-input font-mono"
+                />
+              </label>
+            </div>
+
+            <div className="mt-3 flex flex-wrap items-end gap-3">
+              <label className="ui-field w-32">
+                <span className="ui-label">每天</span>
+                <select
+                  value={editDailyStart}
+                  onChange={(e) => setEditDailyStart(e.target.value)}
+                  className="ui-select font-mono"
+                >
+                  {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </label>
+              <label className="ui-field w-32">
+                <span className="ui-label">至</span>
+                <select
+                  value={editDailyEnd}
+                  onChange={(e) => setEditDailyEnd(e.target.value)}
+                  className="ui-select font-mono"
+                >
+                  {TIME_OPTIONS.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </label>
+              <span className="ui-hint pb-3">（整点/半点）</span>
+              <Button onClick={handleSaveConfig} disabled={configSaving}>
+                {configSaving ? '保存中...' : '保存'}
+              </Button>
+            </div>
+
+            {configMsg && <p className="ui-hint mt-3">{configMsg}</p>}
+            <p className="mono mt-3">
+              当前开放范围：{config?.eventStart ?? '-'} 至 {config?.eventEnd ?? '-'}，每天 {config?.dailyStart ?? '-'} - {config?.dailyEnd ?? '-'}
+            </p>
+          </section>
+        )}
+
+        {/* 预约须知 */}
+        <section className="ui-card ui-card--static mb-4">
+          <div className="p-5">
+            <h2 className="text-body-lg font-bold">预约须知</h2>
+            <ul className="mt-2 flex flex-col gap-1.5 text-body-sm text-muted-foreground">
+              <li>· 按时间段预约，尽量准时到达</li>
+              <li>· 洗漱不要超过自己的时段</li>
+              <li>· 预约开始后即可签退，请在预约结束后 3 分钟内完成签退</li>
+              <li>· 大家要自行带洗漱用品、浴巾</li>
+              <li>· 直接去 C 座前台报&quot;黑克松女生&quot;&quot;黑客松男生&quot;进对应的房间，前台会登记信息，然后帮我们开门。（记得带身份证）</li>
+              <li>· 酒店地址：北辰汇园酒店 C 座（酒店距离 1.7km）</li>
+            </ul>
+          </div>
+        </section>
+
+        {error && (
+          <div className="ui-note ui-note--danger mb-4" role="alert">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <p className="ui-empty">加载中...</p>
+        ) : !data ? (
+          <p className="ui-empty">无法加载数据</p>
+        ) : (
+          <>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="flex items-center gap-2 text-h3 font-bold">
+                {genderLabel}
+                <span className="mono">{data.date}</span>
+              </h2>
+
+              {/* 预约时长：未成单时才可选，全局一次 */}
+              {!data.myBooking && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-body-sm text-muted-foreground">预约时长：</span>
+                  <ChipButton
+                    aria-pressed={durationSlots === 1}
+                    onClick={() => setDurationSlots(1)}
+                    className="min-h-9"
+                  >
+                    30 分钟
+                  </ChipButton>
+                  <ChipButton
+                    aria-pressed={durationSlots === 2}
+                    onClick={() => setDurationSlots(2)}
+                    className="min-h-9"
+                  >
+                    连续 60 分钟
+                  </ChipButton>
+                </div>
+              )}
+            </div>
+
+            {data.myBooking && (
+              <div className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-brand-line bg-brand-wash px-4 py-3">
+                <span className="ui-chip ui-chip--active ui-chip--dot">我的预约</span>
+                <p className="text-body-sm">
+                  您当天已预约：
+                  <span className="font-mono font-medium">
+                    {data.myBooking.timeSlot} - {addMinutes(data.myBooking.timeSlot, data.myBooking.durationSlots * 30)}
+                  </span>
+                </p>
+                {data.myBooking.checkedOutAt && (
+                  <span className="ui-chip ui-chip--success">已签退</span>
+                )}
+              </div>
+            )}
+
+            <ul className="flex flex-col gap-2" aria-label="时段列表">
+              {data.slots.map((slot) => {
+                const end_time = add30Min(slot.timeSlot)
+                const isDisabled = (data.myBooking && !slot.isMine) || actionLoading !== null
+                const isMySlot = slot.isMine
+                const isMyBookingStart = isMySlot && data.myBooking?.timeSlot === slot.timeSlot
+                const isPast = !slot.booked && isPastSlot(data.date, slot.timeSlot)
+                const started = hasStarted(data.date, slot.timeSlot, now)
+
+                return (
+                  <li
+                    key={slot.timeSlot}
+                    className={cn(
+                      'flex items-center justify-between gap-3 rounded-md border px-4 py-3 transition-colors',
+                      slot.booked
+                        ? isMySlot
+                          ? 'border-brand-line bg-brand-wash'
+                          : 'border-border bg-secondary'
+                        : isPast
+                          ? 'border-border-soft bg-background'
+                          : 'border-border bg-card hover:border-brand-line',
+                    )}
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="w-36 shrink-0 whitespace-nowrap font-mono text-body-sm font-medium">
+                        {slot.timeSlot} - {end_time}
+                      </span>
+                      {slot.booked ? (
+                        isMySlot ? (
+                          <span className="ui-chip ui-chip--active">我的预约</span>
+                        ) : (
+                          <span className="truncate text-body-sm text-muted-foreground">
+                            {occupiedSlotName(data.date, data.gender, slot.timeSlot) ?? slot.name}
+                          </span>
+                        )
+                      ) : (
+                        <span
+                          className={cn(
+                            'text-body-sm',
+                            isPast ? 'text-subtle-foreground' : 'text-muted-foreground',
+                          )}
+                        >
+                          {isPast ? '已过可预约时段' : '可预约'}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2">
+                      {slot.booked && isMyBookingStart ? (
+                        data.myBooking?.checkedOutAt ? (
+                          <span className="ui-chip ui-chip--success">已签退</span>
+                        ) : started ? (
+                          <Button
+                            size="sm"
+                            onClick={() => slot.bookingId && handleCheckout(slot.bookingId)}
+                            disabled={actionLoading === 'checkout'}
+                          >
+                            {actionLoading === 'checkout' ? '签退中...' : '签退'}
+                          </Button>
+                        ) : (
+                          <ChipButton
+                            tone="danger"
+                            className="min-h-9 disabled:opacity-50"
+                            onClick={() => slot.bookingId && handleCancel(slot.bookingId)}
+                            disabled={actionLoading === 'cancel'}
+                          >
+                            {actionLoading === 'cancel' ? '取消中...' : '取消'}
+                          </ChipButton>
+                        )
+                      ) : !slot.booked && !isPast ? (
+                        <Button
+                          size="sm"
+                          onClick={() => handleBook(slot.timeSlot)}
+                          disabled={!!isDisabled}
+                        >
+                          {actionLoading === slot.timeSlot ? '预约中...' : durationSlots === 2 ? '预约 60 分钟' : '预约 30 分钟'}
+                        </Button>
+                      ) : null}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
+          </>
+        )}
+      </div>
     </div>
   )
 }

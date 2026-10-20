@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { sendLoginCode, verifyLoginCode } from '@/lib/client-api'
+import { Button } from '@/components/ui/button'
 
 export function BathLogin({ onLogin }: { onLogin: () => void }) {
   const [step, setStep] = useState<'email' | 'code'>('email')
@@ -63,79 +64,95 @@ export function BathLogin({ onLogin }: { onLogin: () => void }) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center px-4">
-      <div className="w-full max-w-sm border border-border bg-card p-8">
-        <h1 className="mb-2 text-xl font-bold">🚿 洗澡间预约</h1>
-        <p className="mb-6 text-sm text-muted-foreground">
-          登录后即可预约洗澡间时段。
-        </p>
+    <div className="min-h-screen bg-background">
+      {/* 浴室小站自己的页头带：天空蓝，与主站区分 */}
+      <header className="border-b border-border bg-sky-soft">
+        <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6">
+          <p className="eyebrow">BATH HOUSE / SIGN IN</p>
+          <h1 className="mt-2 font-display text-2xl font-black tracking-tight text-fg">
+            🚿 洗澡间预约
+          </h1>
+          <p className="mt-2 text-body-sm text-muted-foreground">
+            登录后即可预约洗澡间时段。
+          </p>
+        </div>
+      </header>
 
-        {step === 'email' ? (
-          <div className="space-y-4">
-            <input
-              type="email"
-              value={identifier}
-              onChange={(e) => setIdentifier(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-              placeholder="输入邮箱"
-              className="w-full border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none"
-              autoFocus
-            />
-            <button
-              onClick={handleSend}
-              disabled={loading || !identifier.trim()}
-              className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-            >
-              {loading ? '发送中...' : '发送验证码'}
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="font-mono text-xs text-muted-foreground">
-              验证码已发送至 <span className="text-primary">{identifier}</span>
-            </p>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
-              placeholder="输入 6 位验证码"
-              maxLength={6}
-              className="w-full border border-border bg-background px-4 py-3 text-center text-2xl tracking-widest text-foreground placeholder:text-muted-foreground/30 focus:border-primary focus:outline-none"
-              autoFocus
-            />
-            <button
-              onClick={handleVerify}
-              disabled={loading || code.length !== 6}
-              className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
-            >
-              {loading ? '验证中...' : '登录'}
-            </button>
-            <div className="flex items-center justify-between">
-              <button
-                onClick={() => { setStep('email'); setCode('') }}
-                disabled={loading}
-                className="text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+      <div className="flex justify-center px-4 py-10">
+        <div className="w-full max-w-sm">
+          <div className="ui-card ui-card--static p-6">
+          {step === 'email' ? (
+            <div className="flex flex-col gap-4">
+              <label className="ui-field">
+                <span className="ui-label">邮箱</span>
+                <input
+                  type="email"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder="输入邮箱"
+                  className="ui-input"
+                  autoFocus
+                />
+              </label>
+              <Button
+                block
+                onClick={handleSend}
+                disabled={loading || !identifier.trim()}
               >
-                更换邮箱
-              </button>
-              <button
-                onClick={() => { if (cooldown <= 0) handleSend() }}
-                disabled={loading || cooldown > 0}
-                className="text-xs text-primary hover:text-primary/80 disabled:opacity-50"
-              >
-                {cooldown > 0 ? `重新发送 (${cooldown}s)` : '重新发送'}
-              </button>
+                {loading ? '发送中...' : '发送验证码'}
+              </Button>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="flex flex-col gap-4">
+              <p className="mono">
+                验证码已发送至 <span className="text-brand-text">{identifier}</span>
+              </p>
+              <label className="ui-field">
+                <span className="ui-label">验证码</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
+                  placeholder="输入 6 位验证码"
+                  maxLength={6}
+                  className="ui-input ui-input--otp"
+                  autoFocus
+                />
+              </label>
+              <Button block onClick={handleVerify} disabled={loading || code.length !== 6}>
+                {loading ? '验证中...' : '登录'}
+              </Button>
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => { setStep('email'); setCode('') }}
+                  disabled={loading}
+                  className="ui-btn ui-btn--text ui-btn--small"
+                >
+                  更换邮箱
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { if (cooldown <= 0) handleSend() }}
+                  disabled={loading || cooldown > 0}
+                  className="ui-btn ui-btn--text ui-btn--small text-brand-text disabled:opacity-50"
+                >
+                  {cooldown > 0 ? `重新发送 (${cooldown}s)` : '重新发送'}
+                </button>
+              </div>
+            </div>
+          )}
 
-        {error && (
-          <div className="mt-4 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-2.5 text-xs text-destructive">
-            {error}
+          {error && (
+            <div className="ui-note ui-note--danger mt-4 text-xs" role="alert">
+              {error}
+            </div>
+          )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

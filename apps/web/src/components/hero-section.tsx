@@ -1,91 +1,73 @@
 import Link from 'next/link'
-import type { Project } from '@/server/projects'
-import { ProjectBadges } from '@/components/project-badges'
-import { projectIdLabel } from '@/lib/utils'
-import { LikeButton } from '@/components/like-button'
+import { BloomPop } from '@/components/ui/bloom-pop'
 
-function RecommendedProjectCard({ project }: { project: Project }) {
+/**
+ * 首屏。
+ *
+ * 结构照搬设计稿的 `cover-hero`：像素天空 + 山体花朵插画做背景，
+ * 中央一根排版轴线（BoomLand 巨型字标 → 中文副标 → tagline → 操作），
+ * 再挂三个浮件：绽放标签、向下探索、右下角的版本号。
+ *
+ * 三件事值得留意：
+ * 1. 插画通过 CSS 变量 `--cover-art` 注入，而不是写死 background-image ——
+ *    换皮肤时可以在皮肤文件里换掉整张插画，组件不需要改。
+ * 2. 巨型字标拆成两个 `<span>`（Boom / Land），由 CSS 横向拉宽；
+ *    字体在 CSS 里钉死为 Arial Black，不用 `--font-display`（字形差异明显）。
+ * 3. 导航栏是实心吸顶的，首屏高度在 CSS 里扣掉了导航栏高度，
+ *    折叠线才和设计稿落在同一条线上。
+ *
+ * 「好想法，正在开花」这枚浮标带 `.bloom-label`，必须挂一个 BloomPop ——
+ * 设计稿靠页面脚本注入那朵小花，本站由组件显式渲染，否则悬停绽开的
+ * 动效完全没有落点（只剩一枚静态标签）。
+ */
+export function HeroSection() {
   return (
-    <article className="scan-frame group flex flex-col border border-foreground/40 bg-card p-5 transition-[transform,box-shadow,border-color] duration-200 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-primary/70 hover:shadow-[4px_4px_0_var(--secondary)]">
-      <Link href={`/projects/${project.id}`} className="flex flex-1 flex-col focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">
-        <span className="eyebrow">FEATURED / {projectIdLabel(project.id)}</span>
+    <section className="cover" aria-label="BoomLand 产品生长之地">
+      <div className="cover__art" aria-hidden />
+      <div className="cover__light" aria-hidden />
 
-      <div className="mt-4 aspect-video w-full overflow-hidden border border-border bg-muted">
-        {project.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={project.coverUrl}
-            alt={project.name}
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center font-mono text-xs text-muted-foreground">
-            NO COVER
-          </div>
-        )}
+      <div className="cover__inner">
+        <h1 className="cover__title" aria-label="BoomLand，产品生长之地">
+          <span className="cover__word" aria-hidden>
+            <span>Boom</span>
+            <span>Land</span>
+          </span>
+          <span className="cover__chinese">产品生长之地</span>
+        </h1>
+
+        <p className="cover__tagline">新产品 · 新世界 · 早期 AI 产品社区</p>
+        <p className="cover__description">让好想法被发现，让创造自然生长。</p>
+
+        <div className="cover__actions">
+          <Link href="#all-projects" className="ui-btn ui-btn--primary">
+            探索产品{' '}
+            <span className="ui-btn__arrow" aria-hidden>
+              →
+            </span>
+          </Link>
+          <Link href="/talents" className="ui-btn ui-btn--secondary">
+            加入社区{' '}
+            <span className="ui-btn__arrow" aria-hidden>
+              ↗
+            </span>
+          </Link>
+        </div>
       </div>
 
-        <div className="mt-4 flex flex-1 flex-col gap-2">
-          <h3 className="text-xl font-bold leading-snug transition-colors group-hover:text-primary">
-            {project.name}
-          </h3>
-          {project.tagline ? (
-            <p className="line-clamp-2 text-base leading-normal text-muted-foreground">
-              {project.tagline}
-            </p>
-          ) : null}
+      <span className="cover__bloom-tag bloom-label" tabIndex={0}>
+        <span className="flower" aria-hidden>
+          ✿
+        </span>{' '}
+        好想法，正在开花
+        <BloomPop />
+      </span>
 
-          <ProjectBadges stage={project.stage} categories={project.categories} />
+      <a className="cover__scroll" href="#all-projects">
+        <span>向下探索 · 生长界面系统</span>
+        <span className="cover__scroll-line" aria-hidden />
+      </a>
 
-          <span className="btn-hard btn-primary mt-4 w-fit">
-            项目详情 <span aria-hidden>→</span>
-          </span>
-          <span className="mt-3 font-mono text-[11px] text-muted-foreground">
-            TRACKING: FEATURED PROJECT
-          </span>
-        </div>
-      </Link>
-      <footer className="mt-4 flex items-end justify-between gap-3">
-        <p className="min-w-0 text-xs text-muted-foreground">
-          创建者
-          <span className="mt-0.5 block truncate font-medium text-foreground">{project.founder?.nickname ?? project.teamName ?? '匿名创始人'}</span>
-        </p>
-        <LikeButton projectId={project.id} likeCount={project.likeCount} />
-      </footer>
-    </article>
-  )
-}
-
-export function HeroSection({ project }: { project?: Project }) {
-  return (
-    <section className="border-b border-border">
-      <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-4 py-16 sm:px-6 lg:grid-cols-[1.25fr_0.75fr] lg:py-24">
-        <div className="overflow-hidden">
-          <p className="eyebrow">PRODUCT DISCOVERY / 00</p>
-          <h1 className="mt-7">
-            <span className="display-compressed text-[clamp(42px,7vw,92px)]">
-              <em className="not-italic text-primary">发现</em>
-              正在成长的新产品
-            </span>
-            <span className="mt-6 block text-[clamp(22px,2.6vw,34px)] font-bold leading-none tracking-[0.01em] text-primary">
-              EARLY PRODUCTS · LIVE
-            </span>
-          </h1>
-          <p className="mt-7 max-w-[620px] text-[clamp(16px,1.5vw,20px)] leading-[1.7] text-muted-foreground">
-            浏览早期产品，投出人气票，提交真实反馈，也可以支持你看好的项目。
-          </p>
-          <div className="mt-9 flex flex-wrap items-center gap-3.5">
-            <a href="#all-projects" className="btn-hard btn-primary">
-              浏览项目 <span aria-hidden>→</span>
-            </a>
-            <Link href="/submit" className="btn-hard btn-ghost">
-              提交项目 <span aria-hidden>→</span>
-            </Link>
-          </div>
-        </div>
-
-        {project ? <RecommendedProjectCard project={project} /> : null}
-      </div>
+      <span className="cover__index">BOOMLAND / V0.2</span>
     </section>
   )
 }

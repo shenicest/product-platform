@@ -2,7 +2,6 @@
 
 import { useCallback, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import {
   CATEGORIES,
   MAX_SEEKING_SKILLS,
@@ -22,9 +21,15 @@ import {
   type ProjectFormErrors,
   type ProjectFormValues,
 } from '@/lib/project-form-validation'
+import { Button, ButtonLink } from '@/components/ui/button'
+import { ChipButton } from '@/components/ui/chip'
+import { Panel } from '@/components/ui/surface'
+import { Eyebrow } from '@/components/ui/typography'
+import { projectIdLabel } from '@/lib/utils'
 import { ImageUploader } from './image-uploader'
 import {
   CheckboxInput,
+  FieldLabel,
   FormField,
   FormSection,
   SelectInput,
@@ -137,26 +142,25 @@ function SeekingSkillsWall({
     onChange(toggleValue(selected, skill))
   }
   return (
-    <div id="seekingSkills" tabIndex={-1} className="divide-y divide-border border-y border-border">
+    <div id="seekingSkills" tabIndex={-1} className="divide-y divide-border-soft border-y border-border">
       {TALENT_SKILL_GROUPS.map((group) => (
         <div key={group.direction} className="grid gap-3 py-4 sm:grid-cols-[96px_1fr] sm:items-start">
-          <span className="pt-1 font-mono text-xs font-bold text-primary">{group.direction}</span>
+          <span className="pt-1 font-mono text-meta font-bold text-brand-text">{group.direction}</span>
           <div className="flex flex-wrap gap-2">
             {group.skills.map((skill) => {
               const isSelected = selected.includes(skill)
               return (
-                <button
+                <ChipButton
                   key={skill}
-                  type="button"
                   aria-pressed={isSelected}
                   disabled={!isSelected && full}
                   onClick={() => toggle(skill)}
-                  className={`chip-hard cursor-pointer disabled:cursor-not-allowed ${
-                    isSelected ? 'chip-active' : ''
-                  }`}
+                  tone={isSelected ? 'accent' : 'neutral'}
+                  dot={isSelected}
+                  className="disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {skillLabel(skill)}
-                </button>
+                </ChipButton>
               )
             })}
           </div>
@@ -314,44 +318,43 @@ export function ProjectSubmissionForm({
 
   if (!isAuthenticated) {
     return (
-      <div className="border border-border bg-card p-8 text-center">
-        <p className="eyebrow">AUTH REQUIRED</p>
-        <p className="mt-4 text-base text-muted-foreground">
-          请先登录后再提交项目。
-        </p>
-        <div className="mx-auto mt-6 max-w-md">
-          <Link href="/login" className="btn-hard btn-primary inline-flex">
-            去登录
-          </Link>
-        </div>
-      </div>
+      <Panel className="flex flex-col items-center gap-4 text-center">
+        <Eyebrow tone="accent">AUTH REQUIRED</Eyebrow>
+        <p className="text-body text-muted-foreground">请先登录后再提交项目。</p>
+        <ButtonLink href="/login" variant="primary" className="mt-2">
+          去登录 <span className="ui-btn__arrow" aria-hidden>→</span>
+        </ButtonLink>
+      </Panel>
     )
   }
 
   if (submittedProjectId) {
     return (
-      <div className="border border-border bg-card p-8 text-center sm:p-12">
-        <p className="eyebrow">SUBMISSION / PENDING REVIEW</p>
-        <h2 className="mt-3 text-[clamp(28px,4vw,40px)] font-bold leading-[1.1]">
-          正在审核中
-        </h2>
-        <p className="mx-auto mt-4 max-w-[48ch] text-base leading-[1.7] text-muted-foreground">
+      <Panel className="flex flex-col items-center gap-4 px-6 py-12 text-center">
+        <Eyebrow tone="accent">SUBMISSION / PENDING REVIEW</Eyebrow>
+        <h2 className="m-0 text-[clamp(28px,4vw,40px)] font-black leading-[1.1]">正在审核中</h2>
+        <p className="m-0 max-w-[48ch] text-body leading-[1.7] text-muted-foreground">
           你的项目已提交审核。审核通过后将在平台公开展示，我们会尽快处理。
         </p>
-        <Link href="/founder/dashboard" className="btn-hard btn-primary mt-8 inline-flex">
-          查看我的项目 <span aria-hidden>→</span>
-        </Link>
-      </div>
+        <ButtonLink href="/founder/dashboard" variant="primary" className="mt-4">
+          查看我的项目 <span className="ui-btn__arrow" aria-hidden>→</span>
+        </ButtonLink>
+      </Panel>
     )
   }
 
   return (
     <div className="space-y-6">
+      {/* 提交状态的活区播报：视觉上按钮文字已足够，这里给读屏用户一份完整描述。 */}
+      <p className="sr-only" role="status" aria-live="polite">
+        {saving ? '正在保存草稿' : submitting ? '正在提交审核' : ''}
+      </p>
+
       {serverError ? (
-        <div className="border-2 border-destructive bg-card p-4">
-          <p className="font-mono text-xs tracking-[0.08em] text-destructive">
-            ERROR / {serverError}
-          </p>
+        <div className="ui-note ui-note--danger" role="alert">
+          {/* 不要用 .mono：它自带 color，会盖掉 .ui-note--danger 的 danger-text。 */}
+          <span className="shrink-0 font-mono text-meta font-bold">ERROR /</span>
+          <span className="min-w-0 break-words">{serverError}</span>
         </div>
       ) : null}
 
@@ -393,22 +396,22 @@ export function ProjectSubmissionForm({
             error={errors.tagline}
           />
         </FormField>
-        <FormField label="分类" htmlFor="categories" required error={errors.categories}>
+        <FormField label="分类" htmlFor="categories" required error={errors.categories} group>
           <div id="categories" tabIndex={-1} className="flex flex-wrap gap-2">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                onClick={() => update('categories', toggleValue(form.categories, cat))}
-                aria-pressed={form.categories.includes(cat)}
-                className={`chip-hard cursor-pointer transition-colors ${
-                  form.categories.includes(cat) ? 'chip-active' : 'hover:border-primary/60'
-                }`}
-              >
-                {form.categories.includes(cat) ? <i aria-hidden /> : null}
-                {cat}
-              </button>
-            ))}
+            {CATEGORIES.map((cat) => {
+              const isSelected = form.categories.includes(cat)
+              return (
+                <ChipButton
+                  key={cat}
+                  onClick={() => update('categories', toggleValue(form.categories, cat))}
+                  aria-pressed={isSelected}
+                  tone={isSelected ? 'accent' : 'neutral'}
+                  dot={isSelected}
+                >
+                  {cat}
+                </ChipButton>
+              )
+            })}
           </div>
         </FormField>
         <FormField label="产品阶段" htmlFor="stage" required error={errors.stage}>
@@ -486,10 +489,12 @@ export function ProjectSubmissionForm({
           label="数据亮点"
           htmlFor="userCount"
           hint="选填。已有数据可以填写；早期项目可以全部留空。"
+          error={errors.userCount ?? errors.monthlyRevenue ?? errors.retentionRate}
+          group
         >
           <div className="grid gap-3 sm:grid-cols-3">
-            <div>
-              <FieldLabelSub htmlFor="userCount">用户量</FieldLabelSub>
+            <div className="space-y-1">
+              <FieldLabel htmlFor="userCount">用户量</FieldLabel>
               <TextInput
                 id="userCount"
                 name="userCount"
@@ -501,8 +506,8 @@ export function ProjectSubmissionForm({
                 error={errors.userCount}
               />
             </div>
-            <div>
-              <FieldLabelSub htmlFor="monthlyRevenue">月收入</FieldLabelSub>
+            <div className="space-y-1">
+              <FieldLabel htmlFor="monthlyRevenue">月收入</FieldLabel>
               <TextInput
                 id="monthlyRevenue"
                 name="monthlyRevenue"
@@ -514,8 +519,8 @@ export function ProjectSubmissionForm({
                 error={errors.monthlyRevenue}
               />
             </div>
-            <div>
-              <FieldLabelSub htmlFor="retentionRate">30 日留存</FieldLabelSub>
+            <div className="space-y-1">
+              <FieldLabel htmlFor="retentionRate">30 日留存</FieldLabel>
               <TextInput
                 id="retentionRate"
                 name="retentionRate"
@@ -659,6 +664,7 @@ export function ProjectSubmissionForm({
             htmlFor="seekingSkills"
             hint={`选填。最多 ${MAX_SEEKING_SKILLS} 个技能标签，便于与广场上相关能力的人对接。`}
             error={errors.seekingSkills}
+            group
           >
             <SeekingSkillsWall
               selected={form.seekingSkills}
@@ -688,72 +694,84 @@ export function ProjectSubmissionForm({
         <FormField
           label="电话 / 邮箱 / 微信（至少填写一项）"
           htmlFor="contactPhone"
-          error={errors.contactPhone}
+          error={errors.contactPhone ?? errors.contactEmail ?? errors.contactWechat}
           hint="联系方式仅平台与运营可见，不会公开展示。"
+          group
         >
-          <div className="space-y-3">
-            <TextInput
-              id="contactPhone"
-              name="contactPhone"
-              value={form.contactPhone}
-              onChange={(v) => update('contactPhone', v)}
-              placeholder="联系电话（含国家/地区码亦可）"
-              error={errors.contactPhone}
-            />
-            <TextInput
-              id="contactEmail"
-              name="contactEmail"
-              value={form.contactEmail}
-              onChange={(v) => update('contactEmail', v)}
-              placeholder="联系邮箱，例如 you@example.com"
-              type="email"
-              error={errors.contactEmail}
-            />
-            <TextInput
-              id="contactWechat"
-              name="contactWechat"
-              value={form.contactWechat}
-              onChange={(v) => update('contactWechat', v)}
-              placeholder="微信号"
-              error={errors.contactWechat}
-            />
+          <div className="grid gap-3">
+            <div className="space-y-1">
+              <FieldLabel htmlFor="contactPhone">电话</FieldLabel>
+              <TextInput
+                id="contactPhone"
+                name="contactPhone"
+                value={form.contactPhone}
+                onChange={(v) => update('contactPhone', v)}
+                placeholder="联系电话（含国家/地区码亦可）"
+                error={errors.contactPhone}
+              />
+            </div>
+            {/*
+              组级约束的无障碍处理 —— 请勿「顺手优化」成只有 contactPhone 报错。
+
+              校验规则（project-form-validation.ts）是「电话/邮箱/微信至少填一项」，
+              失败时只把错误挂在 contactPhone 上（沿用后端「报在第一个渠道」的契约）。
+              但 aria-invalid 描述的是「这个字段当前不满足表单约束」，而不是
+              「这个字段自己产出了错误消息」：三种渠道全空时，电话、邮箱、微信
+              三个字段确实都处于不合法状态，只标第一个会让读屏用户以为填了邮箱
+              就够了。因此 email / wechat 也显式传 invalid，三者共享同一条
+              aria-describedby（组级错误文案）。
+
+              注意：这只是 aria 标记，不参与校验、不影响提交逻辑，
+              也没有改动 project-form-validation.ts 的一行代码。
+            */}
+            <div className="space-y-1">
+              <FieldLabel htmlFor="contactEmail">邮箱</FieldLabel>
+              <TextInput
+                id="contactEmail"
+                name="contactEmail"
+                value={form.contactEmail}
+                onChange={(v) => update('contactEmail', v)}
+                placeholder="联系邮箱，例如 you@example.com"
+                type="email"
+                error={errors.contactEmail}
+                invalid={Boolean(errors.contactPhone)}
+              />
+            </div>
+            <div className="space-y-1">
+              <FieldLabel htmlFor="contactWechat">微信</FieldLabel>
+              <TextInput
+                id="contactWechat"
+                name="contactWechat"
+                value={form.contactWechat}
+                onChange={(v) => update('contactWechat', v)}
+                placeholder="微信号"
+                error={errors.contactWechat}
+                invalid={Boolean(errors.contactPhone)}
+              />
+            </div>
           </div>
         </FormField>
       </FormSection>
 
       <div className="flex flex-wrap items-center gap-3 border-t border-border pt-6">
-        <>
-            <button
-              type="button"
-              onClick={handleSaveDraft}
-              disabled={saving || submitting}
-              className="btn-hard btn-ghost"
-            >
-              {saving ? '保存中...' : '保存草稿'}
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              disabled={saving || submitting}
-              className="btn-hard btn-primary"
-            >
-              {submitting ? '提交中...' : '提交审核'} <span aria-hidden>→</span>
-            </button>
-        </>
+        <Button
+          variant="ghost"
+          onClick={handleSaveDraft}
+          disabled={saving || submitting}
+        >
+          {saving ? '保存中...' : '保存草稿'}
+        </Button>
+        <Button
+          variant="primary"
+          onClick={handleSubmit}
+          disabled={saving || submitting}
+        >
+          {submitting ? '提交中...' : '提交审核'} <span className="ui-btn__arrow" aria-hidden>→</span>
+        </Button>
         {savedProjectId ? (
-          <span className="font-mono text-[11px] text-muted-foreground">
-            DRAFT ID: P-{String(savedProjectId).padStart(3, '0')}
-          </span>
+          <span className="mono">DRAFT ID: {projectIdLabel(savedProjectId)}</span>
         ) : null}
       </div>
     </div>
-  )
-}
-
-function FieldLabelSub({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
-  return (
-    <label htmlFor={htmlFor} className="mb-1.5 block text-xs font-bold text-muted-foreground">
-      {children}
-    </label>
   )
 }

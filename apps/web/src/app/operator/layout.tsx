@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { Role } from '@shenicest/shared'
 import { getSessionUser } from '@/server/auth'
+import { Eyebrow } from '@/components/ui/typography'
 
 const NAV_ITEMS = [
   { href: '/operator', label: '总览' },
@@ -23,20 +24,16 @@ export default async function OperatorLayout({
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:px-6">
+    <div className="shell shell--narrow py-8 sm:py-10">
       <header className="mb-8">
-        <p className="eyebrow">OPERATOR CONSOLE</p>
-        <h1 className="mt-3 text-[clamp(28px,4vw,40px)] font-bold leading-[1.1]">
+        <Eyebrow>OPERATOR CONSOLE</Eyebrow>
+        <h1 className="mt-3 text-[clamp(28px,4vw,40px)] leading-[1.1] font-bold">
           运营后台
         </h1>
       </header>
-      <nav className="mb-8 flex flex-wrap items-center gap-1 border-b border-border pb-4">
+      <nav className="console-nav" aria-label="运营后台导航">
         {NAV_ITEMS.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className="btn-hard btn-ghost px-4 py-2 text-xs"
-          >
+          <Link key={item.href} href={item.href} className="ui-btn ui-btn--ghost ui-btn--small">
             {item.label}
           </Link>
         ))}

@@ -5,7 +5,7 @@ import { BathBooking } from '@/components/bath-booking'
 import { BathLogin } from '@/components/bath-login'
 
 export default function BathPage() {
-  const [user, setUser] = useState<{ userId: string; email: string | null } | null>(null)
+  const [user, setUser] = useState<{ email: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -13,7 +13,7 @@ export default function BathPage() {
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data?.user?.user_id) {
-          setUser({ userId: String(data.user.user_id), email: data.user.email ?? null })
+          setUser({ email: data.user.email ?? null })
         }
       })
       .catch(() => {})
@@ -22,8 +22,8 @@ export default function BathPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <p className="text-muted-foreground">加载中...</p>
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <p className="ui-empty w-full max-w-sm">加载中...</p>
       </div>
     )
   }
@@ -32,5 +32,5 @@ export default function BathPage() {
     return <BathLogin onLogin={() => window.location.reload()} />
   }
 
-  return <BathBooking userId={user.userId} email={user.email} />
+  return <BathBooking email={user.email} />
 }

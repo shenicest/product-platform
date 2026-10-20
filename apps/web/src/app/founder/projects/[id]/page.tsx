@@ -1,5 +1,4 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { cookies } from 'next/headers'
 import { redirect, notFound } from 'next/navigation'
 import { ProjectStatus, ProposalStatus } from '@shenicest/shared'
@@ -9,6 +8,9 @@ import {
   getFounderProjectProposals,
 } from '@/server/founder'
 import { ProjectDetail } from '@/components/project-detail'
+import { ButtonLink } from '@/components/ui/button'
+import { Card } from '@/components/ui/surface'
+import { Eyebrow } from '@/components/ui/typography'
 import { projectIdLabel } from '@/lib/utils'
 import { FOUNDER_STATUS_LABELS } from '@/lib/founder-filters'
 
@@ -64,27 +66,22 @@ export default async function FounderProjectPage(
   )
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
+    <div className="shell shell--narrow py-12 sm:py-16">
       <header className="mb-10">
-        <p className="eyebrow">
+        <Eyebrow>
           {projectIdLabel(projectId)} / {FOUNDER_STATUS_LABELS[project.status] ?? '未知'}
-        </p>
-        <h1 className="mt-3 text-[clamp(28px,4vw,40px)] font-bold leading-[1.1]">
+        </Eyebrow>
+        <h1 className="mt-3 text-[clamp(28px,4vw,40px)] leading-[1.1] font-bold">
           {project.name}
         </h1>
         {project.status === ProjectStatus.Live ? (
           <div className="mt-5">
             {activeProposal?.status === ProposalStatus.Pending ? (
-              <span className="font-mono text-xs text-muted-foreground">
-                修改提案正在审核中，暂时不能再次提交
-              </span>
+              <span className="mono">修改提案正在审核中，暂时不能再次提交</span>
             ) : (
-              <Link
-                href={`/founder/projects/${projectId}/proposal`}
-                className="btn-hard btn-primary inline-flex"
-              >
+              <ButtonLink href={`/founder/projects/${projectId}/proposal`}>
                 {activeProposal?.status === ProposalStatus.RevisionRequired ? '修改提案并重新提交' : '修改已上线项目'}
-              </Link>
+              </ButtonLink>
             )}
           </div>
         ) : null}
@@ -92,11 +89,9 @@ export default async function FounderProjectPage(
 
       <ProjectDetail project={project} backHref="/founder/dashboard" showLike={false} />
 
-      <section className="mx-auto mt-10 max-w-3xl border border-border bg-card p-5">
-        <h2 className="mb-4 font-mono text-xs tracking-[0.12em] text-primary">
-          CONTACT / INFO
-        </h2>
-        <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+      <Card static className="mx-auto mt-10 max-w-3xl p-5">
+        <h2 className="eyebrow eyebrow--accent mb-4">CONTACT / INFO</h2>
+        <dl className="grid grid-cols-1 gap-3 text-body-sm sm:grid-cols-2">
           {project.contactName ? (
             <div>
               <dt className="text-muted-foreground">联系人</dt>
@@ -128,46 +123,37 @@ export default async function FounderProjectPage(
             </div>
           ) : null}
         </dl>
-      </section>
+      </Card>
 
       {auditReason ? (
-        <section className="mt-10 border border-amber-500/20 bg-amber-500/5 p-5">
-          <h2 className="mb-2 font-bold text-amber-700">审核说明</h2>
-          <p className="text-sm leading-relaxed text-amber-800">
-            {auditReason.reason}
-          </p>
-          <p className="mt-2 font-mono text-[10px] text-amber-700/70">
+        <section className="ui-note ui-note--warning mx-auto mt-10 max-w-3xl flex-col">
+          <h2 className="font-bold">审核说明</h2>
+          <p className="whitespace-pre-line">{auditReason.reason}</p>
+          <p className="font-mono text-meta tracking-[0.12em] opacity-80">
             {auditReason.action} · {auditReason.createdAt.toLocaleString('zh-CN')}
           </p>
         </section>
       ) : null}
 
       {proposals && proposals.total > 0 ? (
-        <section className="mt-10">
-          <h2 className="mb-4 text-xl font-bold">编辑提案记录</h2>
-          <div className="space-y-3">
+        <section className="mx-auto mt-10 max-w-3xl">
+          <h2 className="mb-4 text-h3 font-bold">编辑提案记录</h2>
+          <div className="flex flex-col gap-3">
             {proposals.data.map((proposal) => (
-              <div
-                key={proposal.id}
-                className="border border-border bg-card p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs text-primary">
-                    #{proposal.id}
-                  </span>
-                  <span className="font-mono text-[10px] text-muted-foreground">
+              <Card key={proposal.id} static className="p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="card-id">#{proposal.id}</span>
+                  <span className="mono">
                     {proposal.status === 0 ? '审核中' : proposal.status === 1 ? '已通过' : proposal.status === 2 ? '已驳回' : '需修改'}
                   </span>
                 </div>
-                <pre className="mt-3 overflow-x-auto rounded bg-muted p-3 font-mono text-xs text-muted-foreground">
+                <pre className="mt-3 overflow-x-auto rounded-sm bg-muted p-3 font-mono text-meta text-muted-foreground">
                   {JSON.stringify(proposal.changes, null, 2)}
                 </pre>
                 {proposal.reason ? (
-                  <p className="mt-3 text-sm text-muted-foreground">
-                    原因：{proposal.reason}
-                  </p>
+                  <p className="mt-3 text-body-sm text-muted-foreground">原因：{proposal.reason}</p>
                 ) : null}
-              </div>
+              </Card>
             ))}
           </div>
         </section>

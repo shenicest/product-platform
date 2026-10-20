@@ -5,6 +5,20 @@ import { useEffect, useState } from 'react'
 import { Role } from '@shenicest/shared'
 import { useAuth } from '@/components/auth-provider'
 import { getConnections } from '@/lib/client-api'
+import { ButtonLink } from '@/components/ui/button'
+import { Chip } from '@/components/ui/chip'
+import { Card } from '@/components/ui/surface'
+import { Mono } from '@/components/ui/typography'
+
+/**
+ * 下拉菜单里的一行。
+ *
+ * 站内没有 `.ui-menu` 这类组件类，而 `.ui-btn` 的胶囊内边距也不适合
+ * 纵向排列的菜单行，所以这里用语义工具类拼出一行菜单的排版：
+ * 次要文字色 + 花瓣粉悬浮底。链接与按钮共用同一套，保证左边缘对齐。
+ */
+const MENU_ITEM =
+  'flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-left text-body-sm text-muted-foreground transition-colors hover:bg-brand-wash hover:text-brand-text'
 
 export function UserMenu() {
   const { user, loading, logout } = useAuth()
@@ -26,11 +40,15 @@ export function UserMenu() {
   }, [user])
 
   if (loading) {
-    return <span className="font-mono text-xs text-muted-foreground">...</span>
+    return <Mono>...</Mono>
   }
 
   if (!user) {
-    return <Link href="/login" className="btn-hard btn-secondary px-4 py-2 text-xs">登录</Link>
+    return (
+      <ButtonLink href="/login" variant="secondary" size="sm">
+        登录
+      </ButtonLink>
+    )
   }
 
   const isFounder = user.roles?.includes(Role.Founder) ?? false
@@ -39,20 +57,46 @@ export function UserMenu() {
 
   return (
     <details className="relative shrink-0">
-      <summary className="list-none cursor-pointer whitespace-nowrap font-mono text-xs text-muted-foreground transition-colors hover:text-primary [&::-webkit-details-marker]:hidden">
-        {username} <span aria-hidden className="text-primary">▾</span>
+      <summary className="cursor-pointer list-none whitespace-nowrap font-mono text-label text-muted-foreground transition-colors hover:text-brand-text [&::-webkit-details-marker]:hidden">
+        {username}{' '}
+        <span aria-hidden className="text-brand-text">
+          ▾
+        </span>
       </summary>
-      <div className="absolute right-0 top-full z-50 mt-3 min-w-48 border border-border bg-background p-2 shadow-[4px_4px_0_var(--border)]">
-        <Link href="/connections" className="flex items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-muted hover:text-primary">
+
+      {/* 浮层用 Card 的静态变体取描边 + 圆角 + 语义阴影，换肤时自动跟随。
+       * 这里不叠加 Tailwind 的 shadow-* —— 那是与皮肤无关的固定投影，
+       * 会让 rock / night 皮肤下的浮层失去同一套层次语言。 */}
+      <Card static className="absolute top-full right-0 z-50 mt-3 min-w-48 p-2">
+        <Link href="/connections" className={MENU_ITEM}>
           <span>连接记录</span>
-          {pending > 0 ? <span aria-label={`${pending} 个待处理连接`} className="ml-4 bg-primary px-1.5 font-mono text-[10px] text-primary-foreground">{pending > 99 ? '99+' : pending}</span> : null}
+          {pending > 0 ? (
+            <Chip tone="accent" aria-label={`${pending} 个待处理连接`}>
+              {pending > 99 ? '99+' : pending}
+            </Chip>
+          ) : null}
         </Link>
-        <Link href="/talents/me/edit" className="block px-3 py-2 text-sm transition-colors hover:bg-muted hover:text-primary">编辑我的档案</Link>
-        {isFounder ? <Link href="/founder/dashboard" className="block px-3 py-2 text-sm transition-colors hover:bg-muted hover:text-primary">创始人后台</Link> : null}
-        {isOperator ? <Link href="/operator" className="block px-3 py-2 text-sm transition-colors hover:bg-muted hover:text-primary">运营后台</Link> : null}
-        <div className="my-1 border-t border-border" />
-        <button onClick={logout} className="block w-full px-3 py-2 text-left text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-primary">退出登录</button>
-      </div>
+
+        <Link href="/talents/me/edit" className={MENU_ITEM}>
+          编辑我的档案
+        </Link>
+        {isFounder ? (
+          <Link href="/founder/dashboard" className={MENU_ITEM}>
+            创始人后台
+          </Link>
+        ) : null}
+        {isOperator ? (
+          <Link href="/operator" className={MENU_ITEM}>
+            运营后台
+          </Link>
+        ) : null}
+
+        <hr className="ui-rule my-1" />
+
+        <button type="button" onClick={logout} className={MENU_ITEM}>
+          退出登录
+        </button>
+      </Card>
     </details>
   )
 }

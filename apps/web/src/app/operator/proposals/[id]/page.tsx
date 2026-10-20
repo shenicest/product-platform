@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getOperatorProposals, getOperatorProject } from '@/server/operator'
 import { OperatorProposalDetail } from '@/components/operator/operator-proposal-detail'
+import { Eyebrow } from '@/components/ui/typography'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,8 +42,8 @@ export default async function OperatorProposalDetailPage(
   return (
     <div>
       <header className="mb-8">
-        <p className="eyebrow">PROPOSAL / #{proposalId}</p>
-        <h2 className="mt-3 text-[clamp(24px,3vw,32px)] font-bold leading-[1.15]">
+        <Eyebrow>PROPOSAL / #{proposalId}</Eyebrow>
+        <h2 className="mt-3 text-[clamp(24px,3vw,32px)] leading-[1.15] font-bold">
           提案审核
         </h2>
       </header>

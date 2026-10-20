@@ -4,6 +4,8 @@ import { Suspense, useState, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
 import { followFounder, likeProject, sendLoginCode, verifyLoginCode } from '@/lib/client-api'
+import { Button } from '@/components/ui/button'
+import { Eyebrow } from '@/components/ui/typography'
 
 export default function LoginPage() {
   return <Suspense><LoginForm /></Suspense>
@@ -97,25 +99,22 @@ function LoginForm() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-12rem)] items-center justify-center px-4">
-      <div className="scan-frame w-full max-w-md border border-border bg-card p-8 sm:p-10">
+    <div className="flex min-h-[calc(100vh-12rem)] items-center justify-center px-4 py-16">
+      <div className="w-full max-w-md rounded-xl border border-border bg-card p-8 sm:p-10">
         <header className="mb-8">
-          <p className="eyebrow mb-3">AUTH / LOGIN</p>
+          <Eyebrow className="mb-3">AUTH / LOGIN</Eyebrow>
           <h1 className="text-[clamp(24px,3vw,32px)] font-bold leading-tight">
-            登录到 <span className="text-primary">SHE<span className="font-bold">NICEST</span></span>
+            登录到 <span className="text-brand-text">SHE<span className="font-bold">NICEST</span></span>
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-2 text-body-sm text-muted-foreground">
             输入邮箱，通过验证码登录。新用户自动注册。
           </p>
         </header>
 
         {step === 'email' ? (
-          <div className="space-y-4">
-            <div>
-              <label
-                htmlFor="identifier"
-                className="mb-1.5 block font-mono text-xs tracking-wider text-muted-foreground"
-              >
+          <div className="flex flex-col gap-4">
+            <div className="ui-field">
+              <label htmlFor="identifier" className="ui-label">
                 EMAIL
               </label>
               <input
@@ -125,35 +124,34 @@ function LoginForm() {
                 onChange={(e) => setIdentifier(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                 placeholder="your@email.com"
-                className="w-full border border-border bg-background px-4 py-3 font-mono text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:outline-none"
+                className="ui-input"
                 autoFocus
               />
             </div>
-            <button
+            <Button
               onClick={handleSend}
               disabled={loading || !identifier.trim()}
-              className="btn-hard btn-primary w-full"
+              block
             >
               {loading ? '发送中...' : '发送验证码'}
-            </button>
+            </Button>
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="border border-border bg-background/50 px-4 py-3">
-              <p className="font-mono text-xs text-muted-foreground">
-                验证码已发送至
-              </p>
-              <p className="mt-0.5 font-mono text-sm text-primary">
-                {identifier}
-              </p>
+          <div className="flex flex-col gap-4">
+            <div className="ui-note">
+              <div>
+                <p className="mono">验证码已发送至</p>
+                <p className="mt-0.5 font-mono text-body-sm text-brand-text">
+                  {identifier}
+                </p>
+              </div>
             </div>
-            <div>
-              <label
-                htmlFor="code"
-                className="mb-1.5 block font-mono text-xs tracking-wider text-muted-foreground"
-              >
+            <div className="ui-field">
+              <label htmlFor="code" className="ui-label">
                 VERIFICATION CODE
               </label>
+              {/* 验证码用 DSEG7 数字墙字体：.ui-input 会锁死 font-sans，
+                  因此这里直接用语义工具类重建同一套控件外观。 */}
               <input
                 id="code"
                 type="text"
@@ -163,29 +161,31 @@ function LoginForm() {
                 onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
                 placeholder="000000"
                 maxLength={6}
-                className="w-full border border-border bg-background px-4 py-3 text-center font-digits text-2xl tracking-[0.5em] text-foreground placeholder:text-muted-foreground/30 focus:border-primary focus:outline-none"
+                className="h-[46px] w-full rounded-sm border border-input bg-card px-4 text-center font-digits text-2xl tracking-[0.5em] text-foreground placeholder:text-subtle-foreground focus:border-brand focus:outline-none"
                 autoFocus
               />
             </div>
-            <button
+            <Button
               onClick={handleVerify}
               disabled={loading || code.length !== 6}
-              className="btn-hard btn-primary w-full"
+              block
             >
               {loading ? '验证中...' : '登录'}
-            </button>
+            </Button>
             <div className="flex items-center justify-between">
               <button
+                type="button"
                 onClick={() => { setStep('email'); setCode('') }}
                 disabled={loading}
-                className="font-mono text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+                className="font-mono text-meta text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
               >
                 更换邮箱
               </button>
               <button
+                type="button"
                 onClick={handleResend}
                 disabled={loading || cooldown > 0}
-                className="font-mono text-xs text-primary transition-colors hover:text-primary/80 disabled:opacity-50"
+                className="font-mono text-meta text-brand-text transition-colors hover:text-brand disabled:opacity-50"
               >
                 {cooldown > 0 ? `重新发送 (${cooldown}s)` : '重新发送'}
               </button>
@@ -194,8 +194,8 @@ function LoginForm() {
         )}
 
         {error && (
-          <div className="mt-4 border border-destructive/50 bg-destructive/10 px-4 py-2.5">
-            <p className="font-mono text-xs text-destructive">{error}</p>
+          <div className="ui-note ui-note--danger mt-4" role="alert">
+            <p className="font-mono text-meta">{error}</p>
           </div>
         )}
       </div>

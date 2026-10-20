@@ -1,0 +1,147 @@
+/* ============================================================================
+ * L0 · SKIN · boomland  —  the "生长" skin（站点唯一皮肤）
+ * ----------------------------------------------------------------------------
+ * 这是设计稿（BoomLand-UI-Centered-Cover V0.2 / BoomLand-UI-System V0.1）
+ * 的逐值翻译。它是**唯一**定义 --boom-* 色阶的地方，也是整个样式层
+ * 唯一允许出现颜色字面量的地方；上层（tokens.css / components.css /
+ * patterns.css）只能经语义 token 消费这些值。
+ *
+ * 色板取自设计稿 :root：
+ *   --cloud #F8FBFF  --sky #86C5FF  --mist #EAF4FF
+ *   --pink  #FF3D8D  --petal #FFD8E9
+ *   --ink   #101A2C  --moss #4E7045
+ *   --line  #d8e2ed  --muted #607087
+ * ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* ---- 云白 / 页面底 -------------------------------------------------- */
+  --boom-cloud-0: #ffffff;
+  --boom-cloud-1: #f8fbff;
+  --boom-cloud-2: #f1f7ff;
+  --boom-cloud-3: #eaf4ff;
+
+  /* ---- 天空蓝 -------------------------------------------------------- */
+  --boom-sky-1: #e3f1ff;
+  --boom-sky-2: #c6e2ff;
+  --boom-sky-3: #a5d3ff;
+  --boom-sky-4: #86c5ff;
+  --boom-sky-5: #5aa7ee;
+  --boom-sky-6: #2f79bd;
+  --boom-sky-7: #1c527f;
+
+  /* ---- 绽放粉 / 花瓣 -------------------------------------------------- */
+  --boom-pink-1: #fff0f6;
+  --boom-pink-2: #ffe4ee;
+  --boom-pink-3: #ffd8e9;
+  --boom-pink-4: #ffafd0;
+  --boom-pink-5: #ff70a9;
+  --boom-pink-6: #ff3d8d;
+  --boom-pink-7: #d92c6f;
+  --boom-pink-8: #a12a55;
+  --boom-pink-9: #762240;
+
+  /* ---- 岩石深色 / 文字 ------------------------------------------------ */
+  --boom-ink-1: #eef1f5;
+  --boom-ink-2: #d5dce6;
+  --boom-ink-3: #b3bfcd;
+  --boom-ink-4: #8996a7;
+  --boom-ink-5: #607087;
+  --boom-ink-6: #435064;
+  --boom-ink-7: #2b3646;
+  --boom-ink-8: #182131;
+  --boom-ink-9: #101a2c;
+
+  /* ---- 苔藓绿 / 成功 -------------------------------------------------- */
+  --boom-moss-1: #f0f5eb;
+  --boom-moss-2: #d4e0ca;
+  --boom-moss-3: #9cb389;
+  --boom-moss-4: #6f8f5a;
+  --boom-moss-5: #4e7045;
+  --boom-moss-6: #3a5932;
+
+  /* ---- 暖黄 / 审核中 -------------------------------------------------- */
+  --boom-amber-1: #fff8e8;
+  --boom-amber-2: #f6e6bd;
+  --boom-amber-3: #d8a938;
+  --boom-amber-4: #a9791a;
+  --boom-amber-5: #6b4d0c;
+
+  /* ---- 红 / 危险 ------------------------------------------------------ */
+  --boom-red-1: #fff0f1;
+  --boom-red-2: #ffd3d7;
+  --boom-red-3: #f0647a;
+  --boom-red-4: #c92b45;
+  --boom-red-5: #8f1a2e;
+
+  /* ---- 线条 ---------------------------------------------------------- */
+  --boom-line-1: #eef3f9;
+  --boom-line-2: #e1e8f0;
+  --boom-line-3: #d8e2ed;
+  --boom-line-4: #b9c9d9;
+  --boom-line-5: #8d9fb2;
+
+  /* ---- 皮肤私有：装饰与浮层 -------------------------------------------- */
+  --boom-overlay: rgba(16, 26, 44, 0.55);
+  --boom-flower: "\273F"; /* ✿ */
+  --boom-pixel-grid: rgba(255, 255, 255, 0.25);
+
+  /* ---- 焦点环：浅底用深蓝，保证在云白/天空蓝上都够对比 ---------------- */
+  --boom-focus: #1675ba;
+
+  /* ---- 阴影：细描边打底、淡蓝阴影辅助 ---------------------------------- *
+   * 阴影带色，所以属于 L0 —— 它不是"结构"，而是配色的一部分。 */
+  --boom-shadow-1: 0 2px 8px rgba(86, 129, 166, 0.06);
+  --boom-shadow-2: 0 8px 24px rgba(86, 129, 166, 0.1);
+  --boom-shadow-3: 0 15px 45px rgba(86, 129, 166, 0.16);
+  --boom-shadow-4: 0 28px 70px rgba(86, 129, 166, 0.2);
+  --boom-shadow-accent: 0 10px 22px rgba(255, 61, 141, 0.19);
+
+  /* 卡片：设计稿 .product-card 静止时不投影，靠 1px 描边定形；
+   * 悬停才浮起（`0 16px 28px #7196b31a`）。静止态就压阴影会让
+   * 一屏三列卡片的层次互相打架，也和设计稿的"轻"不符。 */
+  --boom-shadow-card: none;
+  --boom-shadow-card-hover: 0 16px 28px rgba(113, 150, 179, 0.102);
+
+  /* 小浮标的投影：设计稿 .cover-bloom-tag 的 `0 7px 25px #4b6a7e13`。
+   *
+   * 它必须比 --boom-shadow-3 更收 —— 不只是"视觉上更轻"，而是硬性的渲染
+   * 正确性要求：Chromium 在 box-shadow 的模糊半径超过元素自身尺寸的一定
+   * 比例后，会放弃次像素（LCD）文字抗锯齿，改用灰度抗锯齿，11px 的中文
+   * 会明显发虚。实测同一枚标签，blur ≤ 35px 时文字锐利（Laplacian 方差
+   * ≈18400），blur ≥ 45px 时掉到 ≈5200，肉眼就是"糊"。
+   * 所以浮标一律用这个 token，不要借用 --shadow-float。 */
+  --boom-shadow-tag: 0 7px 25px rgba(75, 106, 126, 0.075);
+
+  /* .bloom-pop 那朵小花的投影。设计稿写死 #ac3a6220（粉调的淡投影）。 */
+  --boom-bloom-halo: 0 3px 3px rgba(172, 58, 98, 0.125);
+
+  /* ---- 品牌插画：像素天空 + 山体花朵 ----------------------------------- *
+   * 首屏背景（设计稿 .cover-art 用的就是这张无文字版）。
+   * 组件只消费 var(--cover-image)，换插画只动这里。
+   *
+   * 用 image-set 让浏览器按 DPR 与视口挑最小够用的那张：
+   * 手机拿 768px 版，普通桌面拿 1280px，高分辨率屏才拿 1920px。 */
+  --cover-art: image-set(
+    url('/brand/boomland-art-768.webp') 1x,
+    url('/brand/boomland-art-1280.webp') 1.5x,
+    url('/brand/boomland-art-1920.webp') 2x
+  );
+
+  /* 首屏柔光：把中央文字区压亮，保证标题在插画上可读。
+   * 它带颜色，所以放在 L0 而不是 patterns.css。
+   * 形状取自设计稿 .cover-light：椭圆光斑落在字标上。 */
+  --cover-veil: radial-gradient(
+    ellipse 36% 42% at 50% 29%,
+    color-mix(in srgb, var(--boom-cloud-0) 21%, transparent) 0%,
+    transparent 90%
+  );
+
+  /* 首屏排版轴的专用色（设计稿裸值 → 皮肤层）。
+   * patterns.css 经 tokens.css 的 --cover-base / --cover-word / --cover-ink 消费。 */
+  --boom-cover-base: #b8ddff; /* 设计稿 .cover-hero 天空底色 */
+  --boom-cover-word: #ed78ac; /* 设计稿 .cover-word 巨型字标粉（比 --pink 更淡） */
+  --boom-cover-ink: #ffffff; /* 落在插画上的白字（scroll / index） */
+  --boom-cover-ink-halo: #07192d; /* 白字的深色描边光 */
+}

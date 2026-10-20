@@ -7,10 +7,13 @@ import { useAuth } from '@/components/auth-provider'
 import { sendHackathonConnection, type MyHackathonConnectionStatus } from '@/lib/client-api'
 import { HACKATHON_CONNECTION_STATUS_LABELS, validateHackathonConnectionBody } from '@/lib/hackathon-project'
 import { HACKATHON_CONNECTION_PURPOSES, ConnectionRequestStatus } from '@shenicest/shared'
+import { Button } from '@/components/ui/button'
 
 export function hackathonPendingConnectKey(projectId: number) {
   return `shenicest_pending_hackathon_connect:${projectId}`
 }
+
+const fieldLabel = 'block font-mono text-meta tracking-[0.08em] text-muted-foreground'
 
 // Connection entry for hackathon project detail pages: default "connect"
 // button, Pending/Accepted status displays, and the login return flow
@@ -85,12 +88,17 @@ export function HackathonConnectButton({ projectId, initialStatus }: { projectId
 
   if (status && (status.status === ConnectionRequestStatus.Pending || status.status === ConnectionRequestStatus.Accepted)) {
     return (
-      <div className="detail-connect-state mt-2">
-        <p className="border border-primary/50 bg-primary/5 p-3 text-sm text-primary">
+      <div className="mt-2 space-y-2">
+        <p className="ui-note ui-note--accent font-bold">
           {HACKATHON_CONNECTION_STATUS_LABELS[status.status] ?? '未知状态'}
         </p>
         {status.status === ConnectionRequestStatus.Pending ? (
-          <Link className="detail-link inline-block" href="/connections">查看连接记录 ↗</Link>
+          <Link
+            href="/connections"
+            className="inline-block font-mono text-label text-muted-foreground transition-colors hover:text-brand-text"
+          >
+            查看连接记录 ↗
+          </Link>
         ) : null}
       </div>
     )
@@ -99,32 +107,32 @@ export function HackathonConnectButton({ projectId, initialStatus }: { projectId
   return (
     <>
       {status ? (
-        <p className="mt-2 text-xs text-muted-foreground">{HACKATHON_CONNECTION_STATUS_LABELS[status.status] ?? '未知状态'}</p>
+        <p className="mt-2 text-meta text-muted-foreground">{HACKATHON_CONNECTION_STATUS_LABELS[status.status] ?? '未知状态'}</p>
       ) : null}
-      <button type="button" onClick={connect} className="detail-link detail-link-primary mt-2 w-full">
-        联系项目方 <span aria-hidden>↗</span>
-      </button>
+      <Button variant="primary" block className="mt-2" onClick={connect}>
+        联系项目方 <span className="ui-btn__arrow" aria-hidden>↗</span>
+      </Button>
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4 backdrop-blur-sm"
           role="dialog"
           aria-modal="true"
           aria-labelledby="hackathon-connection-dialog-title"
         >
-          <div className="scan-frame max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto border border-border bg-card p-6">
-            <h2 id="hackathon-connection-dialog-title" className="text-xl font-bold">
+          <div className="ui-panel max-h-[calc(100vh-2rem)] w-full max-w-lg overflow-y-auto">
+            <h2 id="hackathon-connection-dialog-title" className="text-h3 font-bold text-foreground">
               联系项目方
             </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            <p className="mt-2 text-body-sm leading-relaxed text-muted-foreground">
               提交后你的联系方式不会出现在通知邮件中；项目方接受后双方联系方式才会解锁。
             </p>
             <div className="mt-5 space-y-3">
-              <label className="block font-mono text-xs text-muted-foreground">
+              <label className={fieldLabel}>
                 联系目的
                 <select
                   value={form.purpose}
                   onChange={(event) => setForm({ ...form, purpose: event.target.value })}
-                  className="mt-1 w-full border border-input bg-background px-3 py-2 font-sans text-sm text-foreground"
+                  className="ui-select mt-1 font-sans"
                 >
                   <option value="">请选择联系目的</option>
                   {HACKATHON_CONNECTION_PURPOSES.map((purpose) => (
@@ -134,7 +142,7 @@ export function HackathonConnectButton({ projectId, initialStatus }: { projectId
                   ))}
                 </select>
               </label>
-              <label className="block font-mono text-xs text-muted-foreground">
+              <label className={fieldLabel}>
                 留言（30-500 字）
                 <textarea
                   required
@@ -142,34 +150,38 @@ export function HackathonConnectButton({ projectId, initialStatus }: { projectId
                   maxLength={500}
                   value={form.message}
                   onChange={(event) => setForm({ ...form, message: event.target.value })}
-                  className="mt-1 min-h-28 w-full border border-input bg-background px-3 py-2 font-sans text-sm"
+                  className="ui-textarea mt-1 font-sans"
                 />
               </label>
-              <label className="block font-mono text-xs text-muted-foreground">
+              <label className={fieldLabel}>
                 微信号（微信或邮箱至少一项）
                 <input
                   value={form.wechat}
                   onChange={(event) => setForm({ ...form, wechat: event.target.value })}
-                  className="mt-1 w-full border border-input bg-background px-3 py-2 font-sans text-sm"
+                  className="ui-input mt-1 font-sans"
                 />
               </label>
-              <label className="block font-mono text-xs text-muted-foreground">
+              <label className={fieldLabel}>
                 邮箱
                 <input
                   type="email"
                   value={form.email}
                   onChange={(event) => setForm({ ...form, email: event.target.value })}
-                  className="mt-1 w-full border border-input bg-background px-3 py-2 font-sans text-sm"
+                  className="ui-input mt-1 font-sans"
                 />
               </label>
-              {error && <p className="text-sm text-destructive">{error}</p>}
+              {error && (
+                <p className="ui-note ui-note--danger" role="alert">
+                  {error}
+                </p>
+              )}
               <div className="flex gap-2">
-                <button type="button" onClick={submit} disabled={sending} className="btn-hard btn-primary flex-1">
+                <Button variant="primary" className="flex-1" onClick={submit} disabled={sending}>
                   {sending ? '发送中...' : '发送申请'}
-                </button>
-                <button type="button" onClick={() => setOpen(false)} className="btn-hard btn-ghost">
+                </Button>
+                <Button variant="ghost" onClick={() => setOpen(false)}>
                   取消
-                </button>
+                </Button>
               </div>
             </div>
           </div>

@@ -2,23 +2,42 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { CATEGORIES } from '@shenicest/shared'
-import { cn } from '@/lib/utils'
+import { CATEGORIES, ProjectStatus } from '@shenicest/shared'
 import { projectIdLabel } from '@/lib/utils'
 import { ProjectBadges } from '@/components/project-badges'
 import { Pagination } from '@/components/pagination'
+import { Chip, ChipButton, type ChipTone } from '@/components/ui/chip'
+import { Button } from '@/components/ui/button'
+import { Card, EmptyState } from '@/components/ui/surface'
+import { Eyebrow } from '@/components/ui/typography'
 import type { OperatorProject } from '@/server/operator'
 import {
   OPERATOR_PAGE_SIZE,
   OPERATOR_STATUS_LABELS,
-  OPERATOR_STATUS_COLORS,
   STAGE_LABELS,
   SORT_OPTIONS,
   hasActiveOperatorProjectFilters,
   type OperatorProjectListParams,
 } from '@/lib/operator-filters'
 
-function Chip({
+/** 运营侧状态 → 标签色调（只映射语义，不写颜色）。 */
+const STATUS_TONES: Record<number, ChipTone> = {
+  [ProjectStatus.PendingReview]: 'warning',
+  [ProjectStatus.RevisionRequired]: 'warning',
+  [ProjectStatus.Live]: 'success',
+  [ProjectStatus.Delisted]: 'danger',
+  [ProjectStatus.Rejected]: 'neutral',
+}
+
+function StatusBadge({ status }: { status: number }) {
+  return (
+    <Chip tone={STATUS_TONES[status] ?? 'neutral'} dot>
+      {OPERATOR_STATUS_LABELS[status] ?? '未知'}
+    </Chip>
+  )
+}
+
+function FilterChip({
   active,
   children,
   onClick,
@@ -28,81 +47,47 @@ function Chip({
   onClick: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'chip-hard cursor-pointer transition-colors',
-        active
-          ? 'chip-active'
-          : 'hover:border-primary/60 hover:text-foreground'
-      )}
-    >
+    <ChipButton tone={active ? 'accent' : 'neutral'} aria-pressed={active} onClick={onClick}>
       {children}
-    </button>
-  )
-}
-
-function StatusBadge({ status }: { status: number }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex items-center px-2 py-1 font-mono text-[10px] tracking-[0.08em]',
-        OPERATOR_STATUS_COLORS[status] ?? 'bg-muted text-muted-foreground'
-      )}
-    >
-      {OPERATOR_STATUS_LABELS[status] ?? '未知'}
-    </span>
+    </ChipButton>
   )
 }
 
 function ProjectRow({ project }: { project: OperatorProject }) {
   return (
-    <Link
-      href={`/operator/projects/${project.id}`}
-      className="group flex flex-col gap-3 border border-border bg-card p-4 transition-[transform,box-shadow] duration-150 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_var(--secondary)] sm:flex-row sm:items-center sm:gap-4"
-    >
-      <div className="aspect-[4/3] w-full shrink-0 overflow-hidden border border-border bg-muted sm:size-20">
-        {project.coverUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={project.coverUrl}
-            alt={project.name}
-            loading="lazy"
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center font-mono text-[10px] text-muted-foreground">
-            NO COVER
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-1 flex-col gap-1.5">
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[10px] tracking-[0.08em] text-primary">
-            {projectIdLabel(project.id)}
-          </span>
-          <StatusBadge status={project.status} />
+    <Card className="group">
+      <Link
+        href={`/operator/projects/${project.id}`}
+        className="flex flex-col gap-3 p-4 outline-none sm:flex-row sm:items-center sm:gap-4"
+      >
+        <div className="card-cover card-cover--tall w-full shrink-0 sm:size-20">
+          {project.coverUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={project.coverUrl} alt={project.name} loading="lazy" />
+          ) : (
+            <div className="card-cover--placeholder">NO COVER</div>
+          )}
         </div>
-        <h3 className="text-base font-bold leading-snug transition-colors group-hover:text-primary">
-          {project.name}
-        </h3>
-        {project.tagline ? (
-          <p className="line-clamp-1 text-sm text-muted-foreground">
-            {project.tagline}
-          </p>
-        ) : null}
-      </div>
 
-      <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1">
-        <ProjectBadges stage={project.stage} categories={project.categories} />
-        <span className="font-mono text-[10px] text-muted-foreground">
-          {new Date(project.createdAt).toLocaleDateString('zh-CN')}
-        </span>
-      </div>
-    </Link>
+        <div className="flex flex-1 flex-col gap-1.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="card-id">{projectIdLabel(project.id)}</span>
+            <StatusBadge status={project.status} />
+          </div>
+          <h3 className="card-title transition-colors group-hover:text-brand-text">
+            {project.name}
+          </h3>
+          {project.tagline ? (
+            <p className="card-text line-clamp-1">{project.tagline}</p>
+          ) : null}
+        </div>
+
+        <div className="flex items-center gap-3 sm:flex-col sm:items-end sm:gap-1">
+          <ProjectBadges stage={project.stage} categories={project.categories} />
+          <span className="mono">{new Date(project.createdAt).toLocaleDateString('zh-CN')}</span>
+        </div>
+      </Link>
+    </Card>
   )
 }
 
@@ -132,18 +117,16 @@ export function OperatorProjectsClient({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="flex flex-col gap-6">
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="eyebrow">ALL PROJECTS</p>
-          <h2 className="mt-2 text-[clamp(24px,3vw,32px)] font-bold leading-[1.15]">
+          <Eyebrow>ALL PROJECTS</Eyebrow>
+          <h2 className="mt-2 text-[clamp(24px,3vw,32px)] leading-[1.15] font-bold">
             项目管理
           </h2>
-          <p className="mt-1 font-mono text-xs text-muted-foreground">
-            共 {total} 个项目
-          </p>
+          <p className="mono mt-1">共 {total} 个项目</p>
         </div>
-      </div>
+      </header>
 
       <div className="flex flex-col gap-4">
         <form
@@ -162,18 +145,14 @@ export function OperatorProjectsClient({
             name="q"
             defaultValue={q ?? ''}
             placeholder="搜索项目名称或创始人"
-            className="h-11 flex-1 border border-input bg-card px-3.5 text-base outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+            className="ui-input flex-1"
           />
-          <button type="submit" className="btn-hard btn-primary px-6 py-3">
-            搜索
-          </button>
+          <Button type="submit">搜索</Button>
         </form>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">
-            STATUS:
-          </span>
-          <Chip
+          <span className="mono">STATUS:</span>
+          <FilterChip
             active={status === undefined}
             onClick={() =>
               navigate((params) => {
@@ -182,9 +161,9 @@ export function OperatorProjectsClient({
             }
           >
             全部
-          </Chip>
+          </FilterChip>
           {Object.entries(OPERATOR_STATUS_LABELS).map(([value, label]) => (
-            <Chip
+            <FilterChip
               key={value}
               active={status === Number(value)}
               onClick={() =>
@@ -195,15 +174,13 @@ export function OperatorProjectsClient({
               }
             >
               {label}
-            </Chip>
+            </FilterChip>
           ))}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">
-            STAGE:
-          </span>
-          <Chip
+          <span className="mono">STAGE:</span>
+          <FilterChip
             active={stage === undefined}
             onClick={() =>
               navigate((params) => {
@@ -212,9 +189,9 @@ export function OperatorProjectsClient({
             }
           >
             全部
-          </Chip>
+          </FilterChip>
           {Object.entries(STAGE_LABELS).map(([value, label]) => (
-            <Chip
+            <FilterChip
               key={value}
               active={stage === Number(value)}
               onClick={() =>
@@ -225,15 +202,13 @@ export function OperatorProjectsClient({
               }
             >
               {label}
-            </Chip>
+            </FilterChip>
           ))}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">
-            CATEGORY:
-          </span>
-          <Chip
+          <span className="mono">CATEGORY:</span>
+          <FilterChip
             active={category === undefined}
             onClick={() =>
               navigate((params) => {
@@ -242,9 +217,9 @@ export function OperatorProjectsClient({
             }
           >
             全部
-          </Chip>
+          </FilterChip>
           {CATEGORIES.map((cat) => (
-            <Chip
+            <FilterChip
               key={cat}
               active={category === cat}
               onClick={() =>
@@ -255,16 +230,14 @@ export function OperatorProjectsClient({
               }
             >
               {cat}
-            </Chip>
+            </FilterChip>
           ))}
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">
-            SORT:
-          </span>
+          <span className="mono">SORT:</span>
           {SORT_OPTIONS.map((opt) => (
-            <Chip
+            <FilterChip
               key={opt.value}
               active={(sort ?? 'created_at') === opt.value}
               onClick={() =>
@@ -274,10 +247,10 @@ export function OperatorProjectsClient({
               }
             >
               {opt.label}
-            </Chip>
+            </FilterChip>
           ))}
-          <span className="mx-1 font-mono text-[10px] text-muted-foreground">|</span>
-          <Chip
+          <span className="mono mx-1">|</span>
+          <FilterChip
             active={(order ?? 'desc') === 'desc'}
             onClick={() =>
               navigate((params) => {
@@ -286,8 +259,8 @@ export function OperatorProjectsClient({
             }
           >
             降序
-          </Chip>
-          <Chip
+          </FilterChip>
+          <FilterChip
             active={order === 'asc'}
             onClick={() =>
               navigate((params) => {
@@ -296,24 +269,22 @@ export function OperatorProjectsClient({
             }
           >
             升序
-          </Chip>
+          </FilterChip>
         </div>
       </div>
 
       {initialProjects.length === 0 ? (
-        <div className="border border-dashed border-border py-24 text-center">
-          <p className="font-mono text-xs tracking-[0.12em] text-primary">
-            NO PROJECTS
-          </p>
-          <p className="mt-3 text-base text-muted-foreground">
-            {hasActiveOperatorProjectFilters({ status, stage, category, q })
+        <EmptyState
+          title="NO PROJECTS"
+          description={
+            hasActiveOperatorProjectFilters({ status, stage, category, q })
               ? '没有符合筛选条件的项目'
-              : '暂无项目'}
-          </p>
-        </div>
+              : '暂无项目'
+          }
+        />
       ) : (
         <>
-          <div className="space-y-3">
+          <div className="flex flex-col gap-3">
             {initialProjects.map((project) => (
               <ProjectRow key={project.id} project={project} />
             ))}

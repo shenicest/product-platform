@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import {
   acceptHackathonConnection,
   acceptTalentConnection,
@@ -12,6 +12,9 @@ import {
 } from '@/lib/client-api'
 import { connectionItemStatusLabel, connectionSourceLabel, type ConnectionItem } from '@/lib/connections'
 import { ConnectionRequestStatus } from '@shenicest/shared'
+import { Button } from '@/components/ui/button'
+import { Chip, ChipButton, type ChipTone } from '@/components/ui/chip'
+import { Eyebrow } from '@/components/ui/typography'
 
 // Unified connections record panel (ticket 07). Contacts live only in
 // component memory; they are never written to URL, localStorage, or analytics.
@@ -28,6 +31,12 @@ const VIEW_LABELS: Record<View, string> = {
   sent: '我发起的',
 }
 
+/** 来源 → 语义色；只走 Chip 的 tone。 */
+const SOURCE_TONE: Record<ConnectionItem['source'], ChipTone> = {
+  talent: 'sky',
+  hackathon: 'accent',
+}
+
 const identityName = (party: ConnectionItem['sender']) => party.nickname || '平台用户'
 
 export function ConnectionsPanel({
@@ -42,7 +51,6 @@ export function ConnectionsPanel({
   const [source, setSource] = useState<SourceFilter>('all')
   const [accepting, setAccepting] = useState<string | null>(null)
   const [actionError, setActionError] = useState('')
-  const router = useRouter()
 
   async function refresh() {
     const result = await getConnections()
@@ -75,28 +83,45 @@ export function ConnectionsPanel({
     .filter((item) => (view === 'received' ? item.receiverUserId === userId : item.senderUserId === userId))
 
   return (
-    <section className="mx-auto max-w-5xl px-4 py-14 sm:px-6">
+    <section className="shell shell--narrow py-14">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="eyebrow">CONNECTIONS / NETWORK</p>
-          <h1 className="mt-3 text-4xl font-black">连接记录</h1>
+          <Eyebrow>CONNECTIONS / NETWORK</Eyebrow>
+          <h1 className="mt-3 text-[clamp(2rem,3.4vw,2.75rem)] font-black leading-tight tracking-[-0.03em] text-foreground">
+            连接记录
+          </h1>
         </div>
+        <p className="section-head__aside">
+          PENDING: <b className="font-digits text-lg font-normal text-brand-text">{initial.pendingReceived}</b>
+        </p>
       </div>
-      <div className="mt-8 flex flex-wrap gap-2 border-b border-border pb-3">
+
+      <div className="mt-8 flex flex-wrap gap-2 border-b border-border pb-3" role="group" aria-label="连接筛选">
         {(['received', 'sent'] as View[]).map((value) => (
-          <button key={value} className={`chip-hard ${view === value ? 'chip-active' : ''}`} onClick={() => setView(value)}>
+          <ChipButton
+            key={value}
+            aria-pressed={view === value}
+            onClick={() => setView(value)}
+            tone={view === value ? 'accent' : 'neutral'}
+          >
             {VIEW_LABELS[value]}
-          </button>
+          </ChipButton>
         ))}
         <span className="mx-2 self-center text-border" aria-hidden>
           |
         </span>
         {SOURCE_FILTERS.map((value) => (
-          <button key={value} className={`chip-hard ${source === value ? 'chip-active' : ''}`} onClick={() => setSource(value)}>
+          <ChipButton
+            key={value}
+            aria-pressed={source === value}
+            onClick={() => setSource(value)}
+            tone={source === value ? 'accent' : 'neutral'}
+          >
             {SOURCE_FILTER_LABELS[value]}
-          </button>
+          </ChipButton>
         ))}
       </div>
+
       <div className="mt-6 space-y-4">
         {filtered.length ? (
           filtered.map((connection) => (
@@ -113,10 +138,10 @@ export function ConnectionsPanel({
             />
           ))
         ) : (
-          <div className="border border-dashed border-border py-20 text-center text-muted-foreground">这里还没有连接记录</div>
+          <div className="ui-empty">这里还没有连接记录</div>
         )}
       </div>
-      {actionError && <p className="mt-4 text-sm text-destructive">{actionError}</p>}
+      {actionError && <p className="ui-note ui-note--danger mt-4" role="alert">{actionError}</p>}
     </section>
   )
 }
@@ -144,47 +169,57 @@ function ConnectionCard({
   const accepted = connection.status === ConnectionRequestStatus.Accepted
   return (
     <article
-      className={`border bg-card p-5 ${highlighted ? 'border-2 border-primary' : 'border-border'}`}
+      className={
+        highlighted
+          ? 'rounded-xl border-2 border-primary bg-card p-5 shadow-sm'
+          : 'rounded-xl border border-border bg-card p-5 shadow-sm'
+      }
       data-hackathon-request={connection.source === 'hackathon' ? connection.id : undefined}
     >
       <div className="flex flex-wrap justify-between gap-3">
         <div>
-          <p className="font-bold">
-            <span className="chip-hard mr-2 align-middle">{connectionSourceLabel(connection.source)}</span>
+          <p className="flex flex-wrap items-center gap-2 font-bold text-foreground">
+            <Chip tone={SOURCE_TONE[connection.source]}>{connectionSourceLabel(connection.source)}</Chip>
             {connection.source === 'talent' ? identityName(party) : null}
           </p>
           {connection.source === 'talent' && (
-            <p className="mt-1 font-mono text-xs text-primary">
+            <p className="mt-1 font-mono text-meta tracking-[0.1em] text-brand-text">
               {party.hasPublishedTalentProfile ? '公开人才档案' : '该用户暂未公开介绍'}
             </p>
           )}
         </div>
-        <span className="chip-hard">{connectionItemStatusLabel(connection.status, view === 'sent')}</span>
+        <Chip tone={accepted ? 'success' : 'neutral'}>
+          {connectionItemStatusLabel(connection.status, view === 'sent')}
+        </Chip>
       </div>
+
       {connection.source === 'hackathon' && connection.target.type === 'hackathon_project' && (
-        <p className="mt-4 border-l-2 border-primary pl-3 text-sm">
+        <p className="mt-4 border-l-2 border-brand-line pl-3 text-body-sm text-foreground">
           项目：
           {connection.target.unavailable || !connection.target.url ? (
             <span>{connection.target.name || '项目当前不可用'}</span>
           ) : (
-            <Link href={connection.target.url} className="text-primary underline">
+            <Link href={connection.target.url} className="text-brand-text underline underline-offset-2">
               {connection.target.name}
             </Link>
           )}
         </p>
       )}
-      <p className="mt-4 text-sm text-muted-foreground">{connection.purpose}</p>
-      <p className="mt-2 whitespace-pre-wrap break-words text-sm">{connection.message}</p>
+
+      <p className="mt-4 text-body-sm text-muted-foreground">{connection.purpose}</p>
+      <p className="mt-2 whitespace-pre-wrap break-words text-body-sm text-foreground">{connection.message}</p>
+
       {/* Contacts render only for Accepted requests viewed by a party — other
           states never receive contact payloads, so nothing can leak. */}
       {accepted && connection.contacts ? (
         <div className="mt-4 space-y-2 border-t border-border pt-3">
-          <p className="font-mono text-[10px] uppercase text-muted-foreground">我的联系方式</p>
+          <p className="eyebrow">我的联系方式</p>
           <ContactRows contacts={connection.contacts.mine} />
-          <p className="mt-3 font-mono text-[10px] uppercase text-muted-foreground">对方联系方式</p>
+          <p className="eyebrow mt-3">对方联系方式</p>
           <ContactRows contacts={connection.contacts.other} />
         </div>
       ) : null}
+
       {view === 'received' && connection.status === ConnectionRequestStatus.Pending ? (
         accepting ? (
           <ContactAuthorizeForm
@@ -197,11 +232,12 @@ function ConnectionCard({
           />
         ) : (
           <div className="mt-4 flex gap-2">
-            <button className="btn-hard btn-primary" onClick={onAcceptStart}>
+            <Button variant="primary" size="sm" onClick={onAcceptStart}>
               接受
-            </button>
-            <button
-              className="btn-hard btn-ghost"
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={async () => {
                 const result =
                   connection.source === 'hackathon'
@@ -212,7 +248,7 @@ function ConnectionCard({
               }}
             >
               忽略
-            </button>
+            </Button>
           </div>
         )
       ) : null}
@@ -236,28 +272,29 @@ function ContactAuthorizeForm({
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
   return (
-    <div className="mt-4 border border-primary/50 p-4">
-      <p className="text-sm">接受后双方才能查看授权联系方式。</p>
+    <div className="mt-4 rounded-lg border border-brand-line bg-brand-wash p-4">
+      <p className="text-body-sm text-foreground">接受后双方才能查看授权联系方式。</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <input
           placeholder="微信"
           value={wechat}
           aria-label="微信"
           onChange={(event) => setWechat(event.target.value)}
-          className="border border-input bg-background px-3 py-2"
+          className="ui-input"
         />
         <input
           placeholder="邮箱"
-          aria-label="邮箱"
           value={email}
+          aria-label="邮箱"
           onChange={(event) => setEmail(event.target.value)}
-          className="border border-input bg-background px-3 py-2"
+          className="ui-input"
         />
       </div>
-      {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+      {error && <p className="mt-2 text-body-sm text-danger-text" role="alert">{error}</p>}
       <div className="mt-3 flex gap-2">
-        <button
-          className="btn-hard btn-primary"
+        <Button
+          variant="primary"
+          size="sm"
           disabled={saving}
           onClick={async () => {
             if (!wechat.trim() && !email.trim()) {
@@ -276,10 +313,10 @@ function ContactAuthorizeForm({
           }}
         >
           {saving ? '处理中...' : '接受连接'}
-        </button>
-        <button className="btn-hard btn-ghost" onClick={onCancel}>
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onCancel}>
           取消
-        </button>
+        </Button>
       </div>
     </div>
   )
@@ -289,12 +326,12 @@ function ContactRows({ contacts }: { contacts: { wechat: string | null; email: s
   return (
     <>
       {contacts.wechat && (
-        <button className="block font-mono text-xs text-primary" onClick={() => navigator.clipboard.writeText(contacts.wechat!)}>
+        <button className="block font-mono text-meta tracking-[0.1em] text-brand-text" onClick={() => navigator.clipboard.writeText(contacts.wechat!)}>
           微信：{contacts.wechat} · 复制
         </button>
       )}
       {contacts.email && (
-        <button className="block font-mono text-xs text-primary" onClick={() => navigator.clipboard.writeText(contacts.email!)}>
+        <button className="block font-mono text-meta tracking-[0.1em] text-brand-text" onClick={() => navigator.clipboard.writeText(contacts.email!)}>
           邮箱：{contacts.email} · 复制
         </button>
       )}

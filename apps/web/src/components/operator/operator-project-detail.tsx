@@ -2,11 +2,16 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { ProjectStatus, skillLabel } from '@shenicest/shared'
-import { cn } from '@/lib/utils'
+import { ProjectStatus, ProposalStatus, skillLabel } from '@shenicest/shared'
 import { tractionMetrics } from '@/lib/traction'
 import { ProjectBadges } from '@/components/project-badges'
-import { OPERATOR_STATUS_LABELS, OPERATOR_STATUS_COLORS, PROPOSAL_STATUS_LABELS, PROPOSAL_STATUS_COLORS } from '@/lib/operator-filters'
+import { Button, ButtonAnchor, ButtonLink } from '@/components/ui/button'
+import { Chip, type ChipTone } from '@/components/ui/chip'
+import { Card } from '@/components/ui/surface'
+import {
+  OPERATOR_STATUS_LABELS,
+  PROPOSAL_STATUS_LABELS,
+} from '@/lib/operator-filters'
 import {
   approveProject,
   requireProjectRevision,
@@ -16,6 +21,27 @@ import {
 } from '@/lib/operator-api'
 import type { OperatorProject, OperatorProposal } from '@/server/operator'
 
+/** 项目状态 → 标签色调（只映射语义，不写颜色）。 */
+const PROJECT_STATUS_TONES: Record<number, ChipTone> = {
+  [ProjectStatus.Draft]: 'neutral',
+  [ProjectStatus.PendingReview]: 'warning',
+  [ProjectStatus.RevisionRequired]: 'warning',
+  [ProjectStatus.Live]: 'success',
+  [ProjectStatus.Delisted]: 'danger',
+  [ProjectStatus.Rejected]: 'neutral',
+}
+
+/** 提案状态 → 标签色调。 */
+const PROPOSAL_STATUS_TONES: Record<number, ChipTone> = {
+  [ProposalStatus.Pending]: 'warning',
+  [ProposalStatus.Approved]: 'success',
+  [ProposalStatus.Rejected]: 'neutral',
+  [ProposalStatus.RevisionRequired]: 'warning',
+}
+
+/** 危险动作按钮：在 ghost 骨架上覆盖危险语义色（utilities 层高于 components 层）。 */
+const DANGER_BTN =
+  'border-danger text-danger-text hover:border-danger hover:text-danger-text'
 function ReviewDialog({
   title,
   confirmLabel,
@@ -34,40 +60,41 @@ function ReviewDialog({
   const [reason, setReason] = useState('')
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="w-full max-w-md border-2 border-primary bg-card p-6">
-        <h3 className="text-lg font-bold">{title}</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="w-full max-w-md rounded-xl border border-border bg-card p-6"
+      >
+        <h3 className="text-lg font-bold text-foreground">{title}</h3>
         {requiresReason ? (
-          <div className="mt-4">
-            <label className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">
+          <div className="ui-field mt-4">
+            <label htmlFor="review-reason" className="ui-label">
               REASON
             </label>
             <textarea
+              id="review-reason"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               rows={4}
               placeholder="请填写原因（将展示给创始人）"
-              className="mt-2 w-full border border-input bg-background px-3 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus:border-primary"
+              className="ui-textarea"
             />
           </div>
         ) : null}
         <div className="mt-6 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={loading}
-            className="btn-hard btn-ghost px-4 py-2 text-xs"
-          >
+          <Button variant="ghost" size="sm" onClick={onCancel} disabled={loading}>
             取消
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
             onClick={() => onConfirm(requiresReason ? reason : undefined)}
             disabled={loading || (requiresReason && !reason.trim())}
-            className="btn-hard btn-primary px-4 py-2 text-xs"
           >
             {loading ? '处理中...' : confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -126,33 +153,20 @@ export function OperatorProjectDetail({
   const traction = tractionMetrics(project)
 
   return (
-    <div className="space-y-8">
-      {error ? (
-        <div className="border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-          {error}
-        </div>
-      ) : null}
-      {success ? (
-        <div className="border border-emerald-500/40 bg-emerald-500/10 p-4 text-sm text-emerald-600">
-          {success}
-        </div>
-      ) : null}
+    <div className="flex flex-col gap-8">
+      {error ? <div className="ui-note ui-note--danger">{error}</div> : null}
+      {success ? <div className="ui-note ui-note--success">{success}</div> : null}
 
-      <section className="border border-border bg-card p-5">
-        <div className="flex flex-wrap items-center gap-3">
-          <span
-            className={cn(
-              'inline-flex items-center px-3 py-1.5 font-mono text-xs tracking-[0.08em]',
-              OPERATOR_STATUS_COLORS[project.status] ?? 'bg-muted text-muted-foreground'
-            )}
-          >
+      <Card static className="p-5">
+        <div className="flex flex-wrap items-center gap-2">
+          <Chip tone={PROJECT_STATUS_TONES[project.status] ?? 'neutral'} dot>
             {OPERATOR_STATUS_LABELS[project.status] ?? '未知'}
-          </span>
+          </Chip>
           <ProjectBadges stage={project.stage} categories={project.categories} />
         </div>
 
         {project.coverUrl ? (
-          <div className="mt-5 overflow-hidden border border-border bg-muted">
+          <div className="card-cover card-cover--wide mt-5 rounded-md border border-border">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={project.coverUrl}
@@ -163,87 +177,101 @@ export function OperatorProjectDetail({
         ) : null}
 
         {project.tagline ? (
-          <p className="mt-4 text-lg text-muted-foreground">{project.tagline}</p>
+          <p className="mt-4 text-body-lg text-muted-foreground">{project.tagline}</p>
         ) : null}
 
         {project.problemStatement ? (
           <div className="mt-4">
-            <h3 className="font-mono text-[10px] tracking-[0.12em] text-primary">PROBLEM STATEMENT</h3>
-            <p className="mt-2 max-w-[65ch] text-sm leading-[1.7] text-muted-foreground whitespace-pre-line">
+            <h3 className="eyebrow eyebrow--accent">PROBLEM STATEMENT</h3>
+            <p className="mt-2 max-w-[65ch] text-body-sm leading-[1.7] whitespace-pre-line text-muted-foreground">
               {project.problemStatement}
             </p>
           </div>
         ) : null}
 
         {traction.length ? (
-          <div className="mt-6 flex flex-wrap gap-8 border border-border p-4">
+          <div className="detail-metrics mt-6">
             {traction.map((metric) => (
               <div key={metric.label}>
-                <div className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">{metric.label}</div>
-                <div className="mt-1 text-2xl font-bold">{metric.value}</div>
+                <div className="detail-metric__label">{metric.label}</div>
+                <div className="detail-metric__value">{metric.value}</div>
               </div>
             ))}
           </div>
         ) : null}
 
-        <div className="mt-6 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+        <dl className="mt-6 grid grid-cols-1 gap-3 text-body-sm sm:grid-cols-2">
           {project.progress ? (
             <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">当前进展</dt>
+              <dt className="mono">当前进展</dt>
               <dd className="mt-1">{project.progress}</dd>
             </div>
           ) : null}
           {project.nextSteps ? (
             <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">下一步计划</dt>
+              <dt className="mono">下一步计划</dt>
               <dd className="mt-1">{project.nextSteps}</dd>
             </div>
           ) : null}
           {project.differentiation ? (
             <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">差异化优势</dt>
+              <dt className="mono">差异化优势</dt>
               <dd className="mt-1">{project.differentiation}</dd>
             </div>
           ) : null}
           {project.businessModel ? (
             <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">商业模式</dt>
+              <dt className="mono">商业模式</dt>
               <dd className="mt-1">{project.businessModel}</dd>
             </div>
           ) : null}
           {project.seekingSkills?.length ? (
             <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">寻求帮助</dt>
-              <dd className="mt-1">{project.seekingSkills.map((skill) => skillLabel(skill)).join('、')}</dd>
+              <dt className="mono">寻求帮助</dt>
+              <dd className="mt-1">
+                {project.seekingSkills.map((skill) => skillLabel(skill)).join('、')}
+              </dd>
             </div>
           ) : null}
           {project.isOpenForBeta !== null ? (
             <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">内测状态</dt>
+              <dt className="mono">内测状态</dt>
               <dd className="mt-1">{project.isOpenForBeta ? '正在开放内测' : '暂未开放内测'}</dd>
             </div>
           ) : null}
           {project.betaDescription ? (
             <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">内测说明</dt>
+              <dt className="mono">内测说明</dt>
               <dd className="mt-1 whitespace-pre-line">{project.betaDescription}</dd>
             </div>
           ) : null}
-        </div>
+        </dl>
 
         {project.demoLink || project.demoVideoUrl || demoImages.length > 0 ? (
-          <section className="mt-6 border border-border p-4">
-            <h3 className="font-mono text-[10px] tracking-[0.12em] text-primary">DEMO MATERIALS</h3>
+          <section className="mt-6 rounded-md border border-border p-4">
+            <h3 className="eyebrow eyebrow--accent">DEMO MATERIALS</h3>
             <div className="mt-3 flex flex-wrap gap-2">
               {project.demoLink ? (
-                <a href={project.demoLink} target="_blank" rel="noopener noreferrer" className="btn-hard btn-secondary px-3 py-2 text-xs">
+                <ButtonAnchor
+                  href={project.demoLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="secondary"
+                  size="sm"
+                >
                   访问产品链接
-                </a>
+                </ButtonAnchor>
               ) : null}
               {project.demoVideoUrl ? (
-                <a href={project.demoVideoUrl} target="_blank" rel="noopener noreferrer" className="btn-hard btn-secondary px-3 py-2 text-xs">
+                <ButtonAnchor
+                  href={project.demoVideoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  variant="secondary"
+                  size="sm"
+                >
                   观看演示视频
-                </a>
+                </ButtonAnchor>
               ) : null}
             </div>
             {demoImages.length > 0 ? (
@@ -254,7 +282,7 @@ export function OperatorProjectDetail({
                     key={`${src}-${index}`}
                     src={src}
                     alt={`${project.name}演示图 ${index + 1}`}
-                    className="aspect-video w-full border border-border bg-muted object-cover"
+                    className="aspect-video w-full rounded-md border border-border bg-muted object-cover"
                   />
                 ))}
               </div>
@@ -262,99 +290,76 @@ export function OperatorProjectDetail({
           </section>
         ) : null}
 
-        <div className="mt-6 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+        <dl className="mt-6 grid grid-cols-1 gap-3 text-body-sm sm:grid-cols-2">
           {project.contactName ? (
             <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">联系人</dt>
+              <dt className="mono">联系人</dt>
               <dd className="mt-1">{project.contactName}</dd>
             </div>
           ) : null}
           {project.contactEmail ? (
             <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">邮箱</dt>
+              <dt className="mono">邮箱</dt>
               <dd className="mt-1">{project.contactEmail}</dd>
             </div>
           ) : null}
           {project.contactPhone ? (
             <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">电话</dt>
+              <dt className="mono">电话</dt>
               <dd className="mt-1">{project.contactPhone}</dd>
             </div>
           ) : null}
           {project.contactWechat ? (
             <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">微信</dt>
+              <dt className="mono">微信</dt>
               <dd className="mt-1">{project.contactWechat}</dd>
             </div>
           ) : null}
           {project.teamName ? (
             <div>
-              <dt className="font-mono text-[10px] tracking-[0.08em] text-muted-foreground">团队</dt>
+              <dt className="mono">团队</dt>
               <dd className="mt-1">{project.teamName}</dd>
             </div>
           ) : null}
-        </div>
+        </dl>
 
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link
-            href={`/projects/${project.id}`}
-            className="btn-hard btn-secondary px-4 py-2 text-xs"
-          >
+          <ButtonLink href={`/projects/${project.id}`} variant="secondary" size="sm">
             查看公开页面
-          </Link>
+          </ButtonLink>
         </div>
-      </section>
+      </Card>
 
-      {(isPendingReview || isLive || isDelisted) ? (
-        <section className="border-2 border-primary p-5">
-          <h3 className="mb-4 font-mono text-xs tracking-[0.12em] text-primary">
-            REVIEW ACTIONS
-          </h3>
+      {isPendingReview || isLive || isDelisted ? (
+        <section className="rounded-xl border border-brand-line bg-brand-wash p-5">
+          <h3 className="eyebrow eyebrow--accent mb-4">REVIEW ACTIONS</h3>
           <div className="flex flex-wrap gap-3">
             {isPendingReview ? (
               <>
-                <button
-                  type="button"
-                  onClick={() => setDialog({ type: 'approve' })}
-                  className="btn-hard btn-primary px-4 py-2 text-xs"
-                >
-                  通过
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDialog({ type: 'revision' })}
-                  className="btn-hard btn-ghost px-4 py-2 text-xs"
-                >
+                <Button onClick={() => setDialog({ type: 'approve' })}>通过</Button>
+                <Button variant="ghost" onClick={() => setDialog({ type: 'revision' })}>
                   要求修改
-                </button>
-                <button
-                  type="button"
+                </Button>
+                <Button
+                  variant="ghost"
+                  className={DANGER_BTN}
                   onClick={() => setDialog({ type: 'reject' })}
-                  className="btn-hard px-4 py-2 text-xs"
-                  style={{ borderColor: 'var(--destructive)', color: 'var(--destructive)' }}
                 >
                   驳回
-                </button>
+                </Button>
               </>
             ) : null}
             {isLive ? (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                className={DANGER_BTN}
                 onClick={() => setDialog({ type: 'delist' })}
-                className="btn-hard px-4 py-2 text-xs"
-                style={{ borderColor: 'var(--destructive)', color: 'var(--destructive)' }}
               >
                 下架
-              </button>
+              </Button>
             ) : null}
             {isDelisted ? (
-              <button
-                type="button"
-                onClick={() => setDialog({ type: 'restore' })}
-                className="btn-hard btn-primary px-4 py-2 text-xs"
-              >
-                恢复上架
-              </button>
+              <Button onClick={() => setDialog({ type: 'restore' })}>恢复上架</Button>
             ) : null}
           </div>
         </section>
@@ -362,31 +367,23 @@ export function OperatorProjectDetail({
 
       {proposals.length > 0 ? (
         <section>
-          <h3 className="mb-4 text-xl font-bold">编辑提案记录</h3>
-          <div className="space-y-3">
+          <h3 className="mb-4 text-h3 font-bold">编辑提案记录</h3>
+          <div className="flex flex-col gap-2">
             {proposals.map((proposal) => (
-              <Link
-                key={proposal.id}
-                href={`/operator/proposals/${proposal.id}`}
-                className="block border border-border bg-card p-4 transition-[transform,box-shadow] duration-150 hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[4px_4px_0_var(--secondary)]"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs text-primary">
-                    #{proposal.id}
-                  </span>
-                  <span
-                    className={cn(
-                      'inline-flex items-center px-2 py-1 font-mono text-[10px] tracking-[0.08em]',
-                      PROPOSAL_STATUS_COLORS[proposal.status] ?? 'bg-muted text-muted-foreground'
-                    )}
-                  >
-                    {PROPOSAL_STATUS_LABELS[proposal.status] ?? '未知'}
-                  </span>
-                </div>
-                <p className="mt-2 font-mono text-[10px] text-muted-foreground">
-                  {new Date(proposal.createdAt).toLocaleString('zh-CN')}
-                </p>
-              </Link>
+              <Card key={proposal.id} className="group">
+                <Link
+                  href={`/operator/proposals/${proposal.id}`}
+                  className="flex flex-col gap-2 p-4 outline-none"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="card-id">#{proposal.id}</span>
+                    <Chip tone={PROPOSAL_STATUS_TONES[proposal.status] ?? 'neutral'} dot>
+                      {PROPOSAL_STATUS_LABELS[proposal.status] ?? '未知'}
+                    </Chip>
+                  </div>
+                  <p className="mono">{new Date(proposal.createdAt).toLocaleString('zh-CN')}</p>
+                </Link>
+              </Card>
             ))}
           </div>
         </section>

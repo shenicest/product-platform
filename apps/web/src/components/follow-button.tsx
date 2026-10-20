@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useOptionalAuth } from '@/components/auth-provider'
 import { useOptionalUserInteraction } from '@/components/user-interaction-provider'
+import { Button } from '@/components/ui/button'
 
 export function FollowButton({ founderUserId }: { founderUserId: string }) {
   const router = useRouter()
@@ -29,5 +30,15 @@ export function FollowButton({ founderUserId }: { founderUserId: string }) {
     } catch { /* provider rolls back */ } finally { setBusy(false) }
   }
 
-  return <button type="button" aria-pressed={isFollowing} disabled={busy} onClick={handleClick} className="btn-hard btn-secondary px-3 py-1.5 text-xs disabled:opacity-60">{isFollowing ? 'Following' : 'Follow'}</button>
+  return (
+    <Button
+      variant={isFollowing ? 'tertiary' : 'secondary'}
+      size="sm"
+      aria-pressed={isFollowing}
+      disabled={busy}
+      onClick={handleClick}
+    >
+      {isFollowing ? 'Following' : 'Follow'}
+    </Button>
+  )
 }
