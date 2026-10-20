@@ -26,7 +26,8 @@ const profile: TalentProfile = {
   headline: "寻找开发搭档",
   bio: "这是一段足够长的人才简介，用来描述我的经验、工作方式以及正在寻找的合作方向。",
   city: "上海",
-  roles: ["产品"],
+  links: ["https://github.com/lab"],
+  availability: 0,
   skills: ["productStrategy", "needsAnalysis", "userResearch"],
   seekingSkills: ["frontend"],
   domains: ["效率工具"],
@@ -47,6 +48,56 @@ describe("TalentDetail connection dialog", () => {
     });
   });
 
+  it("shows the availability badge and dual-state wall: provide before seeking, no roles", () => {
+    render(
+      <TalentDetail
+        profile={{
+          ...profile,
+          bio: "这是一段足够长的人才简介，用来描述我的经验、工作方式以及擅长的技能。",
+          skills: ["frontend", "productStrategy"],
+          seekingSkills: ["ui", "dataAnalysis"],
+        }}
+      />,
+    );
+
+    expect(screen.getByText("积极寻找合作")).toBeInTheDocument();
+    const provideSection = screen.getByRole("group", { name: "我能提供" });
+    const seekingSection = screen.getByRole("group", { name: "我想寻找" });
+    expect(provideSection).toContainElement(screen.getByText("前端"));
+    expect(screen.getByText("前端").closest("[data-skill-state]")).toHaveAttribute(
+      "data-skill-state",
+      "provide",
+    );
+    expect(screen.getByText("数据分析").closest("[data-skill-state]")).toHaveAttribute(
+      "data-skill-state",
+      "seeking",
+    );
+    expect(seekingSection).toContainElement(screen.getByText("数据分析"));
+    // Provide wall sorts by the skill-wall group order (产品 before 开发).
+    const provideChips = Array.from(
+      provideSection.querySelectorAll("[data-skill-state]"),
+    );
+    expect(provideChips.map((chip) => chip.textContent)).toEqual([
+      "产品策略",
+      "前端",
+    ]);
+    const seekingChips = Array.from(
+      seekingSection.querySelectorAll("[data-skill-state]"),
+    );
+    expect(seekingChips.map((chip) => chip.textContent)).toEqual([
+      "UI",
+      "数据分析",
+    ]);
+
+    expect(screen.queryByText(/方向/)).not.toBeInTheDocument();
+  });
+
+  it("hides the seeking section when the wall has no seeking skills", () => {
+    render(<TalentDetail profile={{ ...profile, seekingSkills: [] }} />);
+    expect(screen.queryByRole("group", { name: "我想寻找" })).not.toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "我能提供" })).toBeInTheDocument();
+  });
+
   it("links each Live project to its project detail page", () => {
     render(
       <TalentDetail
@@ -60,6 +111,10 @@ describe("TalentDetail connection dialog", () => {
     expect(screen.getByRole("link", { name: /公开项目/ })).toHaveAttribute(
       "href",
       "/projects/568",
+    );
+    expect(screen.getByRole("link", { name: "https://github.com/lab" })).toHaveAttribute(
+      "href",
+      "https://github.com/lab",
     );
   });
 

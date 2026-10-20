@@ -1,8 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { OperatorTalentActions } from '@/components/talent/talent-ui'
+import { AvailabilityBadge, OperatorTalentActions, SkillChip } from '@/components/talent/talent-ui'
+import { orderSkillsByGroup } from '@/lib/talent'
 import { getOperatorTalent, getTalentAudit } from '@/server/talent'
-import { Chip } from '@/components/ui/chip'
 import { Card } from '@/components/ui/surface'
 import { Eyebrow } from '@/components/ui/typography'
 
@@ -14,6 +14,7 @@ export default async function OperatorTalentPage(props: {
   const { userId } = await props.params
   const [profile, audit] = await Promise.all([getOperatorTalent(userId), getTalentAudit(userId)])
   if (!profile.data) notFound()
+  const data = profile.data
 
   return (
     <section>
@@ -22,17 +23,37 @@ export default async function OperatorTalentPage(props: {
       </Link>
 
       <Card static className="mt-8 p-6">
-        <Eyebrow>USER / {profile.data.userId}</Eyebrow>
+        <Eyebrow>USER / {data.userId}</Eyebrow>
         <h2 className="mt-3 text-[clamp(24px,3vw,32px)] leading-[1.15] font-bold">
-          {profile.data.headline}
+          {data.headline}
         </h2>
-        <p className="mt-5 whitespace-pre-wrap text-muted-foreground">{profile.data.bio}</p>
-        <div className="mt-5 flex flex-wrap gap-2">
-          {profile.data.skills.map((item) => (
-            <Chip key={item}>{item}</Chip>
-          ))}
+        <div className="mt-3">
+          <AvailabilityBadge availability={data.availability} />
         </div>
-        <OperatorTalentActions profile={profile.data} />
+        <p className="mt-5 whitespace-pre-wrap text-muted-foreground">{data.bio}</p>
+        <div className="mt-5">
+          <p className="font-mono text-meta font-bold tracking-[0.12em] text-brand-text">
+            我能提供
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {orderSkillsByGroup(data.skills).map((item) => (
+              <SkillChip key={item} skill={item} skillState="provide" />
+            ))}
+          </div>
+        </div>
+        {(data.seekingSkills ?? []).length > 0 && (
+          <div className="mt-4">
+            <p className="font-mono text-meta font-bold tracking-[0.12em] text-sky-text">
+              我想寻找
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {orderSkillsByGroup(data.seekingSkills ?? []).map((item) => (
+                <SkillChip key={item} skill={item} skillState="seeking" />
+              ))}
+            </div>
+          </div>
+        )}
+        <OperatorTalentActions profile={data} />
       </Card>
 
       <h3 className="mt-10 text-h3 font-bold">停用审计</h3>

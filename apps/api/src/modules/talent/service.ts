@@ -9,9 +9,11 @@ import {
   COLLABORATION_DURATIONS,
   CONNECTION_PURPOSES,
   ConnectionRequestStatus,
+  MAX_TALENT_SKILLS,
+  MAX_SEEKING_SKILLS,
   ProjectStatus,
-  TALENT_ROLES,
   TALENT_SKILLS,
+  TalentAvailability,
   skillKey,
   skillLabel,
   TalentProfileStatus,
@@ -66,6 +68,21 @@ function assertCatalog(name: string, values: string[], catalog: readonly string[
   }
 }
 
+function isValidUrl(value: string) {
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+function assertAvailability(value: number) {
+  if (!Object.values(TalentAvailability).includes(value as TalentAvailability)) {
+    throw new TalentError('INVALID_CATALOG_VALUE', 'availability contains an unsupported value')
+  }
+}
+
 function iso(value: Date | null) {
   return value?.toISOString() ?? null
 }
@@ -77,31 +94,47 @@ export class TalentService {
     this.users = new UserProfileService(db)
   }
 
+  // bio and links form an at-least-one pair (CONTEXT.md TalentProfile v1.1):
+  // 30-500 characters of prose OR up to 3 http(s) work links — at least one
+  // must be present. An empty/blank bio is treated as not provided.
   private normalizeProfile(body: TalentProfileBody) {
+    const bio = body.bio?.trim() ? body.bio : null
+    const links = dedupe(body.links ?? [])
+    if (!bio && links.length === 0) {
+      throw new TalentError('BIO_OR_LINKS_REQUIRED', 'Provide at least a 30-500 character bio or one work link')
+    }
+    const skills = dedupe(body.skills)
+    const seekingSkills = dedupe(body.seekingSkills ?? []).filter((skill) => !skills.includes(skill))
     const result = {
       headline: body.headline,
-      bio: body.bio,
+      bio,
       city: body.city,
-      roles: dedupe(body.roles),
-      skills: dedupe(body.skills),
-      seekingSkills: dedupe(body.seekingSkills ?? []),
+      availability: body.availability,
+      skills,
+      seekingSkills,
       domains: dedupe(body.domains),
       durations: dedupe(body.durations),
+      links,
     }
-    assertRange('roles', result.roles, 1, 3)
-    assertRange('skills', result.skills, 3, 10)
-    assertRange('seekingSkills', result.seekingSkills, 0, 5)
+    assertRange('links', result.links, 0, 3)
+    if (result.links.some((link) => !isValidUrl(link))) {
+      throw new TalentError('INVALID_LINK', 'Every work link must be a valid http(s) URL')
+    }
+    assertRange('skills', result.skills, 3, MAX_TALENT_SKILLS)
+    assertRange('seekingSkills', result.seekingSkills, 0, MAX_SEEKING_SKILLS)
     assertRange('domains', result.domains, 1, 3)
     assertRange('durations', result.durations, 1, 3)
-    assertCatalog('roles', result.roles, TALENT_ROLES)
     assertCatalog('skills', result.skills, TALENT_SKILLS)
     assertCatalog('seekingSkills', result.seekingSkills, TALENT_SKILLS)
     assertCatalog('domains', result.domains, CATEGORIES)
     assertCatalog('durations', result.durations, COLLABORATION_DURATIONS)
+    assertAvailability(result.availability)
     return result
   }
 
-  private profileDto(profile: ProfileRow) {
+  // Shared projection used by every profile DTO (public/management/suspend);
+  // only the status pass-through differs at each call site.
+  private profileFields(profile: ProfileRow) {
     return {
       id: profile.id,
       userId: profile.userId,
@@ -109,7 +142,8 @@ export class TalentService {
       headline: profile.headline,
       bio: profile.bio,
       city: profile.city,
-      roles: profile.roles,
+      links: profile.links,
+      availability: profile.availability,
       skills: profile.skills,
       seekingSkills: profile.seekingSkills,
       domains: profile.domains,
@@ -118,6 +152,10 @@ export class TalentService {
       createdAt: profile.createdAt.toISOString(),
       updatedAt: profile.updatedAt.toISOString(),
     }
+  }
+
+  private profileDto(profile: ProfileRow) {
+    return this.profileFields(profile)
   }
 
   async getProfile(userId: string) {
@@ -178,20 +216,7 @@ export class TalentService {
       }
     }
     return {
-      id: profile.id,
-      userId: profile.userId,
-      status: profile.status,
-      headline: profile.headline,
-      bio: profile.bio,
-      city: profile.city,
-      roles: profile.roles,
-      skills: profile.skills,
-      seekingSkills: profile.seekingSkills,
-      domains: profile.domains,
-      durations: profile.durations,
-      publishedAt: profile.publishedAt.toISOString(),
-      createdAt: profile.createdAt.toISOString(),
-      updatedAt: profile.updatedAt.toISOString(),
+      ...this.profileFields(profile),
       founder,
       projects: liveProjects,
       ...(includeMatch ? { match } : {}),
@@ -206,9 +231,8 @@ export class TalentService {
     // accepted too so API consumers that already know the enum keys also work.
     const requestedSkills = query.skills?.split(',').filter(Boolean).map(skillKey) ?? []
     const filtered = cards.filter(({ profile, view }) => {
-      const searchable = [profile.headline, profile.bio, ...profile.skills.map(skillLabel), view.founder?.nickname ?? '', ...view.projects.map((project) => project.name)].join('\n').toLowerCase()
+      const searchable = [profile.headline, profile.bio ?? '', ...profile.skills.map(skillLabel), view.founder?.nickname ?? '', ...view.projects.map((project) => project.name)].join('\n').toLowerCase()
       return (!needle || searchable.includes(needle))
-        && (!query.role || profile.roles.includes(query.role))
         && (!query.duration || profile.durations.includes(query.duration))
         && (!requestedSkills.length || requestedSkills.some((skill) => profile.skills.includes(skill)))
     })
@@ -234,20 +258,7 @@ export class TalentService {
     const audit = await this.suspensionAudit(userId)
     const latestSuspension = audit[0] ?? null
     return {
-      id: profile.id,
-      userId: profile.userId,
-      status: profile.status,
-      headline: profile.headline,
-      bio: profile.bio,
-      city: profile.city,
-      roles: profile.roles,
-      skills: profile.skills,
-      seekingSkills: profile.seekingSkills,
-      domains: profile.domains,
-      durations: profile.durations,
-      publishedAt: profile.publishedAt.toISOString(),
-      createdAt: profile.createdAt.toISOString(),
-      updatedAt: profile.updatedAt.toISOString(),
+      ...this.profileFields(profile),
       suspension: latestSuspension ? { reason: latestSuspension.reason, createdAt: latestSuspension.createdAt } : null,
     }
   }
@@ -432,20 +443,8 @@ export class TalentService {
       await tx.update(connectionRequests).set({ pairKey: null, status: ConnectionRequestStatus.Cancelled, handledAt: new Date() }).where(and(or(eq(connectionRequests.senderUserId, userId), eq(connectionRequests.receiverUserId, userId)), eq(connectionRequests.status, ConnectionRequestStatus.Pending)))
       await tx.insert(talentModerationRecords).values({ talentProfileId: profile.id, operatorId, action: 'suspend', reason })
       return {
-        id: profile.id,
-        userId: profile.userId,
+        ...this.profileFields(profile),
         status: TalentProfileStatus.Suspended,
-        headline: profile.headline,
-        bio: profile.bio,
-        city: profile.city,
-        roles: profile.roles,
-        skills: profile.skills,
-        seekingSkills: profile.seekingSkills,
-        domains: profile.domains,
-        durations: profile.durations,
-        publishedAt: profile.publishedAt.toISOString(),
-        createdAt: profile.createdAt.toISOString(),
-        updatedAt: profile.updatedAt.toISOString(),
       }
     })
   }

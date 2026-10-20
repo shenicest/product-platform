@@ -6,6 +6,7 @@ import { int, mysqlTable, uniqueIndex, varchar } from 'drizzle-orm/mysql-core'
 export const ConnectionDailyLimitScope = {
   TalentConnection: 'talent_connection',
   HackathonConnection: 'hackathon_connection',
+  ProjectConnection: 'project_connection',
 } as const
 
 export const connectionDailyLimits = mysqlTable('connection_daily_limits', {

@@ -1,6 +1,6 @@
 import { ConnectionRequestStatus } from '@shenicest/shared'
 
-export type ConnectionTargetType = 'talent_user' | 'hackathon_project'
+export type ConnectionTargetType = 'talent_user' | 'hackathon_project' | 'project'
 
 export interface ConnectionTarget {
   type: ConnectionTargetType
@@ -20,6 +20,7 @@ interface ConnectionItemParty {
 
 export interface ContactInfo {
   wechat: string | null
+  phone?: string | null
   email: string | null
 }
 
@@ -27,7 +28,7 @@ export interface ContactInfo {
 // (ticket 05).
 export interface ConnectionItem {
   id: number
-  source: 'talent' | 'hackathon'
+  source: 'talent' | 'hackathon' | 'project'
   status: number
   senderUserId: string
   receiverUserId: string
@@ -50,6 +51,7 @@ export interface ConnectionsResult {
 export const CONNECTION_SOURCE_LABELS: Record<ConnectionItem['source'], string> = {
   talent: '人才',
   hackathon: '黑客松项目',
+  project: '平台项目',
 }
 
 // Unified status label for both sources. Sent-view result deaths read from the

@@ -20,9 +20,12 @@ export interface HackathonConnectionCreatedInput {
   message: string
   createdAt: Date
   connectionsUrl: string
+  // Defaults to 黑客松项目; platform-Project connections render 项目 while
+  // sharing this template's layout and privacy contract.
+  projectLabel?: string
 }
 
-const SUBJECT = '[SheNicest] 你的黑客松项目收到一条新的建联申请'
+const DEFAULT_PROJECT_LABEL = '黑客松项目'
 
 // The email must never carry the sender's authorized contact info (PRD 6.2):
 // this template deliberately accepts no contact fields, and everything
@@ -62,12 +65,14 @@ export function renderHackathonConnectionCreatedEmail(input: HackathonConnection
   const projectUrl = escapeHtml(input.projectUrl)
   const connectionsUrl = escapeHtml(input.connectionsUrl)
   const createdAt = formatBeijingTime(input.createdAt)
+  const projectLabel = input.projectLabel ?? DEFAULT_PROJECT_LABEL
+  const heading = `你的${projectLabel}收到一条新的建联申请`
 
-  const subject = SUBJECT
+  const subject = `[SheNicest] ${heading}`
   const html = [
     emailShellOpen(),
     emailEyebrow('CONNECTION REQUEST / NEW'),
-    `<h2 style="font-size:20px; line-height:1.4; margin:0 0 22px; color:${EMAIL_COLORS.white}; font-family:${EMAIL_FONT_SANS};">你的黑客松项目收到一条新的建联申请</h2>`,
+    `<h2 style="font-size:20px; line-height:1.4; margin:0 0 22px; color:${EMAIL_COLORS.white}; font-family:${EMAIL_FONT_SANS};">${heading}</h2>`,
     emailPanelOpen(),
     emailField('项目：', `<a href="${projectUrl}" style="color:${EMAIL_COLORS.pink}; text-decoration:underline;">${projectName}</a>`),
     emailField('联系目的：', purpose),
@@ -80,7 +85,7 @@ export function renderHackathonConnectionCreatedEmail(input: HackathonConnection
   ].join('\n')
 
   const text = [
-    '你的黑客松项目收到一条新的建联申请',
+    heading,
     '',
     `项目：${input.projectName}`,
     `项目链接：${input.projectUrl}`,

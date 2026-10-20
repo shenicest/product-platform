@@ -2,7 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConnectionsPanel } from '@/components/connections/connections-panel'
-import { acceptHackathonConnection, ignoreHackathonConnection } from '@/lib/client-api'
+import { acceptHackathonConnection, acceptProjectConnection, ignoreHackathonConnection } from '@/lib/client-api'
 import type { ConnectionItem, ConnectionsResult } from '@/lib/connections'
 import { ConnectionRequestStatus } from '@shenicest/shared'
 
@@ -14,6 +14,8 @@ vi.mock('@/lib/client-api', () => ({
   getConnections: vi.fn(),
   acceptHackathonConnection: vi.fn(),
   ignoreHackathonConnection: vi.fn(),
+  acceptProjectConnection: vi.fn(),
+  ignoreProjectConnection: vi.fn(),
   acceptTalentConnection: vi.fn(),
   ignoreTalentConnection: vi.fn(),
 }))
@@ -199,6 +201,60 @@ describe('ConnectionsPanel (unified)', () => {
     await user.click(screen.getByRole('button', { name: '接受连接' }))
     expect(screen.getByText('至少提供微信或邮箱')).toBeInTheDocument()
     expect(acceptHackathonConnection).not.toHaveBeenCalled()
+  })
+
+  it('accepts a platform-project request with a phone-only contact', async () => {
+    vi.mocked(acceptProjectConnection).mockResolvedValue({
+      data: item({ status: ConnectionRequestStatus.Accepted }),
+      error: null,
+    })
+    const { getConnections } = await import('@/lib/client-api')
+    vi.mocked(getConnections).mockResolvedValue({
+      data: { data: [item({ status: ConnectionRequestStatus.Accepted })], pendingReceived: 0 },
+      error: null,
+    })
+
+    const user = userEvent.setup()
+    render(
+      <ConnectionsPanel
+        initial={result([
+          item({
+            id: 804,
+            source: 'project',
+            target: { type: 'project', projectId: 63, name: '平台项目 63', url: 'https://shenicest.test/projects/63' },
+          }),
+        ])}
+        userId="viewer"
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: '接受' }))
+    await user.type(screen.getByLabelText('手机号'), '138-0013-8000')
+    await user.click(screen.getByRole('button', { name: '接受连接' }))
+
+    expect(acceptProjectConnection).toHaveBeenCalledWith(804, {
+      wechat: undefined,
+      phone: '138-0013-8000',
+      email: undefined,
+    })
+  })
+
+  it('renders and filters platform-project rows with a project link', async () => {
+    const user = userEvent.setup()
+    const projectItem = item({
+      id: 803,
+      source: 'project',
+      target: { type: 'project', projectId: 63, name: '平台项目 63', url: 'https://shenicest.test/projects/63' },
+    })
+    render(<ConnectionsPanel initial={result([projectItem], 1)} userId="viewer" />)
+
+    expect(screen.getAllByText('平台项目').length).toBeGreaterThan(0)
+    expect(screen.getByRole('link', { name: '平台项目 63' })).toHaveAttribute('href', 'https://shenicest.test/projects/63')
+
+    await user.click(screen.getByRole('button', { name: '黑客松' }))
+    expect(screen.getByText('这里还没有连接记录')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '项目' }))
+    expect((await screen.findAllByRole('article'))[0]).toHaveTextContent('平台项目 63')
   })
 
   it('renders talent rows with the talent status chip and no contact leaks for pending rows', () => {

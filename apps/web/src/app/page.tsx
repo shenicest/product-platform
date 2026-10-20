@@ -1,4 +1,4 @@
-import { getLiveProjects } from '@/server/projects'
+import { getFeaturedProjects, getLiveProjects } from '@/server/projects'
 import { ProjectCard } from '@/components/project-card'
 import { FilterBar } from '@/components/filter-bar'
 import { Pagination } from '@/components/pagination'
@@ -16,13 +16,13 @@ import { PublicInteractionBoundary } from '@/components/public-interaction-bound
 
 export const dynamic = 'force-dynamic'
 
-const FEATURED_POOL_SIZE = 5
-
 export default async function HomePage(props: PageProps<'/'>) {
   const searchParams = await props.searchParams
   const { category, stage, q, sort, page } = parseListParams(searchParams)
 
-  const [{ data: projects, total }, { data: featuredPool }] = await Promise.all([
+  // The BoomLand cover hero is a full-bleed brand statement with no project
+  // slot; curated projects are surfaced by FeaturedSection instead.
+  const [{ data: projects, total }, { data: featuredProjects }] = await Promise.all([
     getLiveProjects({
       category,
       stage,
@@ -31,7 +31,7 @@ export default async function HomePage(props: PageProps<'/'>) {
       offset: (page - 1) * PAGE_SIZE,
       limit: PAGE_SIZE,
     }),
-    getLiveProjects({ limit: FEATURED_POOL_SIZE }),
+    getFeaturedProjects(),
   ])
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
@@ -41,7 +41,7 @@ export default async function HomePage(props: PageProps<'/'>) {
     <PublicInteractionBoundary>
       <HeroSection />
 
-      <FeaturedSection projects={featuredPool.slice(1)} />
+      <FeaturedSection projects={featuredProjects} />
 
       <section id="all-projects" className="section section--flush scroll-mt-24">
         <div className="shell">

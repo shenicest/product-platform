@@ -1,5 +1,5 @@
-import { and, asc, count, desc, eq, gte, like, lte, ne, or, sql } from 'drizzle-orm'
-import { auditRecords, projectEditProposals, projects } from '../../db/schema'
+import { and, asc, count, desc, eq, gte, inArray, like, lte, ne, or, sql } from 'drizzle-orm'
+import { auditRecords, featuredProjects, projectEditProposals, projects } from '../../db/schema'
 import type { Database } from '../../db'
 import {
   AuditAction,
@@ -9,6 +9,7 @@ import {
   ProjectStatus,
 } from '../project/model'
 import { ProposalNotFoundError, ProposalStatus } from '../proposal/model'
+import { FeaturedProjectValidationError } from './model'
 import type { AuditRecordQuery, OperatorProjectQuery, OperatorProposalQuery } from './model'
 
 type ProjectRow = typeof projects.$inferSelect
@@ -315,6 +316,49 @@ export class OperatorService {
       this.db.select({ value: count() }).from(auditRecords).where(where),
     ])
     return { data, total: totalRows[0]?.value ?? 0 }
+  }
+
+  async listFeaturedProjects() {
+    const rows = await this.db
+      .select({ project: projects, sortOrder: featuredProjects.sortOrder })
+      .from(featuredProjects)
+      .innerJoin(projects, eq(featuredProjects.projectId, projects.id))
+      .orderBy(asc(featuredProjects.sortOrder), asc(featuredProjects.id))
+    return {
+      data: rows.map(({ project, sortOrder }) => ({ ...project, sortOrder })),
+      total: rows.length,
+    }
+  }
+
+  // Replaces the whole curated list (order = display order). Only Live projects
+  // may be featured; configured entries whose project later leaves Live stay in
+  // the table but are excluded from the public endpoint.
+  async replaceFeaturedProjects(projectIds: number[]) {
+    const ids = [...new Set(projectIds)]
+    if (ids.length > 0) {
+      const rows = await this.db
+        .select({ id: projects.id, status: projects.status })
+        .from(projects)
+        .where(inArray(projects.id, ids))
+      const found = new Set(rows.map((row) => row.id))
+      const missing = ids.filter((id) => !found.has(id))
+      if (missing.length > 0) {
+        return new FeaturedProjectValidationError(`项目不存在：${missing.join(', ')}`)
+      }
+      if (rows.some((row) => row.status !== ProjectStatus.Live)) {
+        return new FeaturedProjectValidationError('只有已上线的项目才能设为精选')
+      }
+    }
+
+    await this.db.transaction(async (tx) => {
+      await tx.delete(featuredProjects)
+      if (ids.length > 0) {
+        await tx.insert(featuredProjects).values(
+          ids.map((projectId, sortOrder) => ({ projectId, sortOrder })),
+        )
+      }
+    })
+    return this.listFeaturedProjects()
   }
 
   async getStats() {

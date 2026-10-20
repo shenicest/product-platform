@@ -1,15 +1,35 @@
-import { eq, sql } from 'drizzle-orm'
+import { eq, inArray, sql } from 'drizzle-orm'
 import { db } from './index'
-import { projects } from './schema'
+import { projects, talentProfiles } from './schema'
 import { UserIdentityService } from '../modules/user-identity/service'
 import { Role } from '../modules/user-identity/model'
 import { SHARED_USERS_TABLE } from '../modules/user/service'
-import { CATEGORIES, ProjectStatus, ProjectStage } from '@shenicest/shared'
+import {
+  CATEGORIES,
+  COLLABORATION_DURATIONS,
+  ProjectStatus,
+  ProjectStage,
+  TALENT_AVAILABILITY_LABELS,
+  TalentAvailability,
+  TalentProfileStatus,
+  type TalentSkill,
+} from '@shenicest/shared'
+
+// Narrow demo values to the shared catalog unions so a typo (or a catalog
+// rename/reorder) fails typecheck instead of silently seeding a stale value.
+const domains = (...values: (typeof CATEGORIES)[number][]) => values
+const durations = (...values: (typeof COLLABORATION_DURATIONS)[number][]) => values
+const skillKeys = (...values: TalentSkill[]) => values
 
 // Integer-string ids to match the external auth system's user ids, which the
 // shared users table keys by integer.
 const OPERATOR_USER_ID = process.env.OPERATOR_USER_ID ?? '2'
 const FOUNDER_USER_ID = process.env.FOUNDER_USER_ID ?? '1'
+// Talent Plaza demo profiles use dedicated integer-string user ids so each one
+// resolves to a shared users row (nickname/avatar) for the public founder card.
+// TalentProfile is independent of the Founder role (CONTEXT.md), so these
+// users are not granted founder — they only get a shared users profile row.
+const TALENT_USER_IDS = ['11', '12', '13', '14', '15']
 const service = new UserIdentityService(db)
 
 const cover = (seed: string) => `https://picsum.photos/seed/${seed}/800/600`
@@ -22,6 +42,7 @@ const demoProjects: typeof projects.$inferInsert[] = [
     tagline: '极简的经期与身体症状记录工具',
     coverUrl: cover('luna'),
     demoImages: [cover('luna-1'), cover('luna-2')],
+    demoVideoUrl: 'https://www.youtube.com/watch?v=example-luna',
     demoLink: 'https://example.com/luna',
     stage: ProjectStage.Revenue,
     categories: ['女性健康', '生活方式'],
@@ -99,6 +120,7 @@ const demoProjects: typeof projects.$inferInsert[] = [
     seekingSkills: ['backend'],
     isOpenForBeta: false,
     contactName: '赵一',
+    contactWechat: 'zhao-sentinel',
     contactEmail: 'zhao@example.com',
     teamName: '哨兵实验室',
   },
@@ -181,20 +203,103 @@ function generatedProjects(count: number): typeof projects.$inferInsert[] {
 // The shared users table is owned by the external auth system; the seed only
 // touches it so dev data can demonstrate the public founder profile. Best
 // effort — the platform works without it (founder simply isn't shown).
-async function seedSharedUserProfile() {
-  if (!/^\d+$/.test(FOUNDER_USER_ID)) return
-  await db.execute(sql`INSERT INTO ${sql.raw(SHARED_USERS_TABLE)} (id, nickname, avatar_url)
-    VALUES (${FOUNDER_USER_ID}, '示例创始人', ${cover('founder-avatar')})
-    ON DUPLICATE KEY UPDATE nickname = VALUES(nickname), avatar_url = VALUES(avatar_url)`)
+async function seedSharedUserProfiles() {
+  const profiles = [
+    { id: FOUNDER_USER_ID, nickname: '示例创始人', avatar: cover('founder-avatar') },
+    { id: '11', nickname: '林一', avatar: cover('talent-11') },
+    { id: '12', nickname: '陈二', avatar: cover('talent-12') },
+    { id: '13', nickname: '王三', avatar: cover('talent-13') },
+    { id: '14', nickname: '赵四', avatar: cover('talent-14') },
+    { id: '15', nickname: '孙五', avatar: cover('talent-15') },
+  ].filter((profile) => /^\d+$/.test(profile.id))
+  for (const profile of profiles) {
+    await db.execute(sql`INSERT INTO ${sql.raw(SHARED_USERS_TABLE)} (id, nickname, avatar_url)
+      VALUES (${profile.id}, ${profile.nickname}, ${profile.avatar})
+      ON DUPLICATE KEY UPDATE nickname = VALUES(nickname), avatar_url = VALUES(avatar_url)`)
+  }
+  return profiles.length
 }
+
+// Talent Plaza demo profiles. Coverage target (ADR-0013 + Iss.06):
+// - availability 三态: ActivelySeeking / OpenToChat / ConsultOnly each represented
+// - bio/links 二选一: at least one bio-only (no links) and one links-only (no bio)
+// - 双状态技能: both 双边 (skills + seekingSkills) and 单边 (skills only) represented
+// - 多城市含「远程」: real cities plus the literal 「远程」 for remote collaboration
+const demoTalentProfiles: typeof talentProfiles.$inferInsert[] = [
+  {
+    userId: '11',
+    status: TalentProfileStatus.Published,
+    headline: '擅长从 0 到 1 的 AI 产品经理',
+    bio: '我做了 4 年开发者工具产品，擅长从用户研究到商业化落地，最近在探索 AI 辅助产品工作流。希望和扎实的技术合伙人一起把想法落地。',
+    links: [],
+    city: '深圳',
+    availability: TalentAvailability.ActivelySeeking,
+    skills: skillKeys('productStrategy', 'needsAnalysis', 'userResearch', 'projectManagement'),
+    seekingSkills: skillKeys('frontend', 'ai'),
+    domains: domains('开发者工具', '效率工具'),
+    durations: durations('长期合作', '短期项目'),
+  },
+  {
+    userId: '12',
+    status: TalentProfileStatus.Published,
+    headline: '全栈工程师，喜欢做能跑的东西',
+    bio: null,
+    links: ['https://github.com/example-fullstack', 'https://example.com/portfolio-12'],
+    city: '远程',
+    availability: TalentAvailability.OpenToChat,
+    skills: skillKeys('frontend', 'backend', 'fullstack', 'mobile'),
+    seekingSkills: [],
+    domains: domains('开发者工具'),
+    durations: durations('短期项目', '一次咨询'),
+  },
+  {
+    userId: '13',
+    status: TalentProfileStatus.Published,
+    headline: '增长操盘手，擅长内容与社媒冷启动',
+    bio: '我做了 5 年内容增长，从 0 到 10w 用户的冷启动做过 3 次，擅长把复杂产品讲清楚。最近在研究 AI 内容工作流。',
+    links: ['https://example.com/growth-notes-13'],
+    city: '上海',
+    availability: TalentAvailability.ConsultOnly,
+    skills: skillKeys('growthStrategy', 'contentPlanning', 'contentCreation', 'socialMedia', 'seo'),
+    seekingSkills: skillKeys('productStrategy', 'businessStrategy'),
+    domains: domains('效率工具', '生活方式'),
+    durations: durations('一次咨询', '短期项目'),
+  },
+  {
+    userId: '14',
+    status: TalentProfileStatus.Published,
+    headline: 'UI/UX 设计师，专注产品体验细节',
+    bio: '独立设计师 6 年，服务过 20+ 早期团队，从品牌系统到界面落地都做。喜欢把模糊的想法变成清晰的界面。',
+    links: [],
+    city: '北京',
+    availability: TalentAvailability.ActivelySeeking,
+    skills: skillKeys('ui', 'ux', 'visual', 'branding'),
+    seekingSkills: [],
+    domains: domains('女性健康', '生活方式'),
+    durations: durations('长期合作'),
+  },
+  {
+    userId: '15',
+    status: TalentProfileStatus.Published,
+    headline: '数据分析师，关注留存与商业化',
+    bio: null,
+    links: ['https://example.com/data-portfolio-15'],
+    city: '远程',
+    availability: TalentAvailability.OpenToChat,
+    skills: skillKeys('data', 'dataAnalysis', 'businessAnalysis'),
+    seekingSkills: skillKeys('backend', 'ai'),
+    domains: domains('开发者工具'),
+    durations: durations('一次咨询', '短期项目'),
+  },
+]
 
 async function seed() {
   await service.grantRole(OPERATOR_USER_ID, Role.Operator)
   console.log(`Seeded operator role for user: ${OPERATOR_USER_ID}`)
 
   try {
-    await seedSharedUserProfile()
-    console.log(`Seeded shared users profile for user: ${FOUNDER_USER_ID}`)
+    const count = await seedSharedUserProfiles()
+    console.log(`Seeded ${count} shared users profile(s) (founder + talent)`)
   } catch (err) {
     console.warn(`Skipped shared users profile (${SHARED_USERS_TABLE} not reachable): ${err}`)
   }
@@ -205,6 +310,13 @@ async function seed() {
   await db.insert(projects).values(rows)
   const liveCount = rows.filter((row) => row.status === ProjectStatus.Live).length
   console.log(`Seeded ${rows.length} demo projects (${liveCount} Live)`)
+
+  await db.delete(talentProfiles).where(inArray(talentProfiles.userId, TALENT_USER_IDS))
+  await db.insert(talentProfiles).values(demoTalentProfiles)
+  const availabilityBreakdown = demoTalentProfiles
+    .map((profile) => TALENT_AVAILABILITY_LABELS[profile.availability as TalentAvailability])
+    .join(' / ')
+  console.log(`Seeded ${demoTalentProfiles.length} talent profiles (${availabilityBreakdown})`)
 
   process.exit(0)
 }

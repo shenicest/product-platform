@@ -16,6 +16,14 @@ export const getLiveProjects = cache(async (query: ProjectListQuery = {}) => {
   return data
 })
 
+export const getFeaturedProjects = cache(async () => {
+  const { data, error } = await api.projects.featured.get()
+  if (error || !data) {
+    throw new Error('Failed to load featured projects')
+  }
+  return data
+})
+
 export const getFollowingProjects = cache(async (query: ProjectListQuery = {}) => {
   const token = (await cookies()).get('shenicest_token')?.value
   if (!token) throw new Error('Failed to load following projects')

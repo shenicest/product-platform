@@ -1,21 +1,22 @@
 import type { TalentService } from '../talent/service'
 import type { HackathonConnectionListItem } from '../hackathon-connection/service'
+import type { ProjectConnectionListItem } from '../project-connection/service'
 import { ConnectionRequestStatus } from '@shenicest/shared'
 
-// Unified connection card shape (ticket 05). The hackathon dependency is typed
-// with its own (narrower) HackathonConnectionListItem, so the two shapes are
-// structurally aligned by the wiring — the `source`/`target.type` literals are
-// widened here to admit both sources.
+// Unified connection card shape (ticket 05). Each source dependency is typed
+// with its own (narrower) list item, so the shapes are structurally aligned by
+// the wiring — the `source`/`target.type` literals are widened here to admit
+// every surface.
 export interface ConnectionListItem {
   id: number
-  source: 'talent' | 'hackathon'
+  source: 'talent' | 'hackathon' | 'project'
   status: number
   senderUserId: string
   receiverUserId: string
   sender: Participant
   receiver: Participant
   target: {
-    type: 'talent_user' | 'hackathon_project'
+    type: 'talent_user' | 'hackathon_project' | 'project'
     projectId?: number
     eventId?: number
     name?: string
@@ -41,17 +42,19 @@ type TalentConnectionsResult = Awaited<ReturnType<TalentService['connections']>>
 type TalentConnectionView = TalentConnectionsResult['data'][number]
 
 export interface ConnectionsQuery {
-  source?: 'all' | 'talent' | 'hackathon'
+  source?: 'all' | 'talent' | 'hackathon' | 'project'
   direction?: 'all' | 'sent' | 'received'
 }
 
 export interface ConnectionsServiceDeps {
   talentConnections: (userId: string) => Promise<TalentConnectionsResult>
   hackathonConnections: (userId: string) => Promise<{ data: HackathonConnectionListItem[]; pendingReceived: number }>
+  projectConnections: (userId: string) => Promise<{ data: ProjectConnectionListItem[]; pendingReceived: number }>
 }
 
-// Read-only composition of the Talent and Hackathon connection sources into
-// one paginated-shape list (ticket 05). No state machine logic lives here.
+// Read-only composition of the Talent, hackathon, and platform-project
+// connection sources into one list (ticket 05). No state machine logic lives
+// here.
 export class ConnectionsService {
   constructor(private readonly deps: ConnectionsServiceDeps) {}
 
@@ -59,11 +62,16 @@ export class ConnectionsService {
     const source = query.source ?? 'all'
     const direction = query.direction ?? 'all'
     // Skipped sources are not fetched at all — a talent-only viewer never
-    // triggers hackathon project summary lookups.
-    const talent = source === 'hackathon' ? null : await this.deps.talentConnections(userId)
-    const hackathon = source === 'talent' ? null : await this.deps.hackathonConnections(userId)
+    // triggers hackathon/project summary lookups.
+    const talent = source === 'hackathon' || source === 'project' ? null : await this.deps.talentConnections(userId)
+    const hackathon = source === 'talent' || source === 'project' ? null : await this.deps.hackathonConnections(userId)
+    const project = source === 'talent' || source === 'hackathon' ? null : await this.deps.projectConnections(userId)
 
-    const items = [...(talent ? talent.data.map((item) => this.talentItem(item)) : []), ...(hackathon?.data ?? [])]
+    const items = [
+      ...(talent ? talent.data.map((item) => this.talentItem(item)) : []),
+      ...(hackathon?.data ?? []),
+      ...(project?.data ?? []),
+    ]
     const filtered = items.filter((item) => {
       if (direction === 'sent' && item.senderUserId !== userId) return false
       if (direction === 'received' && item.receiverUserId !== userId) return false
@@ -79,7 +87,8 @@ export class ConnectionsService {
     })
     // pendingReceived follows the source filter (direction-independent) so with
     // source=talent it equals GET /talents/connections pendingReceived exactly.
-    const pendingReceived = (talent?.pendingReceived ?? 0) + (hackathon?.pendingReceived ?? 0)
+    const pendingReceived =
+      (talent?.pendingReceived ?? 0) + (hackathon?.pendingReceived ?? 0) + (project?.pendingReceived ?? 0)
     return { data: filtered, pendingReceived }
   }
 

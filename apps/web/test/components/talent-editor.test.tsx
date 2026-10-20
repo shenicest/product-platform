@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { TalentEditor } from '@/components/talent/talent-ui'
@@ -15,47 +15,92 @@ vi.mock('@/lib/client-api', () => ({
 vi.mock('@/components/auth-provider', () => ({ useAuth: () => ({ user: null }) }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
-describe('TalentEditor choices', () => {
-  it('groups skills by direction and disables new choices at each limit', async () => {
-    const user = userEvent.setup()
+describe('TalentEditor (v2 dual-state skill wall)', () => {
+  it('renders four sections with the six-item required counter and four anchors', () => {
     render(<TalentEditor initial={null} userId="1" />)
 
     expect(screen.getByRole('heading', { name: '告诉大家，你擅长做什么。' })).toBeInTheDocument()
     expect(screen.getByText('档案完成度')).toBeInTheDocument()
     expect(screen.getByText('0%')).toBeInTheDocument()
-    expect(screen.getByRole('navigation', { name: '档案填写进度' })).toBeInTheDocument()
+    expect(screen.getByText('0 / 6 REQUIRED ITEMS')).toBeInTheDocument()
+    const nav = screen.getByRole('navigation', { name: '档案填写进度' })
+    for (const label of ['01 基础介绍', '02 关于我和作品', '03 技能墙', '04 合作意向']) {
+      expect(nav).toHaveTextContent(label)
+    }
     expect(screen.getByRole('heading', { name: '先让别人快速认识你' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '标记你真正能交付的能力' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '讲讲你的经历和作品' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: '一面技能墙，两个状态' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '说明你想遇见怎样的合作' })).toBeInTheDocument()
     expect(screen.getByPlaceholderText('例如：擅长从 0 到 1 的 AI 产品经理')).toBeInTheDocument()
     expect(screen.getByText('让做过的产品替你说话')).toBeInTheDocument()
-    expect(screen.getByText(/成功上线的项目，会自动展示在公开人才档案中/)).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /去提交项目/ })).toHaveAttribute('href', '/submit')
-    const skills = screen.getByRole('group', { name: /技能（至少 3 项）/ })
-    const seeking = screen.getByRole('group', { name: /希望一起做什么/ })
-    expect(within(skills).getAllByText('产品')).toHaveLength(1)
-    expect(within(skills).getAllByText('设计')).toHaveLength(1)
-    expect(within(skills).getAllByText('增长')).toHaveLength(1)
-    expect(within(skills).getAllByText('运营')).toHaveLength(1)
-    expect(within(skills).getAllByText('开发')).toHaveLength(1)
-    expect(within(skills).getAllByText('数据')).toHaveLength(2)
-    expect(within(skills).getAllByText('商务/职能')).toHaveLength(1)
+    expect(screen.getByText('积极寻找合作')).toBeInTheDocument()
+    expect(screen.getByText('开放聊聊')).toBeInTheDocument()
+    expect(screen.getByText('仅接受一次咨询')).toBeInTheDocument()
+    expect(screen.queryByText('方向（至少 1 个）')).not.toBeInTheDocument()
+  })
 
-    const roles = screen.getByRole('group', { name: /方向（至少 1 个）/ })
-    const roleChoices = ['产品', '开发', '数据']
-    for (const role of roleChoices) await user.click(within(roles).getByRole('button', { name: role }))
-    expect(within(roles).getByRole('button', { name: '商务/职能' })).toBeDisabled()
-    await user.click(within(roles).getByRole('button', { name: '开发' }))
-    expect(within(roles).getByRole('button', { name: '商务/职能' })).toBeEnabled()
+  it('cycles a wall tag through 未选 → 我能提供 → 我想寻找 → 未选 with distinct visuals', async () => {
+    const user = userEvent.setup()
+    render(<TalentEditor initial={null} userId="1" />)
 
-    const skillChoices = ['产品策略', '需求分析', '用户研究', '项目管理', 'UI', 'UX', '视觉', '品牌', '动效', '增长策略']
-    for (const skill of skillChoices) await user.click(within(skills).getByRole('button', { name: skill }))
-    expect(within(skills).getByRole('button', { name: '内容策划' })).toBeDisabled()
-    expect(within(skills).getByText('已选 10 / 10')).toBeInTheDocument()
+    const provide = screen.getByRole('button', { name: '产品策略' })
+    expect(provide).toHaveAttribute('data-state', 'none')
+    await user.click(provide)
+    expect(screen.getByRole('button', { name: '产品策略，我能提供' })).toHaveAttribute('data-state', 'provide')
+    await user.click(screen.getByRole('button', { name: '产品策略，我能提供' }))
+    expect(screen.getByRole('button', { name: '产品策略，我想寻找' })).toHaveAttribute('data-state', 'seeking')
+    await user.click(screen.getByRole('button', { name: '产品策略，我想寻找' }))
+    expect(screen.getByRole('button', { name: '产品策略' })).toHaveAttribute('data-state', 'none')
 
-    const seekingChoices = ['产品策略', '需求分析', '用户研究', 'UI', 'UX']
-    for (const skill of seekingChoices) await user.click(within(seeking).getByRole('button', { name: skill }))
-    expect(within(seeking).getByRole('button', { name: '视觉' })).toBeDisabled()
-    expect(within(seeking).getByText('已选 5 / 5')).toBeInTheDocument()
+    expect(screen.getByText('我能提供 0 / 10（至少 3 项）')).toBeInTheDocument()
+    expect(screen.getByText('我想寻找 0 / 5（可选）')).toBeInTheDocument()
+  })
+
+  it('enforces the provide/seek caps: provide stops at 10, a capped seeking wall drops back to 未选', async () => {
+    const user = userEvent.setup()
+    render(<TalentEditor initial={null} userId="1" />)
+
+    const wall = ['产品策略', '需求分析', '用户研究', '项目管理', 'UI', 'UX', '视觉', '品牌', '动效', '增长策略']
+    // 未选 → 我能提供 for ten tags; an 11th stays unselected (provide cap).
+    for (const skill of wall) await user.click(screen.getByRole('button', { name: skill }))
+    expect(screen.getByText('我能提供 10 / 10（至少 3 项）')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '内容策划' }))
+    expect(screen.queryByRole('button', { name: '内容策划，我能提供' })).not.toBeInTheDocument()
+    expect(screen.getByText('我能提供 10 / 10（至少 3 项）')).toBeInTheDocument()
+
+    // 我能提供 → 我想寻找 for the first five; once seek is full the remaining
+    // providing tags cycle straight back to 未选.
+    for (const skill of wall) await user.click(screen.getByRole('button', { name: `${skill}，我能提供` }))
+    expect(screen.getByText('我想寻找 5 / 5（可选）')).toBeInTheDocument()
+    expect(screen.getByText('我能提供 0 / 10（至少 3 项）')).toBeInTheDocument()
+  })
+
+  it('grows and shrinks the work links list between 0 and 3', async () => {
+    const user = userEvent.setup()
+    render(<TalentEditor initial={null} userId="1" />)
+
+    expect(screen.queryByLabelText('作品链接 1')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '+ 添加作品链接' }))
+    expect(screen.getByLabelText('作品链接 1')).toBeInTheDocument()
+    await user.type(screen.getByLabelText('作品链接 1'), 'https://github.com/me')
+    await user.click(screen.getByRole('button', { name: '+ 添加作品链接' }))
+    await user.click(screen.getByRole('button', { name: '+ 添加作品链接' }))
+    expect(screen.getByText('3 / 3')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: '移除作品链接 2' }))
+    expect(screen.queryByLabelText('作品链接 3')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('作品链接 2')).toBeInTheDocument()
+  })
+
+  it('picks exactly one availability state', async () => {
+    const user = userEvent.setup()
+    render(<TalentEditor initial={null} userId="1" />)
+
+    const consult = screen.getByRole('button', { name: '仅接受一次咨询' })
+    expect(consult).toHaveAttribute('aria-pressed', 'false')
+    await user.click(consult)
+    expect(consult).toHaveAttribute('aria-pressed', 'true')
+    await user.click(screen.getByRole('button', { name: '开放聊聊' }))
+    expect(screen.getByRole('button', { name: '开放聊聊' })).toHaveAttribute('aria-pressed', 'true')
+    expect(consult).toHaveAttribute('aria-pressed', 'false')
   })
 })

@@ -14,6 +14,7 @@ import { talentModule, talentOperatorModule } from './modules/talent'
 import { bathModule } from './modules/bath'
 import { hackathonModule } from './modules/hackathon'
 import { hackathonConnectionModule } from './modules/hackathon-connection'
+import { projectConnectionModule } from './modules/project-connection'
 import { connectionsModule } from './modules/connections'
 
 export const app = new Elysia()
@@ -63,6 +64,7 @@ export const app = new Elysia()
   .use(projectModule)
   .use(hackathonModule)
   .use(hackathonConnectionModule)
+  .use(projectConnectionModule)
   .use(likeModule)
   .use(followModule)
   .use(talentModule)

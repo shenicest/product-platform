@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'bun:test'
 import { Elysia } from 'elysia'
 import { inArray, or } from 'drizzle-orm'
-import { ConnectionRequestStatus } from '@shenicest/shared'
+import { ConnectionRequestStatus, ProjectStatus } from '@shenicest/shared'
 import { db } from '../../../src/db'
 import {
   connectionDailyLimits,
@@ -9,10 +9,13 @@ import {
   connectionRequests,
   hackathonConnectionRequests,
   hackathonProjectContacts,
+  projectConnectionRequests,
+  projects,
   talentProfiles,
 } from '../../../src/db/schema'
 import { HACKATHON_EVENT_ID } from '../../../src/modules/hackathon/service'
 import { HackathonConnectionService } from '../../../src/modules/hackathon-connection/service'
+import { ProjectConnectionService } from '../../../src/modules/project-connection/service'
 import { ConnectionsService } from '../../../src/modules/connections/service'
 import { connectionsModule } from '../../../src/modules/connections'
 import { TalentService } from '../../../src/modules/talent/service'
@@ -28,7 +31,9 @@ const HACK_SENDER_2 = '900502'
 const HACK_SENDER_3 = '900503'
 const HACK_SENDER_4 = '900504'
 const HACK_RECEIVER = '900002'
+const PROJECT_OWNER = '900003'
 const allUsers = [VIEWER, T1, T2, T3, VIEWER2, HACK_SENDER_1, HACK_SENDER_2, HACK_SENDER_3, HACK_SENDER_4]
+const projectRows: number[] = []
 
 const talentService = new TalentService(db)
 const hackathonService = new HackathonConnectionService(db, {
@@ -39,20 +44,26 @@ const hackathonService = new HackathonConnectionService(db, {
   }),
 })
 // Same wiring as the module index, with only the event-db seam stubbed.
+const projectService = new ProjectConnectionService(db, {
+  webBaseUrl: 'https://shenicest.test',
+})
+// Same wiring as the module index, with only the event-db seam stubbed.
 const aggregate = new ConnectionsService({
   talentConnections: (userId) => talentService.connections(userId),
   hackathonConnections: (userId) => hackathonService.listForUser(userId),
+  projectConnections: (userId) => projectService.listForUser(userId),
 })
 
 const talentProfileBody = {
   headline: '全栈产品搭档',
   bio: '擅长从用户研究到产品交付，希望与认真解决真实问题的团队长期合作。',
   city: '上海',
-  roles: ['开发'],
+  links: ['https://github.com/shenicest'],
   skills: ['frontend', 'backend', 'fullstack'],
   seekingSkills: [],
   domains: ['效率工具'],
   durations: ['长期合作'],
+  availability: 0,
 }
 
 const talentMessage = '希望一起推进这个产品并验证市场需求，认真讨论合作方式并尽快开始执行。'
@@ -119,6 +130,18 @@ beforeAll(async () => {
   await seedContact(nextProjectId + 3, { receiverUserId: VIEWER })
   const ignoredHackathon = await createHackathon(HACK_SENDER_3, nextProjectId + 3)
   await hackathonService.ignore(VIEWER, (ignoredHackathon as { id: number }).id)
+
+  // Platform-project source: a Pending request sent by VIEWER.
+  const [projectRow] = await db
+    .insert(projects)
+    .values({ userId: PROJECT_OWNER, status: ProjectStatus.Live, name: '平台项目 71' })
+    .$returningId()
+  projectRows.push(projectRow.id)
+  await projectService.create(VIEWER, projectRow.id, {
+    purpose: '合作交流',
+    message: '我们正在做相近方向的产品，希望交流产品设计与用户验证经验，期待合作。',
+    wechat: 'viewer-project-wx',
+  })
 })
 
 afterAll(async () => {
@@ -129,7 +152,7 @@ afterAll(async () => {
       inArray(connectionRequests.receiverUserId, userIds),
     ),
   )
-  await db.delete(connectionDailyLimits).where(inArray(connectionDailyLimits.senderUserId, userIds))
+  await db.delete(connectionDailyLimits).where(inArray(connectionDailyLimits.senderUserId, [...userIds, PROJECT_OWNER]))
   await db.delete(talentProfiles).where(inArray(talentProfiles.userId, userIds))
 
   const requestRows = await db
@@ -146,6 +169,25 @@ afterAll(async () => {
     await db.delete(hackathonConnectionRequests).where(inArray(hackathonConnectionRequests.id, requestRows.map((row) => row.id)))
   }
   if (contactRows.length) await db.delete(hackathonProjectContacts).where(inArray(hackathonProjectContacts.id, contactRows))
+
+  const projectRequestRows = await db
+    .select({ id: projectConnectionRequests.id })
+    .from(projectConnectionRequests)
+    .where(
+      or(
+        inArray(projectConnectionRequests.senderUserId, allUsers),
+        inArray(projectConnectionRequests.receiverUserId, [...allUsers, PROJECT_OWNER]),
+      ),
+    )
+  if (projectRequestRows.length) {
+    await db.delete(connectionNotificationDeliveries).where(
+      inArray(connectionNotificationDeliveries.connectionRequestId, projectRequestRows.map((row) => row.id)),
+    )
+    await db.delete(projectConnectionRequests).where(
+      inArray(projectConnectionRequests.id, projectRequestRows.map((row) => row.id)),
+    )
+  }
+  if (projectRows.length) await db.delete(projects).where(inArray(projects.id, projectRows))
 })
 
 describe('ConnectionsService (service level)', () => {
@@ -153,6 +195,7 @@ describe('ConnectionsService (service level)', () => {
     const result = await aggregate.connections(VIEWER)
     const talentItem = result.data.find((item) => item.source === 'talent' && item.receiverUserId === VIEWER)
     const hackathonAccepted = result.data.find((item) => item.source === 'hackathon' && item.status === ConnectionRequestStatus.Accepted)
+    const projectSent = result.data.find((item) => item.source === 'project')
 
     expect(talentItem).toMatchObject({
       source: 'talent',
@@ -172,6 +215,13 @@ describe('ConnectionsService (service level)', () => {
     expect(hackathonAccepted!.sender).toMatchObject({ userId: HACK_SENDER_2, hasPublishedTalentProfile: false })
     expect(hackathonAccepted!.contacts!.mine).toEqual({ wechat: 'viewer-wx-hack', email: 'viewer-hack@example.com' })
     expect(hackathonAccepted!.contacts!.other).toEqual({ wechat: `hack-${HACK_SENDER_2}-wx`, email: null })
+
+    expect(projectSent).toMatchObject({
+      source: 'project',
+      status: ConnectionRequestStatus.Pending,
+      senderUserId: VIEWER,
+      target: { type: 'project', name: '平台项目 71', url: expect.stringContaining('/projects/') },
+    })
   })
 
   it('puts pending-received requests first, then newest first', async () => {
@@ -193,12 +243,16 @@ describe('ConnectionsService (service level)', () => {
     const hackathonOnly = (await aggregate.connections(VIEWER, { source: 'hackathon' })).data
     expect(hackathonOnly.length).toBeGreaterThan(0)
     expect(hackathonOnly.every((item) => item.source === 'hackathon')).toBe(true)
+    const projectOnly = (await aggregate.connections(VIEWER, { source: 'project' })).data
+    expect(projectOnly).toHaveLength(1)
+    expect(projectOnly.every((item) => item.source === 'project')).toBe(true)
 
     const sent = (await aggregate.connections(VIEWER, { direction: 'sent' })).data
     expect(sent.length).toBeGreaterThan(0)
     expect(sent.every((item) => item.senderUserId === VIEWER)).toBe(true)
     expect(sent.some((item) => item.source === 'talent')).toBe(true)
     expect(sent.some((item) => item.source === 'hackathon')).toBe(true)
+    expect(sent.some((item) => item.source === 'project')).toBe(true)
 
     const received = (await aggregate.connections(VIEWER, { direction: 'received' })).data
     expect(received.every((item) => item.receiverUserId === VIEWER)).toBe(true)
@@ -208,6 +262,7 @@ describe('ConnectionsService (service level)', () => {
     expect((await aggregate.connections(VIEWER)).pendingReceived).toBe(2)
     expect((await aggregate.connections(VIEWER, { source: 'talent' })).pendingReceived).toBe(1)
     expect((await aggregate.connections(VIEWER, { source: 'hackathon' })).pendingReceived).toBe(1)
+    expect((await aggregate.connections(VIEWER, { source: 'project' })).pendingReceived).toBe(0)
 
     // Cross-check against the untouched talent endpoint for the talent part.
     const talentResult = await talentService.connections(VIEWER)

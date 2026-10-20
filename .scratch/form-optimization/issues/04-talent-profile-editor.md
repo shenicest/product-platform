@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — 项目表单 v2：数据契约与后端（迁移序列与 shared 基线需线性落地，非逻辑依赖）
 
-**Status:** ready-for-agent
+**Status: DONE.** shared 增加 TalentAvailability（0 积极寻找合作/1 开放聊聊/2 仅接受一次咨询）+ 展示标签；迁移 0025 按 ADR-0013 重建 talent_profiles（roles 已删、bio 可空、links/availability 新增）；API 契约 v1.1（headline 4-50、bio/links 至少其一、链接 http(s)、双状态技能互斥、availability 枚举必填、列表 role 参数下线），web 端残留 role 参数与 TALENT_ROLES 一并移除；编辑器重构为 4 板块，技能墙三态循环（视觉分态 chip-active/chip-seeking），侧栏 6 项必填计数与锚点同步；CONNECTION_PURPOSES 统一从 shared 导入；api 366/366、web 259/259、lint/build/tsc 全绿。
 
 - [ ] shared 新增 `TalentAvailability = { ActivelySeeking: 0, OpenToChat: 1, ConsultOnly: 2 }` 及类型；`TALENT_SKILL_GROUPS` 以结构化词汇（组名→技能数组）迁入 shared，`TALENT_SKILLS` 仍是唯一标签真相源
 - [ ] talent_profiles schema：删除 `roles`；`bio` 改可空；新增 `links`（json 字符串数组）、`availability`（tinyint）；生成迁移（整库重置策略）

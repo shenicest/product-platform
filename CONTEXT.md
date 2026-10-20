@@ -75,6 +75,10 @@ _Avoid_: Phase, Level
 A label for classifying projects. Stored as a JSON array directly on Project — the source of truth is the Project row itself, so no denormalized copy is needed. Homepage filtering reads the Project table directly (zero JOIN). A Project can have multiple categories (multi-select). Categories are a fixed set: 女性健康, 效率工具, 教育学习, 开发者工具, 生活方式, 其他.
 _Avoid_: Tag, Label, Topic, ProjectCategory
 
+**Featured Project**:
+An operator-curated entry on the homepage's 精选项目 (Featured) section, stored in the `featured_projects` table as `projectId` + `sortOrder`. The operator configures the ordered list in the operator backend; the public homepage displays up to four per batch and lets visitors cycle through the remaining entries with 换一批. Only Live projects are eligible for configuration, and entries whose project leaves Live are omitted from the public response (but kept so the config survives a delist/restore). **No configured entries means the entire Featured section is hidden** — there is no automatic fallback. This is separate from the homepage hero recommendation.
+_Avoid_: Recommended project, promoted project, homepage config
+
 **ProblemStatement**:
 A required long-text field on Project (30–300 characters) answering "为谁解决什么问题" — who the project serves and what problem it solves. Replaces the former separate `targetUsers` and `userProblem` fields, whose content overlapped heavily.
 _Avoid_: targetUsers, userProblem, description, story
@@ -162,6 +166,10 @@ _Avoid_: status (that's TalentProfileStatus), mood
 
 **HackathonConnectionRequest**:
 A User's bidirectional-authorization connection request targeting an external Hackathon Project (from the event database, not the platform `projects` table). The sender is any authenticated User (no TalentProfile or Founder role required); the receiver is the project's configured HackathonProjectContact at request creation time (locked on the row — later contact reassignment does not change existing requests). Status reuses the `ConnectionRequestStatus` numeric semantics (Pending 0 / Accepted 1 / Ignored 2 / Cancelled 3) but is stored in its own table — it does NOT extend the Talent `ConnectionRequest` (see ADR-0010). The purpose is a fixed enum shared via `HACKATHON_CONNECTION_PURPOSES`: 试用产品, 合作交流, 加入项目, 提供专业帮助, 寻求反馈, 其他. The sender authorizes contact info when creating the request (encrypted, AES-GCM); the receiver authorizes on accept. At most one Pending request per sender per project (`pair_key` is unique while Pending and NULLed on terminal states, same pattern as Talent). An Accepted request in either direction against the same project blocks new requests. Ignored requests may be re-sent after a 7-day cooldown. When the project is hidden, Pending requests become Cancelled; Accepted connections are retained.
+_Avoid_: Connection, Invitation, Message
+
+**ProjectConnectionRequest**:
+A User's bidirectional-authorization connection request targeting a Live platform `Project`. Stored in its own table (`project_connection_requests`) rather than extending the Talent or hackathon request tables (see ADR-0014). The sender is any authenticated User other than the project owner; the receiver is the Project's owner (`projects.user_id`), snapshotted at creation time. Status reuses `ConnectionRequestStatus` (Pending 0 / Accepted 1 / Ignored 2 / Cancelled 3). The purpose uses `PROJECT_CONNECTION_PURPOSES` (same vocabulary as hackathon: 试用产品, 合作交流, 加入项目, 提供专业帮助, 寻求反馈, 其他). The sender authorizes contact info on creation (WeChat, phone, and/or email — at least one, encrypted with AES-GCM); the receiver authorizes on accept with the same at-least-one rule. At most one Pending request per sender per Project, an Accepted request blocks new requests for that Project, and Ignored requests may be re-sent after a 7-day cooldown. Requests may only be created while the Project is Live; delisting cancels Pending requests and preserves Accepted connections. The Project owner viewing their own Project never sees the connect entry.
 _Avoid_: Connection, Invitation, Message
 
 **HackathonProjectContact**:

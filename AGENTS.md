@@ -22,6 +22,7 @@
   - [0011-unified-connection-daily-limits.md](./docs/adr/0011-unified-connection-daily-limits.md) — 建联每日限额统一表（scope 区分）
   - [0012-project-form-field-consolidation.md](./docs/adr/0012-project-form-field-consolidation.md) — 项目表单字段级重构（破坏性，整库重置）
   - [0013-talent-dual-state-skills-derived-direction.md](./docs/adr/0013-talent-dual-state-skills-derived-direction.md) — 人才技能双状态墙；方向由技能推导，不单独提问
+  - [0014-platform-project-connection-requests.md](./docs/adr/0014-platform-project-connection-requests.md) — 平台项目建联独立建表，复用建联原语与通知
 
 修改领域模型前必须先阅读 CONTEXT.md。
 
@@ -81,7 +82,7 @@ packages/
 
 ## Shared Package
 
-- `@shenicest/shared` 存放前后端共用的领域常量（ProjectStatus、ProposalStatus、ProjectStage、Role、CATEGORIES），取值必须与 CONTEXT.md 一致
+- `@shenicest/shared` 存放前后端共用的领域常量与类型（ProjectStatus、ProposalStatus、ProjectStage、Role、CATEGORIES、TalentAvailability / TALENT_AVAILABILITY_LABELS、TalentProfileStatus、TALENT_SKILLS / TALENT_SKILL_GROUPS / skillLabel / skillKey、COLLABORATION_DURATIONS、CONNECTION_PURPOSES 等），取值必须与 CONTEXT.md 一致
 - 纯 TypeScript，不依赖 elysia/drizzle；后端与前端都通过 workspace 依赖引入
 - Next.js 侧已在 `next.config.ts` 配置 `transpilePackages`
 - API 请求/响应类型目前仍在 api 的 model.ts 中；前端需要时逐步抽取到 shared

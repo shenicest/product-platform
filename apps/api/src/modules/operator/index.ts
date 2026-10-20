@@ -9,13 +9,16 @@ import {
   ProjectIdParams,
   ProjectNotFoundError,
   ProjectResponse,
-  type DomainError,
 } from '../project/model'
 import { ProposalNotFoundError } from '../proposal/model'
+import { projectConnectionService } from '../project-connection'
 import { ErrorCode, ErrorMessage, ErrorResponse } from '../../common'
 import {
   AuditRecordListResponse,
   AuditRecordQuery,
+  FeaturedProjectIdsBody,
+  FeaturedProjectListResponse,
+  FeaturedProjectValidationError,
   OperatorProjectQuery,
   OperatorProposalQuery,
   ProjectListResponse,
@@ -28,7 +31,7 @@ import {
 
 const operatorService = new OperatorService(db)
 
-function errorBody(error: DomainError) {
+function errorBody(error: { code: string; message: string }) {
   return { error: { code: error.code, message: error.message } }
 }
 
@@ -49,6 +52,8 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     AuditRecordListResponse,
     StatsResponse,
     ProposalResponse,
+    FeaturedProjectIdsBody,
+    FeaturedProjectListResponse,
   })
   .prefix('model', 'Operator.')
   // ── Project-level review (first submission) ──────────────────────────
@@ -124,6 +129,9 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     const result = await operatorService.delistProject(user.userId, params.id, body.reason)
     if (result instanceof ProjectNotFoundError) return status(404, errorBody(result))
     if (result instanceof InvalidTransitionError) return status(400, errorBody(result))
+    // Delisting hides the project from discovery; Pending connection requests
+    // share that visibility gate and end with it (ADR-0014).
+    await projectConnectionService.cancelPendingByProject(params.id)
     return result
   }, {
     operatorOnly: true,
@@ -304,6 +312,45 @@ export const operatorModule = new Elysia({ prefix: '/operator' })
     query: 'Operator.AuditRecordQuery',
     response: {
       200: 'Operator.AuditRecordListResponse',
+      401: ErrorResponse,
+      403: ErrorResponse,
+    },
+  })
+  // ── Homepage featured list ──────────────────────────────────────────
+  .get('/featured-projects', async () => {
+    return operatorService.listFeaturedProjects()
+  }, {
+    operatorOnly: true,
+    detail: {
+      summary: 'Get homepage featured projects',
+      description: 'Returns the operator-curated homepage featured list in display order, including entries whose project is no longer Live (so operators can see and fix them).',
+      tags: ['Operator'],
+      operationId: 'operator.listFeaturedProjects',
+    },
+    response: {
+      200: 'Operator.FeaturedProjectListResponse',
+      401: ErrorResponse,
+      403: ErrorResponse,
+    },
+  })
+  .put('/featured-projects', async ({ body }) => {
+    const result = await operatorService.replaceFeaturedProjects(body.projectIds)
+    if (result instanceof FeaturedProjectValidationError) {
+      return status(400, errorBody(result))
+    }
+    return result
+  }, {
+    operatorOnly: true,
+    detail: {
+      summary: 'Replace homepage featured projects',
+      description: 'Replaces the featured list with the given ordered project IDs. Only Live projects are accepted. An empty array clears the list, which hides the homepage featured section.',
+      tags: ['Operator'],
+      operationId: 'operator.replaceFeaturedProjects',
+    },
+    body: 'Operator.FeaturedProjectIdsBody',
+    response: {
+      200: 'Operator.FeaturedProjectListResponse',
+      400: ErrorResponse,
       401: ErrorResponse,
       403: ErrorResponse,
     },

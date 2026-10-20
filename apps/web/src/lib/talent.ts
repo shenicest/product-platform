@@ -1,8 +1,12 @@
 import {
   CATEGORIES,
   COLLABORATION_DURATIONS,
-  TALENT_ROLES,
+  CONNECTION_PURPOSES,
+  TALENT_AVAILABILITY_LABELS,
+  TALENT_SKILL_GROUPS,
   TALENT_SKILLS,
+  MAX_SEEKING_SKILLS,
+  MAX_TALENT_SKILLS,
   TalentProfileStatus,
   ConnectionRequestStatus,
 } from "@shenicest/shared";
@@ -19,14 +23,6 @@ export const CONNECTION_STATUS_LABELS: Record<number, string> = {
   [ConnectionRequestStatus.Ignored]: "已忽略",
   [ConnectionRequestStatus.Cancelled]: "已取消",
 };
-export const CONNECTION_PURPOSES = [
-  "共同创业",
-  "加入项目",
-  "短期协作",
-  "专业咨询",
-  "认识交流",
-  "其他",
-] as const;
 export function connectionStatusLabel(status: number, sent: boolean) {
   if (sent && status === ConnectionRequestStatus.Ignored) return "暂未建立连接";
   if (sent && status === ConnectionRequestStatus.Cancelled)
@@ -36,13 +32,14 @@ export function connectionStatusLabel(status: number, sent: boolean) {
 
 export type TalentBody = {
   headline: string;
-  bio: string;
+  bio?: string;
+  links: string[];
   city?: string;
-  roles: string[];
   skills: string[];
   seekingSkills?: string[];
   domains: string[];
   durations: string[];
+  availability: number;
 };
 export type TalentIdentity = {
   nickname?: string | null;
@@ -100,10 +97,10 @@ export type TalentConnection = {
 };
 
 export const talentCatalog = {
-  roles: TALENT_ROLES,
   skills: TALENT_SKILLS,
   domains: CATEGORIES,
   durations: COLLABORATION_DURATIONS,
+  availabilityLabels: TALENT_AVAILABILITY_LABELS,
 } as const;
 
 export function parseTalentParams(
@@ -117,7 +114,6 @@ export function parseTalentParams(
   const sort = value("sort") === "active" ? "active" : "new";
   return {
     q: value("q")?.trim() || undefined,
-    role: value("role") || undefined,
     skills: value("skills") || undefined,
     duration: value("duration") || undefined,
     sort,
@@ -125,22 +121,81 @@ export function parseTalentParams(
   };
 }
 
+// Sort wall values by the skill-wall group order (ADR-0013); skills outside
+// the wall vocabulary keep their original order at the end.
+export function orderSkillsByGroup(skills: string[]): string[] {
+  const rank = new Map<string, number>();
+  TALENT_SKILL_GROUPS.forEach((group) =>
+    group.skills.forEach((skill) => {
+      if (!rank.has(skill)) rank.set(skill, rank.size);
+    }),
+  );
+  return skills
+    .map((skill, index) => ({ skill, index, rank: rank.get(skill) }))
+    .sort(
+      (a, b) =>
+        (a.rank ?? Number.MAX_SAFE_INTEGER) - (b.rank ?? Number.MAX_SAFE_INTEGER) ||
+        a.index - b.index,
+    )
+    .map((entry) => entry.skill);
+}
+
+export function isValidHttpUrl(value: string) {
+  try {
+    return /^https?:$/.test(new URL(value).protocol);
+  } catch {
+    return false;
+  }
+}
+
+export function talentRequirementChecks(body: TalentBody) {
+  const bio = body.bio?.trim() || "";
+  const workLinks = body.links.map((link) => link.trim()).filter(Boolean);
+  const headline = body.headline.trim();
+  return [
+    headline.length >= 4 && headline.length <= 50,
+    (bio.length >= 30 && bio.length <= 500) ||
+      workLinks.some((link) => isValidHttpUrl(link)),
+    body.skills.length >= 3 && body.skills.length <= MAX_TALENT_SKILLS,
+    body.domains.length >= 1 && body.domains.length <= 3,
+    body.durations.length >= 1 && body.durations.length <= 3,
+    body.availability in TALENT_AVAILABILITY_LABELS,
+  ];
+}
+
 export function validateTalentBody(body: TalentBody) {
   const errors: Record<string, string> = {};
-  if (body.headline.trim().length < 2 || body.headline.trim().length > 30)
-    errors.headline = "请输入 2-30 个字符";
-  if (body.bio.trim().length < 30 || body.bio.trim().length > 500)
-    errors.bio = "请输入 30-500 个字符";
-  if (body.roles.length < 1 || body.roles.length > 3)
-    errors.roles = "请选择 1-3 个方向";
-  if (body.skills.length < 3 || body.skills.length > 10)
+  const bio = body.bio?.trim() || "";
+  const links = body.links.map((link) => link.trim()).filter(Boolean);
+  if (body.headline.trim().length < 4 || body.headline.trim().length > 50)
+    errors.headline = "请输入 4-50 个字符";
+  if (bio && (bio.length < 30 || bio.length > 500))
+    errors.bio = "关于我请输入 30-500 个字符";
+  if (links.length > 3) errors.links = "最多添加 3 个链接";
+  else if (links.length > 0 && links.some((link) => !isValidHttpUrl(link)))
+    errors.links = "链接必须是正确的 http(s) 地址";
+  if (!bio && links.length === 0)
+    errors.bioOrLinks = "关于我和作品链接至少填写其一";
+  if (
+    body.skills.length < 3 ||
+    body.skills.length > MAX_TALENT_SKILLS
+  )
     errors.skills = "请选择 3-10 项技能";
-  if (body.seekingSkills && body.seekingSkills.length > 5)
+  if (body.seekingSkills && body.seekingSkills.length > MAX_SEEKING_SKILLS)
     errors.seekingSkills = "最多选择 5 项";
+  if (
+    body.seekingSkills &&
+    body.seekingSkills.some((skill) => body.skills.includes(skill))
+  )
+    errors.seekingSkills = "同一技能不能同时处于两个状态";
   if (body.domains.length < 1 || body.domains.length > 3)
     errors.domains = "请选择 1-3 个领域";
   if (body.durations.length < 1 || body.durations.length > 3)
     errors.durations = "请选择 1-3 种合作时长";
+  if (
+    !(body.availability in TALENT_AVAILABILITY_LABELS)
+  )
+    errors.availability = "请选择当前状态";
   return errors;
 }
 
@@ -171,25 +226,21 @@ export function talentDraftKey(userId: string) {
 function isTalentBody(value: unknown): value is Partial<TalentBody> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const body = value as Record<string, unknown>;
+  const stringArray = (item: unknown) =>
+    item === undefined ||
+    (Array.isArray(item) && item.every((entry) => typeof entry === "string"));
   return (
     (body.headline === undefined || typeof body.headline === "string") &&
     (body.bio === undefined || typeof body.bio === "string") &&
     (body.city === undefined || typeof body.city === "string") &&
-    (body.roles === undefined ||
-      (Array.isArray(body.roles) &&
-        body.roles.every((item) => typeof item === "string"))) &&
-    (body.skills === undefined ||
-      (Array.isArray(body.skills) &&
-        body.skills.every((item) => typeof item === "string"))) &&
-    (body.seekingSkills === undefined ||
-      (Array.isArray(body.seekingSkills) &&
-        body.seekingSkills.every((item) => typeof item === "string"))) &&
-    (body.domains === undefined ||
-      (Array.isArray(body.domains) &&
-        body.domains.every((item) => typeof item === "string"))) &&
-    (body.durations === undefined ||
-      (Array.isArray(body.durations) &&
-        body.durations.every((item) => typeof item === "string")))
+    (body.links === undefined ||
+      (Array.isArray(body.links) &&
+        body.links.every((item) => typeof item === "string"))) &&
+    stringArray(body.skills) &&
+    stringArray(body.seekingSkills) &&
+    stringArray(body.domains) &&
+    stringArray(body.durations) &&
+    (body.availability === undefined || typeof body.availability === "number")
   );
 }
 export function loadTalentDraft(
@@ -200,7 +251,28 @@ export function loadTalentDraft(
     const raw = storage.getItem(talentDraftKey(userId));
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
-    return isTalentBody(parsed) ? parsed : null;
+    if (!isTalentBody(parsed)) return null;
+    // Drop stale keys (e.g. v1 drafts still carrying `roles`) so they never
+    // leak back into the submit payload.
+    const draft = parsed as Record<string, unknown>;
+    const fields: Array<keyof TalentBody> = [
+      "headline",
+      "bio",
+      "city",
+      "links",
+      "skills",
+      "seekingSkills",
+      "domains",
+      "durations",
+      "availability",
+    ];
+    const picked: Partial<TalentBody> = {};
+    for (const field of fields) {
+      if (draft[field] !== undefined) {
+        (picked as Record<string, unknown>)[field] = draft[field];
+      }
+    }
+    return picked;
   } catch {
     return null;
   }

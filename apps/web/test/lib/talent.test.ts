@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   clearTalentDraft,
   loadTalentDraft,
+  orderSkillsByGroup,
   parseTalentParams,
   saveTalentDraft,
   talentDraftKey,
@@ -20,12 +21,29 @@ describe("talent utilities", () => {
       }),
     ).toEqual({
       q: "AI",
-      role: undefined,
       skills: "AI 开发,产品策略",
       duration: undefined,
       sort: "active",
       page: 1,
     });
+  });
+
+  it("leans on skill/合作方式 filters only: a legacy role param cannot come back as a filter", () => {
+    expect(parseTalentParams({ role: "产品", q: "AI" })).toEqual({
+      q: "AI",
+      skills: undefined,
+      duration: undefined,
+      sort: "new",
+      page: 1,
+    });
+  });
+
+  it("orders skills by the skill-wall group order, unknown values last, stable within ties", () => {
+    expect(
+      orderSkillsByGroup(["frontend", "unknown-skill", "productStrategy", "ui"]),
+    ).toEqual(["productStrategy", "ui", "frontend", "unknown-skill"]);
+    expect(orderSkillsByGroup(["visual", "ux", "ui"])).toEqual(["ui", "ux", "visual"]);
+    expect(orderSkillsByGroup([])).toEqual([]);
   });
 
   it("stores and clears the browser-only draft", () => {
@@ -53,26 +71,86 @@ describe("talent utilities", () => {
     ).toBeNull();
   });
 
+  it("drops stale v1 draft keys such as roles", () => {
+    const values = new Map([
+      [
+        talentDraftKey("user-1"),
+        JSON.stringify({ headline: "旧草稿", roles: ["产品"], skills: ["frontend"] }),
+      ],
+    ]);
+    expect(
+      loadTalentDraft("user-1", { getItem: (key) => values.get(key) ?? null }),
+    ).toEqual({ headline: "旧草稿", skills: ["frontend"] });
+  });
+
   it("enforces the backend profile ranges", () => {
     const errors = validateTalentBody({
       headline: "x",
       bio: "short",
-      roles: [],
+      links: [],
       skills: [],
       seekingSkills: [],
       domains: [],
       durations: [],
+      availability: -1,
     });
     expect(Object.keys(errors)).toEqual(
       expect.arrayContaining([
         "headline",
         "bio",
-        "roles",
         "skills",
         "domains",
         "durations",
+        "availability",
       ]),
     );
+    expect(errors.bioOrLinks).toBeUndefined();
+  });
+
+  it("accepts bio alone, links alone, but rejects neither; enforces dual-state and url rules", () => {
+    const bio = "这是一段足够长的人才档案介绍，用于描述合作方式和经验，满足最少三十个字符。";
+    expect(
+      validateTalentBody({
+        headline: "四字以上的介绍",
+        bio,
+        links: [],
+        skills: ["frontend", "backend", "fullstack"],
+        seekingSkills: [],
+        domains: ["效率工具"],
+        durations: ["长期合作"],
+        availability: 0,
+      }),
+    ).toEqual({});
+    expect(
+      validateTalentBody({
+        headline: "四字以上的介绍",
+        bio: undefined,
+        links: ["https://github.com/me", "ftp://bad.example.com"],
+        skills: ["frontend", "backend", "fullstack"],
+        seekingSkills: ["backend"],
+        domains: ["效率工具"],
+        durations: ["长期合作"],
+        availability: 2,
+      }),
+    ).toEqual({
+      links: "链接必须是正确的 http(s) 地址",
+      seekingSkills: "同一技能不能同时处于两个状态",
+    });
+    expect(
+      validateTalentBody({
+        headline: "四字以上的介绍",
+        bio: "短",
+        links: ["https://a.com/1", "https://a.com/2", "https://a.com/3", "https://a.com/4"],
+        skills: ["frontend", "backend", "fullstack"],
+        seekingSkills: [],
+        domains: ["效率工具"],
+        durations: ["长期合作"],
+        availability: 1,
+      }),
+    ).toEqual({
+      bio: "关于我请输入 30-500 个字符",
+      links: "最多添加 3 个链接",
+    });
   });
 
   it("validates connection purpose, message length, and contacts", () => {

@@ -11,6 +11,8 @@ import { DemoEmbed } from '@/components/demo-embed'
 import { Chip } from '@/components/ui/chip'
 import { ButtonAnchor } from '@/components/ui/button'
 import { Eyebrow } from '@/components/ui/typography'
+import { ProjectConnectButton } from '@/components/project-connection-dialog'
+import type { MyProjectConnectionStatus } from '@/lib/client-api'
 
 function nonEmpty(value: string | null | undefined): string | null {
   const trimmed = value?.trim()
@@ -140,7 +142,7 @@ function DemoAssets({ project }: { project: ProjectDetail }) {
   )
 }
 
-export function ProjectDetail({ project, backHref = '/', showLike = true }: { project: ProjectDetail; backHref?: string; showLike?: boolean }) {
+export function ProjectDetail({ project, backHref = '/', showLike = true, connectGate }: { project: ProjectDetail; backHref?: string; showLike?: boolean; connectGate?: MyProjectConnectionStatus | null }) {
   const coverUrl = nonEmpty(project.coverUrl)
   const tagline = nonEmpty(project.tagline)
   const teamName = nonEmpty(project.teamName)
@@ -201,6 +203,10 @@ export function ProjectDetail({ project, backHref = '/', showLike = true }: { pr
                 <div className="mt-5">
                   <LikeButton projectId={project.id} likeCount={project.likeCount} />
                 </div>
+              ) : null}
+
+              {connectGate !== undefined ? (
+                <ProjectConnectButton projectId={project.id} initialStatus={connectGate} />
               ) : null}
 
               {project.founder ? (
