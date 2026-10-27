@@ -11,5 +11,9 @@ dist/
 out/
 next-env.d.ts
 
-.scratch/snapshot
-.scratch/bench
+# prod 凭证（2026-10-27 补）—— 绝不能进 git
+# .gitignore 原本只挡了 .env，不挡这两个，同样含 DB 密码 / JWT secret
+.env.production
+.env.*
+ecosystem.config.js
+data.sql
