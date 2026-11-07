@@ -140,4 +140,15 @@
   --boom-cover-word: #ed78ac; /* 设计稿 .cover-word 巨型字标粉（比 --pink 更淡） */
   --boom-cover-ink: #ffffff; /* 落在插画上的白字（scroll / index） */
   --boom-cover-ink-halo: #07192d; /* 白字的深色描边光 */
+
+  /* ---- 暖纸：赛季详情页（报名未开始 / 拼贴首屏） ---------------------- *
+   * 赛季详情不再用冷白，而是设计稿的米白纸感。只在赛季页作用域内消费，
+   * 不影响全站其它页面的 --bg。 */
+  --boom-paper-1: #f7f4ec;
+  --boom-paper-2: #f1ece2;
+  --boom-paper-3: #e5ded1;
+
+  /* 赛季详情拼贴首屏：由运营提供的整张 banner（含雕像 / 星芒 / 棋盘格）。
+   * 放在 L0 是因为它是设计素材；上层只消费 --season-hero-image。 */
+  --boom-season-hero-art: url('https://shenicest-projects-1422809617.cos.ap-shanghai.myqcloud.com/assets/product-platform/boomland/banner.png');
 }

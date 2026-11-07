@@ -1069,6 +1069,670 @@
   }
 
   /* ---------------------------------------------------------------------------
+   * 赛季详情（暖纸 / 拼贴首屏）
+   * ------------------------------------------------------------------------- */
+
+  .season-page {
+    background: var(--season-bg);
+    color: var(--fg);
+  }
+
+  /* 赛季页是全站唯一的暖纸页面：页头 / 页脚跟着一起换底，
+   * 否则顶部会出现一条冷白色断层。用 :has 作用域，不影响其它页面。 */
+  body:has(.season-page) .site-header {
+    border-bottom-color: var(--season-line);
+    background: var(--season-bg);
+  }
+
+  body:has(.season-page) .site-footer {
+    border-top-color: var(--season-line);
+    background: var(--season-bg);
+  }
+
+  .season-hero {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    border-bottom: 1px solid var(--season-line);
+    background-color: var(--season-bg);
+    background-image: var(--season-hero-image);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    padding-block: clamp(44px, 5.4vw, 72px);
+  }
+
+  .season-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background: radial-gradient(
+      ellipse 48% 76% at 50% 46%,
+      color-mix(in srgb, var(--season-bg) 88%, transparent) 0%,
+      color-mix(in srgb, var(--season-bg) 48%, transparent) 52%,
+      transparent 78%
+    );
+    pointer-events: none;
+  }
+
+  .season-hero__inner {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    justify-content: center;
+    padding-inline: var(--boom-space-gutter);
+  }
+
+  .season-hero__content {
+    width: min(100%, 600px);
+  }
+
+  .season-hero__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--fg);
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+  }
+
+  .season-hero__brand::before {
+    content: '✿';
+    color: var(--brand);
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .season-hero__title {
+    margin: 10px 0 0;
+    max-width: 20ch;
+    color: var(--fg);
+    font-size: clamp(2.5rem, 5.6vw, 4.1rem);
+    font-weight: 900;
+    line-height: 0.98;
+    letter-spacing: -0.045em;
+    text-wrap: balance;
+  }
+
+  .season-hero__lead {
+    margin: 18px 0 0;
+    max-width: min(100%, 520px);
+    color: var(--fg-muted);
+    font-size: var(--boom-text-body);
+    line-height: 1.8;
+  }
+
+  .season-hero__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 24px;
+    margin-top: 24px;
+    font-size: var(--boom-text-body-sm);
+    font-weight: 600;
+    color: var(--fg);
+  }
+
+  .season-hero__meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .season-hero__meta-item svg {
+    width: 16px;
+    height: 16px;
+    flex: none;
+    color: var(--fg-muted);
+  }
+
+  .season-hero__actions {
+    margin-top: 30px;
+  }
+
+  .season-hero__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 0 30px;
+    border: 2px solid var(--fg);
+    border-radius: var(--boom-radius-xs);
+    background: color-mix(in srgb, var(--season-bg) 82%, transparent);
+    color: var(--fg);
+    font-size: 15px;
+    font-weight: 800;
+    box-shadow: 8px 8px 0 var(--brand);
+    transition:
+      transform 160ms var(--boom-ease),
+      box-shadow 160ms var(--boom-ease),
+      background 160ms var(--boom-ease);
+  }
+
+  .season-hero__cta:not([aria-disabled='true']):hover {
+    transform: translate(3px, 3px);
+    box-shadow: 4px 4px 0 var(--brand);
+    background: var(--season-bg);
+  }
+
+  .season-hero__cta[aria-disabled='true'] {
+    cursor: default;
+    opacity: 0.92;
+  }
+
+  /* ---- 里程碑横轴 ----------------------------------------------------- */
+
+  .season-milestones {
+    padding-block: clamp(40px, 5vw, 72px);
+  }
+
+  .season-milestones__list {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .season-milestones__list::before {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 0;
+    width: calc(100% * 5 / 6);
+    height: 1px;
+    background: var(--season-line);
+  }
+
+  .season-milestones__item {
+    position: relative;
+    min-width: 0;
+    padding-top: 20px;
+  }
+
+  .season-milestones__item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 7px;
+    height: 7px;
+    border: 1px solid var(--fg-subtle);
+    border-radius: 50%;
+    background: var(--season-bg);
+  }
+
+  .season-milestones__item:first-child::before {
+    border-color: var(--fg);
+    background: var(--fg);
+  }
+
+  .season-milestones__label {
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: var(--boom-text-meta);
+    line-height: 1.5;
+  }
+
+  .season-milestones__date {
+    margin: 6px 0 0;
+    color: var(--fg);
+    font-size: var(--boom-text-body-sm);
+    font-weight: 800;
+    line-height: 1.4;
+  }
+
+  /* ---- 规则双卡 ------------------------------------------------------- */
+
+  .season-rules {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    padding-bottom: clamp(56px, 7vw, 96px);
+  }
+
+  .season-rule-card {
+    border: 1px solid var(--season-line);
+    border-radius: var(--boom-radius-xl);
+    background: var(--season-surface);
+    padding: clamp(24px, 3vw, 36px);
+  }
+
+  .season-rule-card__title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    color: var(--fg);
+    font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+
+  .season-rule-card__icon {
+    display: inline-flex;
+    color: var(--brand);
+  }
+
+  .season-rule-card__icon svg {
+    width: 26px;
+    height: 26px;
+  }
+
+  .season-rule-card__rows {
+    display: grid;
+    gap: 14px;
+    margin: 26px 0 0;
+  }
+
+  .season-rule-row {
+    display: grid;
+    grid-template-columns: 84px minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+    font-size: var(--boom-text-body-sm);
+    line-height: 1.65;
+  }
+
+  .season-rule-row dt {
+    color: var(--fg-muted);
+  }
+
+  .season-rule-row dd {
+    margin: 0;
+    color: var(--fg);
+    font-weight: 600;
+  }
+
+  /* ---- 企业命题 ------------------------------------------------------- */
+
+  .season-section {
+    padding-bottom: clamp(56px, 7vw, 96px);
+  }
+
+  .season-section__head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 28px;
+  }
+
+  .season-section__title {
+    margin: 0;
+    color: var(--fg);
+    font-size: clamp(1.6rem, 2.8vw, 2.2rem);
+    font-weight: 900;
+    letter-spacing: -0.03em;
+  }
+
+  .season-section__lead {
+    margin: 8px 0 0;
+    max-width: 60ch;
+    color: var(--fg-muted);
+    font-size: var(--boom-text-body-sm);
+    line-height: 1.7;
+  }
+
+  .season-detail-btn {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 12px;
+    min-height: 42px;
+    padding: 0 22px;
+    border: 1.5px solid var(--brand);
+    border-radius: var(--boom-radius-pill);
+    background: transparent;
+    color: var(--fg);
+    font-size: var(--boom-text-body-sm);
+    font-weight: 800;
+    white-space: nowrap;
+    transition:
+      background 160ms var(--boom-ease),
+      color 160ms var(--boom-ease);
+  }
+
+  .season-detail-btn:hover {
+    background: var(--brand-wash);
+  }
+
+  .season-challenge-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .season-challenge {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-height: 148px;
+    border: 1px solid var(--season-line);
+    border-radius: var(--boom-radius-lg);
+    background: var(--season-surface);
+    padding: 20px 22px;
+  }
+
+  .season-challenge__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .season-challenge__type {
+    color: var(--fg-muted);
+    font-size: var(--boom-text-meta);
+    letter-spacing: 0.02em;
+  }
+
+  .season-challenge__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: var(--boom-radius-pill);
+    background: var(--brand-wash);
+    color: var(--brand-text);
+    font-size: 11px;
+    font-weight: 800;
+    white-space: nowrap;
+  }
+
+  .season-challenge__status::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--brand);
+  }
+
+  .season-challenge__title {
+    margin: 0;
+    color: var(--fg);
+    font-size: 1.2rem;
+    font-weight: 800;
+    line-height: 1.4;
+    letter-spacing: -0.01em;
+  }
+
+  .season-challenge__foot {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: auto;
+    color: var(--fg-muted);
+    font-size: var(--boom-text-meta);
+    line-height: 1.5;
+  }
+
+  .season-challenge__host {
+    flex: none;
+    font-family: var(--font-mono);
+    letter-spacing: 0.02em;
+  }
+
+  .season-challenge__desc {
+    max-width: 28ch;
+    text-align: right;
+  }
+
+  /* ---- 命题详情（展开） ----------------------------------------------- */
+
+  .season-challenge-details {
+    display: grid;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .season-challenge-detail {
+    border: 1px solid var(--season-line);
+    border-radius: var(--boom-radius-lg);
+    background: var(--season-surface);
+    padding: 22px;
+  }
+
+  .season-challenge-detail__title {
+    margin: 0;
+    color: var(--fg);
+    font-size: 1rem;
+    font-weight: 800;
+  }
+
+  .season-challenge-detail__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 16px;
+  }
+
+  .season-challenge-detail__field {
+    border-radius: var(--boom-radius-sm);
+    background: var(--season-soft);
+    padding: 12px 14px;
+  }
+
+  .season-challenge-detail__field dt {
+    color: var(--fg-muted);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+  }
+
+  .season-challenge-detail__field dd {
+    margin: 6px 0 0;
+    color: var(--fg);
+    font-size: var(--boom-text-body-sm);
+    line-height: 1.65;
+    white-space: pre-line;
+  }
+
+  /* ---- 评审志愿者 / 宽卡 ---------------------------------------------- */
+
+  .season-wide-card {
+    margin-bottom: clamp(56px, 7vw, 96px);
+    border: 1px solid var(--season-line);
+    border-radius: var(--boom-radius-xl);
+    background: var(--season-surface);
+  }
+
+  .season-wide-card > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: clamp(24px, 3vw, 32px);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .season-wide-card > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .season-wide-card__title {
+    margin: 0;
+    color: var(--fg);
+    font-size: clamp(1.4rem, 2.6vw, 1.9rem);
+    font-weight: 900;
+    letter-spacing: -0.02em;
+  }
+
+  .season-wide-card__lead {
+    margin: 8px 0 0;
+    color: var(--fg-muted);
+    font-size: var(--boom-text-body-sm);
+    line-height: 1.7;
+  }
+
+  .season-wide-card__body {
+    margin: 0 clamp(24px, 3vw, 32px) clamp(24px, 3vw, 32px);
+    border-top: 1px solid var(--season-line);
+    padding-top: 20px;
+    color: var(--fg-muted);
+    font-size: var(--boom-text-body-sm);
+    line-height: 1.8;
+  }
+
+  /* ---- 敬请期待双卡 --------------------------------------------------- */
+
+  .season-pending-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+    padding-bottom: clamp(56px, 7vw, 96px);
+  }
+
+  .season-pending {
+    min-height: 190px;
+    border-radius: var(--boom-radius-xl);
+    background: var(--season-soft);
+    padding: clamp(24px, 3vw, 32px);
+  }
+
+  .season-pending__head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .season-pending__title {
+    margin: 0;
+    color: var(--fg-muted);
+    font-size: clamp(1.3rem, 2.2vw, 1.6rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+
+  .season-pending__pill {
+    padding: 3px 10px;
+    border-radius: var(--boom-radius-pill);
+    background: var(--season-line);
+    color: var(--fg-muted);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .season-pending__text {
+    margin: 32px 0 0;
+    max-width: 36ch;
+    color: var(--fg-muted);
+    font-size: var(--boom-text-body-sm);
+    line-height: 1.8;
+  }
+
+  /* ---- 赛季轮播（/seasons 同一页左右滑） ------------------------------- */
+
+  .season-carousel {
+    position: relative;
+    overflow: hidden;
+    background: var(--season-bg);
+  }
+
+  .season-carousel__viewport {
+    overflow: hidden;
+    touch-action: pan-y;
+  }
+
+  .season-carousel__track {
+    display: flex;
+    align-items: flex-start;
+    will-change: transform;
+    transition: transform 360ms var(--boom-ease);
+  }
+
+  .season-carousel__track[data-dragging='true'] {
+    transition: none;
+  }
+
+  .season-carousel__slide {
+    flex: 0 0 100%;
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* 轮播首屏要给顶部的切换器留出位置 */
+  .season-carousel .season-hero {
+    padding-top: 88px;
+  }
+
+  .season-carousel__nav {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 8px;
+    border: 1px solid var(--season-line);
+    border-radius: var(--boom-radius-pill);
+    background: color-mix(in srgb, var(--season-bg) 84%, transparent);
+    box-shadow: var(--shadow-tag);
+    transform: translateX(-50%);
+    backdrop-filter: blur(10px);
+  }
+
+  .season-carousel__arrow {
+    display: inline-flex;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--fg);
+    font-size: 14px;
+    cursor: pointer;
+    transition:
+      background 160ms var(--boom-ease),
+      color 160ms var(--boom-ease);
+  }
+
+  .season-carousel__arrow:hover:not(:disabled) {
+    background: var(--brand-wash);
+    color: var(--brand-text);
+  }
+
+  .season-carousel__arrow:disabled {
+    cursor: default;
+    opacity: 0.28;
+  }
+
+  .season-carousel__dots {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .season-carousel__dot {
+    width: 6px;
+    height: 6px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--boom-radius-pill);
+    background: var(--season-line);
+    cursor: pointer;
+    transition:
+      width 220ms var(--boom-ease),
+      background 220ms var(--boom-ease);
+  }
+
+  .season-carousel__dot:hover {
+    background: var(--brand-line);
+  }
+
+  .season-carousel__dot[aria-current='true'] {
+    width: 20px;
+    background: var(--brand);
+  }
+
+  /* ---------------------------------------------------------------------------
    * 响应式收敛
    * ------------------------------------------------------------------------- */
 
@@ -1076,6 +1740,31 @@
     .section-head {
       grid-template-columns: minmax(0, 1fr);
       align-items: start;
+    }
+
+    .season-milestones__list {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      row-gap: 28px;
+    }
+
+    .season-milestones__list::before {
+      display: none;
+    }
+
+    .season-rules,
+    .season-challenge-grid,
+    .season-pending-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .season-section__head {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .season-wide-card > summary {
+      flex-direction: column;
+      align-items: flex-start;
     }
   }
 
@@ -1086,6 +1775,45 @@
 
     .detail-metrics {
       gap: var(--boom-space-4);
+    }
+
+    .season-hero {
+      padding-block: 48px 56px;
+    }
+
+    .season-carousel .season-hero {
+      padding-top: 68px;
+    }
+
+    .season-carousel__nav {
+      top: 10px;
+    }
+
+    .season-hero__meta {
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .season-milestones__list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .season-rule-row {
+      grid-template-columns: 68px minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    .season-challenge-detail__grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .season-challenge__foot {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .season-challenge__desc {
+      text-align: left;
     }
   }
 

@@ -66,6 +66,14 @@
   --danger-line: var(--boom-red-2);
   --danger-text: var(--boom-red-5);
 
+  /* ---- 赛季详情页：暖纸表面 ------------------------------------------- *
+   * 该页是战役型页面，配色不跟随全站冷白，只在 .season-page 作用域使用。 */
+  --season-bg: var(--boom-paper-1);
+  --season-soft: var(--boom-paper-2);
+  --season-line: var(--boom-paper-3);
+  --season-surface: var(--boom-cloud-0);
+  --season-hero-image: var(--boom-season-hero-art);
+
   /* ---- 焦点 ---------------------------------------------------------- */
   --focus-ring: var(--boom-focus);
 

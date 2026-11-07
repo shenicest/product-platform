@@ -50,7 +50,12 @@ export function SectionHead({
         {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
         <h2 className="section-head__title">{title}</h2>
       </div>
-      {aside ?? (lead ? <p className="section-head__lead">{lead}</p> : null)}
+      {lead || aside ? (
+        <div className="flex min-w-0 flex-col items-start gap-2 sm:items-end">
+          {lead ? <p className="section-head__lead">{lead}</p> : null}
+          {aside}
+        </div>
+      ) : null}
     </header>
   )
 }

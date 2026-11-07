@@ -472,6 +472,10 @@ type SeasonSchedule = {
 | `work_deadline` | 作品提交截止 |
 | `score_deadline` | 评分截止 |
 | `point_pool_and_awards` | 积分池与奖励口径 |
+| `submission_requirements` | 提交要求 |
+| `review_process` | 评审流程 |
+| `milestone_rewards` | 阶段奖励 |
+| `scoring_rewards` | 评分奖励 |
 
 必要项的 `value` 可在创建后编辑；`required=true`、`visible=true` 不可改。可选条目 `key` 不得与必要项冲突，`required=false`，可增删排序。
 
@@ -904,7 +908,7 @@ type CreateSeasonBody = {
   - 创建 `seasons`（`status=draft`，`rules_version=1`）。
   - 创建 `season_organizers`。
   - 创建 `season_point_pools`（`total=0, allocated=0, used=0, version=1`）。
-  - 种入九个必要规则卡条目，`value` 从 `rules` / `schedule` 生成可读文本。
+  - 种入十三个必要规则卡条目，`value` 从 `rules` / `schedule` 生成可读文本（提交要求 / 评审流程 / 阶段奖励 / 评分奖励使用默认文案，创建后可在规则卡中编辑）。
   - 写 `audit_logs`：`season.created`。
 - 响应 `201`：`SeasonManageDetail`。
 - 错误：`SEASON_CODE_TAKEN`、`ORGANIZER_ORG_NOT_FOUND`、`NOT_SEASON_ORGANIZER`、`SCHEDULE_INVALID`、`RULES_INVALID`、`VALIDATION_ERROR`。

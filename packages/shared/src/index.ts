@@ -322,6 +322,10 @@ export const SEASON_REQUIRED_RULE_CARD_KEYS = [
   'work_deadline',
   'score_deadline',
   'point_pool_and_awards',
+  'submission_requirements',
+  'review_process',
+  'milestone_rewards',
+  'scoring_rewards',
 ] as const
 export type SeasonRequiredRuleCardKey = (typeof SEASON_REQUIRED_RULE_CARD_KEYS)[number]
 
@@ -335,4 +339,8 @@ export const SEASON_REQUIRED_RULE_CARD_LABELS: Record<SeasonRequiredRuleCardKey,
   work_deadline: '作品提交截止',
   score_deadline: '评分截止',
   point_pool_and_awards: '积分池与奖励口径',
+  submission_requirements: '提交要求',
+  review_process: '评审流程',
+  milestone_rewards: '阶段奖励',
+  scoring_rewards: '评分奖励',
 }

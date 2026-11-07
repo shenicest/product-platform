@@ -3,7 +3,7 @@ interface ApiError {
   body: { error: { code: string; message: string; field?: string } }
 }
 
-async function request<T>(
+export async function request<T>(
   method: string,
   path: string,
   body?: unknown,

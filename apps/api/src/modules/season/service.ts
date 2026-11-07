@@ -116,6 +116,10 @@ function ruleCardValue(key: string, rules: SeasonRules, schedule: SeasonSchedule
     case 'work_deadline': return schedule?.workDeadline ?? '待定'
     case 'score_deadline': return schedule?.scoreDeadline ?? '待定'
     case 'point_pool_and_awards': return '积分池与奖励口径以赛季公告为准'
+    case 'submission_requirements': return '按阶段提交作品、说明与验证材料'
+    case 'review_process': return '阶段评审 + 赛季最终评审'
+    case 'milestone_rewards': return '完成里程碑可获得对应积分'
+    case 'scoring_rewards': return '根据评审结果获得积分'
     default: return ''
   }
 }
@@ -444,6 +448,7 @@ export class SeasonService {
       ruleCard,
       rulesVersion: row.rulesVersion,
       awardingEntity: row.awardingEntity,
+      agreementVersion: row.agreementVersion,
       startedAt: iso(row.startedAt),
       applicationWindow: this.applicationWindow(row),
       createdAt: iso(row.createdAt),

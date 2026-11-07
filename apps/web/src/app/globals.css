@@ -105,6 +105,12 @@
   --color-fg-inverse: var(--fg-inverse);
   --color-border-focus: var(--border-focus);
 
+  /* 赛季详情页暖纸表面 */
+  --color-season: var(--season-bg);
+  --color-season-soft: var(--season-soft);
+  --color-season-line: var(--season-line);
+  --color-season-surface: var(--season-surface);
+
   /* 弹窗遮罩：bg-overlay */
   --color-overlay: var(--bg-overlay);
   --color-overlay-strong: color-mix(
