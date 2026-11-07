@@ -2,7 +2,11 @@
 
 ## Domain Documentation
 
-- [CONTEXT.md](./CONTEXT.md) — 领域术语表，定义项目核心概念（Project、ProjectEditProposal、Comment 等）
+- [CONTEXT-MAP.md](./CONTEXT-MAP.md) — 多上下文地图：Product Showcase 与 BoomLand 的边界、共享 User 与角色复用
+- [CONTEXT.md](./CONTEXT.md) — Product Showcase 领域术语表（Project、ProjectEditProposal、Comment 等）
+- [docs/boomland/CONTEXT.md](./docs/boomland/CONTEXT.md) — BoomLand 领域术语表（Season、Organizer Org、Application、Participant、Challenge 等）
+- [docs/boomland/pre-start-season-api.md](./docs/boomland/pre-start-season-api.md) — BoomLand 开赛前赛季与报名后端契约（数据模型、状态机、API、错误码）
+- [docs/boomland/pre-start-season-frontend.md](./docs/boomland/pre-start-season-frontend.md) — BoomLand 开赛前赛季与报名前端页面契约
 - [docs/spec-v1-backend-api.md](./docs/spec-v1-backend-api.md) — v1.0 后端 API 完整规格说明
 - [docs/auth.md](./docs/auth.md) — 鉴权体系：JWT 认证、角色/属主授权、前后端守卫
 - [docs/main-site-sso-integration.md](./docs/main-site-sso-integration.md) — 主站（PHP）SSO 接入契约，交给主站维护者/AI 用
@@ -23,8 +27,10 @@
   - [0012-project-form-field-consolidation.md](./docs/adr/0012-project-form-field-consolidation.md) — 项目表单字段级重构（破坏性，整库重置）
   - [0013-talent-dual-state-skills-derived-direction.md](./docs/adr/0013-talent-dual-state-skills-derived-direction.md) — 人才技能双状态墙；方向由技能推导，不单独提问
   - [0014-platform-project-connection-requests.md](./docs/adr/0014-platform-project-connection-requests.md) — 平台项目建联独立建表，复用建联原语与通知
+  - [0015-boomland-season-context-and-identity-boundary.md](./docs/adr/0015-boomland-season-context-and-identity-boundary.md) — BoomLand 是独立赛季上下文，只共享平台 User
+  - [0016-season-publish-readiness-minimal-dependencies.md](./docs/adr/0016-season-publish-readiness-minimal-dependencies.md) — 赛季发布就绪使用真实的最小依赖，不用假数据
 
-修改领域模型前必须先阅读 CONTEXT.md。
+修改领域模型前必须先阅读对应上下文的 CONTEXT.md。
 
 ## Commands
 

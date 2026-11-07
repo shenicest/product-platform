@@ -16,6 +16,11 @@ import { hackathonModule } from './modules/hackathon'
 import { hackathonConnectionModule } from './modules/hackathon-connection'
 import { projectConnectionModule } from './modules/project-connection'
 import { connectionsModule } from './modules/connections'
+import { organizerOrgModule } from './modules/organizer-org'
+import { seasonModule } from './modules/season'
+import { challengeModule } from './modules/challenge'
+import { seasonConfigModule } from './modules/season-config'
+import { seasonApplicationModule } from './modules/season-application'
 
 export const app = new Elysia()
   .use(openapi({
@@ -75,6 +80,11 @@ export const app = new Elysia()
   .use(bathModule)
   .use(connectionsModule)
   .use(operatorModule)
+  .use(organizerOrgModule)
+  .use(seasonModule)
+  .use(challengeModule)
+  .use(seasonConfigModule)
+  .use(seasonApplicationModule)
   .get('/health', () => ({ status: 'ok' as const, env: process.env.NODE_ENV }), {
     detail: {
       summary: 'Health check',

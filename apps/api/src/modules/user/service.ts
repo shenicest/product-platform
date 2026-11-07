@@ -37,6 +37,21 @@ export class UserProfileService {
     }
   }
 
+  // Whether a user exists in the shared external-auth table. Used before
+  // granting season-scoped roles (organizer member, scorer, verifier) so a
+  // typo cannot create a dangling grant. Degrades to false on lookup failure.
+  async exists(userId: string): Promise<boolean> {
+    if (!/^\d+$/.test(userId)) return false
+    try {
+      const [rows] = (await this.db.execute(
+        sql`SELECT 1 AS present FROM ${sql.raw(SHARED_USERS_TABLE)} WHERE id = ${userId} LIMIT 1`,
+      )) as unknown as [{ present: number }[]]
+      return rows.length > 0
+    } catch {
+      return false
+    }
+  }
+
   // The platform-account email of a user (external auth system owns it).
   // Used as the notification recipient for connection outcomes. Degrades to
   // null exactly like getPublicProfile — a missing row or a flaky external

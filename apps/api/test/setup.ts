@@ -137,6 +137,7 @@ process.env.COS_ENDPOINT ??= 'https://cos.ap-shanghai.myqcloud.com'
 process.env.COS_PUBLIC_BASE_URL ??= 'https://assets.shenicest.test'
 process.env.COS_UPLOAD_PREFIX ??= 'projects/'
 process.env.SHENICEST_CONTACT_ENCRYPTION_KEY ??= 'test-contact-encryption-key-at-least-32-chars'
+process.env.BOOMLAND_CONTACT_KEY ??= Buffer.alloc(32, 7).toString('base64')
 // The mail worker is exercised directly via tick() in tests; never started.
 process.env.NOTIFICATION_WORKER ??= 'off'
 // The hackathon module reaches the external event database through its own

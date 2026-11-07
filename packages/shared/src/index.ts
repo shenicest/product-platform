@@ -176,3 +176,163 @@ export const PROJECT_CONNECTION_PURPOSES = [
   '试用产品', '合作交流', '加入项目', '提供专业帮助', '寻求反馈', '其他',
 ] as const
 export type ProjectConnectionPurpose = (typeof PROJECT_CONNECTION_PURPOSES)[number]
+
+// ---------------------------------------------------------------------------
+// BoomLand
+// ---------------------------------------------------------------------------
+
+export const SeasonType = {
+  Season: 'season',
+  Hackathon: 'hackathon',
+} as const
+export type SeasonType = (typeof SeasonType)[keyof typeof SeasonType]
+
+export const SeasonStatus = {
+  Draft: 'draft',
+  Upcoming: 'upcoming',
+  Active: 'active',
+  Suspended: 'suspended',
+  Cancelled: 'cancelled',
+} as const
+export type SeasonStatus = (typeof SeasonStatus)[keyof typeof SeasonStatus]
+
+export const SeasonApplicationStatus = {
+  Submitted: 'submitted',
+  Accepted: 'accepted',
+  Pending: 'pending',
+  Waitlisted: 'waitlisted',
+  Rejected: 'rejected',
+  Withdrawn: 'withdrawn',
+} as const
+export type SeasonApplicationStatus =
+  (typeof SeasonApplicationStatus)[keyof typeof SeasonApplicationStatus]
+
+export const SeasonParticipantStatus = {
+  Active: 'active',
+  Withdrawn: 'withdrawn',
+} as const
+export type SeasonParticipantStatus =
+  (typeof SeasonParticipantStatus)[keyof typeof SeasonParticipantStatus]
+
+export const ApplicationVisibility = {
+  Public: 'public',
+  OrganizerOnly: 'organizer_only',
+} as const
+export type ApplicationVisibility =
+  (typeof ApplicationVisibility)[keyof typeof ApplicationVisibility]
+
+export const WechatStatus = {
+  NotInvited: 'not_invited',
+  Invited: 'invited',
+  Joined: 'joined',
+  Failed: 'failed',
+} as const
+export type WechatStatus = (typeof WechatStatus)[keyof typeof WechatStatus]
+
+export const ChallengeStatus = {
+  Draft: 'draft',
+  Reference: 'reference',
+  Published: 'published',
+  Closed: 'closed',
+  Archived: 'archived',
+} as const
+export type ChallengeStatus = (typeof ChallengeStatus)[keyof typeof ChallengeStatus]
+
+export const BudgetStatus = {
+  Active: 'active',
+  Superseded: 'superseded',
+} as const
+export type BudgetStatus = (typeof BudgetStatus)[keyof typeof BudgetStatus]
+
+export const PointPoolStatus = {
+  Active: 'active',
+  Closed: 'closed',
+} as const
+export type PointPoolStatus = (typeof PointPoolStatus)[keyof typeof PointPoolStatus]
+
+export const PointAllocationStatus = {
+  Active: 'active',
+  Reclaimed: 'reclaimed',
+} as const
+export type PointAllocationStatus =
+  (typeof PointAllocationStatus)[keyof typeof PointAllocationStatus]
+
+export const VerifierGrantStatus = {
+  Active: 'active',
+  Revoked: 'revoked',
+} as const
+export type VerifierGrantStatus =
+  (typeof VerifierGrantStatus)[keyof typeof VerifierGrantStatus]
+
+export const AnnouncementCategory = {
+  General: 'general',
+  Schedule: 'schedule',
+  Rules: 'rules',
+} as const
+export type AnnouncementCategory =
+  (typeof AnnouncementCategory)[keyof typeof AnnouncementCategory]
+
+export interface SeasonSchedule {
+  applyOpen: string
+  applyClose: string
+  startAt: string
+  teamDeadline: string
+  challengeFreezeAt: string
+  workDeadline: string
+  scoreDeadline: string
+  settleDate: string
+}
+
+export interface SeasonRules {
+  maxChallengesPerProject: number
+  maxProjectsPerParticipant: number
+  maxCoreMembers: number
+  singleWorkCap: number
+  exchangeRatio: number
+  reviewThreshold: number
+  dailyQuotaEnabled: boolean
+}
+
+export const SEASON_RULE_DEFAULTS: SeasonRules = {
+  maxChallengesPerProject: 3,
+  maxProjectsPerParticipant: 1,
+  maxCoreMembers: 3,
+  singleWorkCap: 100,
+  exchangeRatio: 1,
+  reviewThreshold: 50,
+  dailyQuotaEnabled: false,
+}
+
+export const SEASON_RULE_LIMITS = {
+  maxChallengesPerProject: { min: 1, max: 3 },
+  maxProjectsPerParticipant: { min: 1, max: 20 },
+  maxCoreMembers: { min: 1, max: 3 },
+  singleWorkCap: { min: 1, max: 1_000_000 },
+  exchangeRatio: { min: 0.0001, max: 1_000_000 },
+  reviewThreshold: { min: 0, max: 1_000_000 },
+} as const
+
+export const SEASON_REQUIRED_RULE_CARD_KEYS = [
+  'max_project_challenges',
+  'max_projects_per_participant',
+  'max_core_members',
+  'single_work_cap',
+  'exchange_ratio',
+  'review_threshold',
+  'work_deadline',
+  'score_deadline',
+  'point_pool_and_awards',
+] as const
+export type SeasonRequiredRuleCardKey = (typeof SEASON_REQUIRED_RULE_CARD_KEYS)[number]
+
+export const SEASON_REQUIRED_RULE_CARD_LABELS: Record<SeasonRequiredRuleCardKey, string> = {
+  max_project_challenges: '每个项目可选命题上限',
+  max_projects_per_participant: '每人最多参与项目数',
+  max_core_members: '团队核心成员上限',
+  single_work_cap: '单次评分上限',
+  exchange_ratio: '积分兑换比例',
+  review_threshold: '复核阈值',
+  work_deadline: '作品提交截止',
+  score_deadline: '评分截止',
+  point_pool_and_awards: '积分池与奖励口径',
+}

@@ -1,0 +1,50 @@
+import { boolean, index, int, json, mysqlTable, text, timestamp, uniqueIndex, varchar } from 'drizzle-orm/mysql-core'
+
+export const seasonApplications = mysqlTable('season_applications', {
+  id: int('id').primaryKey().autoincrement(),
+  seasonId: int('season_id').notNull(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  skills: text('skills').notNull(),
+  experience: text('experience').notNull(),
+  themes: json('themes').$type<string[]>().notNull(),
+  teamIntent: text('team_intent').notNull(),
+  acceptsSolo: boolean('accepts_solo').notNull(),
+  availability: text('availability').notNull(),
+  cityMode: text('city_mode').notNull(),
+  contactEncrypted: text('contact_encrypted').notNull(),
+  visibility: varchar('visibility', { length: 16 }).notNull().default('organizer_only'),
+  agreementVersion: varchar('agreement_version', { length: 32 }).notNull(),
+  status: varchar('status', { length: 16 }).notNull().default('submitted'),
+  reviewedBy: varchar('reviewed_by', { length: 255 }),
+  reviewReason: text('review_reason'),
+  reviewedAt: timestamp('reviewed_at'),
+  withdrawnAt: timestamp('withdrawn_at'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
+}, (table) => [
+  uniqueIndex('uq_season_applications_season_user').on(table.seasonId, table.userId),
+  index('idx_season_applications_season_status').on(table.seasonId, table.status),
+  index('idx_season_applications_user').on(table.userId),
+])
+
+export const seasonParticipants = mysqlTable('season_participants', {
+  id: int('id').primaryKey().autoincrement(),
+  seasonId: int('season_id').notNull(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  applicationId: int('application_id').notNull(),
+  wechatStatus: varchar('wechat_status', { length: 16 }).notNull().default('not_invited'),
+  wechatInvitedBy: varchar('wechat_invited_by', { length: 255 }),
+  wechatInvitedAt: timestamp('wechat_invited_at'),
+  joinedAt: timestamp('joined_at'),
+  status: varchar('status', { length: 16 }).notNull().default('active'),
+  withdrawnAt: timestamp('withdrawn_at'),
+  withdrawnBy: varchar('withdrawn_by', { length: 255 }),
+  withdrawReason: text('withdraw_reason'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
+}, (table) => [
+  uniqueIndex('uq_season_participants_season_user').on(table.seasonId, table.userId),
+  uniqueIndex('uq_season_participants_application').on(table.applicationId),
+  index('idx_season_participants_season_wechat').on(table.seasonId, table.wechatStatus),
+  index('idx_season_participants_season_status').on(table.seasonId, table.status),
+])
