@@ -1657,6 +1657,16 @@ type SeasonParticipant = {
 - 至少一名 `operator` 用户作为 Platform Admin。
 - 不种赛季、不种报名；由测试/演示创建。
 
+### 8.3 演示种子（`bun run seed:season`）
+
+`apps/api/src/db/seed-season.ts` 提供**本地演示/联调**用的完整 BoomLand 数据，幂等（按赛季编号 / 组织名 / `(season, user)` upsert，可反复运行）：
+
+- 主办方组织：`BoomLand 组委会`、`曜石储能`、`青禾物流`，每个组织至少一名成员；成员同时具备 founder 身份。
+- 赛季：`AI4BBS`（active，置顶）、`H03-SH`（hackathon，active，报名窗口开放）、`PROTO-S2`（upcoming，报名窗口开放）。
+- 每个赛季写齐公开页需要的全部子表：13 项规则卡、命题五件套（published / closed / draft 三态）、公告、预算版本（v1 superseded + v2 active）、积分池与评委分配、核验员授权、报名与选手（accepted / submitted / pending / rejected / withdrawn + 三种微信状态）、赛季级审计日志。三个赛季的 publish readiness 九项全部通过。
+- 演示账号固定（`101`–`111`），用于「我的报名」、主办方审核、评委/核验员视角；`POST /seasons/:id/applications` 在窗口开放的赛季上可直接走通。
+- 种子会直接调用 `validateSchedule` 校验赛程，赛程不合规时脚本直接失败，不会写出一份 readiness 过不了的演示数据。
+
 ## 9. 测试要点
 
 后端（`bun test`）：

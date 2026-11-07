@@ -1,9 +1,9 @@
-import { eq, inArray, sql } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { db } from './index'
 import { projects, talentProfiles } from './schema'
 import { UserIdentityService } from '../modules/user-identity/service'
 import { Role } from '../modules/user-identity/model'
-import { SHARED_USERS_TABLE } from '../modules/user/service'
+import { FOUNDER_USER_ID, OPERATOR_USER_ID, cover, upsertSharedUsers } from './seed-shared'
 import {
   CATEGORIES,
   COLLABORATION_DURATIONS,
@@ -21,18 +21,12 @@ const domains = (...values: (typeof CATEGORIES)[number][]) => values
 const durations = (...values: (typeof COLLABORATION_DURATIONS)[number][]) => values
 const skillKeys = (...values: TalentSkill[]) => values
 
-// Integer-string ids to match the external auth system's user ids, which the
-// shared users table keys by integer.
-const OPERATOR_USER_ID = process.env.OPERATOR_USER_ID ?? '2'
-const FOUNDER_USER_ID = process.env.FOUNDER_USER_ID ?? '1'
 // Talent Plaza demo profiles use dedicated integer-string user ids so each one
 // resolves to a shared users row (nickname/avatar) for the public founder card.
 // TalentProfile is independent of the Founder role (CONTEXT.md), so these
 // users are not granted founder — they only get a shared users profile row.
 const TALENT_USER_IDS = ['11', '12', '13', '14', '15']
 const service = new UserIdentityService(db)
-
-const cover = (seed: string) => `https://picsum.photos/seed/${seed}/800/600`
 
 const demoProjects: typeof projects.$inferInsert[] = [
   {
@@ -204,20 +198,16 @@ function generatedProjects(count: number): typeof projects.$inferInsert[] {
 // touches it so dev data can demonstrate the public founder profile. Best
 // effort — the platform works without it (founder simply isn't shown).
 async function seedSharedUserProfiles() {
-  const profiles = [
+  const { seeded, skipped } = await upsertSharedUsers([
     { id: FOUNDER_USER_ID, nickname: '示例创始人', avatar: cover('founder-avatar') },
     { id: '11', nickname: '林一', avatar: cover('talent-11') },
     { id: '12', nickname: '陈二', avatar: cover('talent-12') },
     { id: '13', nickname: '王三', avatar: cover('talent-13') },
     { id: '14', nickname: '赵四', avatar: cover('talent-14') },
     { id: '15', nickname: '孙五', avatar: cover('talent-15') },
-  ].filter((profile) => /^\d+$/.test(profile.id))
-  for (const profile of profiles) {
-    await db.execute(sql`INSERT INTO ${sql.raw(SHARED_USERS_TABLE)} (id, nickname, avatar_url)
-      VALUES (${profile.id}, ${profile.nickname}, ${profile.avatar})
-      ON DUPLICATE KEY UPDATE nickname = VALUES(nickname), avatar_url = VALUES(avatar_url)`)
-  }
-  return profiles.length
+  ])
+  if (skipped > 0) console.warn(`Skipped ${skipped} non-numeric demo user id(s)`)
+  return seeded
 }
 
 // Talent Plaza demo profiles. Coverage target (ADR-0013 + Iss.06):
@@ -301,7 +291,7 @@ async function seed() {
     const count = await seedSharedUserProfiles()
     console.log(`Seeded ${count} shared users profile(s) (founder + talent)`)
   } catch (err) {
-    console.warn(`Skipped shared users profile (${SHARED_USERS_TABLE} not reachable): ${err}`)
+    console.warn(`Skipped shared users profile (shared users table not reachable): ${err}`)
   }
 
   await service.grantRole(FOUNDER_USER_ID, Role.Founder)

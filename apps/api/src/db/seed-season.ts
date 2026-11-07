@@ -1,94 +1,233 @@
-import { eq } from 'drizzle-orm'
+import { and, eq, inArray, ne } from 'drizzle-orm'
 import { db } from './index'
 import {
+  auditLogs,
   challenges,
-  organizerOrgs,
   organizerOrgMembers,
+  organizerOrgs,
+  pointAllocations,
   seasonAnnouncements,
+  seasonApplications,
+  seasonBudgets,
   seasonOrganizers,
+  seasonParticipants,
+  seasonPointPools,
   seasonRuleCardItems,
+  seasonVerifierGrants,
   seasons,
+  talentProfiles,
 } from './schema'
+import { UserIdentityService } from '../modules/user-identity/service'
+import { validateSchedule } from '../modules/boomland-shared'
+import { encryptBoomlandContact } from '../lib/boomland-contact-encryption'
 import {
+  ApplicationVisibility,
+  BudgetStatus,
+  ChallengeStatus,
+  PointAllocationStatus,
+  Role,
   SEASON_REQUIRED_RULE_CARD_KEYS,
   SEASON_REQUIRED_RULE_CARD_LABELS,
   SEASON_RULE_DEFAULTS,
+  SeasonApplicationStatus,
+  SeasonParticipantStatus,
+  SeasonStatus,
+  SeasonType,
+  VerifierGrantStatus,
+  WechatStatus,
   type SeasonRules,
 } from '@shenicest/shared'
+import {
+  BOOMLAND_ORGS,
+  DAY,
+  DEMO_USER_IDS,
+  HOUR,
+  OPERATOR_USER_ID,
+  upsertSharedUsers,
+  type BoomlandOrgKey,
+} from './seed-shared'
 
-// Demo BoomLand season + hackathon seed. Idempotent: upserts by unique code.
-// Dates are relative to "now" so the demo always looks alive: the main season
-// is on ~day 10 of ~31, with apply window already closed (作品内容阶段),
-// and the hackathon's apply window still open so /apply 可以走通。
+// Demo BoomLand seed: everything the 火热赛季 (/seasons) surface reads.
+// Idempotent — upserts by unique key (season code / org name / (season, user)
+// pairs), so rerun freely.
+//
+// Dates are relative to "now" so the demo always looks alive. The main season
+// sits in the 作品内容 stage (apply window closed, started ~10 days ago, work
+// not due yet); the hackathon and the Proto Seeds season keep their apply
+// window open so /seasons/:id/apply 可以走通。Every season is seeded with the
+// full set of child records the public page renders: 命题五件套、规则卡、公告、
+// 预算/积分池/评委分配/核验员（readiness 全绿）、报名与选手（含微信状态）、
+// 赛季级审计日志。
+//
+// Coverage target (pre-start-season-api.md §8.2 + demo needs):
+// - 赛季状态: active x2 (one pinned) + upcoming x1 (apply window open)
+// - 报名状态: accepted / submitted / pending / rejected / withdrawn
+// - 微信状态: not_invited / invited / joined
+// - 命题状态: published (frozen) / closed / draft (draft stays off the public page)
+// - 预算版本: v1 superseded + v2 active; 积分池 partially allocated to 2 scorers
+// - 演示账号 id 固定，不会与真实用户报名冲突
 
-const OPERATOR_USER_ID = process.env.OPERATOR_USER_ID ?? '2'
-
-const DAY = 86_400_000
-const HOUR = 3_600_000
-const now = Date.now()
-const at = (offsetMs: number) => new Date(now + offsetMs)
+const NOW = Date.now()
+const at = (offsetMs: number) => new Date(NOW + offsetMs)
 
 const rules: SeasonRules = { ...SEASON_RULE_DEFAULTS }
+
+const userIdentity = new UserIdentityService(db)
+
+function isoText(date: Date): string {
+  return date.toISOString().slice(0, 16).replace('T', ' ')
+}
+
+// ---------------------------------------------------------------------------
+// 赛季定义
+// ---------------------------------------------------------------------------
+
+type SeasonStatusValue = (typeof SeasonStatus)[keyof typeof SeasonStatus]
+type SeasonTypeValue = (typeof SeasonType)[keyof typeof SeasonType]
+type BudgetStatusValue = (typeof BudgetStatus)[keyof typeof BudgetStatus]
+type DemoAccountKey = keyof typeof DEMO_USER_IDS
+
+type SeasonScheduleSeed = {
+  applyOpen: Date
+  applyClose: Date
+  startAt: Date
+  teamDeadline: Date
+  challengeFreezeAt: Date
+  workDeadline: Date
+  scoreDeadline: Date
+  settleDate: Date
+}
 
 type SeasonSeed = {
   code: string
   name: string
-  type: 'season' | 'hackathon'
+  type: SeasonTypeValue
   city: string | null
   intro: string
   themes: string[]
   participantCapacity: number | null
   pinned: boolean
-  status: 'active' | 'upcoming'
-  schedule: Record<string, Date>
-  startedAt: Date
+  status: SeasonStatusValue
+  schedule: SeasonScheduleSeed
+  startedAt: Date | null
+  awardingEntity: string
+  /** 赛季主办方（org key） */
+  organizers: BoomlandOrgKey[]
+  /** 预算：历史版本 + 当前 active 版本（元） */
+  budgets: Array<{ totalAmount: number; status: BudgetStatusValue; reason: string }>
+  pointPool: {
+    totalPoints: number
+    scorers: Array<{ account: DemoAccountKey; amount: number; usedAmount: number }>
+  }
+  verifiers: DemoAccountKey[]
+  submittedAt: Date
+  approvedAt: Date
 }
 
 const SEASONS: SeasonSeed[] = [
   {
     code: 'AI4BBS',
     name: 'AI4BBS 产业商业赛季',
-    type: 'season',
+    type: SeasonType.Season,
     city: null,
     intro: '把真实问题做成可购买、可交付、可核验的服务，沿三条基建主线生长。',
     themes: ['新型储能基建', '全球 AI 基建', '新生产关系的人本基建'],
     participantCapacity: 50,
     pinned: true,
-    status: 'active',
-    // day 10 of 31
+    status: SeasonStatus.Active,
+    // day 10 of 31：报名已截止、组队已完成，正在交付
     schedule: {
-      applyOpen: at(-20 * DAY),
-      applyClose: at(-12 * DAY),
+      applyOpen: at(-30 * DAY),
+      applyClose: at(-22 * DAY),
       startAt: at(-10 * DAY),
       teamDeadline: at(-8 * DAY),
-      challengeFreezeAt: at(-4 * DAY),
+      challengeFreezeAt: at(-9 * DAY), // 须早于组队截止
       workDeadline: at(19 * DAY),
       scoreDeadline: at(24 * DAY),
       settleDate: at(31 * DAY),
     },
     startedAt: at(-10 * DAY),
+    awardingEntity: 'BoomLand 组委会',
+    organizers: ['committee', 'yaoshi', 'qinghe'],
+    budgets: [
+      { totalAmount: 40_000, status: BudgetStatus.Superseded, reason: '赛季发布预算 v1' },
+      { totalAmount: 60_000, status: BudgetStatus.Active, reason: '追加过程奖励池（预算 v2）' },
+    ],
+    pointPool: {
+      totalPoints: 1_000,
+      scorers: [
+        { account: 'scorerA', amount: 200, usedAmount: 0 },
+        { account: 'scorerB', amount: 150, usedAmount: 0 },
+      ],
+    },
+    verifiers: ['verifierA', 'verifierB'],
+    submittedAt: at(-35 * DAY),
+    approvedAt: at(-30 * DAY),
   },
   {
     code: 'H03-SH',
     name: 'H03 上海站 · 黑客松',
-    type: 'hackathon',
+    type: SeasonType.Hackathon,
     city: '上海',
     intro: '48 小时现场冲刺。命题与赛季共享牌桌规则，现场交付最小可用版本。',
     themes: ['AI 应用', '机器人', '开发者工具'],
     participantCapacity: 60,
     pinned: false,
-    status: 'active',
+    status: SeasonStatus.Active,
+    // 已批准开赛，现场冲刺前一周（报名仍开着，现场确认参赛）
     schedule: {
       applyOpen: at(-3 * DAY),
       applyClose: at(4 * DAY),
       startAt: at(7 * DAY),
       teamDeadline: at(7 * DAY + 6 * HOUR),
-      challengeFreezeAt: at(7 * DAY),
+      challengeFreezeAt: at(6 * DAY),
       workDeadline: at(9 * DAY),
       scoreDeadline: at(10 * DAY),
       settleDate: at(12 * DAY),
     },
-    startedAt: at(7 * DAY),
+    startedAt: at(-1 * DAY),
+    awardingEntity: 'BoomLand 组委会',
+    organizers: ['committee'],
+    budgets: [{ totalAmount: 30_000, status: BudgetStatus.Active, reason: '黑客松奖金池' }],
+    pointPool: {
+      totalPoints: 500,
+      scorers: [{ account: 'scorerA', amount: 120, usedAmount: 0 }],
+    },
+    verifiers: ['verifierA'],
+    submittedAt: at(-12 * DAY),
+    approvedAt: at(-8 * DAY),
+  },
+  {
+    code: 'PROTO-S2',
+    name: 'Proto Seeds 第二季',
+    type: SeasonType.Season,
+    city: null,
+    intro: '面向早期团队的共创赛季。报名窗口仍然开放，可以在这里走通报名流程。',
+    themes: ['AI 应用', '生活方式', '开发者工具'],
+    participantCapacity: 30,
+    pinned: false,
+    status: SeasonStatus.Upcoming,
+    schedule: {
+      applyOpen: at(-2 * DAY),
+      applyClose: at(12 * DAY),
+      startAt: at(15 * DAY),
+      teamDeadline: at(18 * DAY),
+      challengeFreezeAt: at(17 * DAY), // 须早于组队截止
+      workDeadline: at(40 * DAY),
+      scoreDeadline: at(45 * DAY),
+      settleDate: at(52 * DAY),
+    },
+    startedAt: null,
+    awardingEntity: 'SheNicest',
+    organizers: ['committee'],
+    budgets: [{ totalAmount: 20_000, status: BudgetStatus.Active, reason: '第二季首发预算' }],
+    pointPool: {
+      totalPoints: 400,
+      scorers: [{ account: 'scorerA', amount: 100, usedAmount: 0 }],
+    },
+    verifiers: ['verifierA'],
+    submittedAt: at(-6 * DAY),
+    approvedAt: at(-5 * DAY),
   },
 ]
 
@@ -99,26 +238,39 @@ const RULE_CARD_VALUES: Record<string, (season: SeasonSeed) => string> = {
   single_work_cap: () => `${rules.singleWorkCap} 分`,
   exchange_ratio: () => '1 积分 = ¥1',
   review_threshold: () => `单作品超过 ${rules.reviewThreshold} 分需复核`,
-  work_deadline: (s) => `以赛程「作品截止」为准：${s.schedule.workDeadline.toISOString().slice(0, 16).replace('T', ' ')} (UTC)`,
-  score_deadline: (s) => `以赛程「评分截止」为准：${s.schedule.scoreDeadline.toISOString().slice(0, 16).replace('T', ' ')} (UTC)`,
-  point_pool_and_awards: () => '本季过程奖励池 ¥60,000（预算 v2），按积分与 R 等级结算，R5+ 优先。',
+  work_deadline: (s) => `以赛程「作品截止」为准：${isoText(s.schedule.workDeadline)} (UTC)`,
+  score_deadline: (s) => `以赛程「评分截止」为准：${isoText(s.schedule.scoreDeadline)} (UTC)`,
+  point_pool_and_awards: (s) => {
+    const active = s.budgets.find((budget) => budget.status === BudgetStatus.Active)
+    return `本季过程奖励池 ¥${(active?.totalAmount ?? 0).toLocaleString('en-US')}，积分池 ${s.pointPool.totalPoints} 分，按积分与 R 等级结算。`
+  },
   submission_requirements: () => '按阶段提交可运行作品、说明文档与验证材料；逾期不计分。',
   review_process: () => '阶段评审由评委滚动评分，赛季结束进行最终评审。',
   milestone_rewards: () => '完成 M1–M4 四个阶段里程碑，按完成情况获得对应积分。',
   scoring_rewards: () => '根据评审结果获得 20–200 积分，单次评分上限见「单次评分上限」。',
 }
 
-const CHALLENGES: Record<string, Array<{
+// ---------------------------------------------------------------------------
+// 命题
+// ---------------------------------------------------------------------------
+
+type ChallengeStatusValue = (typeof ChallengeStatus)[keyof typeof ChallengeStatus]
+
+type ChallengeSeed = {
   title: string
+  status: ChallengeStatusValue
   realProblem: string
   targetCustomer: string
   minimumDeliverable: string
   resourceCommitment: string
   resultEvidenceRules: string
-}>> = {
+}
+
+const CHALLENGES: Record<string, ChallengeSeed[]> = {
   AI4BBS: [
     {
       title: '工商业储能的第一张订单',
+      status: ChallengeStatus.Published,
       realProblem: '园区储能柜装完没人运维，峰谷套利策略也跑不起来，业主不敢复购。',
       targetCustomer: '长三角制造业园区与工商业业主（曜石储能现有客户池）。',
       minimumDeliverable: '一套可跑在真实电表数据上的充放电策略 + 运维告警面板，覆盖 1 个真实站点。',
@@ -127,6 +279,7 @@ const CHALLENGES: Record<string, Array<{
     },
     {
       title: '边缘算力进园区',
+      status: ChallengeStatus.Published,
       realProblem: 'AI 质检模型在云上推理成本过高、延迟不稳，工厂不愿上。',
       targetCustomer: '3C 代工厂质检部门（云杉算力已谈下 2 家试点）。',
       minimumDeliverable: '在边缘盒子上跑通 1 条产线的实时质检推理，延迟 < 200ms。',
@@ -135,6 +288,7 @@ const CHALLENGES: Record<string, Array<{
     },
     {
       title: '仓储 AI 质检',
+      status: ChallengeStatus.Published,
       realProblem: '退货仓人工质检慢且标准不一，旺季积压严重。',
       targetCustomer: '青禾物流的电商退货仓（日均 2 万件）。',
       minimumDeliverable: '基于摄像头/扫码枪的质检辅助工具，覆盖 3 个核心品类。',
@@ -143,16 +297,36 @@ const CHALLENGES: Record<string, Array<{
     },
     {
       title: 'AI 基建用电地图',
+      status: ChallengeStatus.Published,
       realProblem: '数据中心选址缺少公开的电力容量与绿电比例数据，尽调成本高。',
       targetCustomer: 'AI 基建投资方与 IDC 运营商。',
       minimumDeliverable: '一个覆盖 2 个试点城市的用电地图 MVP，含容量估算方法说明。',
       resourceCommitment: '北纬研究院提供方法论与部分非公开数据源（签 NDA）。',
       resultEvidenceRules: 'R2：方法论文档被 1 家机构采纳引用；R4：付费数据订阅。',
     },
+    {
+      title: '园区能耗账单拆解',
+      status: ChallengeStatus.Closed,
+      realProblem: '园区每月电费账单科目混杂，运营方说不清钱花在哪，节能方案无从下手。',
+      targetCustomer: '园区物业管理方与能源托管服务商。',
+      minimumDeliverable: '把一份真实账单拆成设备/时段/功率三维度并给出 Top3 浪费项的报告模板。',
+      resourceCommitment: '曜石储能提供 6 个月脱敏账单与 1 次线上讲解。',
+      resultEvidenceRules: 'R1：报告被物业采用；R2：节能改造方案进入报价。',
+    },
+    {
+      title: '（草稿）储能运维 SOP 知识库',
+      status: ChallengeStatus.Draft,
+      realProblem: '运维现场经验散落在师傅脑子里，新人上手周期长。',
+      targetCustomer: '储能运维服务商的一线运维人员。',
+      minimumDeliverable: '一个可搜索的 SOP 知识库 MVP，覆盖 20 条高频故障。',
+      resourceCommitment: '曜石储能提供故障工单数据（脱敏）。',
+      resultEvidenceRules: 'R2：新人上手周期下降数据。',
+    },
   ],
   'H03-SH': [
     {
       title: '48 小时做出一个能卖的 AI 工具',
+      status: ChallengeStatus.Published,
       realProblem: '黑客松作品常常止步于 Demo，缺少真实买家验证。',
       targetCustomer: '现场评委与受邀的 5 家企业代表。',
       minimumDeliverable: '可现场演示的 MVP + 至少 1 份付费意向书（LOI）。',
@@ -160,24 +334,64 @@ const CHALLENGES: Record<string, Array<{
       resultEvidenceRules: 'R2：现场演示评分；R3：赛后 14 天内签署 LOI 或试用协议。',
     },
   ],
+  'PROTO-S2': [
+    {
+      title: '把一次真实交付做成可复用服务',
+      status: ChallengeStatus.Published,
+      realProblem: '早期团队的交付全靠人肉，第二次客户来了还得从零开始。',
+      targetCustomer: '有稳定交付量但缺少标准化的 2–10 人小团队。',
+      minimumDeliverable: '一套可复用的交付包（模板 + checklist + 演示稿），并在真实客户上跑通一次。',
+      resourceCommitment: 'SheNicest 提供 2 家真实客户对接与品牌曝光位。',
+      resultEvidenceRules: 'R2：客户书面反馈；R3：第二次交付复用率 > 50% 的证据。',
+    },
+    {
+      title: 'AI 时代的个人知识库',
+      status: ChallengeStatus.Published,
+      realProblem: '个人笔记越记越多，却检索不到、用不上，知识没有变成行动。',
+      targetCustomer: '重度记录的知识工作者与独立开发者。',
+      minimumDeliverable: '一个能把笔记自动归类并反问用户的 MVP，覆盖 200 条真实笔记。',
+      resourceCommitment: '主办方提供模型额度与 20 位内测用户。',
+      resultEvidenceRules: 'R2：7 日留存数据报告；R3：付费订阅。',
+    },
+  ],
 }
 
-const ANNOUNCEMENTS: Record<string, Array<{ title: string; content: string; category: 'general' | 'schedule' | 'rules' }>> = {
+// ---------------------------------------------------------------------------
+// 公告
+// ---------------------------------------------------------------------------
+
+type AnnouncementSeed = {
+  title: string
+  content: string
+  category: 'general' | 'schedule' | 'rules'
+  hoursAgo: number
+}
+
+const ANNOUNCEMENTS: Record<string, AnnouncementSeed[]> = {
   AI4BBS: [
     {
       title: '欢迎来到 AI4BBS 产业商业赛季',
       content: '报名已截止，组队已完成。本周进入命题交付阶段，先挑一张牌桌，和出题方对齐最小交付物。',
       category: 'general',
+      hoursAgo: 46,
     },
     {
       title: '赛程变更：命题冻结提前 4 天完成',
       content: '四道企业命题已全部冻结，后续只接受对最小交付物的澄清，不再新增命题。',
       category: 'schedule',
+      hoursAgo: 30,
     },
     {
       title: '规则澄清：积分归项目，不按命题分账',
       content: '一个项目可以坐多张牌桌，但积分统一归项目账户；单次评分上限 100 分，超过 50 分进入复核。',
       category: 'rules',
+      hoursAgo: 8,
+    },
+    {
+      title: 'M1 里程碑截止提醒',
+      content: `M1（问题验证）请于 ${isoText(at(3 * DAY))} 前提交，逾期本阶段不计分。`,
+      category: 'schedule',
+      hoursAgo: 2,
     },
   ],
   'H03-SH': [
@@ -185,109 +399,683 @@ const ANNOUNCEMENTS: Record<string, Array<{ title: string; content: string; cate
       title: 'H03 上海站开放报名',
       content: '限额 60 人，先到先得。现场提供食宿补贴，请自带电脑。',
       category: 'general',
+      hoursAgo: 60,
+    },
+    {
+      title: '现场命题已确认',
+      content: '本次命题统一为「48 小时做出一个能卖的 AI 工具」，评审由现场评委与 5 家企业代表共同完成。',
+      category: 'rules',
+      hoursAgo: 12,
     },
   ],
+  'PROTO-S2': [
+    {
+      title: '第二季报名开放中',
+      content: `报名窗口 ${isoText(at(-2 * DAY))} 至 ${isoText(at(12 * DAY))}（UTC）。招募 30 支早期团队或 1–3 人小队。`,
+      category: 'general',
+      hoursAgo: 40,
+    },
+    {
+      title: '赛程与评审口径说明',
+      content: '本季沿用平台默认规则：每人最多 1 个项目、团队核心 3 人、单次评分上限 100 分。',
+      category: 'rules',
+      hoursAgo: 6,
+    },
+  ],
+}
+
+// ---------------------------------------------------------------------------
+// 报名 / 选手（演示账号）
+// ---------------------------------------------------------------------------
+
+type ApplicationStatusValue =
+  (typeof SeasonApplicationStatus)[keyof typeof SeasonApplicationStatus]
+type WechatStatusValue = (typeof WechatStatus)[keyof typeof WechatStatus]
+type VisibilityValue = (typeof ApplicationVisibility)[keyof typeof ApplicationVisibility]
+
+type ApplicationSeed = {
+  /** 演示账号 id（数字字符串） */
+  userId: string
+  nickname: string
+  status: ApplicationStatusValue
+  skills: string
+  experience: string
+  themes: string[]
+  teamIntent: string
+  acceptsSolo: boolean
+  availability: string
+  cityMode: string
+  contact: { wechat?: string; phone?: string }
+  visibility: VisibilityValue
+  /** 主办方/管理员审核动作；写入 reviewedBy/reviewedAt 与审计 */
+  review?: { reason?: string }
+  /** 成为选手后的微信群状态；不填表示未成为选手 */
+  wechat?: WechatStatusValue
+  createdAt: Date
+}
+
+const DEMO_APPLICATIONS: Record<string, ApplicationSeed[]> = {
+  AI4BBS: [
+    {
+      userId: DEMO_USER_IDS.organizer,
+      nickname: '张一',
+      status: SeasonApplicationStatus.Accepted,
+      skills: '产品策略、里程碑设计、企业对接',
+      experience: '做过 3 个 B 端产品从 0 到 1，负责过两个园区的储能运维数字化项目。',
+      themes: ['新型储能基建'],
+      teamIntent: '想找一位懂电力数据的工程师一起做储能运维方向，我负责产品与客户。',
+      acceptsSolo: false,
+      availability: '每周 15 小时，周末可到现场',
+      cityMode: '上海，可出差长三角',
+      contact: { wechat: 'demo-organizer' },
+      visibility: ApplicationVisibility.Public,
+      review: {},
+      wechat: WechatStatus.Joined,
+      createdAt: at(-28 * DAY),
+    },
+    {
+      userId: DEMO_USER_IDS.yaoshi,
+      nickname: '李二',
+      status: SeasonApplicationStatus.Accepted,
+      skills: '储能系统、电气工程、现场调试',
+      experience: '8 年工商业储能项目交付，熟悉 PCS/BMS 与园区配电。',
+      themes: ['新型储能基建', '全球 AI 基建'],
+      teamIntent: '希望和软件同学组队，把站点数据变成能卖的服务。',
+      acceptsSolo: false,
+      availability: '周末 8 小时',
+      cityMode: '杭州',
+      contact: { phone: '13800000102' },
+      visibility: ApplicationVisibility.OrganizerOnly,
+      review: {},
+      wechat: WechatStatus.Invited,
+      createdAt: at(-27 * DAY),
+    },
+    {
+      userId: DEMO_USER_IDS.qinghe,
+      nickname: '王知微',
+      status: SeasonApplicationStatus.Accepted,
+      skills: '仓储运营、质检流程、供应链',
+      experience: '在电商退货仓做过 3 年运营，主导过质检标准统一。',
+      themes: ['新生产关系的人本基建'],
+      teamIntent: '想找做视觉识别的同学一起做仓储质检。',
+      acceptsSolo: true,
+      availability: '工作日晚上 + 周末',
+      cityMode: '上海',
+      contact: { wechat: 'demo-qinghe' },
+      visibility: ApplicationVisibility.Public,
+      review: {},
+      wechat: WechatStatus.NotInvited,
+      createdAt: at(-26 * DAY),
+    },
+    {
+      userId: '104',
+      nickname: '陈知微',
+      status: SeasonApplicationStatus.Submitted,
+      skills: '后端开发、数据管道',
+      experience: '5 年 Go/Java 后端，做过工业 IoT 数据采集平台。',
+      themes: ['全球 AI 基建'],
+      teamIntent: '想做边缘算力方向的调度与监控。',
+      acceptsSolo: true,
+      availability: '每周 20 小时',
+      cityMode: '远程',
+      contact: { phone: '13800000104' },
+      visibility: ApplicationVisibility.OrganizerOnly,
+      createdAt: at(-25 * DAY),
+    },
+    {
+      userId: '105',
+      nickname: '周行',
+      status: SeasonApplicationStatus.Pending,
+      skills: '算法、能耗建模',
+      experience: '能源领域算法工程师，做过峰谷套利策略优化。',
+      themes: ['新型储能基建'],
+      teamIntent: '想加入一支已经对接真实站点的队伍。',
+      acceptsSolo: false,
+      availability: '每周 10 小时',
+      cityMode: '北京，可远程',
+      contact: { wechat: 'demo-105' },
+      visibility: ApplicationVisibility.OrganizerOnly,
+      review: { reason: '技术背景合适，等出题方确认站点对接后决定' },
+      createdAt: at(-24 * DAY),
+    },
+    {
+      userId: '106',
+      nickname: '吴桐',
+      status: SeasonApplicationStatus.Rejected,
+      skills: '市场推广',
+      experience: '做过社群运营。',
+      themes: ['新生产关系的人本基建'],
+      teamIntent: '希望参与传播。',
+      acceptsSolo: true,
+      availability: '每周 3 小时',
+      cityMode: '远程',
+      contact: { wechat: 'demo-106' },
+      visibility: ApplicationVisibility.OrganizerOnly,
+      review: { reason: '可投入时间不足以支撑赛季交付，建议下一季再来' },
+      createdAt: at(-23 * DAY),
+    },
+    {
+      userId: '107',
+      nickname: '郑南',
+      status: SeasonApplicationStatus.Withdrawn,
+      skills: '前端开发',
+      experience: '3 年 React 经验。',
+      themes: ['全球 AI 基建'],
+      teamIntent: '想找后端同学组队。',
+      acceptsSolo: false,
+      availability: '每周 12 小时',
+      cityMode: '广州',
+      contact: { phone: '13800000107' },
+      visibility: ApplicationVisibility.OrganizerOnly,
+      createdAt: at(-23 * DAY + 5 * HOUR),
+    },
+  ],
+  'H03-SH': [
+    {
+      userId: DEMO_USER_IDS.qinghe,
+      nickname: '王知微',
+      status: SeasonApplicationStatus.Submitted,
+      skills: '全栈、快速原型',
+      experience: '参加过 4 次黑客松，拿过 2 次现场奖。',
+      themes: ['AI 应用', '开发者工具'],
+      teamIntent: '想组 3 人队：一个设计 + 一个算法 + 我。',
+      acceptsSolo: true,
+      availability: '整个周末',
+      cityMode: '上海',
+      contact: { wechat: 'demo-hackathon' },
+      visibility: ApplicationVisibility.OrganizerOnly,
+      createdAt: at(-2 * DAY),
+    },
+    {
+      userId: '104',
+      nickname: '陈知微',
+      status: SeasonApplicationStatus.Accepted,
+      skills: '算法、LLM 应用',
+      experience: '做过两个 AI Agent 产品原型。',
+      themes: ['AI 应用', '机器人'],
+      teamIntent: '带一台机器人来现场，想找人一起做演示。',
+      acceptsSolo: false,
+      availability: '整个周末',
+      cityMode: '上海',
+      contact: { phone: '13800000104' },
+      visibility: ApplicationVisibility.Public,
+      review: {},
+      wechat: WechatStatus.NotInvited,
+      createdAt: at(-2 * DAY + 2 * HOUR),
+    },
+  ],
+  'PROTO-S2': [
+    {
+      userId: DEMO_USER_IDS.yaoshi,
+      nickname: '李二',
+      status: SeasonApplicationStatus.Submitted,
+      skills: '产品、交付标准化',
+      experience: '交付过 20+ 小客户项目。',
+      themes: ['开发者工具'],
+      teamIntent: '想找一名设计师一起把交付模板做成产品。',
+      acceptsSolo: false,
+      availability: '每周 12 小时',
+      cityMode: '杭州',
+      contact: { wechat: 'demo-protoseeds' },
+      visibility: ApplicationVisibility.Public,
+      createdAt: at(-1 * DAY),
+    },
+  ],
+}
+
+// ---------------------------------------------------------------------------
+// 写入
+// ---------------------------------------------------------------------------
+
+async function grantRoles() {
+  await userIdentity.grantRole(OPERATOR_USER_ID, Role.Operator)
+  // 主办方成员也是平台用户：给 Founder 身份。组织成员资格另由
+  // organizer_org_members 承载（不等于平台角色）。
+  for (const userId of Object.values(DEMO_USER_IDS)) {
+    await userIdentity.grantRole(userId, Role.Founder)
+  }
+  console.log(`✓ roles: operator=${OPERATOR_USER_ID}, demo accounts=${Object.values(DEMO_USER_IDS).join(',')}`)
+}
+
+async function seedSharedUsers() {
+  const profiles = [
+    { id: DEMO_USER_IDS.organizer, nickname: '张一' },
+    { id: DEMO_USER_IDS.yaoshi, nickname: '李二' },
+    { id: DEMO_USER_IDS.qinghe, nickname: '王知微' },
+    { id: DEMO_USER_IDS.scorerA, nickname: '评审甲' },
+    { id: DEMO_USER_IDS.scorerB, nickname: '评审乙' },
+    { id: DEMO_USER_IDS.verifierA, nickname: '核验甲' },
+    { id: DEMO_USER_IDS.verifierB, nickname: '核验乙' },
+    { id: '104', nickname: '陈知微' },
+    { id: '105', nickname: '周行' },
+    { id: '106', nickname: '吴桐' },
+    { id: '107', nickname: '郑南' },
+  ]
+  const { seeded, skipped } = await upsertSharedUsers(profiles)
+  if (skipped > 0) console.warn(`! skipped ${skipped} profile(s) with non-numeric id`)
+  console.log(`✓ shared users: ${seeded} demo profile(s)`)
 }
 
 async function upsertOrg(name: string): Promise<number> {
   const existing = await db.select().from(organizerOrgs).where(eq(organizerOrgs.name, name)).limit(1)
   if (existing[0]) return existing[0].id
   const result = await db.insert(organizerOrgs).values({ name })
-  const id = Number(result[0].insertId)
-  await db.insert(organizerOrgMembers).values({ orgId: id, userId: OPERATOR_USER_ID }).onDuplicateKeyUpdate({ set: { userId: OPERATOR_USER_ID } })
-  return id
+  return Number(result[0].insertId)
 }
 
-async function main() {
-  console.log('Seeding BoomLand demo seasons...')
+async function addOrgMember(orgId: number, userId: string) {
+  await db
+    .insert(organizerOrgMembers)
+    .values({ orgId, userId })
+    .onDuplicateKeyUpdate({ set: { userId } })
+}
 
-  const orgId = await upsertOrg('BoomLand 组委会')
-  console.log(`  ✓ organizer org #${orgId}`)
+async function upsertSeason(seed: SeasonSeed, orgIds: Record<BoomlandOrgKey, number>): Promise<number> {
+  // 数据库连接按 UTC 存 timestamp；写之前按业务规则校验，避免 seed 出一份
+  // 前端时间轴看着合理、readiness 却过不了的赛程。
+  const scheduleError = validateSchedule({
+    applyOpen: seed.schedule.applyOpen.toISOString(),
+    applyClose: seed.schedule.applyClose.toISOString(),
+    startAt: seed.schedule.startAt.toISOString(),
+    teamDeadline: seed.schedule.teamDeadline.toISOString(),
+    challengeFreezeAt: seed.schedule.challengeFreezeAt.toISOString(),
+    workDeadline: seed.schedule.workDeadline.toISOString(),
+    scoreDeadline: seed.schedule.scoreDeadline.toISOString(),
+    settleDate: seed.schedule.settleDate.toISOString(),
+  })
+  if (scheduleError) throw new Error(`${seed.code}: ${scheduleError}`)
 
-  for (const seed of SEASONS) {
-    const existing = await db.select().from(seasons).where(eq(seasons.code, seed.code)).limit(1)
-    const base = {
-      name: seed.name,
-      type: seed.type,
-      city: seed.city,
-      intro: seed.intro,
-      themes: seed.themes,
-      participantCapacity: seed.participantCapacity,
-      ...seed.schedule,
-      status: seed.status,
-      pinned: seed.pinned,
-      approvedAt: at(-20 * DAY),
-      approvedBy: OPERATOR_USER_ID,
-      submittedAt: at(-25 * DAY),
-      startedAt: seed.startedAt,
-      awardingEntity: 'BoomLand 组委会',
-      agreementVersion: 'v1',
-      rulesVersion: 1,
-      rules,
-      createdBy: OPERATOR_USER_ID,
-    }
+  const values = {
+    name: seed.name,
+    type: seed.type,
+    city: seed.city,
+    intro: seed.intro,
+    themes: seed.themes,
+    participantCapacity: seed.participantCapacity,
+    ...seed.schedule,
+    status: seed.status,
+    pinned: seed.pinned,
+    submittedAt: seed.submittedAt,
+    approvedAt: seed.approvedAt,
+    approvedBy: OPERATOR_USER_ID,
+    rejectedAt: null,
+    rejectedBy: null,
+    rejectionReason: null,
+    startedAt: seed.startedAt,
+    suspendedAt: null,
+    statusBeforeSuspend: null,
+    resumedAt: null,
+    cancelledAt: null,
+    cancelReason: null,
+    awardingEntity: seed.awardingEntity,
+    agreementVersion: 'v1',
+    rulesVersion: 2, // 赛程变更过一次（见公告）
+    rules,
+    createdBy: OPERATOR_USER_ID,
+  }
 
-    let seasonId: number
-    if (existing[0]) {
-      seasonId = existing[0].id
-      await db.update(seasons).set(base).where(eq(seasons.id, seasonId))
-      console.log(`  ↺ season ${seed.code} (#${seasonId})`)
-    } else {
-      const result = await db.insert(seasons).values({ code: seed.code, ...base })
-      seasonId = Number(result[0].insertId)
-      console.log(`  ✓ season ${seed.code} (#${seasonId})`)
-    }
+  const existing = await db
+    .select({ id: seasons.id })
+    .from(seasons)
+    .where(eq(seasons.code, seed.code))
+    .limit(1)
+  let seasonId: number
+  if (existing[0]) {
+    seasonId = existing[0].id
+    await db.update(seasons).set(values).where(eq(seasons.id, seasonId))
+    console.log(`  ↺ season ${seed.code} (#${seasonId}, ${seed.status})`)
+  } else {
+    const result = await db.insert(seasons).values({ code: seed.code, ...values })
+    seasonId = Number(result[0].insertId)
+    console.log(`  ✓ season ${seed.code} (#${seasonId}, ${seed.status})`)
+  }
 
-    await db.insert(seasonOrganizers).values({ seasonId, orgId }).onDuplicateKeyUpdate({ set: { orgId } })
+  // 置顶全平台唯一：置顶这个赛季时把其它赛季取消置顶
+  if (seed.pinned) {
+    await db
+      .update(seasons)
+      .set({ pinned: false })
+      .where(and(eq(seasons.pinned, true), ne(seasons.id, seasonId)))
+  }
 
-    for (const [index, key] of SEASON_REQUIRED_RULE_CARD_KEYS.entries()) {
-      const value = RULE_CARD_VALUES[key]?.(seed)
-      if (!value) continue
-      await db
-        .insert(seasonRuleCardItems)
-        .values({
-          seasonId,
-          key,
-          label: SEASON_REQUIRED_RULE_CARD_LABELS[key],
+  await db.delete(seasonOrganizers).where(eq(seasonOrganizers.seasonId, seasonId))
+  for (const key of seed.organizers) {
+    await db.insert(seasonOrganizers).values({ seasonId, orgId: orgIds[key] })
+  }
+
+  // 规则卡：必要项全量 upsert
+  for (const [index, key] of SEASON_REQUIRED_RULE_CARD_KEYS.entries()) {
+    const value = RULE_CARD_VALUES[key]?.(seed)
+    if (!value) continue
+    await db
+      .insert(seasonRuleCardItems)
+      .values({
+        seasonId,
+        key,
+        label: SEASON_REQUIRED_RULE_CARD_LABELS[key],
+        value,
+        required: true,
+        visible: true,
+        sortOrder: index,
+      })
+      .onDuplicateKeyUpdate({
+        set: {
           value,
+          label: SEASON_REQUIRED_RULE_CARD_LABELS[key],
           required: true,
           visible: true,
           sortOrder: index,
-        })
-        .onDuplicateKeyUpdate({ set: { value, label: SEASON_REQUIRED_RULE_CARD_LABELS[key], sortOrder: index } })
-    }
-
-    await db.delete(challenges).where(eq(challenges.seasonId, seasonId))
-    for (const challenge of CHALLENGES[seed.code] ?? []) {
-      await db.insert(challenges).values({
-        seasonId,
-        ...challenge,
-        status: 'published',
-        version: 1,
-        createdBy: OPERATOR_USER_ID,
+        },
       })
-    }
-    console.log(`    ✓ ${CHALLENGES[seed.code]?.length ?? 0} challenges`)
+  }
+  // 清理旧的非必要条目，保证规则卡与上面定义一致
+  await db
+    .delete(seasonRuleCardItems)
+    .where(and(eq(seasonRuleCardItems.seasonId, seasonId), eq(seasonRuleCardItems.required, false)))
 
-    await db.delete(seasonAnnouncements).where(eq(seasonAnnouncements.seasonId, seasonId))
-    let offset = 0
-    for (const announcement of ANNOUNCEMENTS[seed.code] ?? []) {
-      offset += HOUR
-      await db.insert(seasonAnnouncements).values({
-        seasonId,
-        ...announcement,
-        createdBy: OPERATOR_USER_ID,
-        createdAt: at(-2 * DAY + offset),
-      })
-    }
-    console.log(`    ✓ ${ANNOUNCEMENTS[seed.code]?.length ?? 0} announcements`)
+  return seasonId
+}
+
+async function seedChallenges(seed: SeasonSeed, seasonId: number) {
+  await db.delete(challenges).where(eq(challenges.seasonId, seasonId))
+  const list = CHALLENGES[seed.code] ?? []
+  for (const [index, challenge] of list.entries()) {
+    await db.insert(challenges).values({
+      seasonId,
+      ...challenge,
+      version: 1,
+      createdBy: OPERATOR_USER_ID,
+      createdAt: at(-34 * DAY + index * HOUR),
+    })
+  }
+  const byStatus = list.reduce<Record<string, number>>((acc, challenge) => {
+    acc[challenge.status] = (acc[challenge.status] ?? 0) + 1
+    return acc
+  }, {})
+  const summary = Object.entries(byStatus)
+    .map(([status, count]) => `${status} x${count}`)
+    .join(' / ')
+  console.log(`    ✓ ${list.length} challenges (${summary || 'none'})`)
+}
+
+async function seedAnnouncements(seed: SeasonSeed, seasonId: number) {
+  await db.delete(seasonAnnouncements).where(eq(seasonAnnouncements.seasonId, seasonId))
+  const list = ANNOUNCEMENTS[seed.code] ?? []
+  for (const announcement of list) {
+    await db.insert(seasonAnnouncements).values({
+      seasonId,
+      title: announcement.title,
+      content: announcement.content,
+      category: announcement.category,
+      createdBy: OPERATOR_USER_ID,
+      createdAt: at(-announcement.hoursAgo * HOUR),
+    })
+  }
+  console.log(`    ✓ ${list.length} announcements`)
+}
+
+async function seedBudgets(seed: SeasonSeed, seasonId: number) {
+  await db.delete(seasonBudgets).where(eq(seasonBudgets.seasonId, seasonId))
+  for (const [index, budget] of seed.budgets.entries()) {
+    await db.insert(seasonBudgets).values({
+      seasonId,
+      version: index + 1,
+      totalAmount: budget.totalAmount,
+      status: budget.status,
+      reason: budget.reason,
+      createdBy: OPERATOR_USER_ID,
+      createdAt: at(-33 * DAY + index * 5 * DAY),
+    })
+  }
+  const active = seed.budgets.find((budget) => budget.status === BudgetStatus.Active)
+  console.log(`    ✓ budget v${seed.budgets.length} active ¥${active?.totalAmount ?? 0}`)
+}
+
+async function seedConfig(seed: SeasonSeed, seasonId: number, orgIds: Record<BoomlandOrgKey, number>) {
+  const allocated = seed.pointPool.scorers.reduce((sum, scorer) => sum + scorer.amount, 0)
+  const poolValues = {
+    totalPoints: seed.pointPool.totalPoints,
+    allocatedPoints: allocated,
+    usedPoints: 0,
+    version: 1,
+    status: 'active',
+    createdBy: OPERATOR_USER_ID,
+  }
+  const existing = await db
+    .select({ id: seasonPointPools.id })
+    .from(seasonPointPools)
+    .where(eq(seasonPointPools.seasonId, seasonId))
+    .limit(1)
+  let poolId: number
+  if (existing[0]) {
+    poolId = existing[0].id
+    await db.update(seasonPointPools).set(poolValues).where(eq(seasonPointPools.id, poolId))
+  } else {
+    const result = await db.insert(seasonPointPools).values({ seasonId, ...poolValues })
+    poolId = Number(result[0].insertId)
   }
 
-  console.log('Done.')
+  await db.delete(pointAllocations).where(eq(pointAllocations.seasonId, seasonId))
+  for (const scorer of seed.pointPool.scorers) {
+    await db.insert(pointAllocations).values({
+      seasonId,
+      poolId,
+      scorerUserId: DEMO_USER_IDS[scorer.account],
+      amount: scorer.amount,
+      usedAmount: scorer.usedAmount,
+      status: PointAllocationStatus.Active,
+      createdBy: OPERATOR_USER_ID,
+    })
+  }
+  console.log(
+    `    ✓ point pool ${seed.pointPool.totalPoints} / allocated ${allocated} / ${seed.pointPool.scorers.length} scorer(s)`,
+  )
+
+  await db.delete(seasonVerifierGrants).where(eq(seasonVerifierGrants.seasonId, seasonId))
+  for (const account of seed.verifiers) {
+    await db.insert(seasonVerifierGrants).values({
+      seasonId,
+      userId: DEMO_USER_IDS[account],
+      status: VerifierGrantStatus.Active,
+      grantedBy: OPERATOR_USER_ID,
+      grantedAt: seed.approvedAt,
+    })
+  }
+  console.log(`    ✓ ${seed.verifiers.length} verifier(s)`)
+
+  // 每个主办方组织至少一名成员（readiness「主办方组织有效」依赖它）
+  const orgMembers: Record<BoomlandOrgKey, string[]> = {
+    committee: [OPERATOR_USER_ID, DEMO_USER_IDS.organizer],
+    yaoshi: [DEMO_USER_IDS.yaoshi],
+    qinghe: [DEMO_USER_IDS.qinghe],
+  }
+  for (const key of seed.organizers) {
+    for (const member of orgMembers[key]) await addOrgMember(orgIds[key], member)
+  }
+}
+
+async function seedApplications(seed: SeasonSeed, seasonId: number) {
+  const list = DEMO_APPLICATIONS[seed.code] ?? []
+  const userIds = list.map((application) => application.userId)
+  if (userIds.length > 0) {
+    // 先删选手再删报名：(season, user) / application_id 唯一约束
+    await db
+      .delete(seasonParticipants)
+      .where(and(eq(seasonParticipants.seasonId, seasonId), inArray(seasonParticipants.userId, userIds)))
+    await db
+      .delete(seasonApplications)
+      .where(and(eq(seasonApplications.seasonId, seasonId), inArray(seasonApplications.userId, userIds)))
+  }
+
+  let participantCount = 0
+  for (const application of list) {
+    const [result] = await db.insert(seasonApplications).values({
+      seasonId,
+      userId: application.userId,
+      skills: application.skills,
+      experience: application.experience,
+      themes: application.themes,
+      teamIntent: application.teamIntent,
+      acceptsSolo: application.acceptsSolo,
+      availability: application.availability,
+      cityMode: application.cityMode,
+      contactEncrypted: encryptBoomlandContact(application.contact),
+      visibility: application.visibility,
+      agreementVersion: 'v1',
+      status: application.status,
+      reviewedBy: application.review ? OPERATOR_USER_ID : null,
+      reviewReason: application.review?.reason ?? null,
+      reviewedAt: application.review ? at(-20 * DAY) : null,
+      withdrawnAt: application.status === SeasonApplicationStatus.Withdrawn ? at(-21 * DAY) : null,
+      createdAt: application.createdAt,
+      updatedAt: application.createdAt,
+    })
+    const applicationId = Number(result.insertId)
+
+    if (application.status === SeasonApplicationStatus.Accepted) {
+      const wechat = application.wechat ?? WechatStatus.NotInvited
+      await db.insert(seasonParticipants).values({
+        seasonId,
+        userId: application.userId,
+        applicationId,
+        wechatStatus: wechat,
+        wechatInvitedBy: wechat === WechatStatus.NotInvited ? null : OPERATOR_USER_ID,
+        wechatInvitedAt: wechat === WechatStatus.NotInvited ? null : at(-17 * DAY),
+        joinedAt: wechat === WechatStatus.Joined ? at(-15 * DAY) : null,
+        status: SeasonParticipantStatus.Active,
+        createdAt: at(-20 * DAY),
+      })
+      participantCount += 1
+    }
+  }
+  console.log(`    ✓ ${list.length} applications / ${participantCount} participants`)
+  return list
+}
+
+async function seedAuditLogs(seed: SeasonSeed, seasonId: number, applications: ApplicationSeed[]) {
+  await db.delete(auditLogs).where(eq(auditLogs.seasonId, seasonId))
+  const entries: Array<typeof auditLogs.$inferInsert> = [
+    {
+      actorUserId: OPERATOR_USER_ID,
+      action: 'season.created',
+      targetType: 'season',
+      targetId: String(seasonId),
+      seasonId,
+      detail: { code: seed.code, name: seed.name },
+      createdAt: at(-36 * DAY),
+    },
+    {
+      actorUserId: OPERATOR_USER_ID,
+      action: 'season.submitted',
+      targetType: 'season',
+      targetId: String(seasonId),
+      seasonId,
+      detail: { autoApproved: true },
+      createdAt: seed.submittedAt,
+    },
+    {
+      actorUserId: OPERATOR_USER_ID,
+      action: 'season.approved',
+      targetType: 'season',
+      targetId: String(seasonId),
+      seasonId,
+      detail: { autoApproved: true },
+      createdAt: seed.approvedAt,
+    },
+  ]
+  const lastBudget = seed.budgets.at(-1)
+  if (lastBudget) {
+    entries.push({
+      actorUserId: OPERATOR_USER_ID,
+      action: 'budget.added',
+      targetType: 'season_budget',
+      targetId: String(seasonId),
+      seasonId,
+      detail: { version: seed.budgets.length, totalAmount: lastBudget.totalAmount },
+      createdAt: at(-33 * DAY),
+    })
+  }
+  if (seed.startedAt) {
+    entries.push({
+      actorUserId: OPERATOR_USER_ID,
+      action: 'season.started',
+      targetType: 'season',
+      targetId: String(seasonId),
+      seasonId,
+      createdAt: seed.startedAt,
+    })
+  }
+  for (const application of applications) {
+    entries.push({
+      actorUserId: application.userId,
+      action: 'application.submitted',
+      targetType: 'season_application',
+      targetId: application.userId,
+      seasonId,
+      detail: { visibility: application.visibility },
+      createdAt: application.createdAt,
+    })
+    if (application.review) {
+      entries.push({
+        actorUserId: OPERATOR_USER_ID,
+        action: 'application.status_changed',
+        targetType: 'season_application',
+        targetId: application.userId,
+        seasonId,
+        detail: {
+          from: SeasonApplicationStatus.Submitted,
+          to: application.status,
+          reason: application.review.reason ?? null,
+        },
+        createdAt: at(-20 * DAY),
+      })
+    }
+  }
+  await db.insert(auditLogs).values(entries)
+  console.log(`    ✓ ${entries.length} audit log(s)`)
+}
+
+async function main() {
+  console.log('Seeding BoomLand demo data (火热赛季)...')
+  const startedAt = Date.now()
+
+  await grantRoles()
+
+  try {
+    await seedSharedUsers()
+  } catch (err) {
+    console.warn(`! skipped shared users profiles (SHARED_USERS_TABLE not reachable): ${err}`)
+  }
+
+  const orgIds = {} as Record<BoomlandOrgKey, number>
+  for (const org of BOOMLAND_ORGS) {
+    orgIds[org.key] = await upsertOrg(org.name)
+    console.log(`✓ organizer org ${org.name} (#${orgIds[org.key]})`)
+  }
+
+  for (const seed of SEASONS) {
+    const seasonId = await upsertSeason(seed, orgIds)
+    await seedConfig(seed, seasonId, orgIds)
+    await seedChallenges(seed, seasonId)
+    await seedAnnouncements(seed, seasonId)
+    await seedBudgets(seed, seasonId)
+    const applications = await seedApplications(seed, seasonId)
+    await seedAuditLogs(seed, seasonId, applications)
+  }
+
+  if ((await db.select({ id: talentProfiles.id }).from(talentProfiles).limit(1)).length === 0) {
+    console.log('! talent_profiles is empty — run `bun run seed` for Talent Plaza demo data')
+  }
+
+  const rows = await db.select({ id: seasons.id, status: seasons.status }).from(seasons)
+  const active = rows.filter((row) => row.status === SeasonStatus.Active).length
+  console.log(
+    `Done in ${Date.now() - startedAt}ms — ${rows.length} season(s) in DB (${active} active); /seasons shows ${SEASONS.length}.`,
+  )
   process.exit(0)
 }
 
 main().catch((error) => {
-  console.error(error)
+  console.error('Seed failed:', error)
   process.exit(1)
 })

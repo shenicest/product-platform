@@ -12,6 +12,8 @@
     "start": "bun dist/index.js",
     "test": "bun test",
     "seed": "bun src/db/seed.ts",
+    "seed:season": "bun src/db/seed-season.ts",
+    "seed:all": "bun src/db/seed.ts && bun src/db/seed-season.ts",
     "seed:hackathon-contacts": "bun src/db/seed-hackathon-contacts.ts"
   },
   "dependencies": {

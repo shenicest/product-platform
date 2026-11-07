@@ -55,6 +55,19 @@ if (adminUrl.pathname && adminUrl.pathname !== '/') {
   )
 }
 
+// Diagnostics for the two silent hangs this bootstrap used to have: without
+// a timeout, a connection that never completes leaves `bun test` sitting at 0%
+// CPU forever with no output. Print the step we are on and fail loudly.
+const STARTED_AT = Date.now()
+const step = (label: string) => {
+  if (process.env.TEST_SETUP_VERBOSE === '1') {
+    console.log(`[test-setup] ${label} (+${Date.now() - STARTED_AT}ms)`)
+  }
+}
+const ADMIN_CONNECT_TIMEOUT_MS = 15_000
+
+step('connecting to admin URL')
+
 const APP_DB = process.env.TEST_DATABASE_NAME ?? 'shenicest_test'
 // Default to co-locating the shared users table inside the app DB so no
 // extra grants are required. Override for prod-topology tests.
@@ -70,7 +83,11 @@ const buildUrl = (database?: string) => {
 
 // Admin connection stays open through the run so DROP at teardown time
 // isn't racing the app's connection pool.
-const admin = await mysql.createConnection(buildUrl())
+const admin = await mysql.createConnection({
+  uri: buildUrl(),
+  connectTimeout: ADMIN_CONNECT_TIMEOUT_MS,
+})
+step('admin connection established')
 const q = (sql: string) => admin.query(sql)
 
 // App DB: full drop+create every run.
@@ -155,6 +172,12 @@ await migrationPool.end()
 // Teardown: drop the app DB. If the shared users table lives in a separate
 // DB, drop just that table (we don't drop the shared DB itself because the
 // admin user may not have that grant).
+//
+// Two-phase so a run can never wedge while waiting for its own DROP: when the
+// runner first goes idle (`beforeExit`) we only *schedule* the drop, so this
+// module — and therefore the run — finishes synchronously and `bun test`
+// exits. The drop itself runs on a separate detached connection afterwards.
+// Explicit signals still await it, so Ctrl-C / CI cancellation stay clean.
 let cleaned = false
 const cleanup = async () => {
   if (cleaned) return
@@ -169,14 +192,53 @@ const cleanup = async () => {
   }
 }
 
+function detachAdminConnection() {
+  // Give the drop its own connection so the shared `admin` handle (used by the
+  // awaited cleanup on SIGINT/SIGTERM) keeps working.
+  return process.env.TEST_DATABASE_ADMIN_URL ?? process.env.DATABASE_URL
+}
+
+let teardownScheduled = false
+function scheduleTeardown() {
+  if (teardownScheduled || cleaned) return
+  teardownScheduled = true
+  void (async () => {
+    try {
+      const url = detachAdminConnection()
+      const conn = url
+        ? await mysql.createConnection({ uri: url.replace(/\/(shenicest_test|TEST)?$/, '/') })
+        : admin
+      try {
+        await conn.query(`DROP DATABASE IF EXISTS \`${APP_DB}\``)
+        if (!SHARED_IN_APP_DB) {
+          await conn.query(`DROP TABLE IF EXISTS \`${SHARED_DB}\`.\`users\``)
+        }
+      } finally {
+        if (conn !== admin) await conn.end().catch(() => {})
+        else await admin.end().catch(() => {})
+      }
+      cleaned = true
+    } catch (err) {
+      console.error('[test-setup] teardown failed:', err)
+    }
+  })()
+}
+
+// Schedule (never await) the drop when the runner idles out.
 process.on('beforeExit', () => {
-  void cleanup()
+  scheduleTeardown()
 })
 process.on('SIGINT', async () => {
-  await cleanup()
+  await cleanup().catch(() => {})
   process.exit(130)
 })
 process.on('SIGTERM', async () => {
-  await cleanup()
+  await cleanup().catch(() => {})
   process.exit(143)
 })
+
+// Report an unexpected rejection instead of dying silently.
+process.on('unhandledRejection', (reason) => {
+  console.error('[test-setup] unhandled rejection:', reason)
+})
+

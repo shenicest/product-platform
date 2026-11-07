@@ -14,6 +14,8 @@
     "test": "bun run --filter '@shenicest/api' test && bun run --filter '@shenicest/web' test",
     "test:api": "bun run --filter '@shenicest/api' test",
     "test:web": "bun run --filter '@shenicest/web' test",
-    "seed": "bun run --filter '@shenicest/api' seed"
+    "seed": "bun run --filter '@shenicest/api' seed",
+    "seed:season": "bun run --filter '@shenicest/api' seed:season",
+    "seed:all": "bun run --filter '@shenicest/api' seed:all"
   }
 }

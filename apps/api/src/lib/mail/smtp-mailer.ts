@@ -48,25 +48,52 @@ export class SmtpMailer implements Mailer {
         port,
         secure,
         auth: { user, pass },
+        // Every send is bounded so a blackholed gateway can never wedge the
+        // caller (the mail worker) or a request handler that waits on it.
+        connectionTimeout: NODEMAILER_TIMEOUT_MS,
+        greetingTimeout: NODEMAILER_TIMEOUT_MS,
+        socketTimeout: NODEMAILER_TIMEOUT_MS,
       })
   }
 
   async send(input: MailSendInput): Promise<MailSendResult> {
     try {
-      const info = await this.transporter.sendMail({
-        // Display name so recipients see "SheNicest" instead of the raw
-        // address's local part (e.g. notification@shenicest.com).
-        from: { name: this.fromName, address: this.from },
-        replyTo: this.replyTo ?? undefined,
-        to: input.to,
-        subject: input.subject,
-        text: input.text,
-        html: input.html,
-      })
+      const info = await withTimeout(
+        this.transporter.sendMail({
+          // Display name so recipients see "SheNicest" instead of the raw
+          // address's local part (e.g. notification@shenicest.com).
+          from: { name: this.fromName, address: this.from },
+          replyTo: this.replyTo ?? undefined,
+          to: input.to,
+          subject: input.subject,
+          text: input.text,
+          html: input.html,
+        }),
+        SEND_TIMEOUT_MS,
+      )
       return { providerMessageId: info.messageId }
     } catch (err) {
       throw new MailSendError(errorCode(err), err instanceof Error ? err.message : String(err))
     }
+  }
+}
+
+// Hard ceiling for one delivery attempt. Without it a transport that never
+// settles (blackholed SMTP gateway, injected test transporter) hangs forever.
+const SEND_TIMEOUT_MS = 20_000
+const NODEMAILER_TIMEOUT_MS = 15_000
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new MailSendError('ETIMEDOUT', `sendMail timed out after ${timeoutMs}ms`)), timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
   }
 }
 
