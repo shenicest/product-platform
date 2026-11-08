@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import { userIdentities } from '../../db/schema'
 import type { Database } from '../../db'
+import { mockOverrideFor } from '../../mock'
 import type { Role } from './model'
 
 export class UserIdentityService {
@@ -14,6 +15,10 @@ export class UserIdentityService {
   }
 
   async hasRole(userId: string, role: Role): Promise<boolean> {
+    // 本地 mock 用户：角色来自 fixtures.ts，不查库（见 mock/overrides.ts）。
+    const mocked = mockOverrideFor(userId)
+    if (mocked) return mocked.roles.includes(role)
+
     const rows = await this.db
       .select()
       .from(userIdentities)
@@ -28,6 +33,9 @@ export class UserIdentityService {
   }
 
   async getRoles(userId: string): Promise<Role[]> {
+    const mocked = mockOverrideFor(userId)
+    if (mocked) return [...mocked.roles]
+
     const rows = await this.db
       .select({ role: userIdentities.role })
       .from(userIdentities)

@@ -1,10 +1,28 @@
 import { Elysia, status } from 'elysia'
 import { verifyToken } from '../lib/jwt'
+import { isMockAuthEnabled } from '../mock'
 import { ErrorCode, ErrorMessage } from '../common'
 
 export interface AuthUser {
   userId: string
   email: string | null
+}
+
+/**
+ * 校验并转换成 AuthUser。
+ *
+ * 带 `mock: true` 的 token 只在 mock 开关打开时接受 —— 这是纵深防御：
+ * 生产环境既不会签发 mock token（`/mock/*` 路由根本没注册），也不认它，
+ * 万一有人拿本地签的 token 去试探也进不来。
+ */
+async function verify(token: string): Promise<AuthUser | null> {
+  try {
+    const user = await verifyToken(token)
+    if (user.mock && !isMockAuthEnabled()) return null
+    return { userId: String(user.user_id), email: user.email }
+  } catch {
+    return null
+  }
 }
 
 async function resolveUser(
@@ -13,18 +31,11 @@ async function resolveUser(
 ): Promise<AuthUser | null> {
   const authorization = headers.authorization
   if (authorization?.startsWith('Bearer ')) {
-    try {
-      const user = await verifyToken(authorization.slice(7))
-      return { userId: String(user.user_id), email: user.email }
-    } catch {}
+    const user = await verify(authorization.slice(7))
+    if (user) return user
   }
 
-  if (cookieToken) {
-    try {
-      const user = await verifyToken(cookieToken)
-      return { userId: String(user.user_id), email: user.email }
-    } catch {}
-  }
+  if (cookieToken) return verify(cookieToken)
 
   return null
 }

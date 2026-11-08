@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
 import { AuthProvider } from '@/components/auth-provider'
+import { MockUserSwitcher } from '@/components/dev/mock-user-switcher'
 import { LayoutChrome } from '@/components/layout-chrome'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 
@@ -72,6 +73,8 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
       <body className="flex min-h-full flex-col bg-background font-sans text-foreground">
         <AuthProvider>
           <LayoutChrome>{children}</LayoutChrome>
+          {/* 仅本地开发：生产构建下不渲染任何 DOM，详见 lib/mock-auth.ts。 */}
+          <MockUserSwitcher />
         </AuthProvider>
         <SpeedInsights />
       </body>

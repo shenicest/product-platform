@@ -8,6 +8,16 @@ Database: MySQL 8.0+
 Server:   PM2 + Nginx
 ```
 
+> ⚠️ **`NODE_ENV` 必须在运行期设置，而不是只在构建期。**
+>
+> `bun build` 会把源码里**静态成员访问** `process.env.NODE_ENV` 替换成构建机上的值。
+> 构建机上通常没有这个变量，产物里就会被固化成字面量 `false` —— 所有
+> 「生产环境才这样」的分支会被整段删除（mock 登录路由、cookie 的 `Secure` 等）。
+>
+> 因此后端代码一律通过 `apps/api/src/lib/env.ts` 的 `env('NODE_ENV')` 读取（参数化
+> 访问不会被内联），并在**运行进程**里设置 `NODE_ENV=production`（PM2 的 `--env`
+> 或 `.env`）。`test/lib/env-bundle.test.ts` 会真的打包一次来守住这条规则。
+
 ## Server Setup (one-time)
 
 ```bash
@@ -28,6 +38,10 @@ bun run build
 # Create .env on server (see .env.example for keys)
 cp .env.example .env
 vim .env
+
+# NODE_ENV must be set at runtime: bun build bakes static process.env.NODE_ENV
+# reads into the bundle at build time (see the Environment note above).
+grep -q '^NODE_ENV=' .env || echo 'NODE_ENV=production' >> .env
 
 # Run migrations
 DATABASE_URL="mysql://shenicest:<PW>@127.0.0.1:3306/shenicest_prod" \

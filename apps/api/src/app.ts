@@ -21,6 +21,17 @@ import { seasonModule } from './modules/season'
 import { challengeModule } from './modules/challenge'
 import { seasonConfigModule } from './modules/season-config'
 import { seasonApplicationModule } from './modules/season-application'
+import { isMockAuthEnabled } from './mock'
+import { env } from './lib/env'
+import { mockModule } from './modules/mock'
+
+/**
+ * 本地 mock 登录模块：只在非生产、且没有显式 `MOCK_AUTH=off` 时注册。
+ *
+ * 关闭时挂一个空实例，而不是在路由里判断 —— 生产环境的 App 上这些路径
+ * 压根不存在，少一条可被利用的分支。
+ */
+const localMockModule = isMockAuthEnabled() ? mockModule : new Elysia()
 
 export const app = new Elysia()
   .use(openapi({
@@ -85,7 +96,8 @@ export const app = new Elysia()
   .use(challengeModule)
   .use(seasonConfigModule)
   .use(seasonApplicationModule)
-  .get('/health', () => ({ status: 'ok' as const, env: process.env.NODE_ENV }), {
+  .use(localMockModule)
+  .get('/health', () => ({ status: 'ok' as const, env: env('NODE_ENV') }), {
     detail: {
       summary: 'Health check',
       description: 'Returns server health status',

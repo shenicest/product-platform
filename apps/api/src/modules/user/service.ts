@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import type { Database } from '../../db'
+import { mockOverrideFor } from '../../mock'
 import type { PublicProfile } from './model'
 
 // The shared User table is owned by the external auth system and lives outside
@@ -22,6 +23,10 @@ export class UserProfileService {
   // ids as strings). Lookup failures against the external table degrade to
   // null so a profile problem can never take down the project detail page.
   async getPublicProfile(userId: string): Promise<PublicProfile | null> {
+    // 本地 mock 用户：资料来自 fixtures.ts，不查外部表（见 mock/overrides.ts）。
+    const mocked = mockOverrideFor(userId)
+    if (mocked) return mocked.sharedProfile
+
     if (!/^\d+$/.test(userId)) return null
     try {
       // drizzle types execute() as ResultSetHeader; mysql2 actually resolves
@@ -41,6 +46,10 @@ export class UserProfileService {
   // granting season-scoped roles (organizer member, scorer, verifier) so a
   // typo cannot create a dangling grant. Degrades to false on lookup failure.
   async exists(userId: string): Promise<boolean> {
+    // 有 mock 覆盖的用户一定“存在”，否则主办方加成员、评委分配这类写操作
+    // 会在本地因为共享表里没有这行而直接 404。
+    if (mockOverrideFor(userId)) return true
+
     if (!/^\d+$/.test(userId)) return false
     try {
       const [rows] = (await this.db.execute(
@@ -58,6 +67,11 @@ export class UserProfileService {
   // table must never break the surrounding transaction; callers treat null
   // as "no email addressable, skip the notification".
   async getEmail(userId: string): Promise<string | null> {
+    // mock 用户的邮箱取自 fixtures.ts；`email: null` 的条目正好用来调
+    // “收件人不可达，跳过通知”这条分支。
+    const mocked = mockOverrideFor(userId)
+    if (mocked) return mocked.email
+
     if (!/^\d+$/.test(userId)) return null
     try {
       const [rows] = (await this.db.execute(

@@ -1,7 +1,8 @@
 import { and, eq } from 'drizzle-orm'
 import { Role } from '@shenicest/shared'
 import type { Database } from '../../db'
-import { organizerOrgMembers, seasonOrganizers } from '../../db/schema'
+import { organizerOrgMembers, organizerOrgs, seasonOrganizers } from '../../db/schema'
+import { mockOrganizerMembership } from '../../mock'
 import { UserIdentityService } from '../user-identity/service'
 import { boomlandError } from './errors'
 
@@ -23,6 +24,12 @@ export class BoomlandAccessService {
   }
 
   async getOrganizerOrgIds(userId: string): Promise<number[]> {
+    // mock 的主办方成员属于所有组织（见 mock/overrides.ts）。
+    if (mockOrganizerMembership(userId) === true) {
+      const rows = await this.db.select({ orgId: organizerOrgs.id }).from(organizerOrgs)
+      return rows.map((row) => row.orgId)
+    }
+
     const rows = await this.db
       .select({ orgId: organizerOrgMembers.orgId })
       .from(organizerOrgMembers)
@@ -31,6 +38,9 @@ export class BoomlandAccessService {
   }
 
   async isOrgMember(orgId: number, userId: string): Promise<boolean> {
+    const mocked = mockOrganizerMembership(userId)
+    if (mocked !== null) return mocked
+
     const rows = await this.db
       .select({ id: organizerOrgMembers.id })
       .from(organizerOrgMembers)
@@ -47,6 +57,9 @@ export class BoomlandAccessService {
 
   async isSeasonOrganizer(seasonId: number, userId: string): Promise<boolean> {
     if (await this.isOperator(userId)) return true
+    // mock 的主办方成员对所有赛季都有管理权，方便本地直接点开任意赛季后台。
+    const mocked = mockOrganizerMembership(userId)
+    if (mocked !== null) return mocked
     const rows = await this.db
       .select({ id: seasonOrganizers.id })
       .from(seasonOrganizers)

@@ -4,6 +4,8 @@ import { verifyToken } from '../../lib/jwt'
 import { getCsrfToken, sendCode, verifyCode } from '../../lib/shenicest-client'
 import { ErrorCode, ErrorMessage, ErrorResponse } from '../../common'
 import { clientIp, consumeRateLimit, rateLimitExceeded, rateLimitUnavailable } from '../../lib/rate-limit'
+import { isProduction } from '../../lib/env'
+import { isMockAuthEnabled } from '../../mock'
 
 const unauthorized = () =>
   status(401, { error: { code: ErrorCode.UNAUTHORIZED, message: ErrorMessage.UNAUTHORIZED } })
@@ -22,7 +24,6 @@ const TOKEN_COOKIE_MAX_AGE = 30 * 24 * 60 * 60
 // Leave unset on localhost where a parent domain does not exist.
 const getCookieDomain = () => process.env.COOKIE_DOMAIN || undefined
 const getMainSiteUrl = () => process.env.MAIN_SITE_URL || 'https://shenicest.com/platform/projects'
-const isProduction = () => process.env.NODE_ENV === 'production'
 
 // Raw Set-Cookie strings are used wherever one response must touch both the
 // host-only and the domain-scoped variants of the cookie (Elysia's cookie jar
@@ -56,7 +57,10 @@ export const authModule = new Elysia()
     if (!token || typeof token !== 'string') return unauthorized()
     try {
       const user = await verifyToken(token)
-      return { user }
+      // 本地 mock token 只在 mock 开关打开时被认作登录态（见 src/mock/config.ts）。
+      if (user.mock && !isMockAuthEnabled()) return unauthorized()
+      // `mock` 是本地调试标记，不出现在响应里（响应 schema 也只声明了这三个字段）。
+      return { user: { user_id: user.user_id, email: user.email, role: user.role } }
     } catch {
       return unauthorized()
     }

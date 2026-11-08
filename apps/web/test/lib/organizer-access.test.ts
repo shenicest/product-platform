@@ -1,89 +1,50 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import { canAccessOrganizerConsole, shouldShowOrganizerEntry } from '@/lib/organizer-access'
 
-// `organizer-access` reads NODE_ENV / NEXT_PUBLIC_* at import time, the same way
-// Next inlines them at build time. Each case re-imports with a fresh env so we
-// can prove both the "local debug" and the "production" behaviour.
-const ORIGINAL_NODE_ENV = process.env.NODE_ENV
-const ORIGINAL_FLAG = process.env.NEXT_PUBLIC_ORGANIZER_OPEN_ACCESS
+// 准入规则与构建环境无关：没有「本地永久开放」的开关，本地靠 mock 用户覆盖身份
+// （见 apps/api/src/mock/fixtures.ts 的 `organizer` / `admin` 条目）。
+// 所以这里直接调用即可，不需要像以前那样按 NODE_ENV 重新导入模块。
 
-afterEach(() => {
-  vi.unstubAllEnvs()
-  vi.resetModules()
-  vi.stubEnv('NODE_ENV', ORIGINAL_NODE_ENV ?? 'test')
-  if (ORIGINAL_FLAG === undefined) delete process.env.NEXT_PUBLIC_ORGANIZER_OPEN_ACCESS
-  else process.env.NEXT_PUBLIC_ORGANIZER_OPEN_ACCESS = ORIGINAL_FLAG
-})
-
-async function load(env: { nodeEnv: string; flag?: string }) {
-  vi.resetModules()
-  vi.stubEnv('NODE_ENV', env.nodeEnv)
-  if (env.flag === undefined) delete process.env.NEXT_PUBLIC_ORGANIZER_OPEN_ACCESS
-  else vi.stubEnv('NEXT_PUBLIC_ORGANIZER_OPEN_ACCESS', env.flag)
-  return await import('@/lib/organizer-access')
-}
-
-describe('local development (non-production)', () => {
-  it('opens the console and the menu entry to every logged-in account', async () => {
-    const { ORGANIZER_OPEN_ACCESS, canAccessOrganizerConsole, shouldShowOrganizerEntry } =
-      await load({ nodeEnv: 'development' })
-
-    expect(ORGANIZER_OPEN_ACCESS).toBe(true)
-    expect(canAccessOrganizerConsole({ isLoggedIn: true, isOperator: false, isOrganizerMember: false })).toBe(true)
-    expect(shouldShowOrganizerEntry({ isLoggedIn: true, isOperator: false, isOrganizerMember: false })).toBe(true)
-    // 还没查到组织归属（null）时也不该闪掉入口。
-    expect(shouldShowOrganizerEntry({ isLoggedIn: true, isOperator: false, isOrganizerMember: null })).toBe(true)
-  })
-
-  it('still requires a login', async () => {
-    const { canAccessOrganizerConsole, shouldShowOrganizerEntry } = await load({ nodeEnv: 'development' })
+describe('canAccessOrganizerConsole', () => {
+  it('requires a login', () => {
+    expect(canAccessOrganizerConsole({ isLoggedIn: false, isOperator: false, isOrganizerMember: false })).toBe(false)
     expect(canAccessOrganizerConsole({ isLoggedIn: false, isOperator: true, isOrganizerMember: true })).toBe(false)
-    expect(shouldShowOrganizerEntry({ isLoggedIn: false, isOperator: false, isOrganizerMember: null })).toBe(false)
   })
 
-  it('can be switched off locally to reproduce production rules', async () => {
-    const { ORGANIZER_OPEN_ACCESS, canAccessOrganizerConsole, shouldShowOrganizerEntry } =
-      await load({ nodeEnv: 'development', flag: 'false' })
+  it('admits platform operators', () => {
+    expect(canAccessOrganizerConsole({ isLoggedIn: true, isOperator: true, isOrganizerMember: false })).toBe(true)
+  })
 
-    expect(ORGANIZER_OPEN_ACCESS).toBe(false)
+  it('admits organizer org members', () => {
+    expect(canAccessOrganizerConsole({ isLoggedIn: true, isOperator: false, isOrganizerMember: true })).toBe(true)
+  })
+
+  it('rejects logged-in accounts with neither role nor org', () => {
     expect(canAccessOrganizerConsole({ isLoggedIn: true, isOperator: false, isOrganizerMember: false })).toBe(false)
-    expect(shouldShowOrganizerEntry({ isLoggedIn: true, isOperator: false, isOrganizerMember: false })).toBe(false)
   })
 })
 
-describe('production', () => {
-  it('hides the entry from accounts without organizer access', async () => {
-    const { ORGANIZER_OPEN_ACCESS, canAccessOrganizerConsole, shouldShowOrganizerEntry } =
-      await load({ nodeEnv: 'production' })
-
-    expect(ORGANIZER_OPEN_ACCESS).toBe(false)
-    expect(shouldShowOrganizerEntry({ isLoggedIn: true, isOperator: false, isOrganizerMember: false })).toBe(false)
-    expect(shouldShowOrganizerEntry({ isLoggedIn: true, isOperator: false, isOrganizerMember: null })).toBe(false)
-    expect(canAccessOrganizerConsole({ isLoggedIn: true, isOperator: false, isOrganizerMember: false })).toBe(false)
+describe('shouldShowOrganizerEntry', () => {
+  it('requires a login', () => {
+    expect(shouldShowOrganizerEntry({ isLoggedIn: false, isOperator: false, isOrganizerMember: null })).toBe(false)
+    expect(shouldShowOrganizerEntry({ isLoggedIn: false, isOperator: true, isOrganizerMember: true })).toBe(false)
   })
 
-  it('keeps the console for platform operators and organizer org members', async () => {
-    const { canAccessOrganizerConsole, shouldShowOrganizerEntry } = await load({ nodeEnv: 'production' })
-
-    expect(canAccessOrganizerConsole({ isLoggedIn: true, isOperator: true, isOrganizerMember: false })).toBe(true)
-    expect(canAccessOrganizerConsole({ isLoggedIn: true, isOperator: false, isOrganizerMember: true })).toBe(true)
+  it('shows the entry to platform operators', () => {
     expect(shouldShowOrganizerEntry({ isLoggedIn: true, isOperator: true, isOrganizerMember: false })).toBe(true)
+  })
+
+  it('shows the entry to organizer org members', () => {
     expect(shouldShowOrganizerEntry({ isLoggedIn: true, isOperator: false, isOrganizerMember: true })).toBe(true)
   })
 
-  it('ignores the debug flag even when it is left set in the environment', async () => {
-    const { ORGANIZER_OPEN_ACCESS, canAccessOrganizerConsole } =
-      await load({ nodeEnv: 'production', flag: 'true' })
-
-    expect(ORGANIZER_OPEN_ACCESS).toBe(false)
-    expect(canAccessOrganizerConsole({ isLoggedIn: true, isOperator: false, isOrganizerMember: false })).toBe(false)
+  it('hides the entry from logged-in accounts with neither role nor org', () => {
+    expect(shouldShowOrganizerEntry({ isLoggedIn: true, isOperator: false, isOrganizerMember: false })).toBe(false)
   })
 
-  it('treats an unset NODE_ENV as a non-production default', async () => {
-    vi.resetModules()
-    // NODE_ENV 在 `@types/node` 里是只读声明，直接用 Reflect 删掉这个键。
-    Reflect.deleteProperty(process.env, 'NODE_ENV')
-    delete process.env.NEXT_PUBLIC_ORGANIZER_OPEN_ACCESS
-    const { ORGANIZER_OPEN_ACCESS } = await import('@/lib/organizer-access')
-    expect(ORGANIZER_OPEN_ACCESS).toBe(true)
+  // `null` = /api/me 还没带回组织归属。生产口径下按「没有」处理，
+  // 不能因为状态未知就把入口放出来 —— 页面守卫会直接渲染 403。
+  it('treats unknown membership as no membership', () => {
+    expect(shouldShowOrganizerEntry({ isLoggedIn: true, isOperator: false, isOrganizerMember: null })).toBe(false)
   })
 })

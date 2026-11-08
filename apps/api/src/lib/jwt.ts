@@ -10,6 +10,12 @@ export interface SheNicestUser {
   user_id: number
   email: string | null
   role: string
+  /**
+   * 本地 mock 会话标记。只有 `src/mock/session.ts` 签发的 token 会带它；
+   * 真实 token 永远是 undefined。生产环境该字段不产生任何行为
+   * （`isMockAuthEnabled()` 恒为 false，见 `src/mock/config.ts`）。
+   */
+  mock?: boolean
 }
 
 export async function verifyToken(token: string): Promise<SheNicestUser> {
@@ -23,5 +29,6 @@ export async function verifyToken(token: string): Promise<SheNicestUser> {
     user_id: payload.user_id as number,
     email: (payload.email as string) ?? null,
     role: (payload.role as string) ?? 'user',
+    mock: payload.mock === true,
   }
 }

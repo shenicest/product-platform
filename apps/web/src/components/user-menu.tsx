@@ -91,9 +91,8 @@ export function UserMenu() {
   const isFounder = user.roles?.includes(Role.Founder) ?? false
   const isOperator = user.roles?.includes(Role.Operator) ?? false
   /**
-   * 主办方后台入口：生产只对管理员或主办方组织成员显示，
-   * 本地调试对所有登录用户显示（见 `lib/organizer-access.ts`）。
-   * 判定用的常量是构建期内联的，和服务端守卫用的是同一份。
+   * 主办方后台入口：只对平台管理员或主办方组织成员显示，
+   * 本地要调这个入口就在右下角切换 mock 用户（见 `lib/organizer-access.ts`）。
    */
   const showOrganizerEntry = shouldShowOrganizerEntry({
     isLoggedIn: true,

@@ -2,6 +2,7 @@ import { and, count, eq, ne } from 'drizzle-orm'
 import { SeasonStatus } from '@shenicest/shared'
 import type { Database } from '../../db'
 import { organizerOrgMembers, organizerOrgs, seasonOrganizers, seasons } from '../../db/schema'
+import { mockOrganizerMembership } from '../../mock'
 import { UserProfileService } from '../user/service'
 import {
   BoomlandAccessService,
@@ -50,11 +51,13 @@ export class OrganizerOrgService {
     }
     return orgs.map((org) => {
       const orgMembers = membershipsByOrg.get(org.id) ?? []
+      // 本地 mock 的主办方成员对所有组织都算成员（见 mock/overrides.ts）。
+      const mockedMembership = mockOrganizerMembership(userId)
       return {
         id: org.id,
         name: org.name,
         memberCount: orgMembers.length,
-        isMember: orgMembers.includes(userId),
+        isMember: mockedMembership ?? orgMembers.includes(userId),
         createdAt: iso(org.createdAt),
       }
     })
