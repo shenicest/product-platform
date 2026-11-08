@@ -2,18 +2,25 @@
 
 import { useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
+import { WechatStatus } from '@shenicest/shared'
 import { FieldError } from '@/components/submit/form-fields'
+import type { ButtonVariant } from '@/components/ui/button'
 import {
   ManualGroupNotice,
   ParticipantsTable,
 } from '@/components/organizer/manual-group/manual-group-display'
+import {
+  OrganizerActionIcon,
+  type OrganizerActionIconName,
+} from '@/components/organizer/action-icon'
 import { updateParticipantWechat } from '@/lib/organizer-manual-group-api'
+import { cn } from '@/lib/utils'
 import {
   countWechatStatuses,
   participantLockReason,
   wechatActionsFor,
   type SeasonParticipant,
+  type WechatAction,
   type WechatCounts,
 } from '@/lib/organizer-manual-group'
 
@@ -171,6 +178,12 @@ function wechatCountLabel(counts: WechatCounts): string {
  * 动作列表来自纯函数 `wechatActionsFor`（已加入 / 已退出 → 空数组），
  * 这里只负责渲染与禁用态：任何一个请求在飞时，全表的按钮都禁用，
  * 避免连点把状态机推到意想不到的地方。
+ *
+ * **为什么是图标**：这张表有七列，操作列夹在最后；用中文按钮时「标记邀请失败」
+ * 一颗就 100px 往上，两行并排会把「联系方式」「记录人」挤到折行，整张表被撑得
+ * 很高。图标按钮每个 32px，两颗一行 72px 就够，配合冻结列还能横向滚动。
+ * 语义不丢：`aria-label` 保持与动作文案完全一致（`邀请` / `标记已入群` /
+ * `标记邀请失败` / `重新邀请`），对象名进 `title`，读屏与悬停都拿得到完整信息。
  */
 function RowActions({
   participant,
@@ -190,30 +203,75 @@ function RowActions({
   const actions = wechatActionsFor(participant)
   if (actions.length === 0) {
     // 已加入 / 已退出：没有可做的动作。给一个短说明而不是空白，
-    // 否则会被读成「按钮没渲染出来」。
+    // 否则会被读成「按钮没渲染出来」。这不是动作，所以保持纯文字。
     return <span className="text-meta text-muted-foreground">{participantLockReason(participant)}</span>
   }
 
+  const participantName = participant.applicant.name?.trim() || participant.userId
+
   return (
     // 不折行：已邀请那一行有两颗按钮，折起来会把整行撑高、和相邻行错位。
-    // 表格本来就允许横向滚动（`overflow-x-auto`），宁可让表格宽一点。
-    <div className="flex flex-nowrap items-center gap-2">
+    // 表格本来就允许横向滚动（`overflow-x-auto`），操作列还冻结在右侧。
+    <div className="flex flex-nowrap items-center gap-1.5">
       {actions.map((action) => {
         const busy = pendingTarget === action.target
         return (
-          <Button
+          <button
             key={action.target}
-            variant={action.variant}
-            size="sm"
+            type="button"
+            className={cn('ui-icon-btn ui-icon-btn--sm', ICON_TONE[action.variant])}
             disabled={disabled}
+            aria-label={action.label}
             aria-busy={busy || undefined}
-            className="whitespace-nowrap"
+            title={
+              busy
+                ? `${action.label}中…（${participantName}）`
+                : `${action.label} ${participantName}`
+            }
             onClick={() => onAdvance(participant, action.target, action.successMessage)}
           >
-            {busy ? '处理中…' : action.label}
-          </Button>
+            {busy ? (
+              <span aria-hidden className="text-meta">
+                …
+              </span>
+            ) : (
+              <OrganizerActionIcon name={wechatActionIcon(participant.wechatStatus, action)} />
+            )}
+          </button>
         )
       })}
     </div>
   )
+}
+
+/**
+ * 动作色调 → 图标按钮变体类。`variant` 由纯函数 `wechatActionsFor` 给出。
+ *
+ * 实际只用到 `primary`（正向推进）与 `ghost`（标记失败）两种；其余变体目前
+ * 没有动作在用，映射到中性色而不是硬套警示色 —— 将来真加了动作，漏配
+ * 也只是「不突出」，不会把普通操作误标成危险操作。
+ */
+const ICON_TONE: Record<ButtonVariant, string> = {
+  primary: 'ui-icon-btn--brand-solid',
+  ghost: 'ui-icon-btn--warning',
+  secondary: '',
+  tertiary: '',
+  text: '',
+}
+
+/**
+ * 当前状态 + 目标状态 → 图标。
+ *
+ * `wechatActionsFor` 只给「目标状态」，而「邀请」与「重新邀请」的目标都是
+ * `invited` —— 形状要靠**当前状态**区分：从未邀请是「人 + 加号」，从失败
+ * 再来一次是「环形箭头」。反过来「标记已入群」与「标记邀请失败」的当前状态
+ * 相同、目标不同，靠目标区分。
+ */
+function wechatActionIcon(
+  current: string,
+  action: WechatAction,
+): OrganizerActionIconName {
+  if (current === WechatStatus.NotInvited) return 'invite'
+  if (current === WechatStatus.Failed) return 'retry'
+  return action.target === WechatStatus.Joined ? 'joined' : 'failed'
 }

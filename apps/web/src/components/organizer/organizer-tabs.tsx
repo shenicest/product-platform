@@ -57,7 +57,9 @@ export function OrganizerTabs({ seasonId }: { seasonId: number | null }) {
             aria-current={active ? 'page' : undefined}
             data-active={active ? 'true' : 'false'}
             className={cn(
-              'ui-btn ui-btn--ghost ui-btn--small whitespace-nowrap',
+              // `ui-btn--flat`：tab 只切路由，不产生页内动作，悬停不该上浮
+              // （见 `styles/components.css` 里 `.ui-btn--flat` 的注释）。
+              'ui-btn ui-btn--ghost ui-btn--flat ui-btn--small whitespace-nowrap',
               active && 'border-brand bg-brand-wash text-brand-text',
             )}
           >

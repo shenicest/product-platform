@@ -108,7 +108,9 @@ export function ChallengeTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="console-table" aria-label="命题库">
+      {/* 八列 + 操作列，窄屏会横向溢出；`console-table--sticky-actions` 把操作列
+          冻结在右侧，滚动看「五件套 / 容量」时不用先滚回去才能点「发布」。 */}
+      <table className="console-table console-table--sticky-actions" aria-label="命题库">
         <thead>
           <tr>
             {CHALLENGE_COLUMNS.map((column) => (

@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { cn } from '@/lib/utils'
+import { OrganizerActionIcon } from '@/components/organizer/action-icon'
 import { RuleCardItemDialog, type RuleCardDialogMode } from '@/components/organizer/season-settings/rule-card-dialogs'
 import {
   appendRuleCardItem,
@@ -23,8 +24,12 @@ import {
  *   · 排序靠**拖动**：整行 `draggable`，把手是可聚焦的 `<button>`，
  *     键盘聚焦把手后 Alt+↑ / Alt+↓ 等价移动（无障碍底线：不能只支持鼠标）；
  *   · 必要项（key 在 `SEASON_REQUIRED_RULE_CARD_KEYS` 里）由赛季配置生成：
- *     名称与内容都只读，带「必要 · 锁定」chip 与 key 的 mono 小字，
- *     没有修改 / 删除 / 隐藏入口。
+ *     名称与内容都只读，带「必要 · 锁定」chip，没有修改 / 删除 / 隐藏入口。
+ *
+ * 操作列用**图标按钮**（`ui-icon-btn ui-icon-btn--sm` + `OrganizerActionIcon`）：
+ * 这张表已经够宽（条目 / 内容 / 操作），三个中文按钮并排会把「内容」列挤扁。
+ * 语义不丢 —— 每个按钮都带完整中文 `aria-label` 与 `title`，读屏与悬停拿到
+ * 的都是文字，视觉用户拿到的是形状。
  *
  * 组件本身不发请求，也不做保存校验：调用方拿到新数组后自己决定何时保存。
  */
@@ -203,23 +208,26 @@ export function RuleCardEditor({
                     <td className="font-mono text-meta text-muted-foreground">{index + 1}</td>
 
                     <td className="min-w-48">
+                      {/* 条目列只留名称与状态 chip：字段名（如 max_project_challenges）
+                          是后端标识，主办方看不懂，放在这里只会挤占宽度。 */}
                       <div className="grid gap-2">
                         <span className="text-body-sm font-bold text-foreground">
                           {item.label.trim() || item.key}
                         </span>
-                        <span className="flex flex-wrap items-center gap-2">
-                          {item.required ? (
-                            <Chip tone="accent" className="text-meta">
-                              必要 · 锁定
-                            </Chip>
-                          ) : null}
-                          {hidden ? (
-                            <Chip tone="neutral" className="text-meta">
-                              已隐藏
-                            </Chip>
-                          ) : null}
-                          <span className="font-mono text-meta text-muted-foreground">{item.key}</span>
-                        </span>
+                        {item.required || hidden ? (
+                          <span className="flex flex-wrap items-center gap-2">
+                            {item.required ? (
+                              <Chip tone="accent" className="text-meta">
+                                必要 · 锁定
+                              </Chip>
+                            ) : null}
+                            {hidden ? (
+                              <Chip tone="neutral" className="text-meta">
+                                已隐藏
+                              </Chip>
+                            ) : null}
+                          </span>
+                        ) : null}
                       </div>
                     </td>
 
@@ -229,32 +237,34 @@ export function RuleCardEditor({
                       </p>
                     </td>
 
-                    <td>
+                    <td className="whitespace-nowrap">
                       {item.required ? (
                         <span className="ui-hint">由赛季配置生成，不可编辑</span>
                       ) : (
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            className="ui-icon-btn ui-icon-btn--sm"
                             onClick={(event) => openDialog('edit', index, event.currentTarget)}
                             disabled={disabled}
                             aria-label={`修改条目 ${name}`}
+                            title="修改"
                           >
-                            修改
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                            <OrganizerActionIcon name="edit" />
+                          </button>
+                          <button
+                            type="button"
+                            className="ui-icon-btn ui-icon-btn--sm"
                             onClick={() => onChange(items.filter((_, i) => i !== index))}
                             disabled={disabled}
                             aria-label={`删除条目 ${name}`}
+                            title="删除"
                           >
-                            删除
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                            <OrganizerActionIcon name="delete" />
+                          </button>
+                          <button
+                            type="button"
+                            className="ui-icon-btn ui-icon-btn--sm"
                             onClick={() =>
                               onChange(
                                 items.map((current, i) =>
@@ -265,9 +275,10 @@ export function RuleCardEditor({
                             disabled={disabled}
                             aria-pressed={!hidden}
                             aria-label={hidden ? `显示条目 ${name}` : `隐藏条目 ${name}`}
+                            title={hidden ? '显示' : '隐藏'}
                           >
-                            {hidden ? '显示' : '隐藏'}
-                          </Button>
+                            <OrganizerActionIcon name={hidden ? 'show' : 'hide'} />
+                          </button>
                         </div>
                       )}
                     </td>

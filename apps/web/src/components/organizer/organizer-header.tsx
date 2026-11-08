@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
-import { SeasonDraftForm } from '@/components/organizer/season-draft-form'
+import { SeasonDraftDialog } from '@/components/organizer/season-draft-dialog'
 import { SeasonPicker } from '@/components/organizer/season-picker'
 import { getSeasonManageDetail } from '@/lib/organizer-api'
 import { seasonStatusMeta } from '@/lib/boomland'
@@ -53,7 +53,6 @@ export function OrganizerHeader({
   const [sourceSeasonName, setSourceSeasonName] = useState<string | undefined>(undefined)
   const [sourceError, setSourceError] = useState<string | null>(null)
   const triggerRef = useRef<HTMLButtonElement | null>(null)
-  const closeRef = useRef<HTMLButtonElement | null>(null)
 
   // “上一个赛季”：优先用选择器里选中的那个，否则用列表里最近更新的赛季。
   // 列表为空时没有可复制的对象。
@@ -70,17 +69,6 @@ export function OrganizerHeader({
     setDraft(null)
     triggerRef.current?.focus()
   }, [])
-
-  // Esc 关闭；打开时把焦点移进弹窗。
-  useEffect(() => {
-    if (!dialog) return
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeDialog()
-    }
-    document.addEventListener('keydown', onKeyDown)
-    closeRef.current?.focus()
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [dialog, closeDialog])
 
   function openCreate() {
     setSourceError(null)
@@ -158,54 +146,15 @@ export function OrganizerHeader({
       ) : null}
 
       {dialog ? (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-overlay p-4 backdrop-blur-sm"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="season-draft-dialog-title"
-        >
-          <div className="ui-panel my-8 w-full max-w-3xl">
-            <div className="mb-5 flex items-start justify-between gap-4">
-              <div>
-                <h2 id="season-draft-dialog-title" className="text-h3 font-bold text-foreground">
-                  {dialog === 'create' ? '发起赛季草稿' : '复制上季'}
-                </h2>
-                <p className="mt-2 text-body-sm text-muted-foreground">
-                  {dialog === 'create'
-                    ? '填写赛季的基础信息、赛程与规则。'
-                    : sourceSeasonName
-                      ? `已按「${sourceSeasonName}」预填，请确认编号与赛程。`
-                      : '正在读取上一个赛季…'}
-                </p>
-              </div>
-              <button
-                ref={closeRef}
-                type="button"
-                onClick={closeDialog}
-                className="ui-btn ui-btn--ghost ui-btn--small"
-                aria-label="关闭"
-              >
-                关闭
-              </button>
-            </div>
-
-            {draft ? (
-              <SeasonDraftForm
-                key={dialog + sourceSeasonName}
-                value={draft}
-                onChange={setDraft}
-                organizerOrgOptions={organizerOrgs}
-                mode={dialog}
-                sourceSeasonName={sourceSeasonName}
-                onCancel={closeDialog}
-              />
-            ) : (
-              <p className="ui-hint" aria-live="polite">
-                正在读取上一个赛季…
-              </p>
-            )}
-          </div>
-        </div>
+        <SeasonDraftDialog
+          mode={dialog}
+          draft={draft}
+          organizerOrgs={organizerOrgs}
+          sourceSeasonName={sourceSeasonName}
+          onDraftChange={setDraft}
+          onClose={closeDialog}
+          returnFocusRef={triggerRef}
+        />
       ) : null}
     </div>
   )

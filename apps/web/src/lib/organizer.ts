@@ -132,6 +132,90 @@ export const SCHEDULE_FIELDS: ReadonlyArray<{ key: keyof SeasonSchedule; label: 
 /** 赛季编号：与后端 `CreateSeasonBody.code` 的 pattern 一致。 */
 export const SEASON_CODE_PATTERN = /^[A-Za-z0-9_-]+$/
 
+// ---------------------------------------------------------------------------
+// 北京时间 ↔ datetime-local
+// ---------------------------------------------------------------------------
+
+/**
+ * 赛程草稿（`datetime-local` 字符串）↔ 后端 ISO 的互转。
+ *
+ * 放在这里而不是 `organizer-settings.ts`：`SeasonScheduleDraft` / `SCHEDULE_FIELDS`
+ * 都定义在本文件，`draftFromSeason`（回填表单）也要用它 —— 如果转换留在
+ * `organizer-settings.ts`，两个模块会互相 import 成环。
+ *
+ * 时间口径：赛程表标题写的是「北京时间」，所以这里的互转**固定按 UTC+8**，
+ * 不跟浏览器本地时区走 —— 否则同一份数据在伦敦和上海会显示成不同时刻。
+ */
+
+const BEIJING_TIME_ZONE = 'Asia/Shanghai'
+/** 中国不实行夏令时，固定偏移即可；用它把「北京墙上时间」解析成绝对时刻。 */
+const BEIJING_OFFSET = '+08:00'
+
+const BEIJING_PARTS = new Intl.DateTimeFormat('en-GB', {
+  timeZone: BEIJING_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+})
+
+/** ISO → `YYYY-MM-DDTHH:mm`（北京时间）；空值 / 非法值给空串（= 待定）。 */
+export function isoToBeijingInput(value: string | null | undefined): string {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const parts = BEIJING_PARTS.formatToParts(date)
+  const pick = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? ''
+  const year = pick('year')
+  const month = pick('month')
+  const day = pick('day')
+  const hour = pick('hour')
+  const minute = pick('minute')
+  if (!year || !month || !day || !hour || !minute) return ''
+  return `${year}-${month}-${day}T${hour}:${minute}`
+}
+
+/** `YYYY-MM-DDTHH:mm`（北京时间）→ ISO；空值 / 非法值给 null。 */
+export function beijingInputToIso(value: string): string | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  // `datetime-local` 可能给 `...T10:00` 或带秒的 `...T10:00:30`。
+  const normalized = trimmed.length === 16 ? `${trimmed}:00` : trimmed
+  const date = new Date(`${normalized}${BEIJING_OFFSET}`)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
+
+/** 后端赛程 → 表单草稿（八个 `datetime-local` 字符串，北京时间）。 */
+export function toScheduleDraft(schedule: SeasonSchedule | null | undefined): SeasonScheduleDraft {
+  const draft: SeasonScheduleDraft = { ...EMPTY_SCHEDULE_DRAFT }
+  if (!schedule) return draft
+  for (const field of SCHEDULE_FIELDS) {
+    draft[field.key] = isoToBeijingInput(schedule[field.key])
+  }
+  return draft
+}
+
+/**
+ * 表单草稿 → `PUT /seasons/:id/schedule` 的 `schedule`。
+ *
+ * 全空表示「这个赛季不排期」，返回 null；只要有一格填了就必须八格齐全，
+ * 任何一格空/非法也返回 null —— 调用前应先跑 {@link validateScheduleDraft}，
+ * 页面只在校验通过后才提交。
+ */
+export function toSchedulePayload(draft: SeasonScheduleDraft): SeasonSchedule | null {
+  if (SCHEDULE_FIELDS.every((field) => !draft[field.key].trim())) return null
+  const schedule = {} as SeasonSchedule
+  for (const field of SCHEDULE_FIELDS) {
+    const iso = beijingInputToIso(draft[field.key])
+    if (!iso) return null
+    schedule[field.key] = iso
+  }
+  return schedule
+}
+
 /** 表单 → 请求体的输出结构（`POST /seasons`）。 */
 export type CreateSeasonPayload = {
   code: string
@@ -370,16 +454,23 @@ export function emptySeasonDraft(
 }
 
 /**
- * “复制上季”的预填值。
+ * 把一个已有赛季的字段摊成表单值。
  *
- * 只搬运**内容字段**：编号、名称、赛程必须重填 —— 上季的编号已被占用，
- * 时间线也早已过期。发布状态类字段（status / approvedAt / pinned）不参与，
- * 复制出来的永远是一个草稿。
+ * `keepCode` 决定编号怎么处理：
+ *   · `false`（复制上季）—— 编号清空，由用户重填：上季的编号已被占用；
+ *   · `true`（编辑当前草稿）—— 编号原样带回来（创建后不可改，表单里也只读）。
+ *
+ * 赛程按北京时间回填成 `datetime-local` 字符串（见 {@link toScheduleDraft}）；
+ * 上季没排期时八格全空，等价于「还没排期」。发布状态类字段
+ * （status / approvedAt / pinned）不参与，产出永远是一份草稿值。
  */
-export function draftFromPreviousSeason(season: SeasonManageDetail): SeasonDraftValues {
+export function draftFromSeason(
+  season: SeasonManageDetail,
+  options: { keepCode: boolean; rename?: boolean },
+): SeasonDraftValues {
   return {
-    code: '',
-    name: nextSeasonName(season.name),
+    code: options.keepCode ? season.code : '',
+    name: options.rename ? nextSeasonName(season.name) : season.name,
     type: (season.type === 'hackathon' ? 'hackathon' : 'season') as SeasonType,
     city: season.city ?? '',
     intro: season.intro ?? '',
@@ -388,9 +479,29 @@ export function draftFromPreviousSeason(season: SeasonManageDetail): SeasonDraft
     awardingEntity: season.awardingEntity ?? '',
     participantCapacity: season.participantCapacity === null ? '' : String(season.participantCapacity),
     organizerOrgIds: [...season.organizerOrgIds],
-    schedule: { ...EMPTY_SCHEDULE_DRAFT },
+    schedule: toScheduleDraft(season.schedule),
     rules: { ...season.rules },
   }
+}
+
+/**
+ * “复制上季”的预填值。
+ *
+ * 搬运全部**内容字段**（含赛程）：名称进一年、编号清空（上季的编号已被占用），
+ * 赛程时间原样回填到表单里，用户按需改。发布状态类字段不参与，
+ * 复制出来的永远是一个草稿。
+ */
+export function draftFromPreviousSeason(season: SeasonManageDetail): SeasonDraftValues {
+  return draftFromSeason(season, { keepCode: false, rename: true })
+}
+
+/**
+ * “编辑当前赛季”的预填值：用于草稿态下直接打开同一张表单改这个赛季。
+ *
+ * 与复制上季的区别只有两处：编号带回来（且表单里只读）、名称不自动进一年。
+ */
+export function draftFromCurrentSeason(season: SeasonManageDetail): SeasonDraftValues {
+  return draftFromSeason(season, { keepCode: true, rename: false })
 }
 
 /** `2026 春季赛季` → `2027 春季赛季`；没有年份时补“（新）”。 */

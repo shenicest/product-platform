@@ -132,7 +132,9 @@ export function ApplicationTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="console-table" aria-label="报名审核队列">
+      {/* 八列在窄屏必然横向溢出；`console-table--sticky-actions` 把操作列
+          冻结在右侧，滚动找内容时「通过 / 不通过」始终点得到。 */}
+      <table className="console-table console-table--sticky-actions" aria-label="报名审核队列">
         <thead>
           <tr>
             {COLUMNS.map((column) => (

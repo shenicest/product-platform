@@ -3,6 +3,10 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import {
+  OrganizerActionIcon,
+  type OrganizerActionIconName,
+} from '@/components/organizer/action-icon'
 import { ChallengeDraftDialog } from '@/components/organizer/challenges/challenge-draft-dialog'
 import {
   ChallengeLibrarySection,
@@ -24,6 +28,7 @@ import {
   markChallengeReference,
   publishChallenge,
 } from '@/lib/organizer-challenges-api'
+import { cn } from '@/lib/utils'
 
 /**
  * 命题与资源 tab 的客户端视图。
@@ -185,6 +190,12 @@ export function ChallengesView({
  *
  * 不适用的动作**不渲染**（而不是渲染成禁用）：一个永远点不动的「归档」
  * 只会让人反复去点。
+ *
+ * **为什么是图标**：命题库有八列，操作列最多五个动作。文字按钮时「转参考资料」
+ * 一颗就 90px 宽，五个并排 400px，把「命题标题」「企业」这类内容列挤成一行
+ * 两三个字；图标按钮每个 32px，五个 180px 就够，加上冻结列还能横向滚动。
+ * 语义不丢：`aria-label` 与原来的文字按钮完全一致（`发布` / `转参考资料` /
+ * `编辑` / `关闭` / `归档` + 命题标题），`title` 带命题标题与进行中说明。
  */
 function RowActions({
   challenge,
@@ -204,42 +215,51 @@ function RowActions({
 }) {
   const actions = challengeRowActions(challenge.status)
   if (actions.length === 0) {
+    // 已归档是终态，不是动作：保持纯文字说明。
     return <span className="text-meta text-muted-foreground">已归档</span>
   }
 
   const blockedReason = publishBlockedReason(challenge)
 
   return (
-    <span className="flex flex-wrap items-center justify-end gap-1.5">
+    <span className="flex flex-nowrap items-center justify-end gap-1.5">
       {actions.map((action) => {
         const pending = pendingAction === `${challenge.id}:${action}`
         const label = CHALLENGE_ROW_ACTION_LABELS[action]
 
         if (action === 'edit') {
           return (
-            <Button
+            <button
               key={action}
-              variant="secondary"
-              size="sm"
+              type="button"
+              className="ui-icon-btn ui-icon-btn--sm"
               onClick={onEdit}
               disabled={disabled}
               aria-label={`编辑 ${challenge.title}`}
+              title={`编辑 ${challenge.title}`}
             >
-              编辑
-            </Button>
+              <OrganizerActionIcon name="edit" />
+            </button>
           )
         }
 
         // 发布：五件套不完整时置灰，title 里说明还缺哪些字段。
         const publishBlocked = action === 'publish' && Boolean(blockedReason)
         return (
-          <Button
+          <button
             key={action}
-            variant={action === 'publish' ? 'primary' : 'ghost'}
-            size="sm"
+            type="button"
+            className={cn('ui-icon-btn ui-icon-btn--sm', ICON_TONE[action])}
             disabled={disabled || pending || publishBlocked}
-            title={publishBlocked ? blockedReason : undefined}
             aria-label={`${label} ${challenge.title}`}
+            aria-busy={pending || undefined}
+            title={
+              publishBlocked
+                ? blockedReason ?? undefined
+                : pending
+                  ? `${label}中…（${challenge.title}）`
+                  : `${label} ${challenge.title}`
+            }
             onClick={() =>
               onAction(action, () => {
                 if (action === 'publish') return publishChallenge(challenge.id)
@@ -249,10 +269,34 @@ function RowActions({
               })
             }
           >
-            {pending ? `${label}中…` : label}
-          </Button>
+            {pending ? (
+              <span aria-hidden className="text-meta">
+                …
+              </span>
+            ) : (
+              <OrganizerActionIcon name={CHALLENGE_ACTION_ICON[action]} />
+            )}
+          </button>
         )
       })}
     </span>
   )
+}
+
+/** 动作 → 图标按钮配色。发布是主操作（实心品牌底），归档不可逆，用危险色。 */
+const ICON_TONE: Record<ChallengeRowActionKey, string> = {
+  publish: 'ui-icon-btn--brand-solid',
+  reference: 'ui-icon-btn--warning',
+  edit: '',
+  close: 'ui-icon-btn--warning',
+  archive: 'ui-icon-btn--danger',
+}
+
+/** 动作 → 图标形状（`edit` 在分支里单独渲染，这里只是补齐类型）。 */
+const CHALLENGE_ACTION_ICON: Record<ChallengeRowActionKey, OrganizerActionIconName> = {
+  publish: 'publish',
+  reference: 'reference',
+  edit: 'edit',
+  close: 'close',
+  archive: 'archive',
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { SEASON_RULE_DEFAULTS } from '@shenicest/shared'
 import {
   ALL_SEASONS_VALUE,
+  draftFromCurrentSeason,
   draftFromPreviousSeason,
   emptySeasonDraft,
   nextSeasonName,
@@ -198,12 +199,82 @@ describe('draftFromPreviousSeason', () => {
     expect(draft.rules.maxCoreMembers).toBe(2)
     expect(draft.organizerOrgIds).toEqual([5, 6])
     expect(draft.participantCapacity).toBe('60')
-    // 赛程必须重填：上季的时间线已经过期。
-    expect(Object.values(draft.schedule).every((item) => item === '')).toBe(true)
     // 发布状态类字段不参与复制。
     expect(draft).not.toHaveProperty('status')
     expect(draft).not.toHaveProperty('approvedAt')
     expect(draft).not.toHaveProperty('pinned')
+  })
+
+  it('backfills the schedule into the form as Beijing datetime-local strings', () => {
+    const draft = draftFromPreviousSeason(previous)
+    // 上季的赛程要回填到表单里（曾经漏了这一步，复制出来八格全空）。
+    expect(draft.schedule).toEqual({
+      applyOpen: '2026-01-01T08:00',
+      applyClose: '2026-01-10T08:00',
+      startAt: '2026-01-15T08:00',
+      teamDeadline: '2026-01-20T08:00',
+      challengeFreezeAt: '2026-01-19T08:00',
+      workDeadline: '2026-02-10T08:00',
+      scoreDeadline: '2026-02-20T08:00',
+      settleDate: '2026-02-28T08:00',
+    })
+  })
+
+  it('leaves the schedule empty when the previous season has none', () => {
+    const draft = draftFromPreviousSeason({ ...previous, schedule: null } as unknown as SeasonManageDetail)
+    expect(Object.values(draft.schedule).every((item) => item === '')).toBe(true)
+  })
+})
+
+describe('draftFromCurrentSeason', () => {
+  const current = {
+    id: 12,
+    code: 'BL2027A',
+    name: '2027 春季赛季',
+    type: 'season',
+    city: '上海',
+    intro: '介绍',
+    themes: ['储能'],
+    status: 'draft',
+    approvedAt: null,
+    pinned: false,
+    agreementVersion: 'v1',
+    awardingEntity: null,
+    participantCapacity: 60,
+    organizerOrgIds: [3],
+    rules: SEASON_RULE_DEFAULTS,
+    schedule: {
+      applyOpen: '2027-01-01T00:00:00.000Z',
+      applyClose: '2027-01-10T00:00:00.000Z',
+      startAt: '2027-01-15T00:00:00.000Z',
+      teamDeadline: '2027-01-20T00:00:00.000Z',
+      challengeFreezeAt: '2027-01-19T00:00:00.000Z',
+      workDeadline: '2027-02-10T00:00:00.000Z',
+      scoreDeadline: '2027-02-20T00:00:00.000Z',
+      settleDate: '2027-02-28T00:00:00.000Z',
+    },
+  } as unknown as SeasonManageDetail
+
+  it('keeps the code and the name as-is (it edits the same season)', () => {
+    const draft = draftFromCurrentSeason(current)
+    expect(draft.code).toBe('BL2027A')
+    // 编辑当前赛季不该把年份 +1（那是「复制上季」的语义）。
+    expect(draft.name).toBe('2027 春季赛季')
+    expect(draft.themes).toEqual(['储能'])
+    expect(draft.rules).toEqual(SEASON_RULE_DEFAULTS)
+  })
+
+  it('backfills the schedule so the edit form shows the current timeline', () => {
+    expect(draftFromCurrentSeason(current).schedule).toEqual({
+      applyOpen: '2027-01-01T08:00',
+      applyClose: '2027-01-10T08:00',
+      startAt: '2027-01-15T08:00',
+      teamDeadline: '2027-01-20T08:00',
+      challengeFreezeAt: '2027-01-19T08:00',
+      workDeadline: '2027-02-10T08:00',
+      scoreDeadline: '2027-02-20T08:00',
+      settleDate: '2027-02-28T08:00',
+    })
   })
 })
 

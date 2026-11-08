@@ -93,8 +93,18 @@ describe('RuleCardEditor · 渲染与必要条目', () => {
     expect(screen.queryByRole('button', { name: '删除条目 必要条目 1' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /隐藏条目 必要条目 1/ })).not.toBeInTheDocument()
     expect(screen.getAllByText('由赛季配置生成，不可编辑')).toHaveLength(REQUIRED_KEYS.length)
-    // key 用 mono 小字展示，便于对后端排查。
-    expect(screen.getByText(REQUIRED_KEYS[0])).toBeInTheDocument()
+  })
+
+  it('shows only the item label in the 条目 column, not the backend field key', () => {
+    render(<Harness />)
+    // 字段名（如 max_project_challenges）是后端标识，不再出现在表格里。
+    for (const key of REQUIRED_KEYS) {
+      expect(screen.queryByText(key)).not.toBeInTheDocument()
+    }
+    expect(screen.queryByText('custom_1')).not.toBeInTheDocument()
+    // 名称与状态 chip 仍在。
+    expect(screen.getByText('必要条目 1')).toBeInTheDocument()
+    expect(screen.getByText('自定义条目')).toBeInTheDocument()
   })
 
   it('no longer offers 上移 / 下移 buttons', () => {
@@ -346,6 +356,23 @@ describe('RuleCardEditor · 排序', () => {
 })
 
 describe('RuleCardEditor · 可选条目其它操作', () => {
+  it('renders the row actions as icon buttons that keep their accessible names', () => {
+    render(<Harness />)
+    for (const [label, title] of [
+      ['修改条目 自定义条目', '修改'],
+      ['删除条目 自定义条目', '删除'],
+      ['隐藏条目 自定义条目', '隐藏'],
+    ] as const) {
+      const button = screen.getByRole('button', { name: label })
+      // 图标按钮：语义全部由 aria-label / title 承担，视觉上只有图标。
+      expect(button).toHaveClass('ui-icon-btn')
+      expect(button).toHaveAttribute('title', title)
+      expect(button.querySelector('svg')).not.toBeNull()
+      expect(button).not.toHaveTextContent('修改')
+      expect(button).not.toHaveTextContent('删除')
+    }
+  })
+
   it('deletes an optional item', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

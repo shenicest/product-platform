@@ -77,6 +77,16 @@
     transform: translateY(0);
   }
 
+  /* 平坦变体：悬停 / 按下都不位移。
+   *
+   * 后台 tab 导航用 `.ui-btn--ghost` 渲染，但它是「切到另一屏」的选择器，
+   * 不是会立刻改变当前页的行动按钮 —— 悬停上浮 2px 会让人误以为页内会有
+   * 展开/弹层。颜色与描边的反馈保留（仍能看出可点），只去掉位移。 */
+  .ui-btn--flat:hover:not(:disabled),
+  .ui-btn--flat:active:not(:disabled) {
+    transform: none;
+  }
+
   .ui-btn:focus-visible {
     outline: 3px solid var(--focus-ring);
     outline-offset: 3px;

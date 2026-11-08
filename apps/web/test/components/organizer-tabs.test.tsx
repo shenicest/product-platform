@@ -46,6 +46,16 @@ describe('OrganizerTabs', () => {
     expect(screen.getByRole('link', { name: '报名审核' })).toHaveAttribute('href', '/organizer/applications')
   })
 
+  it('uses the flat button variant so hover does not lift the tabs', () => {
+    // tab 只切路由，不是页内动作：`.ui-btn--flat` 关掉 `.ui-btn:hover` 的
+    // translateY(-2px)，视觉上不再「浮起来」。
+    pathname = '/organizer/overview'
+    render(<OrganizerTabs seasonId={null} />)
+    for (const link of within(screen.getByRole('navigation', { name: '主办方后台导航' })).getAllByRole('link')) {
+      expect(link.className).toContain('ui-btn--flat')
+    }
+  })
+
   it('exports a tab definition for every route segment', () => {
     expect(ORGANIZER_TABS.map((tab) => tab.slug)).toEqual([
       'overview',

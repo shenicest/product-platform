@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { SEASON_REQUIRED_RULE_CARD_LABELS, SEASON_RULE_DEFAULTS } from '@shenicest/shared'
@@ -6,7 +6,17 @@ import { SeasonSettingsView } from '@/components/organizer/season-settings/seaso
 import { SeasonInfoPreview } from '@/components/organizer/season-settings/rule-card-preview'
 import type { SeasonSettingsDetail } from '@/lib/organizer-settings'
 import type { SeasonReadiness } from '@/lib/organizer'
-import { submitSeason, suspendSeason, cancelSeason, updateSeasonThemes } from '@/lib/organizer-settings-api'
+import { createSeasonDraft } from '@/lib/organizer-api'
+import {
+  submitSeason,
+  suspendSeason,
+  cancelSeason,
+  updateSeasonCore,
+  updateSeasonOrganizers,
+  updateSeasonRules,
+  updateSeasonSchedule,
+  updateSeasonThemes,
+} from '@/lib/organizer-settings-api'
 
 const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }))
 
@@ -14,6 +24,11 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), refresh, replace: vi.fn(), back: vi.fn(), preload: vi.fn() }),
   usePathname: () => '/organizer/season-settings',
   useSearchParams: () => new URLSearchParams(),
+}))
+
+vi.mock('@/lib/organizer-api', () => ({
+  createSeasonDraft: vi.fn(),
+  getSeasonManageDetail: vi.fn(),
 }))
 
 vi.mock('@/lib/organizer-settings-api', () => ({
@@ -134,6 +149,11 @@ beforeEach(() => {
   vi.mocked(submitSeason).mockResolvedValue({ data: {} as never, error: null })
   vi.mocked(suspendSeason).mockResolvedValue({ data: {} as never, error: null })
   vi.mocked(cancelSeason).mockResolvedValue({ data: {} as never, error: null })
+  vi.mocked(updateSeasonCore).mockResolvedValue({ data: {} as never, error: null })
+  vi.mocked(updateSeasonSchedule).mockResolvedValue({ data: {} as never, error: null })
+  vi.mocked(updateSeasonRules).mockResolvedValue({ data: {} as never, error: null })
+  vi.mocked(updateSeasonThemes).mockResolvedValue({ data: { themes: [] } as never, error: null })
+  vi.mocked(updateSeasonOrganizers).mockResolvedValue({ data: {} as never, error: null })
 })
 
 describe('SeasonSettingsView · draft season', () => {
@@ -208,6 +228,127 @@ describe('SeasonSettingsView · draft season', () => {
     renderView({ detail: { status: 'upcoming', pendingApproval: true }, isOperator: true })
     expect(screen.getByRole('button', { name: '批准' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: '驳回' })).toBeInTheDocument()
+  })
+})
+
+describe('SeasonSettingsView · 草稿编辑弹窗', () => {
+  const SCHEDULE = {
+    applyOpen: '2026-11-01T02:00:00.000Z',
+    applyClose: '2026-11-10T02:00:00.000Z',
+    startAt: '2026-11-20T02:00:00.000Z',
+    teamDeadline: '2026-11-25T02:00:00.000Z',
+    challengeFreezeAt: '2026-11-24T02:00:00.000Z',
+    workDeadline: '2026-12-01T02:00:00.000Z',
+    scoreDeadline: '2026-12-05T02:00:00.000Z',
+    settleDate: '2026-12-10T02:00:00.000Z',
+  }
+
+  it('offers the 编辑 entry only for a draft season', () => {
+    renderView()
+    expect(screen.getByRole('button', { name: '编辑赛季草稿' })).toBeInTheDocument()
+  })
+
+  it('hides the 编辑 entry once the season is no longer a draft', () => {
+    renderView({
+      detail: { status: 'upcoming', timestamps: { ...detail().timestamps, approvedAt: '2026-10-01T00:00:00.000Z' } },
+    })
+    expect(screen.queryByRole('button', { name: '编辑赛季草稿' })).not.toBeInTheDocument()
+  })
+
+  it('prefills name, schedule and rules from the current season', async () => {
+    const user = userEvent.setup()
+    renderView({
+      detail: {
+        schedule: SCHEDULE,
+        rules: { ...SEASON_RULE_DEFAULTS, maxCoreMembers: 2 },
+      },
+    })
+
+    await user.click(screen.getByRole('button', { name: '编辑赛季草稿' }))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByRole('heading', { name: '编辑赛季草稿' })).toBeInTheDocument()
+
+    // 名称与编号回填；编号在编辑模式下只读（后端 PATCH 不接受 code）。
+    expect(within(dialog).getByLabelText(/赛季名称/)).toHaveValue('2027 春季赛季')
+    expect(within(dialog).getByLabelText(/赛季编号/)).toHaveValue('BL2027A')
+    expect(within(dialog).getByLabelText(/赛季编号/)).toHaveAttribute('readonly')
+
+    // 赛程按北京时间回填成 datetime-local（UTC 02:00 → 10:00）。
+    expect(within(dialog).getByLabelText('报名开放')).toHaveValue('2026-11-01T10:00')
+    expect(within(dialog).getByLabelText('结算日')).toHaveValue('2026-12-10T10:00')
+
+    // 规则回填。
+    expect(within(dialog).getByLabelText('团队核心成员上限')).toHaveValue(2)
+  })
+
+  it('updates the current season instead of creating a new one', async () => {
+    const user = userEvent.setup()
+    renderView()
+
+    await user.click(screen.getByRole('button', { name: '编辑赛季草稿' }))
+    const dialog = await screen.findByRole('dialog')
+    const nameInput = within(dialog).getByLabelText(/赛季名称/)
+    await user.clear(nameInput)
+    await user.type(nameInput, '2027 春季赛季（改）')
+    await user.click(within(dialog).getByRole('button', { name: '保存修改' }))
+
+    await waitFor(() => expect(updateSeasonCore).toHaveBeenCalledTimes(1))
+    expect(vi.mocked(updateSeasonCore).mock.calls[0][0]).toBe(7)
+    expect(vi.mocked(updateSeasonCore).mock.calls[0][1]).toMatchObject({ name: '2027 春季赛季（改）' })
+    // 走的是更新而不是新建。
+    expect(createSeasonDraft).not.toHaveBeenCalled()
+    // 其它块没改就不发 PUT（否则会凭空生成公告与规则版本）。
+    expect(updateSeasonSchedule).not.toHaveBeenCalled()
+    expect(updateSeasonRules).not.toHaveBeenCalled()
+    expect(updateSeasonThemes).not.toHaveBeenCalled()
+    expect(updateSeasonOrganizers).not.toHaveBeenCalled()
+    // 成功后刷新并关闭。
+    expect(refresh).toHaveBeenCalled()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  })
+
+  it('also saves the schedule and typed rules when they changed', async () => {
+    const user = userEvent.setup()
+    renderView({ detail: { schedule: SCHEDULE } })
+
+    await user.click(screen.getByRole('button', { name: '编辑赛季草稿' }))
+    const dialog = await screen.findByRole('dialog')
+
+    const settle = within(dialog).getByLabelText('结算日')
+    await user.clear(settle)
+    await user.type(settle, '2026-12-12T10:00')
+
+    const members = within(dialog).getByLabelText('团队核心成员上限')
+    await user.clear(members)
+    await user.type(members, '2')
+
+    await user.click(within(dialog).getByRole('button', { name: '保存修改' }))
+
+    await waitFor(() => expect(updateSeasonSchedule).toHaveBeenCalledTimes(1))
+    const schedule = vi.mocked(updateSeasonSchedule).mock.calls[0][1].schedule
+    // 北京时间 2026-12-12 10:00 → UTC 02:00。
+    expect(schedule.settleDate).toBe('2026-12-12T02:00:00.000Z')
+    expect(schedule.applyOpen).toBe(SCHEDULE.applyOpen)
+
+    expect(updateSeasonRules).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(updateSeasonRules).mock.calls[0][1].rules.maxCoreMembers).toBe(2)
+    expect(createSeasonDraft).not.toHaveBeenCalled()
+  })
+
+  it('shows the backend message when updating fails', async () => {
+    vi.mocked(updateSeasonCore).mockResolvedValue({
+      data: null,
+      error: { status: 409, body: { error: { code: 'SEASON_INVALID_STATUS', message: '当前状态不能修改赛季' } } },
+    } as never)
+
+    const user = userEvent.setup()
+    renderView()
+    await user.click(screen.getByRole('button', { name: '编辑赛季草稿' }))
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: '保存修改' }))
+
+    expect(await within(dialog).findByText('当前状态不能修改赛季')).toBeInTheDocument()
+    expect(refresh).not.toHaveBeenCalled()
   })
 })
 

@@ -143,6 +143,50 @@ describe('ManualGroupView', () => {
     expect(screen.getByRole('button', { name: '重新邀请' })).toBeInTheDocument()
   })
 
+  it('renders the row actions as icon-only buttons and freezes the action column', () => {
+    renderView([participant()])
+    const invite = screen.getByRole('button', { name: '邀请' })
+
+    // 图标按钮：没有可见文字，只有一枚 aria-hidden 的 svg。
+    expect(invite).toHaveTextContent('')
+    expect(invite).toHaveClass('ui-icon-btn', 'ui-icon-btn--sm')
+    expect(invite.querySelector('svg')).not.toBeNull()
+    expect(invite.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+
+    // 语义不丢：可访问名是动作文案，对象名在 title 里。
+    expect(invite).toHaveAttribute('title', '邀请 周默')
+
+    // 宽表：表格挂上冻结操作列的类，外层是横向滚动容器。
+    const table = screen.getByRole('table')
+    expect(table).toHaveClass('console-table', 'console-table--sticky-actions')
+    expect(table.parentElement).toHaveClass('overflow-x-auto')
+  })
+
+  it('picks a distinct icon per action so the row is readable without hovering', () => {
+    renderView([
+      participant({ id: 1, userId: '101', wechatStatus: WechatStatus.NotInvited }),
+      participant({
+        id: 2,
+        userId: '102',
+        applicant: { userId: '102', name: '周正', avatarUrl: null },
+        wechatStatus: WechatStatus.Invited,
+      }),
+      participant({
+        id: 3,
+        userId: '103',
+        applicant: { userId: '103', name: '江河', avatarUrl: null },
+        wechatStatus: WechatStatus.Failed,
+      }),
+    ])
+
+    // 三种行的动作形状互不相同：人+加号 / 勾+圆、叉+圆 / 环形箭头。
+    const shapes = (name: string) =>
+      screen.getByRole('button', { name }).querySelector('svg')?.innerHTML ?? ''
+    expect(shapes('邀请')).not.toBe('')
+    expect(shapes('邀请')).not.toBe(shapes('重新邀请'))
+    expect(shapes('标记已入群')).not.toBe(shapes('标记邀请失败'))
+  })
+
   it('records the invite and swaps the row in place', async () => {
     vi.mocked(updateParticipantWechat).mockResolvedValue({
       data: participant({
@@ -192,10 +236,25 @@ describe('ManualGroupView', () => {
     const [joinButton] = screen.getAllByRole('button', { name: '标记已入群' })
     await user.click(joinButton)
 
-    await waitFor(() => expect(screen.getByRole('button', { name: '处理中…' })).toBeDisabled())
-    // 同一行的另一颗按钮保持原文案（只有被点的那颗转圈），但同样禁用。
-    const [, secondRow] = within(screen.getByRole('table')).getAllByRole('row')
-    expect(within(secondRow).getByRole('button', { name: '标记邀请失败' })).toBeDisabled()
+    // 图标按钮的 pending 态不改可访问名（否则读屏用户会听到一个「处理中…」，
+    // 不知道在处理哪件事）：用 `aria-busy` + `title` 表达进行中。
+    const [, firstRow, secondRow] = within(screen.getByRole('table')).getAllByRole('row')
+    await waitFor(() =>
+      expect(within(firstRow).getByRole('button', { name: '标记已入群' })).toBeDisabled(),
+    )
+    const busyButton = within(firstRow).getByRole('button', { name: '标记已入群' })
+    expect(busyButton).toHaveAttribute('aria-busy', 'true')
+    expect(busyButton).toHaveAttribute('title', '标记已入群中…（周默）')
+    // 同一行的另一颗按钮保持非 busy（只有被点的那颗转圈），但同样禁用。
+    expect(within(firstRow).getByRole('button', { name: '标记邀请失败' })).toBeDisabled()
+    expect(within(firstRow).getByRole('button', { name: '标记邀请失败' })).not.toHaveAttribute(
+      'aria-busy',
+    )
+    // 别的行也只是禁用，不进入 busy 态。
+    expect(within(secondRow).getByRole('button', { name: '标记已入群' })).toBeDisabled()
+    expect(within(secondRow).getByRole('button', { name: '标记已入群' })).not.toHaveAttribute(
+      'aria-busy',
+    )
 
     resolveRequest({
       data: participant({ wechatStatus: WechatStatus.Joined, joinedAt: '2026-11-03T07:00:00.000Z' }),

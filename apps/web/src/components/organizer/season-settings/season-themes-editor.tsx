@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { OrganizerActionIcon } from '@/components/organizer/action-icon'
 import {
   ThemeItemDialog,
   type ThemeDialogMode,
@@ -217,26 +218,28 @@ export function SeasonThemesEditor({
                       </span>
                     </td>
 
-                    <td>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                    <td className="whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          className="ui-icon-btn ui-icon-btn--sm"
                           onClick={(event) => openDialog('edit', index, event.currentTarget)}
                           disabled={disabled}
                           aria-label={`修改主题 ${name}`}
+                          title="修改"
                         >
-                          修改
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
+                          <OrganizerActionIcon name="edit" />
+                        </button>
+                        <button
+                          type="button"
+                          className="ui-icon-btn ui-icon-btn--sm"
                           onClick={() => onChange(removeThemeItem(items, index))}
                           disabled={disabled}
                           aria-label={`删除主题 ${name}`}
+                          title="删除"
                         >
-                          删除
-                        </Button>
+                          <OrganizerActionIcon name="delete" />
+                        </button>
                       </div>
                     </td>
                   </tr>

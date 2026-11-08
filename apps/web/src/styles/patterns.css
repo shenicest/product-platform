@@ -889,6 +889,35 @@
     background: var(--bg-sunken);
   }
 
+  /* 横向滚动的表格：操作列冻结在右侧。
+   *
+   * 后台的三张宽表（报名队列 / 选手名单 / 命题库）列多到窄屏必然溢出，
+   * 滚动时如果操作列跟着跑出视口，用户得先滚回去才能点「通过」。
+   * 这里让最后一列 `position: sticky; right: 0`：
+   *   · 单元格必须有不透明底色，否则横向滚动的内容会从它下面透出来；
+   *   · 行悬停时底色要跟着换（`tr:hover td` 那条规则在下面），不然冻结格
+   *     会像一块补丁；
+   *   · 左侧补一道内阴影当分隔线 —— `border` 在 sticky 单元格上会随内容
+   *     一起被裁切，内阴影不会。
+   * 滚动容器仍是 `.overflow-x-auto`，冻结只在真的溢出时才看得出效果。 */
+  .console-table--sticky-actions th:last-child,
+  .console-table--sticky-actions td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    background: var(--bg-elevated);
+    box-shadow: inset 1px 0 0 var(--border);
+  }
+
+  .console-table--sticky-actions th:last-child {
+    /* 表头底色跟着表头走（`.console-table th` 没有底色，面板底就是它的底）。 */
+    background: var(--bg-elevated);
+  }
+
+  .console-table--sticky-actions tbody tr:hover td:last-child {
+    background: var(--bg-sunken);
+  }
+
   /* ---------------------------------------------------------------------------
    * 页头 / 页脚
    * ------------------------------------------------------------------------- */

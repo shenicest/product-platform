@@ -7,7 +7,13 @@ import { Button } from '@/components/ui/button'
 import { FieldError, FormField, SelectInput, TextArea, TextInput } from '@/components/submit/form-fields'
 import type { SeasonAnnouncement } from '@/lib/boomland'
 import { announcementCategoryLabel, formatDateTime } from '@/lib/boomland'
-import type { OrganizerOrg, SeasonManageDetail, SeasonReadiness } from '@/lib/organizer'
+import {
+  draftFromCurrentSeason,
+  type OrganizerOrg,
+  type SeasonDraftValues,
+  type SeasonManageDetail,
+  type SeasonReadiness,
+} from '@/lib/organizer'
 import type { SeasonSettingsDetail } from '@/lib/organizer-settings'
 import {
   canApproveSeason,
@@ -55,6 +61,7 @@ import {
 } from '@/lib/organizer-themes'
 import { RuleCardEditor } from '@/components/organizer/season-settings/rule-card-editor'
 import { SeasonThemesEditor } from '@/components/organizer/season-settings/season-themes-editor'
+import { SeasonDraftDialog } from '@/components/organizer/season-draft-dialog'
 import { SeasonInfoPreview } from '@/components/organizer/season-settings/rule-card-preview'
 import { SeasonRulesDialog } from '@/components/organizer/season-settings/season-rules-dialog'
 import { SeasonCoreDialog } from '@/components/organizer/season-settings/season-core-dialog'
@@ -92,9 +99,12 @@ export function SeasonSettingsView({
 }) {
   const router = useRouter()
 
-  const [dialog, setDialog] = useState<'core' | 'schedule' | 'rules' | 'reject' | 'cancel' | 'announcement' | null>(null)
+  const [dialog, setDialog] = useState<'core' | 'schedule' | 'rules' | 'reject' | 'cancel' | 'announcement' | 'draft' | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
+  /** 草稿「编辑」弹窗的表单值；只在打开期间存在，关闭即丢弃（不保存半成品）。 */
+  const [editDraft, setEditDraft] = useState<SeasonDraftValues | null>(null)
+  const editDraftTriggerRef = useRef<HTMLButtonElement | null>(null)
 
   const readinessSummary = useMemo(() => summarizeReadiness(readiness), [readiness])
   const ready = readinessSummary.total === 0 ? true : readinessSummary.ready
@@ -173,6 +183,25 @@ export function SeasonSettingsView({
               ) : canEditSeasonOrganizers(status, isOperator) ? (
                 <Button variant="secondary" size="sm" onClick={() => setDialog('core')} disabled={actionBusy}>
                   调整主办方组织
+                </Button>
+              ) : null}
+
+              {/* 草稿态另给一个入口：一次性改完基础信息 + 赛程 + 规则，
+                  保存即更新当前赛季（不是新建）。文案写「编辑草稿」而不是
+                  光秃秃的「编辑」，免得和左边那颗「编辑赛季信息」看混。 */}
+              {status === SeasonStatus.Draft ? (
+                <Button
+                  ref={editDraftTriggerRef}
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    setEditDraft(draftFromCurrentSeason(detail))
+                    setDialog('draft')
+                  }}
+                  disabled={actionBusy}
+                  aria-label="编辑赛季草稿"
+                >
+                  编辑草稿
                 </Button>
               ) : null}
 
@@ -340,6 +369,25 @@ export function SeasonSettingsView({
       />
 
       {/* ---- 弹窗 ---------------------------------------------------------- */}
+      {dialog === 'draft' && editDraft ? (
+        <SeasonDraftDialog
+          mode="edit"
+          draft={editDraft}
+          organizerOrgs={organizerOrgs}
+          editTarget={detail}
+          onDraftChange={setEditDraft}
+          onClose={() => {
+            setDialog(null)
+            setEditDraft(null)
+          }}
+          onSaved={() => {
+            setDialog(null)
+            setEditDraft(null)
+          }}
+          returnFocusRef={editDraftTriggerRef}
+        />
+      ) : null}
+
       {dialog === 'core' ? (
         <SeasonCoreDialog
           detail={detail}

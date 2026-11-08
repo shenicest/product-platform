@@ -1,7 +1,6 @@
 'use client'
 
 import { useId, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { SEASON_RULE_LIMITS } from '@shenicest/shared'
 import { Button } from '@/components/ui/button'
 import { ChipButton } from '@/components/ui/chip'
@@ -12,11 +11,10 @@ import {
   SelectInput,
   TextArea,
   TextInput,
+  useFieldDescription,
 } from '@/components/submit/form-fields'
-import { createSeasonDraft } from '@/lib/organizer-api'
 import {
   SCHEDULE_FIELDS,
-  toCreateSeasonPayload,
   validateSeasonDraft,
   type OrganizerOrg,
   type SeasonDraftErrors,
@@ -30,9 +28,27 @@ import {
  * pinned / createdBy / rulesVersion` 这类状态与元数据列**不在表单里** ——
  * 新建草稿永远是 `draft`，发布状态只能通过“提交待批 → 批准”流转。
  *
+ * 三种用法共用这一张表单（差异只有文案与编号是否只读）：
+ *   · `create` —— 空白草稿，提交走 `POST /seasons`；
+ *   · `copy`   —— 以上一季为模板，同样提交走 `POST /seasons`；
+ *   · `edit`   —— 回填当前赛季，提交走更新（`PATCH` + 若干 `PUT`）。
+ * 具体发什么请求由调用方通过 `onSubmit` 决定 —— 表单只负责校验、pending 与
+ * 把后端错误摆到字段上，这样三种语义共用同一套校验，不会出现「新建拦住了、
+ * 编辑没拦住」的偏差。
+ *
  * 弹窗背面是主办方后台外壳，不做焦点陷阱：Esc 与“取消”都能关闭，
- * 关闭后焦点回到触发按钮（由 Header 负责）。
+ * 关闭后焦点回到触发按钮（由调用方负责）。
  */
+
+/**
+ * 提交结果。`ok: false` 时由表单负责落位：
+ *   · `code === 'SEASON_CODE_TAKEN'` → 编号字段单独提示；
+ *   · `field` 有值 → 把 `message` 挂到对应字段；
+ *   · 其余 → 表单级错误条原样展示后端文案。
+ */
+export type SeasonDraftSubmitResult =
+  | { ok: true }
+  | { ok: false; message: string; field?: string; code?: string }
 
 /**
  * 计分口径三项的输入转换：空串 = `null`（本季不计分），其余转数字。
@@ -46,23 +62,54 @@ function emptyOrNumber(raw: string): number | null {
   return Number(trimmed)
 }
 
+/** 只读控件：编辑模式下编号不可改（后端 `PATCH` 不接受 `code`）。 */
+function ReadOnlyInput({
+  id,
+  name,
+  value,
+}: {
+  id: string
+  name: string
+  value: string
+}) {
+  const describedBy = useFieldDescription()
+  return (
+    <input
+      id={id}
+      name={name}
+      value={value}
+      readOnly
+      aria-readonly
+      className="ui-input cursor-not-allowed opacity-70"
+      {...describedBy}
+    />
+  )
+}
+
 export function SeasonDraftForm({
   value,
   onChange,
   organizerOrgOptions,
   mode,
   sourceSeasonName,
+  onSubmit,
   onCancel,
 }: {
   value: SeasonDraftValues
   onChange: (next: SeasonDraftValues) => void
   organizerOrgOptions: OrganizerOrg[]
-  /** `create` 新建空白草稿；`copy` 以上一季为模板。 */
-  mode: 'create' | 'copy'
+  /** `create` 新建空白草稿；`copy` 以上一季为模板；`edit` 更新当前赛季。 */
+  mode: 'create' | 'copy' | 'edit'
   sourceSeasonName?: string
+  /**
+   * 真正的提交动作（发什么请求由调用方决定）。
+   *
+   * 不传时退化成「只校验不发请求」—— 这是给纯表单测试与将来嵌入其它流程留的
+   * 安全默认值；Header 与草稿编辑弹窗都显式传了它。
+   */
+  onSubmit?: (values: SeasonDraftValues) => Promise<SeasonDraftSubmitResult>
   onCancel: () => void
 }) {
-  const router = useRouter()
   const uid = useId()
   const [themeInput, setThemeInput] = useState('')
   const [errors, setErrors] = useState<SeasonDraftErrors>({})
@@ -111,7 +158,7 @@ export function SeasonDraftForm({
     )
   }
 
-  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setFormError(null)
     const nextErrors = validateSeasonDraft(value, { organizerOrgOptions: allowedOrgIds })
@@ -122,38 +169,42 @@ export function SeasonDraftForm({
     }
 
     setPending(true)
-    const { data, error } = await createSeasonDraft(toCreateSeasonPayload(value))
+    const result = await onSubmit?.(value)
     setPending(false)
 
-    if (error || !data) {
-      const bundle = error?.body.error
-      if (bundle?.code === 'SEASON_CODE_TAKEN') {
-        setErrors((current) => ({ ...current, code: '该赛季编号已存在，换一个' }))
-        setFormError('赛季编号已被占用')
-        return
-      }
-      if (bundle?.field) {
-        setErrors((current) => ({ ...current, [bundle.field!]: bundle.message }))
-      }
-      setFormError(bundle?.message || '创建失败，请稍后重试')
+    // 没有传 onSubmit：校验通过就算「完成」，不制造假的成功提示。
+    if (!result || result.ok) return
+
+    if (result.code === 'SEASON_CODE_TAKEN') {
+      setErrors((current) => ({ ...current, code: '该赛季编号已存在，换一个' }))
+      setFormError('赛季编号已被占用')
       return
     }
-
-    // 新建成功 → 落到同一个后台外壳的「赛季设置」，并选中刚建好的赛季，
-    // 让用户能立刻看到它（后续在那里补齐赛程、命题、预算）。
-    router.push(`/organizer/season-settings?season=${data.id}&created=1`)
-    router.refresh()
+    if (result.field) {
+      setErrors((current) => ({ ...current, [result.field!]: result.message }))
+    }
+    // 后端文案原样展示，不吞错误、也不改写成泛泛的「保存失败」。
+    setFormError(result.message)
   }
 
   const id = (name: string) => `${uid}-${name}`
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-6" noValidate aria-label="赛季草稿表单">
+    <form onSubmit={handleSubmit} className="grid gap-6" noValidate aria-label="赛季草稿表单">
       <p className="rounded-md border border-brand bg-brand-wash px-4 py-3 text-body-sm text-brand-text">
-        新建的赛季会存为<strong>草稿</strong>，不会直接发布；赛程、命题、预算可以之后再补。
-        {mode === 'copy' && sourceSeasonName
-          ? `当前以上一季「${sourceSeasonName}」为模板，编号与赛程需要重新填写。`
-          : null}
+        {mode === 'edit' ? (
+          <>
+            保存后<strong>直接更新当前赛季</strong>，不会新建赛季；赛程与规则有变化时会一并提交，
+            并自动生成公告与规则版本。
+          </>
+        ) : (
+          <>
+            新建的赛季会存为<strong>草稿</strong>，不会直接发布；赛程、命题、预算可以之后再补。
+            {mode === 'copy' && sourceSeasonName
+              ? `当前以上一季「${sourceSeasonName}」为模板，编号与赛程需要重新填写。`
+              : null}
+          </>
+        )}
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -162,16 +213,24 @@ export function SeasonDraftForm({
           htmlFor={id('code')}
           required
           error={errorOf('code')}
-          hint="字母 / 数字 / 下划线 / 连字符，创建后不可修改"
+          hint={
+            mode === 'edit'
+              ? '编号创建后不可修改'
+              : '字母 / 数字 / 下划线 / 连字符，创建后不可修改'
+          }
         >
-          <TextInput
-            id={id('code')}
-            name="code"
-            value={value.code}
-            onChange={(next) => set('code', next)}
-            placeholder="BL2027A"
-            maxLength={32}
-          />
+          {mode === 'edit' ? (
+            <ReadOnlyInput id={id('code')} name="code" value={value.code} />
+          ) : (
+            <TextInput
+              id={id('code')}
+              name="code"
+              value={value.code}
+              onChange={(next) => set('code', next)}
+              placeholder="BL2027A"
+              maxLength={32}
+            />
+          )}
         </FormField>
         <FormField label="赛季名称" htmlFor={id('name')} required error={errorOf('name')}>
           <TextInput
@@ -473,7 +532,9 @@ export function SeasonDraftForm({
 
       <div className="flex flex-wrap items-center gap-3">
         <Button type="submit" disabled={pending}>
-          {pending ? '创建中…' : '创建草稿'}
+          {pending
+            ? mode === 'edit' ? '保存中…' : '创建中…'
+            : mode === 'edit' ? '保存修改' : '创建草稿'}
         </Button>
         <Button variant="ghost" onClick={onCancel} disabled={pending}>
           取消

@@ -127,7 +127,9 @@ export function ParticipantsTable({
 
   return (
     <div className="overflow-x-auto">
-      <table className="console-table">
+      {/* `console-table--sticky-actions` 让最后一列（操作）在横向滚动时冻结在右侧；
+          七列在窄屏必然溢出，不冻结的话用户得先滚回右边才能点「邀请」。 */}
+      <table className="console-table console-table--sticky-actions">
         <thead>
           <tr>
             <th scope="col">选手</th>
@@ -213,7 +215,9 @@ function ParticipantRow({
           <span className="text-muted-foreground">—</span>
         )}
       </td>
-      <td className="whitespace-nowrap">{actions}</td>
+      {/* 操作列按内容收缩（`w-px`），不参与表格的等分拉伸 —— 否则 auto layout
+          会把富余宽度分给所有列，冻结列白白变宽。 */}
+      <td className="w-px whitespace-nowrap">{actions}</td>
     </tr>
   )
 }

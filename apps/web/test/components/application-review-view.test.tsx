@@ -121,6 +121,13 @@ describe('ApplicationReviewView · queue', () => {
     expect(screen.getByRole('button', { name: '不通过 柏舟' })).toHaveClass('ui-icon-btn--danger')
   })
 
+  it('freezes the action column so it stays reachable while scrolling sideways', () => {
+    renderView()
+    const table = screen.getByRole('table', { name: '报名审核队列' })
+    expect(table).toHaveClass('console-table', 'console-table--sticky-actions')
+    expect(table.parentElement).toHaveClass('overflow-x-auto')
+  })
+
   it('shows a terminal row without actions', () => {
     renderView({ items: [application({ status: 'accepted' })] })
     expect(screen.getByText('已是终态')).toBeInTheDocument()

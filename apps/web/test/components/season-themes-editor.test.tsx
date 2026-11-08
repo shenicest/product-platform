@@ -308,6 +308,19 @@ describe('SeasonThemesEditor · 排序', () => {
 })
 
 describe('SeasonThemesEditor · 删除', () => {
+  it('renders 修改 / 删除 as icon buttons keeping their accessible names', () => {
+    render(<Harness />)
+    for (const [label, title] of [
+      [`修改主题 ${THEMES[0]}`, '修改'],
+      [`删除主题 ${THEMES[0]}`, '删除'],
+    ] as const) {
+      const button = screen.getByRole('button', { name: label })
+      expect(button).toHaveClass('ui-icon-btn')
+      expect(button).toHaveAttribute('title', title)
+      expect(button.querySelector('svg')).not.toBeNull()
+    }
+  })
+
   it('removes a theme', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

@@ -8,11 +8,22 @@ import {
 } from '@shenicest/shared'
 import { SCHEDULE_MILESTONES, type RuleCardItem } from '@/lib/boomland'
 import {
-  EMPTY_SCHEDULE_DRAFT,
   SCHEDULE_FIELDS,
   type SeasonManageDetail,
   type SeasonReadiness,
-  type SeasonScheduleDraft,
+} from '@/lib/organizer'
+
+/**
+ * 北京时间 ↔ `datetime-local` 的互转实现搬到了 `lib/organizer.ts`：
+ * `draftFromPreviousSeason` / `draftFromCurrentSeason` 回填表单时也要用它，
+ * 留在本文件会形成 `organizer ↔ organizer-settings` 的循环 import。
+ * 这里原样再导出，调用方（赛程弹窗、测试）不用改 import 路径。
+ */
+export {
+  beijingInputToIso,
+  isoToBeijingInput,
+  toScheduleDraft,
+  toSchedulePayload,
 } from '@/lib/organizer'
 
 /**
@@ -89,79 +100,6 @@ export function scheduleMilestoneRows(
     at: schedule?.[milestone.key] ?? null,
     effect: SCHEDULE_MILESTONE_EFFECTS[milestone.key],
   }))
-}
-
-// ---------------------------------------------------------------------------
-// 北京时间 ↔ datetime-local
-// ---------------------------------------------------------------------------
-
-const BEIJING_TIME_ZONE = 'Asia/Shanghai'
-/** 中国不实行夏令时，固定偏移即可；用它把「北京墙上时间」解析成绝对时刻。 */
-const BEIJING_OFFSET = '+08:00'
-
-const BEIJING_PARTS = new Intl.DateTimeFormat('en-GB', {
-  timeZone: BEIJING_TIME_ZONE,
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-})
-
-/** ISO → `YYYY-MM-DDTHH:mm`（北京时间）；空值 / 非法值给空串（= 待定）。 */
-export function isoToBeijingInput(value: string | null | undefined): string {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  const parts = BEIJING_PARTS.formatToParts(date)
-  const pick = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((part) => part.type === type)?.value ?? ''
-  const year = pick('year')
-  const month = pick('month')
-  const day = pick('day')
-  const hour = pick('hour')
-  const minute = pick('minute')
-  if (!year || !month || !day || !hour || !minute) return ''
-  return `${year}-${month}-${day}T${hour}:${minute}`
-}
-
-/** `YYYY-MM-DDTHH:mm`（北京时间）→ ISO；空值 / 非法值给 null。 */
-export function beijingInputToIso(value: string): string | null {
-  const trimmed = value.trim()
-  if (!trimmed) return null
-  // `datetime-local` 可能给 `...T10:00` 或带秒的 `...T10:00:30`。
-  const normalized = trimmed.length === 16 ? `${trimmed}:00` : trimmed
-  const date = new Date(`${normalized}${BEIJING_OFFSET}`)
-  return Number.isNaN(date.getTime()) ? null : date.toISOString()
-}
-
-/** 后端赛程 → 表单草稿（八个 `datetime-local` 字符串，北京时间）。 */
-export function toScheduleDraft(schedule: SeasonSchedule | null | undefined): SeasonScheduleDraft {
-  const draft: SeasonScheduleDraft = { ...EMPTY_SCHEDULE_DRAFT }
-  if (!schedule) return draft
-  for (const field of SCHEDULE_FIELDS) {
-    draft[field.key] = isoToBeijingInput(schedule[field.key])
-  }
-  return draft
-}
-
-/**
- * 表单草稿 → `PUT /seasons/:id/schedule` 的 `schedule`。
- *
- * 全空表示「这个赛季不排期」，返回 null；只要有一格填了就必须八格齐全，
- * 任何一格空/非法也返回 null —— 调用前应先跑 {@link validateScheduleDraft}，
- * 页面只在校验通过后才提交。
- */
-export function toSchedulePayload(draft: SeasonScheduleDraft): SeasonSchedule | null {
-  if (SCHEDULE_FIELDS.every((field) => !draft[field.key].trim())) return null
-  const schedule = {} as SeasonSchedule
-  for (const field of SCHEDULE_FIELDS) {
-    const iso = beijingInputToIso(draft[field.key])
-    if (!iso) return null
-    schedule[field.key] = iso
-  }
-  return schedule
 }
 
 // ---------------------------------------------------------------------------
