@@ -36,6 +36,8 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant
   size?: ButtonSize
   block?: boolean
+  /** 透传 ref：弹窗需要在关闭后把焦点还给触发按钮。 */
+  ref?: React.Ref<HTMLButtonElement>
 }
 
 export function Button({
@@ -44,10 +46,12 @@ export function Button({
   block,
   className,
   type = 'button',
+  ref,
   ...rest
 }: ButtonProps) {
   return (
     <button
+      ref={ref}
       type={type}
       className={buttonClass({ variant, size, block, className })}
       {...rest}

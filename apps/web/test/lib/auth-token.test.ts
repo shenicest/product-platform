@@ -20,7 +20,20 @@ describe('fetchCurrentUser', () => {
       roles: [1],
       nickname: '主理人',
       avatarUrl: null,
+      isOrganizerMember: false,
     })
+  })
+
+  it('carries the organizer membership flag from the proxied /api/me', async () => {
+    server.use(
+      http.get('/api/me', () =>
+        HttpResponse.json({
+          user: { user_id: 3, email: null, role: 'founder', roles: [0], isOrganizerMember: true },
+        })
+      )
+    )
+
+    await expect(fetchCurrentUser()).resolves.toMatchObject({ isOrganizerMember: true })
   })
 
   it('returns the user with profile fields defaulted when the response omits them', async () => {
@@ -39,6 +52,7 @@ describe('fetchCurrentUser', () => {
       roles: [],
       nickname: null,
       avatarUrl: null,
+      isOrganizerMember: false,
     })
   })
 

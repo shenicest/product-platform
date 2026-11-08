@@ -28,12 +28,25 @@ export async function GET(request: Request) {
     ? ((await profileRes.json()) as { nickname?: string | null; avatarUrl?: string | null })
     : { nickname: null, avatarUrl: null }
 
+  // Organizer membership decides whether the 「主办方后台」 menu entry shows in
+  // production. Fetched here rather than in the menu so the header stays one
+  // request per page; degrades to false when the user belongs to no org.
+  const orgsRes = await fetch(apiUrl('/organizer-orgs'), {
+    headers: {
+      cookie: request.headers.get('cookie') ?? '',
+    },
+  })
+  const orgsData = orgsRes.ok ? await orgsRes.json() : { items: [] }
+  const isOrganizerMember = Array.isArray(orgsData.items)
+    && orgsData.items.some((org: { isMember?: boolean }) => org.isMember === true)
+
   return Response.json({
     user: {
       ...meData.user,
       roles: rolesData.roles ?? [],
       nickname: profileData.nickname ?? null,
       avatarUrl: profileData.avatarUrl ?? null,
+      isOrganizerMember,
     },
   })
 }

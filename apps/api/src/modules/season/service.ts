@@ -438,6 +438,42 @@ export class SeasonService {
     return { items, total: totalRows[0]?.value ?? 0, page, pageSize }
   }
 
+  /**
+   * 平台管理员视角的“全部赛季”列表。
+   *
+   * 主办方后台的赛季选择器需要覆盖所有赛季：一个主办方账号往往同时带着
+   * 平台管理员角色，若只列自己组织的赛季，选择器会漏掉在管的其它赛季。
+   *
+   * 这里刻意**不复用** {@link listManage} 的逐行 readiness 计算（每行一次
+   * 多表查询，100 行就是几百次往返），选择器只需要摘要字段，所以只补一个
+   * “是否待批”标记，保证下拉框打开足够快。
+   */
+  async listAllForAdmin(query: ListManageQuery) {
+    const { page, pageSize, offset } = pageOf(query)
+    const conditions = []
+    const statuses = statusValues(query.status)
+    if (statuses) conditions.push(inArray(seasons.status, statuses))
+    if (query.type) conditions.push(eq(seasons.type, query.type))
+    if (query.pendingApproval === 'true') {
+      conditions.push(and(eq(seasons.status, SeasonStatus.Upcoming), isNull(seasons.approvedAt))!)
+    }
+    if (query.q) {
+      const pattern = `%${query.q}%`
+      conditions.push(or(like(seasons.name, pattern), like(seasons.code, pattern))!)
+    }
+    const where = conditions.length > 0 ? and(...conditions) : undefined
+    const [rows, totalRows] = await Promise.all([
+      this.db.select().from(seasons).where(where).orderBy(desc(seasons.updatedAt), desc(seasons.id))
+        .limit(pageSize).offset(offset),
+      this.db.select({ value: count() }).from(seasons).where(where),
+    ])
+    const items = await Promise.all(rows.map(async (row) => ({
+      ...(await this.summary(row)),
+      pendingApproval: row.status === SeasonStatus.Upcoming && row.approvedAt === null,
+    })))
+    return { items, total: totalRows[0]?.value ?? 0, page, pageSize }
+  }
+
   async getPublicDetail(seasonId: number) {
     const row = await this.getSeasonRow(seasonId)
     if (!isPublicSeason(row)) throw boomlandError('SEASON_NOT_FOUND', '赛季不存在或暂未公开', 404)
@@ -471,6 +507,8 @@ export class SeasonService {
       ruleCard,
       rulesVersion: row.rulesVersion,
       awardingEntity: row.awardingEntity,
+      // 协议版本是赛季表字段，管理端编辑器需要它做预填（写操作走 PATCH /seasons/:id）。
+      agreementVersion: row.agreementVersion,
       startedAt: iso(row.startedAt),
       applicationWindow: this.applicationWindow(row),
       rules: row.rules,

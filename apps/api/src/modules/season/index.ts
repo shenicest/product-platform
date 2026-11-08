@@ -62,6 +62,15 @@ export const seasonModule = new Elysia()
     query: ListManageQuery,
     detail: { summary: 'List all seasons (admin)', tags: ['Season'] },
   })
+  // 口径是“平台全部赛季”，所以路径挂在 /admin 下，但 guard 用 auth：
+  // 主办方后台的赛季选择器需要它，而主办方账号不一定带 Operator 角色。
+  .get('/admin/seasons/all', async ({ query }) => {
+    return seasonService.listAllForAdmin(query)
+  }, {
+    auth: true,
+    query: ListManageQuery,
+    detail: { summary: 'List all seasons for moderation pickers', tags: ['Season'] },
+  })
   .post('/seasons', async ({ user, body }) => {
     return seasonService.create(user.userId, body)
   }, {

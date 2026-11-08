@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Role } from '@shenicest/shared'
 import { useAuth } from '@/components/auth-provider'
 import { getConnections } from '@/lib/client-api'
+import { shouldShowOrganizerEntry } from '@/lib/organizer-access'
 import { ButtonLink } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { Card } from '@/components/ui/surface'
@@ -89,6 +90,16 @@ export function UserMenu() {
 
   const isFounder = user.roles?.includes(Role.Founder) ?? false
   const isOperator = user.roles?.includes(Role.Operator) ?? false
+  /**
+   * 主办方后台入口：生产只对管理员或主办方组织成员显示，
+   * 本地调试对所有登录用户显示（见 `lib/organizer-access.ts`）。
+   * 判定用的常量是构建期内联的，和服务端守卫用的是同一份。
+   */
+  const showOrganizerEntry = shouldShowOrganizerEntry({
+    isLoggedIn: true,
+    isOperator,
+    isOrganizerMember: user.isOrganizerMember ?? null,
+  })
   const username = user.email ?? `用户 #${user.user_id}`
 
   return (
@@ -119,6 +130,11 @@ export function UserMenu() {
         {isFounder ? (
           <Link href="/founder/dashboard" className={MENU_ITEM} onClick={closeMenu}>
             创始人后台
+          </Link>
+        ) : null}
+        {showOrganizerEntry ? (
+          <Link href="/organizer/overview" className={MENU_ITEM} onClick={closeMenu}>
+            主办方后台
           </Link>
         ) : null}
         {isOperator ? (

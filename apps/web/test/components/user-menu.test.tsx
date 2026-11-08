@@ -6,10 +6,22 @@ import { UserMenu } from '@/components/user-menu'
 
 const logout = vi.fn()
 const getConnections = vi.fn()
-let auth = {
+
+type TestUser = {
+  user_id: number
+  email: string
+  role: string
+  roles: Role[]
+  isOrganizerMember?: boolean
+}
+
+let auth: { user: TestUser; loading: boolean } = {
   user: { user_id: 7, email: 'name@example.com', role: 'founder', roles: [Role.Founder] },
   loading: false,
 }
+// 主办方后台准入由 `lib/organizer-access` 决定，测试里直接切换它的两种口径：
+// 'open' = 本地调试（所有登录账号可见），'prod' = 生产（只对有权者可见）。
+let organizerAccess: 'open' | 'prod' = 'open'
 
 vi.mock('@/components/auth-provider', () => ({
   useAuth: () => ({ ...auth, logout }),
@@ -17,12 +29,17 @@ vi.mock('@/components/auth-provider', () => ({
 vi.mock('@/lib/client-api', () => ({
   getConnections: () => getConnections(),
 }))
+vi.mock('@/lib/organizer-access', () => ({
+  shouldShowOrganizerEntry: (input: { isOperator: boolean; isOrganizerMember: boolean | null }) =>
+    organizerAccess === 'open' ? true : input.isOperator || input.isOrganizerMember === true,
+}))
 
 describe('UserMenu', () => {
   beforeEach(() => {
     logout.mockClear()
     getConnections.mockReset()
     getConnections.mockResolvedValue({ data: { pendingReceived: 120 } })
+    organizerAccess = 'open'
     auth = {
       user: { user_id: 7, email: 'name@example.com', role: 'founder', roles: [Role.Founder] },
       loading: false,
@@ -38,6 +55,45 @@ describe('UserMenu', () => {
     expect(screen.getByRole('link', { name: '创始人后台' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: '运营后台' })).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('99+')).toBeInTheDocument())
+  })
+
+  // 本地调试：所有登录账号都能看到入口。
+  it('links to the organizer console from the dropdown in local development', () => {
+    render(<UserMenu />)
+    expect(screen.getByRole('link', { name: '主办方后台' })).toHaveAttribute('href', '/organizer/overview')
+  })
+
+  // 生产：没有主办方权限的账号看不到入口。
+  it('hides the organizer console entry from users without organizer access in production', () => {
+    organizerAccess = 'prod'
+    render(<UserMenu />)
+    expect(screen.queryByRole('link', { name: '主办方后台' })).not.toBeInTheDocument()
+  })
+
+  it('shows the organizer console entry to an organizer org member in production', () => {
+    organizerAccess = 'prod'
+    auth = {
+      user: {
+        user_id: 7,
+        email: 'name@example.com',
+        role: 'founder',
+        roles: [Role.Founder],
+        isOrganizerMember: true,
+      },
+      loading: false,
+    }
+    render(<UserMenu />)
+    expect(screen.getByRole('link', { name: '主办方后台' })).toBeInTheDocument()
+  })
+
+  it('shows the organizer console entry to a platform operator in production', () => {
+    organizerAccess = 'prod'
+    auth = {
+      user: { user_id: 7, email: 'op@example.com', role: 'operator', roles: [Role.Operator] },
+      loading: false,
+    }
+    render(<UserMenu />)
+    expect(screen.getByRole('link', { name: '主办方后台' })).toBeInTheDocument()
   })
 
   it('logs out from the menu', async () => {
