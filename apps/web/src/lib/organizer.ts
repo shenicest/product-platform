@@ -1,4 +1,10 @@
-import { SEASON_RULE_DEFAULTS, type SeasonRules, type SeasonSchedule, type SeasonType } from '@shenicest/shared'
+import {
+  SEASON_RULE_DEFAULTS,
+  SEASON_RULE_LIMITS,
+  type SeasonRules,
+  type SeasonSchedule,
+  type SeasonType,
+} from '@shenicest/shared'
 import type { SeasonSummary } from '@/lib/boomland'
 
 /**
@@ -260,26 +266,38 @@ export function validateScheduleDraft(schedule: SeasonScheduleDraft): SeasonDraf
   return errors
 }
 
-/** 规则校验：范围与整数要求直接取 `SEASON_RULE_LIMITS`，不重复写字面量。 */
+/**
+ * 规则校验：范围与整数要求直接取 `SEASON_RULE_LIMITS`，不重复写字面量。
+ *
+ * 计分口径三项（`singleWorkCap` / `exchangeRatio` / `reviewThreshold`）允许
+ * `null` 或 `0` —— 那是「本季不计分」的表达，不是填错；其余三项必须 ≥1。
+ */
 export function validateRulesDraft(rules: SeasonRules): SeasonDraftErrors {
   const errors: SeasonDraftErrors = {}
   const integerRules = [
-    ['maxChallengesPerProject', '每个项目可选命题上限', 1, 3],
-    ['maxProjectsPerParticipant', '每人最多参与项目数', 1, 20],
-    ['maxCoreMembers', '团队核心成员上限', 1, 3],
-    ['singleWorkCap', '单次评分上限', 1, 1_000_000],
+    ['maxChallengesPerProject', '每个项目可选命题上限', SEASON_RULE_LIMITS.maxChallengesPerProject],
+    ['maxProjectsPerParticipant', '每人最多参与项目数', SEASON_RULE_LIMITS.maxProjectsPerParticipant],
+    ['maxCoreMembers', '团队核心成员上限', SEASON_RULE_LIMITS.maxCoreMembers],
   ] as const
-  for (const [key, label, min, max] of integerRules) {
+  for (const [key, label, limit] of integerRules) {
     const value = rules[key]
-    if (!Number.isInteger(value) || value < min || value > max) {
-      errors[`rules.${key}`] = `${label}必须是 ${min}–${max} 的整数`
+    if (!Number.isInteger(value) || value < limit.min || value > limit.max) {
+      errors[`rules.${key}`] = `${label}必须是 ${limit.min}–${limit.max} 的整数`
     }
   }
-  if (!Number.isFinite(rules.exchangeRatio) || rules.exchangeRatio < 0.0001 || rules.exchangeRatio > 1_000_000) {
-    errors['rules.exchangeRatio'] = '积分兑换比例必须为正数'
-  }
-  if (!Number.isFinite(rules.reviewThreshold) || rules.reviewThreshold < 0) {
-    errors['rules.reviewThreshold'] = '复核阈值必须为非负数'
+
+  // 计分口径三项：null / 0 = 本季不计分，其余按上限校验。
+  const scorelessRules = [
+    ['singleWorkCap', '单次评分上限', SEASON_RULE_LIMITS.singleWorkCap, '必须是 0 或正整数'],
+    ['exchangeRatio', '积分兑换比例', SEASON_RULE_LIMITS.exchangeRatio, '不能为负数'],
+    ['reviewThreshold', '复核阈值', SEASON_RULE_LIMITS.reviewThreshold, '不能为负数'],
+  ] as const
+  for (const [key, label, limit, message] of scorelessRules) {
+    const value = rules[key]
+    if (value === null) continue
+    if (!Number.isFinite(value) || value < limit.min || value > limit.max) {
+      errors[`rules.${key}`] = `${label}${message}（留空或 0 表示本季不计分）`
+    }
   }
   return errors
 }
@@ -416,24 +434,73 @@ export function suggestSeasonCode(previousCode: string, existing: readonly strin
 /** 选择器里的一档：全部赛季 / 一个赛季。没有赛季时只剩“全部赛季”。 */
 export type SeasonPickerOption = { value: string; label: string }
 
+/** 选择器需要的最小赛季字段（状态用来在选项里标注）。 */
+export type PickableSeason = {
+  id: number
+  name: string
+  code: string
+  status: string
+  approvedAt: string | null
+}
+
 export const ALL_SEASONS_VALUE = 'all'
+
+/**
+ * 选择器里的状态文案。
+ *
+ * 口径与后端一致（见 docs/boomland/CONTEXT.md「Season Status」「Pending Approval」）：
+ * “待批准”不是一个独立 status，而是 `upcoming` + `approvedAt` 为空，
+ * 所以这里必须先判待批，再落到状态本身。
+ *
+ * 注意：当前后端 `SeasonStatus` 没有“已归档”（只有命题有 `archived`），
+ * 但 PRD 的赛季状态机里预留了 `ended` / `archived`，这里一并给出中文文案，
+ * 后端上线后选择器不用再改。出现未知状态时原样回显，不猜。
+ */
+export function seasonPickerStatusLabel(season: {
+  status: string
+  approvedAt?: string | null
+}): string {
+  if (season.status === 'upcoming' && !season.approvedAt) return '待批准'
+  const labels: Record<string, string> = {
+    draft: '草稿',
+    upcoming: '即将开始',
+    active: '进行中',
+    suspended: '已暂停',
+    settling: '结算中',
+    ended: '已结束',
+    archived: '已归档',
+    cancelled: '已取消',
+  }
+  return labels[season.status] ?? season.status
+}
 
 /**
  * 把赛季列表折成选择器选项。
  *
  * 顺序保持调用方给的顺序（管理器按更新时间倒序，选择器里最新的赛季在最上面），
- * 并在前面挂一个“全部赛季”。没有赛季时返回空数组 —— 调用方据此禁用选择器。
+ * 并在前面挂一个“全部赛季”。每个赛季的 label 末尾带上状态，一眼能看出
+ * 哪一个是草稿、哪一个在等批准、哪一个正在跑。没有赛季时返回空数组 ——
+ * 调用方据此禁用选择器。
  */
 export function toSeasonPickerOptions(
-  seasons: ReadonlyArray<{ id: number; name: string; code: string }>,
+  seasons: ReadonlyArray<{
+    id: number
+    name: string
+    code: string
+    status?: string
+    approvedAt?: string | null
+  }>,
 ): SeasonPickerOption[] {
   if (seasons.length === 0) return []
   return [
     { value: ALL_SEASONS_VALUE, label: '全部赛季' },
-    ...seasons.map((season) => ({
-      value: String(season.id),
-      label: `${season.name} · ${season.code}`,
-    })),
+    ...seasons.map((season) => {
+      const base = `${season.name} · ${season.code}`
+      const status = season.status
+        ? ` · ${seasonPickerStatusLabel({ status: season.status, approvedAt: season.approvedAt ?? null })}`
+        : ''
+      return { value: String(season.id), label: `${base}${status}` }
+    }),
   ]
 }
 

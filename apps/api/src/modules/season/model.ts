@@ -1,4 +1,5 @@
 import { t } from 'elysia'
+import { SEASON_RULE_LIMITS } from '@shenicest/shared'
 
 export const SeasonIdParams = t.Object({
   id: t.Numeric({ description: 'Season ID' }),
@@ -15,13 +16,34 @@ export const SeasonScheduleSchema = t.Object({
   settleDate: t.String({ description: 'ISO 8601' }),
 })
 
+/**
+ * 计分口径三项：`null` 与 `0` 都表示「本季不计分」，所以下限是 0 且允许 null。
+ *
+ * 上下限取自 `SEASON_RULE_LIMITS`，避免后端校验与 shared 的领域常量漂移。
+ */
+function scoreValueSchema(limit: { min: number; max: number }) {
+  return t.Union([
+    t.Number({ minimum: limit.min, maximum: limit.max }),
+    t.Null(),
+  ])
+}
+
 export const SeasonRulesSchema = t.Object({
-  maxChallengesPerProject: t.Number({ minimum: 1, maximum: 3 }),
-  maxProjectsPerParticipant: t.Number({ minimum: 1, maximum: 20 }),
-  maxCoreMembers: t.Number({ minimum: 1, maximum: 3 }),
-  singleWorkCap: t.Number({ minimum: 1, maximum: 1_000_000 }),
-  exchangeRatio: t.Number({ minimum: 0.0001, maximum: 1_000_000 }),
-  reviewThreshold: t.Number({ minimum: 0, maximum: 1_000_000 }),
+  maxChallengesPerProject: t.Number({
+    minimum: SEASON_RULE_LIMITS.maxChallengesPerProject.min,
+    maximum: SEASON_RULE_LIMITS.maxChallengesPerProject.max,
+  }),
+  maxProjectsPerParticipant: t.Number({
+    minimum: SEASON_RULE_LIMITS.maxProjectsPerParticipant.min,
+    maximum: SEASON_RULE_LIMITS.maxProjectsPerParticipant.max,
+  }),
+  maxCoreMembers: t.Number({
+    minimum: SEASON_RULE_LIMITS.maxCoreMembers.min,
+    maximum: SEASON_RULE_LIMITS.maxCoreMembers.max,
+  }),
+  singleWorkCap: scoreValueSchema(SEASON_RULE_LIMITS.singleWorkCap),
+  exchangeRatio: scoreValueSchema(SEASON_RULE_LIMITS.exchangeRatio),
+  reviewThreshold: scoreValueSchema(SEASON_RULE_LIMITS.reviewThreshold),
   dailyQuotaEnabled: t.Boolean(),
 })
 
@@ -76,6 +98,43 @@ export const UpdateRuleCardBody = t.Object({
     visible: t.Optional(t.Boolean()),
   })),
   announcement: t.Optional(AnnouncementInput),
+})
+
+/**
+ * 赛季主题整表替换。
+ *
+ * 约束与 `CreateSeasonBody.themes` 完全一致（单条 ≤ 50 字、≤ 20 条）：
+ * 主题既是赛季创建时的入参，也是这里单独维护的列表，两处口径必须一样，
+ * 否则「创建时能填、保存时被拒」这种自相矛盾的体验就会冒出来。
+ * trim / 去空 / 去重仍由 `normalizeThemes` 负责 —— 那是业务归一化，不是格式校验。
+ */
+export const UpdateSeasonThemesBody = t.Object({
+  themes: t.Array(t.String({ maxLength: 50 }), { maxItems: 20 }),
+})
+
+/**
+ * 企业合作配置的单条入参。
+ *
+ * 这里**只声明类型与必填**，不写长度上限、不写成 `t.Union([t.Literal(...)])`：
+ * TypeBox 的校验失败只能给出统一的 `VALIDATION_ERROR`，说不出是第几条的哪个字段，
+ * 而整表替换一次提交多行，前端必须拿到 `items[1].tier` 这样的定位才能改对。
+ * 所以枚举取值、1..255、≤16、金额区间全部放到 service 里校验，错误里带 field。
+ * 代价是超长字符串会先进入业务层再被拒 —— 一次请求的代价，换来可定位的错误。
+ */
+export const EnterpriseCooperationItemSchema = t.Object({
+  enterpriseName: t.String(),
+  tier: t.String(),
+  grade: t.Optional(t.Union([t.String(), t.Null()])),
+  totalAmount: t.Number(),
+  managementFee: t.Number(),
+  prizePoolAmount: t.Number(),
+  dataGrant: t.Optional(t.Union([t.String(), t.Null()])),
+  publicScope: t.String(),
+  status: t.String(),
+})
+
+export const UpdateEnterpriseCooperationsBody = t.Object({
+  items: t.Array(EnterpriseCooperationItemSchema),
 })
 
 export const UpdateOrganizersBody = t.Object({
@@ -137,6 +196,9 @@ export type UpdateSeasonBody = typeof UpdateSeasonBody.static
 export type UpdateScheduleBody = typeof UpdateScheduleBody.static
 export type UpdateRulesBody = typeof UpdateRulesBody.static
 export type UpdateRuleCardBody = typeof UpdateRuleCardBody.static
+export type UpdateSeasonThemesBody = typeof UpdateSeasonThemesBody.static
+export type EnterpriseCooperationItemInput = typeof EnterpriseCooperationItemSchema.static
+export type UpdateEnterpriseCooperationsBody = typeof UpdateEnterpriseCooperationsBody.static
 export type UpdateOrganizersBody = typeof UpdateOrganizersBody.static
 export type CloneSeasonBody = typeof CloneSeasonBody.static
 export type AnnouncementBody = typeof AnnouncementBody.static

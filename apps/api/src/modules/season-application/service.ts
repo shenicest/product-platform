@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, like, or } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, like, or } from 'drizzle-orm'
 import {
   ApplicationVisibility,
   SeasonApplicationStatus,
@@ -100,6 +100,16 @@ export class SeasonApplicationService {
     return rows[0]
   }
 
+  /** 同 {@link getRow}，但缺行时返回 null —— 选手 DTO 用它取联系方式，不该因此 404。 */
+  private async findApplication(applicationId: number): Promise<ApplicationRow | null> {
+    const rows = await this.db
+      .select()
+      .from(seasonApplications)
+      .where(eq(seasonApplications.id, applicationId))
+      .limit(1)
+    return rows[0] ?? null
+  }
+
   private async applicant(userId: string) {
     const profile = await this.users.getPublicProfile(userId)
     return {
@@ -109,7 +119,21 @@ export class SeasonApplicationService {
     }
   }
 
-  private async participantDto(row: ParticipantRow) {
+  /**
+   * 选手 DTO（主办方视角）。
+   *
+   * 除选手本身外还带三块「人工拉群」必须的信息：
+   *   · `contact` —— 主办方要拿着微信去加人，掩码版没有意义；
+   *   · `reviewedAt` —— 表里的「通过时间」取自报名审核时间，不是选手行创建时间；
+   *   · `wechatInvitedByUser` —— 表里的「记录人」要显示昵称与头像，光有 userId 不够。
+   *
+   * 三块都是**同一批授权读者**（赛季主办方 / 平台管理员）在 `listParticipants`
+   * 里已经过 `assertSeasonAccess` 之后才拿到的，不会外泄给选手本人。
+   */
+  private async participantDto(row: ParticipantRow, application?: ApplicationRow | null) {
+    // 列表路径会一次性把整批报名捞好传进来（避免 N+1）；单条路径（微信状态流转、
+    // 退出赛季）自己补一次查询。
+    const app = application === undefined ? await this.findApplication(row.applicationId) : application
     return {
       id: row.id,
       seasonId: row.seasonId,
@@ -124,6 +148,11 @@ export class SeasonApplicationService {
       withdrawnBy: row.withdrawnBy,
       withdrawReason: row.withdrawReason,
       applicant: await this.applicant(row.userId),
+      contact: app ? decrypt(app) : null,
+      reviewedAt: iso(app?.reviewedAt),
+      wechatInvitedByUser: row.wechatInvitedBy
+        ? await this.applicant(row.wechatInvitedBy)
+        : null,
       createdAt: iso(row.createdAt)!,
       updatedAt: iso(row.updatedAt)!,
     }
@@ -480,8 +509,17 @@ export class SeasonApplicationService {
         .offset(offset),
       this.db.select({ value: count() }).from(seasonParticipants).where(where),
     ])
+    // 一页选手的联系方式与审核时间都在报名行上，整批取一次，别在 DTO 里逐行查。
+    const applicationsById = new Map<number, ApplicationRow>()
+    if (rows.length > 0) {
+      const applications = await this.db
+        .select()
+        .from(seasonApplications)
+        .where(inArray(seasonApplications.id, rows.map((row) => row.applicationId)))
+      for (const application of applications) applicationsById.set(application.id, application)
+    }
     return {
-      items: await Promise.all(rows.map((row) => this.participantDto(row))),
+      items: await Promise.all(rows.map((row) => this.participantDto(row, applicationsById.get(row.applicationId) ?? null))),
       page,
       pageSize,
       total: totals[0]?.value ?? 0,

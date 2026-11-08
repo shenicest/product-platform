@@ -5,8 +5,11 @@ import { db } from '../../db'
 import { onBoomlandError } from '../boomland-shared'
 import {
   ChallengeIdParams,
+  ChallengeResourceIdParams,
   CreateChallengeBody,
   ListSeasonChallengesQuery,
+  PatchChallengeResourceBody,
+  ReplaceChallengeResourcesBody,
   SeasonChallengesParams,
   UpdateChallengeBody,
 } from './model'
@@ -76,4 +79,23 @@ export const challengeModule = new Elysia()
     auth: true,
     params: ChallengeIdParams,
     detail: { summary: 'Archive a challenge', tags: ['Challenge'] },
+  })
+  // 资源清单：整表替换 + 单条更新。路径前缀放在 `/challenges` 下而不是嵌进
+  // `/challenges/:id/resources/:resourceId` —— 单条更新只靠资源 id 就能定位命题，
+  // 少一段参数，前端改状态下拉框时也不用同时持有命题 id。
+  .put('/challenges/:id/resources', async ({ user, params, body }) => {
+    return challengeService.replaceResources(params.id, user.userId, body)
+  }, {
+    auth: true,
+    params: ChallengeIdParams,
+    body: ReplaceChallengeResourcesBody,
+    detail: { summary: 'Replace a challenge resource list', tags: ['Challenge'] },
+  })
+  .patch('/challenges/resources/:id', async ({ user, params, body }) => {
+    return challengeService.patchResource(params.id, user.userId, body)
+  }, {
+    auth: true,
+    params: ChallengeResourceIdParams,
+    body: PatchChallengeResourceBody,
+    detail: { summary: 'Update one challenge resource', tags: ['Challenge'] },
   })

@@ -445,6 +445,44 @@ describe('BoomLand pre-start season flow', () => {
     expect(withdrawnBlocked.status).toBe(409)
   })
 
+  it('exposes the contact, review time, and recorder the manual group invite page needs', async () => {
+    // 拉群页要拿着微信去加人，所以列表里必须给**未掩码**的联系方式 ——
+    // 与 `listSeasonApplications` 的 `contactMasked` 不同，这一份只给
+    // 已过 `assertSeasonAccess` 的赛季主办方 / 平台管理员看。
+    const list = await call('GET', `/seasons/${seasonId}/participants`, operatorToken)
+    expect(list.status).toBe(200)
+    const items = (await list.json() as {
+      items: Array<{
+        userId: string
+        contact: { wechat?: string; phone?: string } | null
+        reviewedAt: string | null
+        wechatInvitedByUser: { userId: string; name: string | null } | null
+        wechatInvitedAt: string | null
+        wechatStatus: string
+      }>
+    }).items
+
+    // APPLICANT_3 上面刚被推到 joined：联系方式来自它的报名，审核时间非空，
+    // 记录人是点「邀请」的那位操作员。
+    const invited = items.find((item) => item.userId === APPLICANT_3)
+    expect(invited).toBeDefined()
+    expect(invited!.wechatStatus).toBe('joined')
+    expect(invited!.contact).toEqual({ wechat: 'wx-third' })
+    expect(invited!.reviewedAt).not.toBeNull()
+    expect(invited!.wechatInvitedByUser).toMatchObject({ userId: OPERATOR })
+    expect(invited!.wechatInvitedAt).not.toBeNull()
+
+    // 从未被邀请过的选手：记录人两个字段都是 null，页面据此显示「—」。
+    const neverInvited = items.find((item) => item.userId === APPLICANT)
+    expect(neverInvited).toBeDefined()
+    expect(neverInvited!.wechatInvitedByUser).toBeNull()
+    expect(neverInvited!.wechatInvitedAt).toBeNull()
+
+    // 非主办方读不到这份名单（含联系方式），必须 403。
+    const forbidden = await call('GET', `/seasons/${seasonId}/participants`, applicant2Token)
+    expect(forbidden.status).toBe(403)
+  })
+
   it('rejects modifying a season after it is cancelled', async () => {
     const cancelled = await call('POST', `/seasons/${seasonId}/cancel`, operatorToken, { reason: '测试取消' })
     expect(cancelled.status).toBe(200)

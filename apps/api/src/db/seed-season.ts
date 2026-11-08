@@ -2,6 +2,7 @@ import { and, eq, inArray, ne } from 'drizzle-orm'
 import { db } from './index'
 import {
   auditLogs,
+  challengeResources,
   challenges,
   organizerOrgMembers,
   organizerOrgs,
@@ -13,6 +14,7 @@ import {
   seasonParticipants,
   seasonPointPools,
   seasonRuleCardItems,
+  seasonEnterpriseCooperations,
   seasonVerifierGrants,
   seasons,
   talentProfiles,
@@ -23,12 +25,17 @@ import { encryptBoomlandContact } from '../lib/boomland-contact-encryption'
 import {
   ApplicationVisibility,
   BudgetStatus,
+  ChallengeResourceKind,
+  ChallengeResourceStatus,
   ChallengeStatus,
+  ChallengeType,
+  EnterpriseCooperationStatus,
+  EnterpriseCooperationTier,
+  EnterprisePublicScope,
   PointAllocationStatus,
   Role,
-  SEASON_REQUIRED_RULE_CARD_KEYS,
-  SEASON_REQUIRED_RULE_CARD_LABELS,
   SEASON_RULE_DEFAULTS,
+  seasonRequiredRuleCardItems,
   SeasonApplicationStatus,
   SeasonParticipantStatus,
   SeasonStatus,
@@ -87,6 +94,23 @@ type SeasonTypeValue = (typeof SeasonType)[keyof typeof SeasonType]
 type BudgetStatusValue = (typeof BudgetStatus)[keyof typeof BudgetStatus]
 type DemoAccountKey = keyof typeof DEMO_USER_IDS
 
+/**
+ * 企业合作配置的一行（产品文档 CHG-006）。
+ *
+ * 三项金额分开写：管理费不进选手奖励账本，所以不做「总费用 − 管理费」派生。
+ */
+type CooperationSeed = {
+  enterpriseName: string
+  tier: (typeof EnterpriseCooperationTier)[keyof typeof EnterpriseCooperationTier]
+  grade: string | null
+  totalAmount: number
+  managementFee: number
+  prizePoolAmount: number
+  dataGrant: string | null
+  publicScope: (typeof EnterprisePublicScope)[keyof typeof EnterprisePublicScope]
+  status: (typeof EnterpriseCooperationStatus)[keyof typeof EnterpriseCooperationStatus]
+}
+
 type SeasonScheduleSeed = {
   applyOpen: Date
   applyClose: Date
@@ -115,6 +139,8 @@ type SeasonSeed = {
   organizers: BoomlandOrgKey[]
   /** 预算：历史版本 + 当前 active 版本（元） */
   budgets: Array<{ totalAmount: number; status: BudgetStatusValue; reason: string }>
+  /** 企业合作配置（主办方后台「企业合作配置」表格的数据源） */
+  cooperations: CooperationSeed[]
   pointPool: {
     totalPoints: number
     scorers: Array<{ account: DemoAccountKey; amount: number; usedAmount: number }>
@@ -153,6 +179,65 @@ const SEASONS: SeasonSeed[] = [
       { totalAmount: 40_000, status: BudgetStatus.Superseded, reason: '赛季发布预算 v1' },
       { totalAmount: 60_000, status: BudgetStatus.Active, reason: '追加过程奖励池（预算 v2）' },
     ],
+    // 与 CHALLENGES.AI4BBS 的 enterpriseName 对齐：命题的企业归属靠这个字符串关联，
+    // 两边写同一份名字，后台表格才和命题库对得上。
+    cooperations: [
+      {
+        enterpriseName: '曜石储能',
+        tier: EnterpriseCooperationTier.CoCreation,
+        grade: '金标',
+        totalAmount: 80_000,
+        managementFee: 12_000,
+        prizePoolAmount: 30_000,
+        dataGrant: '3 个工商业站点的历史电表数据（脱敏，可对外展示结论）',
+        publicScope: EnterprisePublicScope.Public,
+        status: EnterpriseCooperationStatus.Signed,
+      },
+      {
+        enterpriseName: '云杉算力',
+        tier: EnterpriseCooperationTier.Cooperation,
+        grade: '银标',
+        totalAmount: 40_000,
+        managementFee: 6_000,
+        prizePoolAmount: 12_000,
+        dataGrant: '边缘推理设备与镜像环境（仅限参赛项目使用）',
+        publicScope: EnterprisePublicScope.Public,
+        status: EnterpriseCooperationStatus.Signed,
+      },
+      {
+        enterpriseName: '青禾物流',
+        tier: EnterpriseCooperationTier.Cooperation,
+        grade: '银标',
+        totalAmount: 35_000,
+        managementFee: 5_000,
+        prizePoolAmount: 10_000,
+        dataGrant: '1 个退货仓的现场与历史判例数据（签 NDA）',
+        publicScope: EnterprisePublicScope.Public,
+        status: EnterpriseCooperationStatus.Signed,
+      },
+      {
+        enterpriseName: '北纬研究院',
+        tier: EnterpriseCooperationTier.ResourcePartner,
+        grade: null,
+        totalAmount: 0,
+        managementFee: 0,
+        prizePoolAmount: 0,
+        dataGrant: '方法论与部分非公开电力数据源（签 NDA）',
+        publicScope: EnterprisePublicScope.Anonymous,
+        status: EnterpriseCooperationStatus.Intent,
+      },
+      {
+        enterpriseName: '合作社群',
+        tier: EnterpriseCooperationTier.Intent,
+        grade: null,
+        totalAmount: 0,
+        managementFee: 0,
+        prizePoolAmount: 0,
+        dataGrant: null,
+        publicScope: EnterprisePublicScope.Anonymous,
+        status: EnterpriseCooperationStatus.Intent,
+      },
+    ],
     pointPool: {
       totalPoints: 1_000,
       scorers: [
@@ -189,6 +274,30 @@ const SEASONS: SeasonSeed[] = [
     awardingEntity: 'BoomLand 组委会',
     organizers: ['committee'],
     budgets: [{ totalAmount: 30_000, status: BudgetStatus.Active, reason: '黑客松奖金池' }],
+    cooperations: [
+      {
+        enterpriseName: 'BoomLand 组委会',
+        tier: EnterpriseCooperationTier.CoCreation,
+        grade: '金标',
+        totalAmount: 50_000,
+        managementFee: 8_000,
+        prizePoolAmount: 30_000,
+        dataGrant: '现场云资源额度与导师团（仅限现场使用）',
+        publicScope: EnterprisePublicScope.Public,
+        status: EnterpriseCooperationStatus.Signed,
+      },
+      {
+        enterpriseName: '云杉算力',
+        tier: EnterpriseCooperationTier.ResourcePartner,
+        grade: null,
+        totalAmount: 0,
+        managementFee: 0,
+        prizePoolAmount: 0,
+        dataGrant: '边缘算力设备 10 台（现场借用）',
+        publicScope: EnterprisePublicScope.Anonymous,
+        status: EnterpriseCooperationStatus.Intent,
+      },
+    ],
     pointPool: {
       totalPoints: 500,
       scorers: [{ account: 'scorerA', amount: 120, usedAmount: 0 }],
@@ -221,6 +330,30 @@ const SEASONS: SeasonSeed[] = [
     awardingEntity: 'SheNicest',
     organizers: ['committee'],
     budgets: [{ totalAmount: 20_000, status: BudgetStatus.Active, reason: '第二季首发预算' }],
+    cooperations: [
+      {
+        enterpriseName: 'SheNicest',
+        tier: EnterpriseCooperationTier.CoCreation,
+        grade: '金标',
+        totalAmount: 20_000,
+        managementFee: 3_000,
+        prizePoolAmount: 12_000,
+        dataGrant: '2 家真实客户对接与品牌曝光位',
+        publicScope: EnterprisePublicScope.Public,
+        status: EnterpriseCooperationStatus.Signed,
+      },
+      {
+        enterpriseName: '合作社群',
+        tier: EnterpriseCooperationTier.Intent,
+        grade: null,
+        totalAmount: 0,
+        managementFee: 0,
+        prizePoolAmount: 0,
+        dataGrant: null,
+        publicScope: EnterprisePublicScope.Anonymous,
+        status: EnterpriseCooperationStatus.Intent,
+      },
+    ],
     pointPool: {
       totalPoints: 400,
       scorers: [{ account: 'scorerA', amount: 100, usedAmount: 0 }],
@@ -231,39 +364,47 @@ const SEASONS: SeasonSeed[] = [
   },
 ]
 
-const RULE_CARD_VALUES: Record<string, (season: SeasonSeed) => string> = {
-  max_project_challenges: () => `${rules.maxChallengesPerProject} 张牌桌（平行，无主次）`,
-  max_projects_per_participant: () => `${rules.maxProjectsPerParticipant} 个项目`,
-  max_core_members: () => `${rules.maxCoreMembers} 人`,
-  single_work_cap: () => `${rules.singleWorkCap} 分`,
-  exchange_ratio: () => '1 积分 = ¥1',
-  review_threshold: () => `单作品超过 ${rules.reviewThreshold} 分需复核`,
-  work_deadline: (s) => `以赛程「作品截止」为准：${isoText(s.schedule.workDeadline)} (UTC)`,
-  score_deadline: (s) => `以赛程「评分截止」为准：${isoText(s.schedule.scoreDeadline)} (UTC)`,
-  point_pool_and_awards: (s) => {
-    const active = s.budgets.find((budget) => budget.status === BudgetStatus.Active)
-    return `本季过程奖励池 ¥${(active?.totalAmount ?? 0).toLocaleString('en-US')}，积分池 ${s.pointPool.totalPoints} 分，按积分与 R 等级结算。`
-  },
-  submission_requirements: () => '按阶段提交可运行作品、说明文档与验证材料；逾期不计分。',
-  review_process: () => '阶段评审由评委滚动评分，赛季结束进行最终评审。',
-  milestone_rewards: () => '完成 M1–M4 四个阶段里程碑，按完成情况获得对应积分。',
-  scoring_rewards: () => '根据评审结果获得 20–200 积分，单次评分上限见「单次评分上限」。',
-}
+// 规则卡的文案不再由 seed 手写：必要条目的 label/value 是赛季配置的派生物，
+// 生成逻辑在 `@shenicest/shared` 的 `seasonRequiredRuleCardItems` 里（后端读接口
+// 与写入接口都用同一份），seed 也走它，演示数据才不会和真实接口对不上。
 
 // ---------------------------------------------------------------------------
 // 命题
 // ---------------------------------------------------------------------------
 
 type ChallengeStatusValue = (typeof ChallengeStatus)[keyof typeof ChallengeStatus]
+type ChallengeTypeValue = (typeof ChallengeType)[keyof typeof ChallengeType]
+type ResourceKindValue = (typeof ChallengeResourceKind)[keyof typeof ChallengeResourceKind]
+type ResourceStatusValue = (typeof ChallengeResourceStatus)[keyof typeof ChallengeResourceStatus]
+
+/** 资源清单的一条（`challenge_resources`）。`sortOrder` 由数组下标决定，不手写。 */
+type ChallengeResourceSeed = {
+  kind: ResourceKindValue
+  title: string
+  quantity?: string | null
+  conditions?: string | null
+  owner?: string | null
+  status?: ResourceStatusValue
+}
 
 type ChallengeSeed = {
   title: string
   status: ChallengeStatusValue
+  /** 四类命题之一；草稿可以先不分类。 */
+  type?: ChallengeTypeValue | null
+  /** 必须取自本季 `themes`（见上方 SEASONS 定义）。 */
+  theme?: string | null
+  /** 出题企业，与 `season_enterprise_cooperations.enterprise_name` 同一字符串。 */
+  enterpriseName?: string | null
+  /** 命题容量：最多几个参赛项目；null = 不限。 */
+  capacity?: number | null
   realProblem: string
   targetCustomer: string
   minimumDeliverable: string
   resourceCommitment: string
   resultEvidenceRules: string
+  /** 资源兑现清单（CHG-004）：主办方逐条跟踪的承诺，不是五件套里的那段摘要文本。 */
+  resources?: ChallengeResourceSeed[]
 }
 
 const CHALLENGES: Record<string, ChallengeSeed[]> = {
@@ -271,87 +412,269 @@ const CHALLENGES: Record<string, ChallengeSeed[]> = {
     {
       title: '工商业储能的第一张订单',
       status: ChallengeStatus.Published,
+      type: ChallengeType.CommercialValidation,
+      theme: '新型储能基建',
+      enterpriseName: '曜石储能',
+      capacity: 6,
       realProblem: '园区储能柜装完没人运维，峰谷套利策略也跑不起来，业主不敢复购。',
       targetCustomer: '长三角制造业园区与工商业业主（曜石储能现有客户池）。',
       minimumDeliverable: '一套可跑在真实电表数据上的充放电策略 + 运维告警面板，覆盖 1 个真实站点。',
       resourceCommitment: '曜石储能提供 3 个站点历史数据、现场调试窗口与 1 名电气工程师对接。',
       resultEvidenceRules: 'R3：站点连续运行 14 天并出具业主盖章的试用确认；R4：签署正式采购合同。',
+      resources: [
+        {
+          kind: ChallengeResourceKind.Database,
+          title: '3 个工商业站点历史电表数据',
+          quantity: '3 个站点 / 近 12 个月',
+          conditions: '脱敏后使用，结论可对外，原始数据不得外传',
+          owner: '李二（曜石储能）',
+          status: ChallengeResourceStatus.Provided,
+        },
+        {
+          kind: ChallengeResourceKind.ExpertChannel,
+          title: '电气工程师现场对接',
+          quantity: '1 名工程师 / 每周 4 小时',
+          conditions: '需提前 3 天预约',
+          owner: '李二（曜石储能）',
+          status: ChallengeResourceStatus.Provided,
+        },
+        {
+          kind: ChallengeResourceKind.ToolVenue,
+          title: '园区调试窗口',
+          quantity: '2 次现场调试',
+          conditions: '进园需报备，由业主陪同',
+          owner: '张一（组委会）',
+          status: ChallengeResourceStatus.Committed,
+        },
+      ],
     },
     {
       title: '边缘算力进园区',
       status: ChallengeStatus.Published,
+      type: ChallengeType.SolutionPoc,
+      theme: '全球 AI 基建',
+      enterpriseName: '云杉算力',
+      capacity: 4,
       realProblem: 'AI 质检模型在云上推理成本过高、延迟不稳，工厂不愿上。',
       targetCustomer: '3C 代工厂质检部门（云杉算力已谈下 2 家试点）。',
       minimumDeliverable: '在边缘盒子上跑通 1 条产线的实时质检推理，延迟 < 200ms。',
       resourceCommitment: '云杉算力提供边缘设备、镜像环境与产线测试时段。',
       resultEvidenceRules: 'R3：试点产线出具验收记录；R5：按月付费的算力订阅合同。',
+      resources: [
+        {
+          kind: ChallengeResourceKind.ToolVenue,
+          title: '边缘推理设备',
+          quantity: '5 台',
+          conditions: '赛季结束后归还，损坏按成本价赔偿',
+          owner: '云杉算力商务',
+          status: ChallengeResourceStatus.Provided,
+        },
+        {
+          kind: ChallengeResourceKind.ExpertChannel,
+          title: '产线测试时段',
+          quantity: '累计 8 小时',
+          conditions: '需与工厂排产错峰',
+          owner: '云杉算力现场负责人',
+          status: ChallengeResourceStatus.Applicable,
+        },
+      ],
     },
     {
       title: '仓储 AI 质检',
       status: ChallengeStatus.Published,
+      type: ChallengeType.UpstreamDownstream,
+      theme: '新生产关系的人本基建',
+      enterpriseName: '青禾物流',
+      capacity: 5,
       realProblem: '退货仓人工质检慢且标准不一，旺季积压严重。',
       targetCustomer: '青禾物流的电商退货仓（日均 2 万件）。',
       minimumDeliverable: '基于摄像头/扫码枪的质检辅助工具，覆盖 3 个核心品类。',
       resourceCommitment: '青禾物流开放 1 个退货仓的现场与历史判例数据。',
       resultEvidenceRules: 'R3：质检效率提升数据报告（双方签字）；R4：扩展到 3 个仓库。',
+      resources: [
+        {
+          kind: ChallengeResourceKind.RealDemand,
+          title: '退货仓现场与历史判例',
+          quantity: '1 个仓 / 6 个月判例',
+          conditions: '现场拍摄需避开用户个人信息',
+          owner: '王知微（青禾物流）',
+          status: ChallengeResourceStatus.Provided,
+        },
+        {
+          kind: ChallengeResourceKind.Funding,
+          title: '试点期工具采购预算',
+          quantity: '¥15,000',
+          conditions: '按验收节点分批支付',
+          owner: '青禾物流财务',
+          status: ChallengeResourceStatus.Committed,
+        },
+      ],
     },
     {
       title: 'AI 基建用电地图',
       status: ChallengeStatus.Published,
+      type: ChallengeType.DataResearch,
+      theme: '全球 AI 基建',
+      enterpriseName: '北纬研究院',
+      capacity: null,
       realProblem: '数据中心选址缺少公开的电力容量与绿电比例数据，尽调成本高。',
       targetCustomer: 'AI 基建投资方与 IDC 运营商。',
       minimumDeliverable: '一个覆盖 2 个试点城市的用电地图 MVP，含容量估算方法说明。',
       resourceCommitment: '北纬研究院提供方法论与部分非公开数据源（签 NDA）。',
       resultEvidenceRules: 'R2：方法论文档被 1 家机构采纳引用；R4：付费数据订阅。',
+      resources: [
+        {
+          kind: ChallengeResourceKind.ExpertChannel,
+          title: '研究院方法论对接',
+          quantity: '每月 1 次评审',
+          conditions: '需签 NDA 后方可接触非公开数据源',
+          owner: '北纬研究院研究员',
+          status: ChallengeResourceStatus.Applicable,
+        },
+        {
+          kind: ChallengeResourceKind.Database,
+          title: '部分非公开电力数据',
+          quantity: '2 个试点城市',
+          conditions: '签 NDA，仅限本赛季内使用',
+          owner: '北纬研究院数据组',
+          status: ChallengeResourceStatus.Committed,
+        },
+      ],
     },
     {
       title: '园区能耗账单拆解',
       status: ChallengeStatus.Closed,
+      type: ChallengeType.CommercialValidation,
+      theme: '新型储能基建',
+      enterpriseName: '曜石储能',
+      capacity: 3,
       realProblem: '园区每月电费账单科目混杂，运营方说不清钱花在哪，节能方案无从下手。',
       targetCustomer: '园区物业管理方与能源托管服务商。',
       minimumDeliverable: '把一份真实账单拆成设备/时段/功率三维度并给出 Top3 浪费项的报告模板。',
       resourceCommitment: '曜石储能提供 6 个月脱敏账单与 1 次线上讲解。',
       resultEvidenceRules: 'R1：报告被物业采用；R2：节能改造方案进入报价。',
+      resources: [
+        {
+          kind: ChallengeResourceKind.Database,
+          title: '6 个月脱敏账单',
+          quantity: '1 个园区 / 6 个月',
+          conditions: '已过期，仅作历史参考',
+          owner: '李二（曜石储能）',
+          status: ChallengeResourceStatus.Used,
+        },
+      ],
     },
     {
       title: '（草稿）储能运维 SOP 知识库',
       status: ChallengeStatus.Draft,
+      // 草稿允许先不分类：类型与主题是发布前的整理动作，不是创建门槛。
+      type: null,
+      theme: null,
+      enterpriseName: '曜石储能',
+      capacity: null,
       realProblem: '运维现场经验散落在师傅脑子里，新人上手周期长。',
       targetCustomer: '储能运维服务商的一线运维人员。',
       minimumDeliverable: '一个可搜索的 SOP 知识库 MVP，覆盖 20 条高频故障。',
       resourceCommitment: '曜石储能提供故障工单数据（脱敏）。',
       resultEvidenceRules: 'R2：新人上手周期下降数据。',
+      resources: [],
     },
   ],
   'H03-SH': [
     {
       title: '48 小时做出一个能卖的 AI 工具',
       status: ChallengeStatus.Published,
+      type: ChallengeType.CommercialValidation,
+      theme: 'AI 应用',
+      enterpriseName: 'BoomLand 组委会',
+      capacity: 20,
       realProblem: '黑客松作品常常止步于 Demo，缺少真实买家验证。',
       targetCustomer: '现场评委与受邀的 5 家企业代表。',
       minimumDeliverable: '可现场演示的 MVP + 至少 1 份付费意向书（LOI）。',
       resourceCommitment: '主办方提供云资源额度与现场导师团。',
       resultEvidenceRules: 'R2：现场演示评分；R3：赛后 14 天内签署 LOI 或试用协议。',
+      resources: [
+        {
+          kind: ChallengeResourceKind.Funding,
+          title: '云资源额度',
+          quantity: '每队 ¥2,000',
+          conditions: '仅限本赛季模型与算力账单',
+          owner: '组委会运营',
+          status: ChallengeResourceStatus.Provided,
+        },
+        {
+          kind: ChallengeResourceKind.ExpertChannel,
+          title: '现场导师团',
+          quantity: '6 位导师 / 2 天',
+          conditions: '现场排队，每人每次 20 分钟',
+          owner: '组委会运营',
+          status: ChallengeResourceStatus.Provided,
+        },
+      ],
     },
   ],
   'PROTO-S2': [
     {
       title: '把一次真实交付做成可复用服务',
       status: ChallengeStatus.Published,
+      type: ChallengeType.UpstreamDownstream,
+      theme: '开发者工具',
+      enterpriseName: 'SheNicest',
+      capacity: 10,
       realProblem: '早期团队的交付全靠人肉，第二次客户来了还得从零开始。',
       targetCustomer: '有稳定交付量但缺少标准化的 2–10 人小团队。',
       minimumDeliverable: '一套可复用的交付包（模板 + checklist + 演示稿），并在真实客户上跑通一次。',
       resourceCommitment: 'SheNicest 提供 2 家真实客户对接与品牌曝光位。',
       resultEvidenceRules: 'R2：客户书面反馈；R3：第二次交付复用率 > 50% 的证据。',
+      resources: [
+        {
+          kind: ChallengeResourceKind.RealDemand,
+          title: '2 家真实客户对接',
+          quantity: '2 家',
+          conditions: '由 SheNicest 牵线，交付范围需双方确认',
+          owner: 'SheNicest 运营',
+          status: ChallengeResourceStatus.Committed,
+        },
+        {
+          kind: ChallengeResourceKind.Partnership,
+          title: '赛季品牌曝光位',
+          quantity: '1 个席位',
+          conditions: '需在交付完成后提供对外可用的案例',
+          owner: 'SheNicest 市场',
+          status: ChallengeResourceStatus.Applicable,
+        },
+      ],
     },
     {
       title: 'AI 时代的个人知识库',
       status: ChallengeStatus.Published,
+      type: ChallengeType.SolutionPoc,
+      theme: 'AI 应用',
+      enterpriseName: null,
+      capacity: null,
       realProblem: '个人笔记越记越多，却检索不到、用不上，知识没有变成行动。',
       targetCustomer: '重度记录的知识工作者与独立开发者。',
       minimumDeliverable: '一个能把笔记自动归类并反问用户的 MVP，覆盖 200 条真实笔记。',
       resourceCommitment: '主办方提供模型额度与 20 位内测用户。',
       resultEvidenceRules: 'R2：7 日留存数据报告；R3：付费订阅。',
+      resources: [
+        {
+          kind: ChallengeResourceKind.Funding,
+          title: '模型调用额度',
+          quantity: '¥5,000 等值',
+          conditions: '仅限本赛季内使用',
+          owner: '组委会运营',
+          status: ChallengeResourceStatus.Committed,
+        },
+        {
+          kind: ChallengeResourceKind.RealDemand,
+          title: '20 位内测用户',
+          quantity: '20 人',
+          conditions: '需提供内测反馈问卷',
+          owner: '组委会运营',
+          status: ChallengeResourceStatus.Applicable,
+        },
+      ],
     },
   ],
 }
@@ -639,6 +962,9 @@ async function grantRoles() {
 
 async function seedSharedUsers() {
   const profiles = [
+    // 运营本人也要有资料行：选手的 `wechat_invited_by` 记的是他，拉群页的
+    // 「记录人」列要显示昵称而不是裸 userId（缺行时前端只能退回 id）。
+    { id: OPERATOR_USER_ID, nickname: '李想' },
     { id: DEMO_USER_IDS.organizer, nickname: '张一' },
     { id: DEMO_USER_IDS.yaoshi, nickname: '李二' },
     { id: DEMO_USER_IDS.qinghe, nickname: '王知微' },
@@ -743,50 +1069,99 @@ async function upsertSeason(seed: SeasonSeed, orgIds: Record<BoomlandOrgKey, num
     await db.insert(seasonOrganizers).values({ seasonId, orgId: orgIds[key] })
   }
 
-  // 规则卡：必要项全量 upsert
-  for (const [index, key] of SEASON_REQUIRED_RULE_CARD_KEYS.entries()) {
-    const value = RULE_CARD_VALUES[key]?.(seed)
-    if (!value) continue
+  // 规则卡：必要项按赛季配置生成后全量 upsert（文案不手写，与读接口同一份来源）
+  const ruleCardItems = seasonRequiredRuleCardItems({
+    rules,
+    schedule: {
+      applyOpen: seed.schedule.applyOpen.toISOString(),
+      applyClose: seed.schedule.applyClose.toISOString(),
+      startAt: seed.schedule.startAt.toISOString(),
+      teamDeadline: seed.schedule.teamDeadline.toISOString(),
+      challengeFreezeAt: seed.schedule.challengeFreezeAt.toISOString(),
+      workDeadline: seed.schedule.workDeadline.toISOString(),
+      scoreDeadline: seed.schedule.scoreDeadline.toISOString(),
+      settleDate: seed.schedule.settleDate.toISOString(),
+    },
+  })
+  for (const [index, item] of ruleCardItems.entries()) {
     await db
       .insert(seasonRuleCardItems)
       .values({
         seasonId,
-        key,
-        label: SEASON_REQUIRED_RULE_CARD_LABELS[key],
-        value,
+        key: item.key,
+        label: item.label,
+        value: item.value,
         required: true,
         visible: true,
         sortOrder: index,
       })
       .onDuplicateKeyUpdate({
         set: {
-          value,
-          label: SEASON_REQUIRED_RULE_CARD_LABELS[key],
+          label: item.label,
+          value: item.value,
           required: true,
           visible: true,
           sortOrder: index,
         },
       })
   }
-  // 清理旧的非必要条目，保证规则卡与上面定义一致
-  await db
-    .delete(seasonRuleCardItems)
-    .where(and(eq(seasonRuleCardItems.seasonId, seasonId), eq(seasonRuleCardItems.required, false)))
+  // 清理旧的可选条目与已从必要项移除的历史 key，保证规则卡与上面定义一致
+  const currentKeys = new Set<string>(ruleCardItems.map((item) => item.key))
+  const existingRows = await db
+    .select({ id: seasonRuleCardItems.id, key: seasonRuleCardItems.key, required: seasonRuleCardItems.required })
+    .from(seasonRuleCardItems)
+    .where(eq(seasonRuleCardItems.seasonId, seasonId))
+  const staleIds = existingRows
+    .filter((row) => !row.required || !currentKeys.has(row.key))
+    .map((row) => row.id)
+  if (staleIds.length > 0) {
+    await db.delete(seasonRuleCardItems).where(inArray(seasonRuleCardItems.id, staleIds))
+  }
 
   return seasonId
 }
 
 async function seedChallenges(seed: SeasonSeed, seasonId: number) {
-  await db.delete(challenges).where(eq(challenges.seasonId, seasonId))
+  // 命题整表重建：`challenges` 没有 (season, title) 唯一键，没法按 key upsert，
+  // 所以沿用既有做法 —— 先按赛季删干净再插。资源清单是子表，跟着命题一起删。
+  const existing = await db
+    .select({ id: challenges.id })
+    .from(challenges)
+    .where(eq(challenges.seasonId, seasonId))
+  if (existing.length > 0) {
+    await db.delete(challengeResources).where(
+      inArray(challengeResources.challengeId, existing.map((row) => row.id)),
+    )
+    await db.delete(challenges).where(eq(challenges.seasonId, seasonId))
+  }
   const list = CHALLENGES[seed.code] ?? []
   for (const [index, challenge] of list.entries()) {
-    await db.insert(challenges).values({
+    const { resources = [], ...fields } = challenge
+    const [result] = await db.insert(challenges).values({
       seasonId,
-      ...challenge,
+      ...fields,
+      type: fields.type ?? null,
+      theme: fields.theme ?? null,
+      enterpriseName: fields.enterpriseName ?? null,
+      capacity: fields.capacity ?? null,
       version: 1,
       createdBy: OPERATOR_USER_ID,
       createdAt: at(-34 * DAY + index * HOUR),
     })
+    if (resources.length > 0) {
+      await db.insert(challengeResources).values(
+        resources.map((resource, resourceIndex) => ({
+          challengeId: Number(result.insertId),
+          kind: resource.kind,
+          title: resource.title,
+          quantity: resource.quantity ?? null,
+          conditions: resource.conditions ?? null,
+          owner: resource.owner ?? null,
+          status: resource.status ?? ChallengeResourceStatus.Committed,
+          sortOrder: resourceIndex,
+        })),
+      )
+    }
   }
   const byStatus = list.reduce<Record<string, number>>((acc, challenge) => {
     acc[challenge.status] = (acc[challenge.status] ?? 0) + 1
@@ -795,7 +1170,39 @@ async function seedChallenges(seed: SeasonSeed, seasonId: number) {
   const summary = Object.entries(byStatus)
     .map(([status, count]) => `${status} x${count}`)
     .join(' / ')
-  console.log(`    ✓ ${list.length} challenges (${summary || 'none'})`)
+  const resourceCount = list.reduce((sum, challenge) => sum + (challenge.resources?.length ?? 0), 0)
+  console.log(`    ✓ ${list.length} challenges (${summary || 'none'}) / ${resourceCount} resource(s)`)
+}
+
+/**
+ * 企业合作配置：整表替换。
+ *
+ * 企业名 + 档位没有唯一键（同一企业可以有多条档位配置），所以按赛季整体重建，
+ * 与命题、预算的 seed 口径一致。
+ */
+async function seedCooperations(seed: SeasonSeed, seasonId: number) {
+  await db.delete(seasonEnterpriseCooperations).where(eq(seasonEnterpriseCooperations.seasonId, seasonId))
+  if (seed.cooperations.length > 0) {
+    await db.insert(seasonEnterpriseCooperations).values(
+      seed.cooperations.map((cooperation, index) => ({
+        seasonId,
+        enterpriseName: cooperation.enterpriseName,
+        tier: cooperation.tier,
+        grade: cooperation.grade,
+        totalAmount: cooperation.totalAmount,
+        managementFee: cooperation.managementFee,
+        prizePoolAmount: cooperation.prizePoolAmount,
+        dataGrant: cooperation.dataGrant,
+        publicScope: cooperation.publicScope,
+        status: cooperation.status,
+        sortOrder: index,
+      })),
+    )
+  }
+  const signed = seed.cooperations.filter(
+    (cooperation) => cooperation.status === EnterpriseCooperationStatus.Signed,
+  ).length
+  console.log(`    ✓ ${seed.cooperations.length} cooperation(s) (${signed} signed)`)
 }
 
 async function seedAnnouncements(seed: SeasonSeed, seasonId: number) {
@@ -1057,6 +1464,7 @@ async function main() {
     const seasonId = await upsertSeason(seed, orgIds)
     await seedConfig(seed, seasonId, orgIds)
     await seedChallenges(seed, seasonId)
+    await seedCooperations(seed, seasonId)
     await seedAnnouncements(seed, seasonId)
     await seedBudgets(seed, seasonId)
     const applications = await seedApplications(seed, seasonId)

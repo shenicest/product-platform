@@ -1,0 +1,1 @@
+ALTER TABLE `challenges` ADD `enterprise_name` varchar(255);

@@ -22,8 +22,8 @@ vi.mock('@/lib/organizer-api', () => ({
 const ORGANIZER_ORG = { id: 3, name: '储能联盟', memberCount: 4, isMember: true, createdAt: '2026-01-01T00:00:00.000Z' }
 
 const SEASONS = [
-  { id: 21, name: '2026 春季赛季', code: 'BL2026A' },
-  { id: 11, name: '2025 秋季赛季', code: 'BL2025B' },
+  { id: 21, name: '2026 春季赛季', code: 'BL2026A', status: 'active', approvedAt: '2026-01-01T00:00:00.000Z' },
+  { id: 11, name: '2025 秋季赛季', code: 'BL2025B', status: 'draft', approvedAt: null },
 ]
 
 const PREVIOUS_SEASON = {
@@ -91,6 +91,32 @@ describe('OrganizerHeader season picker', () => {
     renderHeader({ tab: 'budget', seasonId: 21 })
     await user.selectOptions(picker(), '11')
     expect(push).toHaveBeenCalledWith('/organizer/budget?season=11')
+  })
+
+  it('labels every season with its status in the dropdown', () => {
+    renderHeader()
+    expect(
+      within(picker()).getByRole('option', { name: '2026 春季赛季 · BL2026A · 进行中' }),
+    ).toBeInTheDocument()
+    expect(
+      within(picker()).getByRole('option', { name: '2025 秋季赛季 · BL2025B · 草稿' }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows “待批准” for an upcoming season without an approval, not a bare status', () => {
+    renderHeader({
+      seasons: [
+        { id: 31, name: '待批赛季', code: 'BL2027P', status: 'upcoming', approvedAt: null },
+      ],
+    })
+    expect(
+      within(picker()).getByRole('option', { name: '待批赛季 · BL2027P · 待批准' }),
+    ).toBeInTheDocument()
+  })
+
+  it('highlights the selected season status next to the picker', () => {
+    renderHeader({ seasonId: 11 })
+    expect(screen.getByLabelText('当前赛季状态：草稿')).toBeInTheDocument()
   })
 })
 

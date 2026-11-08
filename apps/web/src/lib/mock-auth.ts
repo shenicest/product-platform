@@ -13,6 +13,39 @@
 /** 构建期常量：只有非生产构建才允许出现 mock 切换器。 */
 export const MOCK_SWITCHER_ENABLED = process.env.NODE_ENV !== 'production'
 
+/**
+ * 切换器「已收起」的本地记忆键。
+ *
+ * 只存一个 UI 偏好（收起 / 展开），不存任何身份信息：当前身份始终以 cookie 与
+ * `/api/mock/users` 为准。刷新页面后浮层不该又铺开盖住右下角的内容，所以这个
+ * 偏好落在 localStorage 而不是组件 state 里。
+ */
+export const MOCK_SWITCHER_COLLAPSED_KEY = 'shenicest_mock_switcher_collapsed'
+
+/** 读取收起偏好；存储不可用（隐私模式等）时按「展开」处理。 */
+export function loadMockSwitcherCollapsed(
+  storage: Pick<Storage, 'getItem'> = window.localStorage,
+): boolean {
+  try {
+    return storage.getItem(MOCK_SWITCHER_COLLAPSED_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+/** 记住收起偏好。写失败不影响切换，所以静默吞掉异常。 */
+export function saveMockSwitcherCollapsed(
+  collapsed: boolean,
+  storage: Pick<Storage, 'setItem' | 'removeItem'> = window.localStorage,
+): void {
+  try {
+    if (collapsed) storage.setItem(MOCK_SWITCHER_COLLAPSED_KEY, '1')
+    else storage.removeItem(MOCK_SWITCHER_COLLAPSED_KEY)
+  } catch {
+    // 记不住就记不住：下次刷新回到展开状态而已。
+  }
+}
+
 /** `GET /api/mock/users` 里单个候选用户的摘要（后端契约，已冻结）。 */
 export interface MockUserSummary {
   key: string

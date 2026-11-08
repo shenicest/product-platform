@@ -33,6 +33,19 @@ import {
  * 弹窗背面是主办方后台外壳，不做焦点陷阱：Esc 与“取消”都能关闭，
  * 关闭后焦点回到触发按钮（由 Header 负责）。
  */
+
+/**
+ * 计分口径三项的输入转换：空串 = `null`（本季不计分），其余转数字。
+ *
+ * 不用 `Number('')`（= 0）是因为「留空」和「填 0」在语义上都表示不计分，
+ * 但留空必须是 `null`，否则输入框会被 `0` 填满，看起来像已经配了 0 分上限。
+ */
+function emptyOrNumber(raw: string): number | null {
+  const trimmed = raw.trim()
+  if (!trimmed) return null
+  return Number(trimmed)
+}
+
 export function SeasonDraftForm({
   value,
   onChange,
@@ -398,14 +411,15 @@ export function SeasonDraftForm({
           <FormField
             label="单次评分上限"
             htmlFor={id('rule-cap')}
+            hint="留空或填 0 表示本季不计分"
             error={errorOf('rules.singleWorkCap')}
           >
             <TextInput
               id={id('rule-cap')}
               name="singleWorkCap"
               type="number"
-              value={String(value.rules.singleWorkCap)}
-              onChange={(next) => setRule('singleWorkCap', Number(next))}
+              value={value.rules.singleWorkCap === null ? '' : String(value.rules.singleWorkCap)}
+              onChange={(next) => setRule('singleWorkCap', emptyOrNumber(next))}
               min={SEASON_RULE_LIMITS.singleWorkCap.min}
               max={SEASON_RULE_LIMITS.singleWorkCap.max}
             />
@@ -413,29 +427,31 @@ export function SeasonDraftForm({
           <FormField
             label="积分兑换比例"
             htmlFor={id('rule-ratio')}
+            hint="留空或填 0 表示本季不计分"
             error={errorOf('rules.exchangeRatio')}
           >
             <TextInput
               id={id('rule-ratio')}
               name="exchangeRatio"
               type="number"
-              value={String(value.rules.exchangeRatio)}
-              onChange={(next) => setRule('exchangeRatio', Number(next))}
+              value={value.rules.exchangeRatio === null ? '' : String(value.rules.exchangeRatio)}
+              onChange={(next) => setRule('exchangeRatio', emptyOrNumber(next))}
               min={SEASON_RULE_LIMITS.exchangeRatio.min}
               max={SEASON_RULE_LIMITS.exchangeRatio.max}
             />
           </FormField>
           <FormField
-            label="复核阈值"
+            label="大额复核阈值"
             htmlFor={id('rule-threshold')}
+            hint="留空或填 0 表示本季不计分"
             error={errorOf('rules.reviewThreshold')}
           >
             <TextInput
               id={id('rule-threshold')}
               name="reviewThreshold"
               type="number"
-              value={String(value.rules.reviewThreshold)}
-              onChange={(next) => setRule('reviewThreshold', Number(next))}
+              value={value.rules.reviewThreshold === null ? '' : String(value.rules.reviewThreshold)}
+              onChange={(next) => setRule('reviewThreshold', emptyOrNumber(next))}
               min={SEASON_RULE_LIMITS.reviewThreshold.min}
               max={SEASON_RULE_LIMITS.reviewThreshold.max}
             />

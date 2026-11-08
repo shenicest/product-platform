@@ -204,6 +204,20 @@
       "when": 1794013937185,
       "tag": "0028_orange_obadiah_stane",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1794117665036,
+      "tag": "0029_quick_captain_stacy",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1794117703504,
+      "tag": "0030_add-challenge-enterprise",
+      "breakpoints": true
     }
   ]
 }

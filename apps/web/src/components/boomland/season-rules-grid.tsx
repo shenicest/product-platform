@@ -21,54 +21,65 @@ function GiftIcon() {
 
 type Row = { label: string; value: string }
 
+/**
+ * 公开页规则卡的取数口径。
+ *
+ * 必要条目（key 见 `SEASON_REQUIRED_RULE_CARD_KEYS`）的文案由赛季配置生成，
+ * 后端返回的就是最终文案，这里**只做分组与回退**：某个 key 缺失（老数据、
+ * 后端降级）时用一句保守的兜底，而不是把整块渲染成空白。
+ *
+ * 分组沿用产品口径：赛季规则（怎么参赛）+ 奖励规则（怎么拿积分）。
+ */
+const SEASON_RULE_KEYS = [
+  'max_project_challenges',
+  'max_projects_per_participant',
+  'max_core_members',
+] as const
+
+const REWARD_RULE_KEYS = [
+  'single_work_cap',
+  'exchange_ratio',
+  'review_threshold',
+  'work_and_score_deadline',
+  'point_pool_and_awards',
+] as const
+
+const FALLBACKS: Record<string, string> = {
+  max_project_challenges: '命题数量以赛季公告为准',
+  max_projects_per_participant: '每人参与项目数见赛季公告',
+  max_core_members: '核心团队人数以赛季公告为准',
+  single_work_cap: '单次评分上限以赛季公告为准',
+  exchange_ratio: '兑换比例以赛季公告为准',
+  review_threshold: '大额复核口径以赛季公告为准',
+  work_and_score_deadline: '截止时间以赛程为准',
+  point_pool_and_awards: '积分池与奖励口径以赛季公告为准',
+}
+
 function buildRows(items: RuleCardItem[]) {
-  const item = (key: string) => items.find((entry) => entry.key === key && entry.visible)
-  const value = (key: string, fallback: string) =>
-    item(key)?.value?.trim() || fallback
-  const label = (key: string, fallback: string) =>
-    item(key)?.label?.trim() || fallback
+  const visible = items.filter((item) => item.visible !== false)
+  const item = (key: string) => visible.find((entry) => entry.key === key)
 
-  const core = value('max_core_members', '3 人')
-  const projects = value('max_projects_per_participant', '1 个项目')
-  const challenges = value('max_project_challenges', '3 张牌桌')
-  const ratio = value('exchange_ratio', '1 积分 = ¥1')
-  const cap = value('single_work_cap', '100 分')
-  const pool = value('point_pool_and_awards', '赛季 Top 项目可获得额外奖金 / 展示机会')
-
-  const submission: Row = {
-    label: label('submission_requirements', '提交要求'),
-    value: value('submission_requirements', '按阶段提交作品、说明与验证材料'),
-  }
-  const review: Row = {
-    label: label('review_process', '评审流程'),
-    value: value('review_process', '阶段评审 + 赛季最终评审'),
-  }
-  const milestone: Row = {
-    label: label('milestone_rewards', '阶段奖励'),
-    value: value('milestone_rewards', '完成里程碑可获得对应积分'),
-  }
-  const scoring: Row = {
-    label: label('scoring_rewards', '评分奖励'),
-    value: value('scoring_rewards', '根据评审结果获得积分'),
+  const toRow = (key: string): Row => {
+    const entry = item(key)
+    return {
+      label: entry?.label?.trim() || FALLBACKS[key] || key,
+      value: entry?.value?.trim() || FALLBACKS[key] || '以赛季公告为准',
+    }
   }
 
-  const seasonRules: Row[] = [
-    { label: '组队', value: `${core}核心团队，可单人；每人 ${projects}` },
-    { label: '项目', value: `每位参赛者同期仅参与 ${projects}` },
-    { label: '牌桌', value: challenges },
-    submission,
-    review,
-  ]
+  // 可选条目（主办方自建）跟在必要条目之后，不参与分组，避免被塞进错误的分区。
+  const customRows: Row[] = visible
+    .filter((entry) => !(SEASON_RULE_KEYS as readonly string[]).includes(entry.key))
+    .filter((entry) => !(REWARD_RULE_KEYS as readonly string[]).includes(entry.key))
+    .map((entry) => ({
+      label: entry.label.trim() || entry.key,
+      value: entry.value.trim() || '以赛季公告为准',
+    }))
 
-  const rewardRules: Row[] = [
-    { label: '积分兑换', value: `${ratio}（按赛季配置，非平台永久规则）` },
-    milestone,
-    scoring,
-    { label: '单次上限', value: `单次评分最高可获得 ${cap}` },
-    { label: '最终奖励', value: pool },
-  ]
-
-  return { seasonRules, rewardRules }
+  return {
+    seasonRules: [...SEASON_RULE_KEYS.map(toRow), ...customRows],
+    rewardRules: REWARD_RULE_KEYS.map(toRow),
+  }
 }
 
 function RuleCard({
@@ -87,8 +98,8 @@ function RuleCard({
         <span className="season-rule-card__icon">{icon}</span>
       </h2>
       <dl className="season-rule-card__rows">
-        {rows.map((row) => (
-          <div key={row.label} className="season-rule-row">
+        {rows.map((row, index) => (
+          <div key={`${row.label}-${index}`} className="season-rule-row">
             <dt>{row.label}</dt>
             <dd>{row.value}</dd>
           </div>

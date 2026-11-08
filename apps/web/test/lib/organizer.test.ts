@@ -6,6 +6,7 @@ import {
   emptySeasonDraft,
   nextSeasonName,
   parseSeasonId,
+  seasonPickerStatusLabel,
   suggestSeasonCode,
   toCreateSeasonPayload,
   toSeasonPickerOptions,
@@ -97,11 +98,28 @@ describe('validateSeasonDraft', () => {
 
   it('validates rule ranges', () => {
     const errors = validateSeasonDraft(
-      values({ rules: { ...SEASON_RULE_DEFAULTS, maxChallengesPerProject: 9, exchangeRatio: 0 } }),
+      values({ rules: { ...SEASON_RULE_DEFAULTS, maxChallengesPerProject: 9, exchangeRatio: -1 } }),
       options,
     )
     expect(errors['rules.maxChallengesPerProject']).toBeTruthy()
     expect(errors['rules.exchangeRatio']).toBeTruthy()
+  })
+
+  it('accepts null / 0 scoring rules as "本季不计分"', () => {
+    const errors = validateSeasonDraft(
+      values({
+        rules: {
+          ...SEASON_RULE_DEFAULTS,
+          singleWorkCap: null,
+          exchangeRatio: 0,
+          reviewThreshold: null,
+        },
+      }),
+      options,
+    )
+    expect(errors['rules.singleWorkCap']).toBeUndefined()
+    expect(errors['rules.exchangeRatio']).toBeUndefined()
+    expect(errors['rules.reviewThreshold']).toBeUndefined()
   })
 })
 
@@ -231,6 +249,43 @@ describe('season picker helpers', () => {
       { value: '2', label: '春季 · S2' },
       { value: '1', label: '冬季 · S1' },
     ])
+  })
+
+  it('annotates each season with its status when the field is provided', () => {
+    const options = toSeasonPickerOptions([
+      { id: 3, name: '草稿季', code: 'D1', status: 'draft', approvedAt: null },
+      { id: 4, name: '进行季', code: 'A1', status: 'active', approvedAt: '2026-01-01T00:00:00.000Z' },
+      { id: 5, name: '待批季', code: 'P1', status: 'upcoming', approvedAt: null },
+      { id: 6, name: '暂停季', code: 'S1', status: 'suspended', approvedAt: '2026-01-01T00:00:00.000Z' },
+      { id: 7, name: '取消季', code: 'C1', status: 'cancelled', approvedAt: null },
+    ])
+    expect(options.slice(1).map((option) => option.label)).toEqual([
+      '草稿季 · D1 · 草稿',
+      '进行季 · A1 · 进行中',
+      '待批季 · P1 · 待批准',
+      '暂停季 · S1 · 已暂停',
+      '取消季 · C1 · 已取消',
+    ])
+  })
+
+  it('labels the PRD-only end states as well, so the picker needs no change later', () => {
+    const options = toSeasonPickerOptions([
+      { id: 8, name: '归档季', code: 'R1', status: 'archived', approvedAt: '2026-01-01T00:00:00.000Z' },
+      { id: 9, name: '结束季', code: 'E1', status: 'ended', approvedAt: '2026-01-01T00:00:00.000Z' },
+    ])
+    expect(options.slice(1).map((option) => option.label)).toEqual([
+      '归档季 · R1 · 已归档',
+      '结束季 · E1 · 已结束',
+    ])
+  })
+
+  it('treats pending approval as upcoming + no approvedAt, never as its own status', () => {
+    expect(seasonPickerStatusLabel({ status: 'upcoming', approvedAt: null })).toBe('待批准')
+    expect(seasonPickerStatusLabel({ status: 'upcoming', approvedAt: '2026-01-01T00:00:00.000Z' }))
+      .toBe('即将开始')
+    // PRD 预留状态先有文案；真正未知的状态原样回显，不猜。
+    expect(seasonPickerStatusLabel({ status: 'archived', approvedAt: null })).toBe('已归档')
+    expect(seasonPickerStatusLabel({ status: 'mystery', approvedAt: null })).toBe('mystery')
   })
 
   it('parses a season id from the query string', () => {

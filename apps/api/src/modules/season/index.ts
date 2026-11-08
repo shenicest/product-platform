@@ -14,11 +14,13 @@ import {
   PinBody,
   ReasonBody,
   SeasonIdParams,
+  UpdateEnterpriseCooperationsBody,
   UpdateOrganizersBody,
   UpdateRuleCardBody,
   UpdateRulesBody,
   UpdateScheduleBody,
   UpdateSeasonBody,
+  UpdateSeasonThemesBody,
 } from './model'
 import { SeasonService } from './service'
 
@@ -47,6 +49,35 @@ export const seasonModule = new Elysia()
     optionalAuth: true,
     params: SeasonIdParams,
     detail: { summary: 'List season announcements', tags: ['Season'], security: [{ bearerAuth: [] }, {}] },
+  })
+  .get('/seasons/:id/themes', async ({ params }) => {
+    return seasonService.listThemes(params.id)
+  }, {
+    params: SeasonIdParams,
+    detail: { summary: 'List season themes', tags: ['Season'], security: [] },
+  })
+  .put('/seasons/:id/themes', async ({ user, params, body }) => {
+    return seasonService.updateThemes(params.id, user.userId, body)
+  }, {
+    auth: true,
+    params: SeasonIdParams,
+    body: UpdateSeasonThemesBody,
+    detail: { summary: 'Replace season themes', tags: ['Season'] },
+  })
+  .get('/seasons/:id/cooperations', async ({ user, params }) => {
+    return seasonService.listCooperations(params.id, user.userId)
+  }, {
+    auth: true,
+    params: SeasonIdParams,
+    detail: { summary: 'List season enterprise cooperations', tags: ['Season'] },
+  })
+  .put('/seasons/:id/cooperations', async ({ user, params, body }) => {
+    return seasonService.updateCooperations(params.id, user.userId, body)
+  }, {
+    auth: true,
+    params: SeasonIdParams,
+    body: UpdateEnterpriseCooperationsBody,
+    detail: { summary: 'Replace season enterprise cooperations', tags: ['Season'] },
   })
   .get('/organizer/seasons', async ({ user, query }) => {
     return seasonService.listManage(user.userId, query)

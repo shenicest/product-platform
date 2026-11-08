@@ -5,6 +5,7 @@ import { getSessionUser } from '@/server/auth'
 import { getManagedSeasons, getOrganizerOrgOptions } from '@/server/organizer'
 import { OrganizerShell } from '@/components/organizer/organizer-shell'
 import { canAccessOrganizerConsole } from '@/lib/organizer-access'
+import type { PickableSeason } from '@/lib/organizer'
 import { ButtonLink } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/surface'
 import { Eyebrow } from '@/components/ui/typography'
@@ -49,7 +50,15 @@ export default async function OrganizerLayout({
   }
 
   const seasonPage = await getManagedSeasons().catch(() => null)
-  const seasons = (seasonPage?.items ?? []).map(({ id, name, code }) => ({ id, name, code }))
+  // 选择器里要标出每个赛季的状态（草稿 / 待批准 / 进行中 …），所以摘要字段
+  // 必须带上 status 与 approvedAt —— “待批准”= upcoming 且 approvedAt 为空。
+  const seasons: PickableSeason[] = (seasonPage?.items ?? []).map((season) => ({
+    id: season.id,
+    name: season.name,
+    code: season.code,
+    status: season.status,
+    approvedAt: season.approvedAt,
+  }))
 
   return (
     <div className="shell shell--narrow py-8 sm:py-10">

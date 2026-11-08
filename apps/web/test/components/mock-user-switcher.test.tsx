@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { HttpResponse, http } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MockUserSwitcher } from '@/components/dev/mock-user-switcher'
+import { MOCK_SWITCHER_COLLAPSED_KEY } from '@/lib/mock-auth'
 import { server } from '../msw/server'
 
 // 切换器通过 useAuth().refresh 让头部/页面重新拉 /api/me；测试里只关心它被调用。
@@ -48,6 +49,9 @@ function stubUsers(active: string | null = 'founder') {
 beforeEach(() => {
   refresh.mockReset()
   refresh.mockResolvedValue(undefined)
+  // 收起偏好写在 localStorage 里，跨用例共享同一个 jsdom；不清掉的话上一个
+  // 用例的「收起」会带进下一个用例。
+  window.localStorage.clear()
 })
 
 // 生产构建那条用例会临时 stub NODE_ENV，跑完必须还原，否则后续用例会
@@ -178,5 +182,75 @@ describe('MockUserSwitcher', () => {
     // onUnhandledRequest: 'error' 抓住）。
     const { container } = render(<ProductionSwitcher />)
     expect(container).toBeEmptyDOMElement()
+  })
+
+  describe('collapsible panel', () => {
+    it('collapses to a pill that keeps the active identity visible', async () => {
+      stubUsers('founder')
+      const user = userEvent.setup()
+      render(<MockUserSwitcher />)
+
+      await user.click(await screen.findByLabelText('收起 mock 用户切换器'))
+
+      // 列表整块消失，只剩一颗能重新展开的胶囊，且身份仍可读。
+      expect(screen.queryByRole('button', { name: /主办方 · 阿岚/ })).not.toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: '展开 mock 用户切换器（当前身份：创始人 · 小林）' }),
+      ).toHaveAttribute('aria-expanded', 'false')
+      // 收起状态写进 localStorage，刷新页面后不该又铺开。
+      expect(window.localStorage.getItem(MOCK_SWITCHER_COLLAPSED_KEY)).toBe('1')
+    })
+
+    it('expands again from the pill', async () => {
+      stubUsers('founder')
+      const user = userEvent.setup()
+      render(<MockUserSwitcher />)
+
+      await user.click(await screen.findByLabelText('收起 mock 用户切换器'))
+      await user.click(
+        screen.getByRole('button', { name: '展开 mock 用户切换器（当前身份：创始人 · 小林）' }),
+      )
+
+      expect(await screen.findByRole('button', { name: /主办方 · 阿岚/ })).toBeInTheDocument()
+      expect(window.localStorage.getItem(MOCK_SWITCHER_COLLAPSED_KEY)).toBeNull()
+    })
+
+    it('starts collapsed when the preference was remembered', async () => {
+      window.localStorage.setItem(MOCK_SWITCHER_COLLAPSED_KEY, '1')
+      stubUsers('founder')
+      render(<MockUserSwitcher />)
+
+      expect(
+        await screen.findByRole('button', { name: '展开 mock 用户切换器（当前身份：创始人 · 小林）' }),
+      ).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /主办方 · 阿岚/ })).not.toBeInTheDocument()
+    })
+
+    it('collapses on Escape while expanded', async () => {
+      stubUsers('founder')
+      const user = userEvent.setup()
+      render(<MockUserSwitcher />)
+
+      await screen.findByLabelText('当前身份：创始人 · 小林')
+      await user.keyboard('{Escape}')
+
+      await waitFor(() =>
+        expect(
+          screen.getByRole('button', { name: '展开 mock 用户切换器（当前身份：创始人 · 小林）' }),
+        ).toBeInTheDocument(),
+      )
+    })
+
+    it('keeps the list reachable when storage is unavailable', async () => {
+      // 隐私模式下 localStorage 可能直接抛错：不能因此把整块浮层弄没。
+      const getItem = vi.spyOn(window.localStorage, 'getItem').mockImplementation(() => {
+        throw new Error('storage disabled')
+      })
+      stubUsers('founder')
+      render(<MockUserSwitcher />)
+
+      expect(await screen.findByRole('button', { name: /主办方 · 阿岚/ })).toBeInTheDocument()
+      getItem.mockRestore()
+    })
   })
 })

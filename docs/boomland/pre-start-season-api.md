@@ -415,12 +415,22 @@ type SeasonRules = {
   maxChallengesPerProject: number   // 1–3, default 3
   maxProjectsPerParticipant: number // 1–20, default 1
   maxCoreMembers: number            // 1–3, default 3
-  singleWorkCap: number             // integer >= 1, default 100
-  exchangeRatio: number             // number > 0, default 1
-  reviewThreshold: number           // number >= 0, default 50
+  // 计分口径三项：null 或 0 都表示「本季不计分」
+  singleWorkCap: number | null      // integer 0–1_000_000, default 100
+  exchangeRatio: number | null      // number 0–1_000_000, default 1
+  reviewThreshold: number | null    // number 0–1_000_000, default 50
   dailyQuotaEnabled: boolean        // default false
 }
 ```
+
+计分口径三项说明：
+
+- `null`（留空）与 `0` 等价，都表示**本季不计分**。不另开 `scoringEnabled` 布尔开关 ——
+  少一个要和三项数值保持一致的字段，就少一处能对不上的状态。
+- 三项互相独立：只要有一项配了非 0 值，就视为本季计分，发布门槛照常校验预算/积分池/评委。
+- 三项全部未配置时，规则卡对应条目的 `value` 是共享常量 `SEASON_RULE_CARD_SCORELESS`
+  （`'本季不计分'`），`point_pool_and_awards` 条目显示「本季不设积分池与评委」。
+- 上下限取自 `@shenicest/shared` 的 `SEASON_RULE_LIMITS`，三项 `min` 均为 `0`。
 
 `SeasonSchedule`（API 聚合对象，DB 为独立列）：
 
@@ -459,25 +469,32 @@ type SeasonSchedule = {
 
 唯一：`uniqueIndex('uq_season_rule_card_season_key').on(seasonId, key)`。
 
-必要项（创建赛季时自动种入，不可删除、不可隐藏）：
+必要项（八条，由赛季配置派生；创建赛季时自动种入，不可删除、不可隐藏、不可改文案）：
 
-| key | label 默认 |
-|---|---|
-| `max_project_challenges` | 每个项目可选命题上限 |
-| `max_projects_per_participant` | 每人最多参与项目数 |
-| `max_core_members` | 团队核心成员上限 |
-| `single_work_cap` | 单次评分上限 |
-| `exchange_ratio` | 积分兑换比例 |
-| `review_threshold` | 复核阈值 |
-| `work_deadline` | 作品提交截止 |
-| `score_deadline` | 评分截止 |
-| `point_pool_and_awards` | 积分池与奖励口径 |
-| `submission_requirements` | 提交要求 |
-| `review_process` | 评审流程 |
-| `milestone_rewards` | 阶段奖励 |
-| `scoring_rewards` | 评分奖励 |
+| key | label（`SEASON_REQUIRED_RULE_CARD_LABELS`） | value 来源 |
+|---|---|---|
+| `max_project_challenges` | 项目命题 | `rules.maxChallengesPerProject` |
+| `max_projects_per_participant` | 每人项目数 | `rules.maxProjectsPerParticipant` |
+| `max_core_members` | 团队人数 | `rules.maxCoreMembers` |
+| `single_work_cap` | 单次评分上限 | `rules.singleWorkCap`，空/0 → 本季不计分 |
+| `exchange_ratio` | 兑换比例 | `rules.exchangeRatio`，空/0 → 本季不计分 |
+| `review_threshold` | 大额复核 | `rules.reviewThreshold`，空/0 → 本季不计分 |
+| `work_and_score_deadline` | 作品与评分截止 | `schedule.workDeadline` / `scoreDeadline`（北京时间） |
+| `point_pool_and_awards` | 积分池与奖励口径 | 三项计分口径是否配置 |
 
-必要项的 `value` 可在创建后编辑；`required=true`、`visible=true` 不可改。可选条目 `key` 不得与必要项冲突，`required=false`，可增删排序。
+**必要条目的 label / value / required / visible 全部由赛季配置生成**，唯一真相源是
+`@shenicest/shared` 的 `seasonRequiredRuleCardValue(key, { rules, schedule })` 与
+`seasonRequiredRuleCardItems({ rules, schedule })`：
+
+- 读接口（公开详情、管理详情、`PUT /rule-card` 的响应）在返回时用当前 `rules` + `schedule`
+  重建必要条目，库里存的旧文案被忽略 —— 规则卡永远不会和赛季配置对不上。
+- 写接口（`PUT /rule-card`）对必要 key 忽略客户端传的 `label` / `value` / `visible`，
+  强制写入生成值；客户端**只能调整必要条目在数组里的位置**（下标即 `sortOrder`）。
+- 历史 key `work_deadline` / `score_deadline`（已合并为 `work_and_score_deadline`）与
+  `submission_requirements` / `review_process` / `milestone_rewards` / `scoring_rewards`
+  （已从必要项移除）在读写两侧都会被丢弃，不会以「可选条目」的身份复活。
+
+可选条目 `key` 不得与必要项冲突，`required=false`，可增删改排序；`label` 1–255、`value` 非空。
 
 ### 4.6 `season_announcements`
 
@@ -699,13 +716,23 @@ type Readiness = {
 |---|---|---|
 | `schedule` | 赛程完整 | 八个时间非空，六个主时间点严格递增，并满足作品/命题冻结约束 |
 | `challenges` | 至少一个已发布命题 | `published` 命题数 ≥ 1 |
-| `budget` | 预算已配置 | 存在 active 预算且 `total_amount > 0` |
-| `point_pool` | 积分池已充值 | `total_points > 0` |
-| `scorers` | 至少一名评委已分配积分 | active 分配数 ≥ 1 |
+| `budget` | 预算已配置 | 存在 active 预算且 `total_amount > 0`；本季不计分时免除 |
+| `point_pool` | 积分池已充值 | `total_points > 0`；本季不计分时免除 |
+| `scorers` | 至少一名评委已分配积分 | active 分配数 ≥ 1；本季不计分时免除 |
 | `verifiers` | 至少一名核验员 | active 授权数 ≥ 1 |
 | `rules` | 规则与协议完整 | `rules` 全部字段合法，`agreement_version` 非空 |
 | `organizers` | 主办方组织有效 | 至少一个关联组织，且该组织至少一名成员 |
 | `awarding_entity` | 授奖主体已填写 | `awarding_entity` 去空格后非空 |
+
+**计分三项的免除规则**：`rules.singleWorkCap` / `exchangeRatio` / `reviewThreshold` 全部
+为空或 0（`isScorelessValue`）时，`budget` / `point_pool` / `scorers` 三项标记为「本季免除」：
+
+```json
+{ "key": "budget", "label": "预算已配置", "passed": true, "detail": "本季不计分，免除预算配置" }
+```
+
+- `passed` 仍为 `true`（否则不计分赛季永远无法发布），但 `detail` 明确写出免除原因，
+  不伪造「已配置」的通过。三项中只要有一项配了非 0 值，三项门槛照常硬校验。
 
 - `submit` 与 `approve` 都重新计算 readiness；失败返回 `409 SEASON_NOT_READY`，响应 `error.detail` 带完整 `checks`。
 - `start` 不重新计算 readiness，只要求 `approvedAt` 非空。
@@ -908,7 +935,7 @@ type CreateSeasonBody = {
   - 创建 `seasons`（`status=draft`，`rules_version=1`）。
   - 创建 `season_organizers`。
   - 创建 `season_point_pools`（`total=0, allocated=0, used=0, version=1`）。
-  - 种入十三个必要规则卡条目，`value` 从 `rules` / `schedule` 生成可读文本（提交要求 / 评审流程 / 阶段奖励 / 评分奖励使用默认文案，创建后可在规则卡中编辑）。
+  - 种入八个必要规则卡条目，`label` / `value` 由 `seasonRequiredRuleCardItems({ rules, schedule })` 按赛季配置生成（文案唯一真相源在 `@shenicest/shared`）。
   - 写 `audit_logs`：`season.created`。
 - 响应 `201`：`SeasonManageDetail`。
 - 错误：`SEASON_CODE_TAKEN`、`ORGANIZER_ORG_NOT_FOUND`、`NOT_SEASON_ORGANIZER`、`SCHEDULE_INVALID`、`RULES_INVALID`、`VALIDATION_ERROR`。
@@ -1009,8 +1036,8 @@ type UpdateRulesBody = {
 }
 ```
 
-- 校验范围；`rules_version += 1`；审计 `season.rules_updated`；已批准时写公告（同上）。
-- 响应：`SeasonManageDetail`。
+- 校验范围（计分三项允许 `null` / `0` = 本季不计分）；`rules_version += 1`；审计 `season.rules_updated`；已批准时写公告（同上）。
+- 响应：`SeasonManageDetail`。规则卡里的必要条目会随新规则自动变化（它们由配置派生）。
 
 #### `PUT /seasons/:id/rule-card`
 
@@ -1032,9 +1059,15 @@ type UpdateRuleCardBody = {
 
 - 数组顺序即展示顺序；服务端写入 `sort_order = index`。
 - 校验：
-  - 九个必要项必须全部出现，且 `visible !== false`；否则 `400 RULE_CARD_REQUIRED_ITEM`。
-  - `key` 唯一；`label` 1–255；`value` 非空。
+  - 八个必要项必须全部出现；否则 `400 RULE_CARD_REQUIRED_ITEM`（`error.detail.missing` 列出缺失 key）。
+  - `key` 唯一；可选条目 `label` 1–255、`value` 非空。
   - 可选条目可增删。
+- **必要条目的 `label` / `value` / `visible` 被忽略**：服务端用 `seasonRequiredRuleCardItems`
+  按当前 `rules` + `schedule` 重建后写入（`required=true`、`visible=true`）。客户端能改的只有
+  必要条目在 `items` 数组里的位置。
+- 已废弃的 key（`work_deadline` / `score_deadline` / `submission_requirements` /
+  `review_process` / `milestone_rewards` / `scoring_rewards`）会被静默丢弃，
+  审计 `detail.droppedLegacyKeys` 记录被丢弃的 key。
 - 副作用：替换该赛季全部规则卡条目；审计 `season.rule_card_updated`；已批准时可选公告。不改变 `rules_version`。
 - 响应：`{ items: RuleCardItem[] }`。
 
@@ -1114,7 +1147,7 @@ type UpdateRuleCardBody = {
 - 复制：`type/city/intro/themes/rules/rule_card/awarding_entity/agreement_version/organizer_org_ids`。
 - 清空：赛程七列、`approved_*`、`submitted_*`、`rejected_*`、`started_*`、`suspended_*`、`cancelled_*`、`pinned`。
 - 不复制：预算、积分池余额/分配、核验员、命题、报名、选手、公告、审计。
-- 新赛季：`status=draft`、`rules_version=1`、`name` 默认为 `${source.name}（副本）`；创建空积分池（`total=0`）；种入必要规则卡（复制来源的 label/value）。
+- 新赛季：`status=draft`、`rules_version=1`、`name` 默认为 `${source.name}（副本）`；创建空积分池（`total=0`）；种入必要规则卡（按来源的 `rules` + 空赛程重新生成，截止时间显示「待定」），可选条目与顺序复制。
 - 审计 `season.cloned`。
 - 响应 `201`：`SeasonManageDetail`。
 - 错误：`SEASON_CODE_TAKEN`。

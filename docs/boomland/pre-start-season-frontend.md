@@ -264,19 +264,22 @@ readiness 未就绪时，“提交待批”禁用并提示缺项；管理员“�
 
 ### 4.8 `/organizer/seasons/[id]/applications` 报名审核
 
-数据：`GET /seasons/:id/applications` + `GET /seasons/:id/participants`（用于判断是否已接受）。
+数据：`GET /seasons/:id/applications` + `GET /seasons/:id/manage`（名额、窗口、状态）+ 一次 `status=waitlisted&pageSize=1` 取候补总数。
+
+**已落地的路由**：本批实现为 `/organizer/applications?season=<id>`（与后台其余 tab 一致，赛季走 `?season=` 查询参数），不另起 `/organizer/seasons/[id]/applications`。
 
 页面：
 
-- 筛选：状态、可见性、关键词。
-- 列表列：报名者、技能摘要、方向、可投入时间、状态、提交时间、联系方式掩码。
-- 点击行打开详情抽屉/详情页：完整联系方式、经历、组队意向、接受单人、城市模式、协议版本、审核历史（来自审计）。
-- 顶部显示“选手名额 / 已用 / 候补数”；未设置名额时显示“不限”。
-- 操作：
-  - 接受 → `PATCH /applications/:id/status {status:'accepted'}`；若名额已满且未到组队截止，返回 `waitlisted`，提示“已加入候补队列”；截止后返回 `409 CAPACITY_FULL`。
-  - 待定/候补/拒绝 → 对话框可选原因；拒绝必填。
-  - accepted 后操作按钮禁用，显示终态。
-- 审核后刷新列表与选手数；不在此页做微信群操作（跳转选手页）。
+- 筛选：`?status=`（默认 `submitted`「待处理」，`all` 表示全部）+ 可见性、关键词（后端支持，UI 暂只暴露状态）。
+- 列表列：报名人、提交时间、技能与经历、兴趣主题、组队、拉群联系方式（掩码）、状态、操作。
+- 点击行打开详情抽屉：完整联系方式、经历、组队意向、接受单人、城市模式、协议版本、审核历史（`GET /seasons/:id/audit-logs?targetType=season_application&targetId=<id>`）。
+- 顶部显示“已通过选手 / 名额”“候补”“报名窗口”三块；未设置名额时显示“不限”。
+- 操作（`lib/organizer-applications.ts` 的 `applicationReviewActions` 决定，可单测）：
+  - 通过 → `PATCH /applications/:id/status {status:'accepted'}`；若名额已满且未到组队截止，返回 `waitlisted`，提示“名额已满，该报名已进入候补队列”；截止后返回 `409 CAPACITY_FULL`。
+  - 待定/候补 → 直接提交，原因可选；不通过 → 对话框必填原因。
+  - accepted / withdrawn 后没有动作，显示终态。
+- 审核后 `router.refresh()`，列表、选手数与候补数一起重算；不在此页做微信群操作（跳转「人工拉群」）。
+- 赛季已取消时整列动作禁用并给出说明（后端也会拒）。
 
 ### 4.9 `/organizer/seasons/[id]/participants` 选手与拉群
 

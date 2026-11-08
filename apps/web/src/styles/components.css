@@ -252,6 +252,50 @@
     opacity: 0.6;
   }
 
+  /* 带语义色的图标按钮：用于表格行内的动作列。
+   *
+   * 默认的 .ui-icon-btn 是中性灰，悬停才转品牌色 —— 那是「收藏 / 关闭」
+   * 这类单一动作的语汇。审核动作有四个并列选项，必须**静止态**就能分辨
+   * 哪个是主操作（通过）、哪个是危险操作（不通过），否则一排灰圆里
+   * 得靠悬停一个个试。颜色只取语义 token，不写裸色值。 */
+  .ui-icon-btn--warning {
+    border-color: var(--warning-line);
+    background: var(--warning-soft);
+    color: var(--warning-text);
+  }
+
+  .ui-icon-btn--warning:hover:not(:disabled) {
+    border-color: var(--warning-text);
+    background: var(--warning-soft);
+    color: var(--warning-text);
+  }
+
+  .ui-icon-btn--danger {
+    border-color: var(--danger-line);
+    background: var(--danger-soft);
+    color: var(--danger-text);
+  }
+
+  .ui-icon-btn--danger:hover:not(:disabled) {
+    border-color: var(--danger-text);
+    background: var(--danger-soft);
+    color: var(--danger-text);
+  }
+
+  /* 主操作（通过）：实心品牌底，和上面几个「淡底 + 深字」的次要动作区分开。 */
+  .ui-icon-btn--brand-solid {
+    border-color: transparent;
+    background: var(--btn-primary-bg);
+    color: var(--btn-primary-fg);
+    box-shadow: var(--shadow-accent);
+  }
+
+  .ui-icon-btn--brand-solid:hover:not(:disabled) {
+    background: var(--btn-primary-bg-hover);
+    border-color: transparent;
+    color: var(--btn-primary-fg);
+  }
+
   /* ---------------------------------------------------------------------------
    * 标签 / 徽章：胶囊，负责识别
    * ------------------------------------------------------------------------- */
@@ -632,6 +676,15 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  /* 小号头像：用在表格里的「记录人」这类附属身份上。
+   * 36px 的默认尺寸在 13px 的表格行里会把行撑高，且抢走选手本人的视觉重量；
+   * 24px 只够放一个字，正好是这个位置需要的分量。 */
+  .ui-avatar--sm {
+    width: 24px;
+    height: 24px;
+    font-size: var(--boom-text-meta);
   }
 
   .ui-avatar-stack {

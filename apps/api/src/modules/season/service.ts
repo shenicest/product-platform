@@ -15,8 +15,14 @@ import {
 import {
   AnnouncementCategory,
   ChallengeStatus,
+  EnterpriseCooperationStatus,
+  EnterpriseCooperationTier,
+  EnterprisePublicScope,
+  ENTERPRISE_COOPERATION_AMOUNT_LIMITS,
+  ENTERPRISE_COOPERATION_TIERS,
   SEASON_REQUIRED_RULE_CARD_KEYS,
-  SEASON_REQUIRED_RULE_CARD_LABELS,
+  SEASON_RULE_CARD_SCORELESS,
+  seasonRequiredRuleCardItems,
   SeasonApplicationStatus,
   SeasonStatus,
   type SeasonRules,
@@ -32,6 +38,7 @@ import {
   seasonAnnouncements,
   seasonApplications,
   seasonBudgets,
+  seasonEnterpriseCooperations,
   seasonOrganizers,
   seasonParticipants,
   seasonPointPools,
@@ -48,6 +55,7 @@ import {
   getSeasonSummary,
   iso,
   isPublicSeason,
+  isScorelessSeasonRules,
   normalizeRules,
   normalizeThemes,
   validateRules,
@@ -59,20 +67,66 @@ import type {
   AnnouncementBody,
   CloneSeasonBody,
   CreateSeasonBody,
+  EnterpriseCooperationItemInput,
   ListManageQuery,
   ListSeasonsQuery,
+  UpdateEnterpriseCooperationsBody,
   UpdateOrganizersBody,
   UpdateRuleCardBody,
   UpdateRulesBody,
   UpdateScheduleBody,
   UpdateSeasonBody,
+  UpdateSeasonThemesBody,
 } from './model'
 
 type SeasonRow = typeof seasons.$inferSelect
 type RuleCardRow = typeof seasonRuleCardItems.$inferSelect
+type CooperationRow = typeof seasonEnterpriseCooperations.$inferSelect
+
+type RuleCardDto = {
+  id: number
+  key: string
+  label: string
+  value: string
+  required: boolean
+  visible: boolean
+  sortOrder: number
+}
+
+export type EnterpriseCooperationDto = {
+  id: number
+  seasonId: number
+  enterpriseName: string
+  tier: string
+  grade: string | null
+  totalAmount: number
+  managementFee: number
+  prizePoolAmount: number
+  dataGrant: string | null
+  publicScope: string
+  status: string
+  sortOrder: number
+}
 
 const PAGE_SIZE_DEFAULT = 20
 const PAGE_SIZE_MAX = 100
+
+const REQUIRED_RULE_CARD_KEYS: ReadonlySet<string> = new Set(SEASON_REQUIRED_RULE_CARD_KEYS)
+
+/**
+ * 已从必要项移除的历史 key。
+ *
+ * 旧赛季的规则卡行里可能还留着它们（当时是 `required=true`）：读的时候过滤掉，
+ * 写的时候丢弃，避免历史数据在公开页以「可选条目」的身份复活成重复内容。
+ */
+const LEGACY_RULE_CARD_KEYS: ReadonlySet<string> = new Set([
+  'work_deadline',
+  'score_deadline',
+  'submission_requirements',
+  'review_process',
+  'milestone_rewards',
+  'scoring_rewards',
+])
 
 function pageOf(query: { page?: number; pageSize?: number }) {
   const page = Math.max(1, query.page ?? 1)
@@ -93,7 +147,122 @@ function statusValues(raw?: string): string[] | null {
   return values
 }
 
-function ruleCardDto(row: RuleCardRow) {
+/**
+ * 可写规则类配置的赛季状态：赛程 / 规则卡 / 赛季主题共用。
+ *
+ * 三者都是「已批准赛季改了就影响报名者认知」的内容，所以允许的状态集合必须一致：
+ * 草稿期随便改，开赛前后（upcoming / active）也能改但要发公告，暂停中同样可改；
+ * 已取消的赛季一律不可改。
+ */
+const RULE_EDITABLE_STATUSES: string[] = [
+  SeasonStatus.Draft,
+  SeasonStatus.Upcoming,
+  SeasonStatus.Active,
+  SeasonStatus.Suspended,
+]
+
+const COOPERATION_TIER_VALUES = new Set<string>(ENTERPRISE_COOPERATION_TIERS)
+const COOPERATION_STATUS_VALUES = new Set<string>(Object.values(EnterpriseCooperationStatus))
+const COOPERATION_PUBLIC_SCOPE_VALUES = new Set<string>(Object.values(EnterprisePublicScope))
+
+function cooperationDto(row: CooperationRow): EnterpriseCooperationDto {
+  return {
+    id: row.id,
+    seasonId: row.seasonId,
+    enterpriseName: row.enterpriseName,
+    tier: row.tier,
+    grade: row.grade,
+    totalAmount: row.totalAmount,
+    managementFee: row.managementFee,
+    prizePoolAmount: row.prizePoolAmount,
+    dataGrant: row.dataGrant,
+    publicScope: row.publicScope,
+    status: row.status,
+    sortOrder: row.sortOrder,
+  }
+}
+
+/**
+ * 校验并归一化一条企业合作配置。
+ *
+ * `index` 参与错误里的 `field`（如 `items[1].tier`）：整表替换一次提交多行，
+ * 只说「档位不合法」前端定位不到是哪一行，只能整表重看。
+ *
+ * 金额走 `ENTERPRISE_COOPERATION_AMOUNT_LIMITS` 而不是写死 0..1e8 —— 上下限
+ * 属于领域常量，和前端表格的输入框校验共用同一份。
+ */
+function normalizeCooperation(
+  item: EnterpriseCooperationItemInput,
+  index: number,
+): typeof seasonEnterpriseCooperations.$inferInsert {
+  const field = (name: string) => `items[${index}].${name}`
+  const enterpriseName = item.enterpriseName.trim()
+  if (enterpriseName.length < 1 || enterpriseName.length > 255) {
+    throw boomlandError('VALIDATION_ERROR', `第 ${index + 1} 条企业名需为 1—255 个字符`, 400, {
+      field: field('enterpriseName'),
+    })
+  }
+  if (!COOPERATION_TIER_VALUES.has(item.tier)) {
+    throw boomlandError('VALIDATION_ERROR', `第 ${index + 1} 条合作档位不合法：${item.tier}`, 400, {
+      field: field('tier'),
+    })
+  }
+  if (!COOPERATION_STATUS_VALUES.has(item.status)) {
+    throw boomlandError('VALIDATION_ERROR', `第 ${index + 1} 条签约状态不合法：${item.status}`, 400, {
+      field: field('status'),
+    })
+  }
+  if (!COOPERATION_PUBLIC_SCOPE_VALUES.has(item.publicScope)) {
+    throw boomlandError('VALIDATION_ERROR', `第 ${index + 1} 条公开授权不合法：${item.publicScope}`, 400, {
+      field: field('publicScope'),
+    })
+  }
+  const grade = item.grade?.trim() || null
+  if (grade && grade.length > 16) {
+    throw boomlandError('VALIDATION_ERROR', `第 ${index + 1} 条等级不能超过 16 个字符`, 400, {
+      field: field('grade'),
+    })
+  }
+  const dataGrant = item.dataGrant?.trim() || null
+  // 数据授权是 text 列，但一屏表格里的一条授权说明不该无限长；超过就说明放错了字段。
+  if (dataGrant && dataGrant.length > 2000) {
+    throw boomlandError('VALIDATION_ERROR', `第 ${index + 1} 条数据授权说明不能超过 2000 个字符`, 400, {
+      field: field('dataGrant'),
+    })
+  }
+  const amounts = {
+    totalAmount: item.totalAmount,
+    managementFee: item.managementFee,
+    prizePoolAmount: item.prizePoolAmount,
+  } as const
+  for (const [key, value] of Object.entries(amounts)) {
+    if (!Number.isInteger(value)
+      || value < ENTERPRISE_COOPERATION_AMOUNT_LIMITS.min
+      || value > ENTERPRISE_COOPERATION_AMOUNT_LIMITS.max) {
+      throw boomlandError(
+        'VALIDATION_ERROR',
+        `第 ${index + 1} 条金额需为 ${ENTERPRISE_COOPERATION_AMOUNT_LIMITS.min}—${ENTERPRISE_COOPERATION_AMOUNT_LIMITS.max} 的整数（元）`,
+        400,
+        { field: field(key) },
+      )
+    }
+  }
+  return {
+    seasonId: 0, // 由调用方回填：这里只负责行内容，避免校验函数偷偷依赖赛季 id
+    enterpriseName,
+    tier: item.tier,
+    grade,
+    totalAmount: amounts.totalAmount,
+    managementFee: amounts.managementFee,
+    prizePoolAmount: amounts.prizePoolAmount,
+    dataGrant,
+    publicScope: item.publicScope,
+    status: item.status,
+    sortOrder: index,
+  }
+}
+
+function ruleCardDto(row: RuleCardRow): RuleCardDto {
   return {
     id: row.id,
     key: row.key,
@@ -105,23 +274,65 @@ function ruleCardDto(row: RuleCardRow) {
   }
 }
 
-function ruleCardValue(key: string, rules: SeasonRules, schedule: SeasonSchedule | null): string {
-  switch (key) {
-    case 'max_project_challenges': return `${rules.maxChallengesPerProject} 个`
-    case 'max_projects_per_participant': return `${rules.maxProjectsPerParticipant} 个`
-    case 'max_core_members': return `${rules.maxCoreMembers} 人`
-    case 'single_work_cap': return `${rules.singleWorkCap} 分`
-    case 'exchange_ratio': return `${rules.exchangeRatio}`
-    case 'review_threshold': return `${rules.reviewThreshold} 分`
-    case 'work_deadline': return schedule?.workDeadline ?? '待定'
-    case 'score_deadline': return schedule?.scoreDeadline ?? '待定'
-    case 'point_pool_and_awards': return '积分池与奖励口径以赛季公告为准'
-    case 'submission_requirements': return '按阶段提交作品、说明与验证材料'
-    case 'review_process': return '阶段评审 + 赛季最终评审'
-    case 'milestone_rewards': return '完成里程碑可获得对应积分'
-    case 'scoring_rewards': return '根据评审结果获得积分'
-    default: return ''
+/**
+ * 按赛季配置生成「必要条目」的展示内容（label / value / required / visible）。
+ *
+ * 唯一真相源是 shared 的 `seasonRequiredRuleCardItems`：后端读、后端写、前端预览
+ * 都走同一份生成逻辑，规则卡里显示的内容不可能和赛季配置对不上。
+ */
+function generatedRequiredItems(rules: SeasonRules, schedule: SeasonSchedule | null) {
+  return new Map<string, ReturnType<typeof seasonRequiredRuleCardItems>[number]>(
+    seasonRequiredRuleCardItems({ rules, schedule }).map((item) => [item.key as string, item]),
+  )
+}
+
+/**
+ * 读路径：必要条目用赛季配置重建（忽略库里存的旧文案），可选条目原样返回。
+ *
+ * 顺序沿用库里的 `sortOrder` —— 主办方可以调整必要条目在列表中的位置，这个位置
+ * 属于「展示顺序」，不属于「文案」，所以仍然尊重库里的值。历史数据里可能缺少
+ * 某个必要行（旧 key 合并前的老赛季），这里补齐到末尾，保证必要条目永远齐全。
+ */
+function buildRuleCard(
+  rows: RuleCardRow[],
+  rules: SeasonRules,
+  schedule: SeasonSchedule | null,
+): RuleCardDto[] {
+  const generated = generatedRequiredItems(rules, schedule)
+  const items: RuleCardDto[] = []
+  const seen = new Set<string>()
+  for (const row of rows) {
+    if (LEGACY_RULE_CARD_KEYS.has(row.key)) continue
+    const required = generated.get(row.key)
+    if (!required) {
+      items.push(ruleCardDto(row))
+      continue
+    }
+    seen.add(row.key)
+    items.push({
+      ...ruleCardDto(row),
+      label: required.label,
+      value: required.value,
+      required: true,
+      visible: true,
+    })
   }
+  let nextSortOrder = rows.reduce((max, row) => Math.max(max, row.sortOrder), -1) + 1
+  for (const key of SEASON_REQUIRED_RULE_CARD_KEYS) {
+    if (seen.has(key)) continue
+    const required = generated.get(key)!
+    items.push({
+      id: 0,
+      key,
+      label: required.label,
+      value: required.value,
+      required: true,
+      visible: true,
+      sortOrder: nextSortOrder,
+    })
+    nextSortOrder += 1
+  }
+  return items
 }
 
 export class SeasonService {
@@ -178,13 +389,19 @@ export class SeasonService {
     return unique
   }
 
-  private async ruleCard(seasonId: number) {
+  /**
+   * 读规则卡：必要条目按赛季配置重建，可选条目原样返回。
+   *
+   * 传 `row` 而不是只传 id —— 生成必要条目的文案需要 `rules` 与 `schedule`，
+   * 调用方（公开详情 / 管理详情 / 写后回读）本来就都有这行数据。
+   */
+  private async ruleCard(row: SeasonRow) {
     const rows = await this.db
       .select()
       .from(seasonRuleCardItems)
-      .where(eq(seasonRuleCardItems.seasonId, seasonId))
+      .where(eq(seasonRuleCardItems.seasonId, row.id))
       .orderBy(asc(seasonRuleCardItems.sortOrder), asc(seasonRuleCardItems.id))
-    return rows.map(ruleCardDto)
+    return buildRuleCard(rows, row.rules, scheduleFromRow(row))
   }
 
   private async seedRuleCard(
@@ -193,11 +410,11 @@ export class SeasonService {
     rules: SeasonRules,
     schedule: SeasonSchedule | null,
   ) {
-    const values = SEASON_REQUIRED_RULE_CARD_KEYS.map((key, index) => ({
+    const values = seasonRequiredRuleCardItems({ rules, schedule }).map((item, index) => ({
       seasonId,
-      key,
-      label: SEASON_REQUIRED_RULE_CARD_LABELS[key],
-      value: ruleCardValue(key, rules, schedule),
+      key: item.key,
+      label: item.label,
+      value: item.value,
       required: true,
       visible: true,
       sortOrder: index,
@@ -282,6 +499,10 @@ export class SeasonService {
     const scheduleError = schedule ? validateSchedule(schedule) : '赛程尚未填写完整'
     const rulesErrors = validateRules(row.rules)
     if (!row.agreementVersion.trim()) rulesErrors.push('协议版本不能为空')
+    // 计分口径三项全空 = 本季不计分：预算 / 积分池 / 评委分配在业务上没有意义，
+    // 发布门槛免除这三项。这是「免除」而不是「放行」：detail 里写明原因，
+    // 主办方看到的是「本季不计分，免除…」而不是一个假的「已配置」。
+    const scoreless = isScorelessSeasonRules(row.rules)
 
     const checks = [
       {
@@ -296,24 +517,45 @@ export class SeasonService {
         passed: (challengeRows[0]?.value ?? 0) >= 1,
         detail: `已发布 ${challengeRows[0]?.value ?? 0} 个`,
       },
-      {
-        key: 'budget',
-        label: '预算已配置',
-        passed: (budgetRows[0]?.totalAmount ?? 0) > 0,
-        detail: `当前有效预算 ${budgetRows[0]?.totalAmount ?? 0} 元`,
-      },
-      {
-        key: 'point_pool',
-        label: '积分池已充值',
-        passed: (poolRows[0]?.totalPoints ?? 0) > 0,
-        detail: `当前积分总量 ${poolRows[0]?.totalPoints ?? 0}`,
-      },
-      {
-        key: 'scorers',
-        label: '至少一名评委已分配积分',
-        passed: (allocationRows[0]?.value ?? 0) >= 1,
-        detail: `有效分配 ${allocationRows[0]?.value ?? 0} 条`,
-      },
+      scoreless
+        ? {
+          key: 'budget',
+          label: '预算已配置',
+          passed: true,
+          detail: `${SEASON_RULE_CARD_SCORELESS}，免除预算配置`,
+        }
+        : {
+          key: 'budget',
+          label: '预算已配置',
+          passed: (budgetRows[0]?.totalAmount ?? 0) > 0,
+          detail: `当前有效预算 ${budgetRows[0]?.totalAmount ?? 0} 元`,
+        },
+      scoreless
+        ? {
+          key: 'point_pool',
+          label: '积分池已充值',
+          passed: true,
+          detail: `${SEASON_RULE_CARD_SCORELESS}，免除积分池配置`,
+        }
+        : {
+          key: 'point_pool',
+          label: '积分池已充值',
+          passed: (poolRows[0]?.totalPoints ?? 0) > 0,
+          detail: `当前积分总量 ${poolRows[0]?.totalPoints ?? 0}`,
+        },
+      scoreless
+        ? {
+          key: 'scorers',
+          label: '至少一名评委已分配积分',
+          passed: true,
+          detail: `${SEASON_RULE_CARD_SCORELESS}，免除评委分配`,
+        }
+        : {
+          key: 'scorers',
+          label: '至少一名评委已分配积分',
+          passed: (allocationRows[0]?.value ?? 0) >= 1,
+          detail: `有效分配 ${allocationRows[0]?.value ?? 0} 条`,
+        },
       {
         key: 'verifiers',
         label: '至少一名核验员',
@@ -477,7 +719,7 @@ export class SeasonService {
   async getPublicDetail(seasonId: number) {
     const row = await this.getSeasonRow(seasonId)
     if (!isPublicSeason(row)) throw boomlandError('SEASON_NOT_FOUND', '赛季不存在或暂未公开', 404)
-    const [summary, ruleCard] = await Promise.all([this.summary(row), this.ruleCard(seasonId)])
+    const [summary, ruleCard] = await Promise.all([this.summary(row), this.ruleCard(row)])
     return {
       ...summary,
       intro: row.intro,
@@ -497,7 +739,7 @@ export class SeasonService {
     await this.access.assertSeasonAccess(seasonId, userId)
     const [summary, ruleCard, orgRows] = await Promise.all([
       this.summary(row),
-      this.ruleCard(seasonId),
+      this.ruleCard(row),
       this.db.select({ orgId: seasonOrganizers.orgId }).from(seasonOrganizers)
         .where(eq(seasonOrganizers.seasonId, seasonId)),
     ])
@@ -620,12 +862,7 @@ export class SeasonService {
   async updateSchedule(seasonId: number, userId: string, body: UpdateScheduleBody) {
     const row = await this.getSeasonRow(seasonId)
     await this.access.assertSeasonAccess(seasonId, userId)
-    this.assertStatus(row, [
-      SeasonStatus.Draft,
-      SeasonStatus.Upcoming,
-      SeasonStatus.Active,
-      SeasonStatus.Suspended,
-    ], '当前状态不能修改赛程')
+    this.assertStatus(row, RULE_EDITABLE_STATUSES, '当前状态不能修改赛程')
     const error = validateSchedule(body.schedule)
     if (error) throw boomlandError('SCHEDULE_INVALID', error, 400, { field: 'schedule' })
     await this.db.update(seasons).set({
@@ -683,47 +920,57 @@ export class SeasonService {
   async updateRuleCard(seasonId: number, userId: string, body: UpdateRuleCardBody) {
     const row = await this.getSeasonRow(seasonId)
     await this.access.assertSeasonAccess(seasonId, userId)
-    this.assertStatus(row, [
-      SeasonStatus.Draft,
-      SeasonStatus.Upcoming,
-      SeasonStatus.Active,
-      SeasonStatus.Suspended,
-    ], '当前状态不能修改规则卡')
-    const required = new Set<string>(SEASON_REQUIRED_RULE_CARD_KEYS)
+    this.assertStatus(row, RULE_EDITABLE_STATUSES, '当前状态不能修改规则卡')
+    // 必要条目的文案由赛季配置生成：客户端传来的 label / value / visible 一律忽略，
+    // 只有它在数组里的**位置**被采纳（下标即 sortOrder）。
+    const generated = generatedRequiredItems(row.rules, scheduleFromRow(row))
     const keys = new Set<string>()
-    const items = body.items.map((item, index) => {
+    const dropped: string[] = []
+    const items: Array<typeof seasonRuleCardItems.$inferInsert> = []
+    for (const item of body.items) {
       const key = item.key.trim()
-      const label = item.label.trim()
-      const value = item.value.trim()
+      if (LEGACY_RULE_CARD_KEYS.has(key)) {
+        // 旧 key 已不是规则卡的一部分，静默丢弃而不是当作可选条目写回去。
+        dropped.push(key)
+        continue
+      }
       if (keys.has(key)) {
         throw boomlandError('VALIDATION_ERROR', `规则卡 key 重复：${key}`, 400, { field: 'items' })
       }
       keys.add(key)
+      const requiredItem = generated.get(key)
+      if (requiredItem) {
+        items.push({
+          seasonId,
+          key,
+          label: requiredItem.label,
+          value: requiredItem.value,
+          required: true,
+          visible: true,
+          sortOrder: items.length,
+        })
+        continue
+      }
+      const label = item.label.trim()
+      const value = item.value.trim()
       if (!label || !value) {
         throw boomlandError('VALIDATION_ERROR', '规则卡条目 label/value 不能为空', 400, { field: 'items' })
       }
-      return {
+      items.push({
         seasonId,
         key,
         label,
         value,
-        required: required.has(key),
+        required: false,
         visible: item.visible !== false,
-        sortOrder: index,
-      }
-    })
-    const missing = [...required].filter((key) => !keys.has(key))
+        sortOrder: items.length,
+      })
+    }
+    const missing = [...REQUIRED_RULE_CARD_KEYS].filter((key) => !keys.has(key))
     if (missing.length > 0) {
       throw boomlandError('RULE_CARD_REQUIRED_ITEM', `缺少必要规则卡条目：${missing.join(', ')}`, 400, {
         field: 'items',
         detail: { missing },
-      })
-    }
-    const hidden = items.filter((item) => item.required && !item.visible).map((item) => item.key)
-    if (hidden.length > 0) {
-      throw boomlandError('RULE_CARD_REQUIRED_ITEM', `必要规则卡条目不能隐藏：${hidden.join(', ')}`, 400, {
-        field: 'items',
-        detail: { hidden },
       })
     }
     await this.db.transaction(async (tx) => {
@@ -736,7 +983,10 @@ export class SeasonService {
       targetType: 'season',
       targetId: String(seasonId),
       seasonId,
-      detail: { keys: items.map((item) => item.key) },
+      detail: {
+        keys: items.map((item) => item.key),
+        ...(dropped.length > 0 ? { droppedLegacyKeys: dropped } : {}),
+      },
     })
     if (body.announcement?.title || body.announcement?.content) {
       await this.announce(
@@ -748,7 +998,119 @@ export class SeasonService {
         '赛季规则卡已更新，请查看最新内容。',
       )
     }
-    return { items: await this.ruleCard(seasonId) }
+    return { items: await this.ruleCard(row) }
+  }
+
+  /**
+   * 读赛季主题。
+   *
+   * 公开口径与 `GET /seasons/:id` 完全一致（`isPublicSeason`）：未批准或已取消的
+   * 赛季对外就是不存在。主题是报名表单的选项来源，泄露草稿赛季的方向等于提前
+   * 透露还没发布的内容。
+   */
+  async listThemes(seasonId: number) {
+    const row = await this.getSeasonRow(seasonId)
+    if (!isPublicSeason(row)) throw boomlandError('SEASON_NOT_FOUND', '赛季不存在或暂未公开', 404)
+    return { themes: row.themes ?? [] }
+  }
+
+  /**
+   * 整表替换赛季主题。
+   *
+   * 与规则卡同口径：允许的状态集合一致（见 `RULE_EDITABLE_STATUSES`），已批准赛季
+   * 写入要 `rulesVersion + 1` 并发一条 `rules` 分类公告 —— 主题决定报名者选的方向，
+   * 改了方向等于改了规则，报名者需要收到通知。
+   */
+  async updateThemes(seasonId: number, userId: string, body: UpdateSeasonThemesBody) {
+    const row = await this.getSeasonRow(seasonId)
+    await this.access.assertSeasonAccess(seasonId, userId)
+    this.assertStatus(row, RULE_EDITABLE_STATUSES, '当前状态不能修改赛季主题')
+    const themes = normalizeThemes(body.themes)
+    const approved = row.approvedAt !== null
+    await this.db.update(seasons).set({
+      themes,
+      // 未批准赛季的版本号还属于「草稿内部迭代」，对外没人看过，不占版本；
+      // 已批准才 +1，让报名者看到的「规则已更新」是真实发生的变化。
+      ...(approved ? { rulesVersion: row.rulesVersion + 1 } : {}),
+    }).where(eq(seasons.id, seasonId))
+    await writeAudit(this.db, {
+      actorUserId: userId,
+      action: 'season.themes_updated',
+      targetType: 'season',
+      targetId: String(seasonId),
+      seasonId,
+      detail: { before: row.themes ?? [], after: themes },
+    })
+    await this.announce(
+      row,
+      userId,
+      AnnouncementCategory.Rules,
+      undefined,
+      '赛季主题已更新',
+      `赛季主题已更新为：${themes.join('、') || '（空）'}。请按最新主题选择报名方向。`,
+    )
+    return { themes }
+  }
+
+  /**
+   * 读企业合作配置（主办方后台表格）。
+   *
+   * 整表按 `sortOrder` 返回：这份配置是商务口径的内部资料，顺序就是主办方排的
+   * 展示顺序，不做二次排序。
+   */
+  async listCooperations(seasonId: number, userId: string) {
+    await this.getSeasonRow(seasonId)
+    await this.access.assertSeasonAccess(seasonId, userId)
+    return { items: await this.cooperationRows(seasonId) }
+  }
+
+  /**
+   * 整表替换企业合作配置（语义同规则卡：先删后插，一次事务）。
+   *
+   * 只有已取消的赛季拒绝写入：合作配置是商务台账，草稿到开赛后都可能调整，
+   * 但赛季取消之后台账就冻结了（钱和授权都不能再改）。
+   *
+   * 必须走事务：先删后插之间若失败，赛季会变成「一条配置都没有」，
+   * 而合作配置没有草稿态可以恢复。
+   */
+  async updateCooperations(seasonId: number, userId: string, body: UpdateEnterpriseCooperationsBody) {
+    const row = await this.getSeasonRow(seasonId)
+    await this.access.assertSeasonAccess(seasonId, userId)
+    if (row.status === SeasonStatus.Cancelled) {
+      throw boomlandError('SEASON_INVALID_STATUS', '已取消的赛季不能修改企业合作配置', 409)
+    }
+    const items = body.items.map((item, index) => ({
+      ...normalizeCooperation(item, index),
+      seasonId,
+    }))
+    await this.db.transaction(async (tx) => {
+      await tx.delete(seasonEnterpriseCooperations)
+        .where(eq(seasonEnterpriseCooperations.seasonId, seasonId))
+      if (items.length > 0) {
+        await tx.insert(seasonEnterpriseCooperations).values(items)
+      }
+    })
+    await writeAudit(this.db, {
+      actorUserId: userId,
+      action: 'season.cooperations_updated',
+      targetType: 'season',
+      targetId: String(seasonId),
+      seasonId,
+      detail: {
+        count: items.length,
+        enterpriseNames: items.map((item) => item.enterpriseName),
+      },
+    })
+    return { items: await this.cooperationRows(seasonId) }
+  }
+
+  private async cooperationRows(seasonId: number): Promise<EnterpriseCooperationDto[]> {
+    const rows = await this.db
+      .select()
+      .from(seasonEnterpriseCooperations)
+      .where(eq(seasonEnterpriseCooperations.seasonId, seasonId))
+      .orderBy(asc(seasonEnterpriseCooperations.sortOrder), asc(seasonEnterpriseCooperations.id))
+    return rows.map(cooperationDto)
   }
 
   async updateOrganizers(seasonId: number, userId: string, body: UpdateOrganizersBody) {
@@ -1013,19 +1375,18 @@ export class SeasonService {
       })
       await tx.insert(seasonOrganizers).values(orgRows.map((org) => ({ seasonId: result.insertId, orgId: org.orgId })))
       await tx.insert(seasonPointPools).values({ seasonId: result.insertId, createdBy: userId })
-      if (sourceCard.length > 0) {
-        await tx.insert(seasonRuleCardItems).values(sourceCard.map((item, index) => ({
-          seasonId: result.insertId,
-          key: item.key,
-          label: item.label,
-          value: item.value,
-          required: item.required,
-          visible: item.visible,
-          sortOrder: index,
-        })))
-      } else {
-        await this.seedRuleCard(tx, result.insertId, source.rules, null)
-      }
+      // 复制赛季清空赛程，所以必要条目按「无赛程」重新生成（截止时间显示为「待定」）；
+      // 可选条目与来源顺序保留。必要条目的旧文案不复制 —— 它们由赛季配置生成。
+      const clonedCard = buildRuleCard(sourceCard, source.rules, null)
+      await tx.insert(seasonRuleCardItems).values(clonedCard.map((item, index) => ({
+        seasonId: result.insertId,
+        key: item.key,
+        label: item.label,
+        value: item.value,
+        required: item.required,
+        visible: item.visible,
+        sortOrder: index,
+      })))
       await tx.insert(auditLogs).values({
         actorUserId: userId,
         action: 'season.cloned',

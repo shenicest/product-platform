@@ -2,20 +2,26 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Chip } from '@/components/ui/chip'
 import { SeasonDraftForm } from '@/components/organizer/season-draft-form'
 import { SeasonPicker } from '@/components/organizer/season-picker'
 import { getSeasonManageDetail } from '@/lib/organizer-api'
+import { seasonStatusMeta } from '@/lib/boomland'
 import {
   draftFromPreviousSeason,
   emptySeasonDraft,
   suggestSeasonCode,
   toSeasonPickerOptions,
   type OrganizerOrg,
+  type PickableSeason,
   type SeasonDraftValues,
 } from '@/lib/organizer'
 
-/** 选择器需要的最小赛季字段；由路由段 layout 从服务端取好后传进来。 */
-export type PickableSeason = { id: number; name: string; code: string }
+/**
+ * 选择器需要的最小赛季字段；由路由段 layout 从服务端取好后传进来。
+ * 定义在 `lib/organizer.ts`（纯类型，方便单测与选择器共用）。
+ */
+export type { PickableSeason } from '@/lib/organizer'
 
 /**
  * 主办方后台 Header：赛季选择器 + 两个按钮。
@@ -54,6 +60,10 @@ export function OrganizerHeader({
   const sourceSeason = (currentSeasonId !== null
     ? seasons.find((season) => season.id === currentSeasonId)
     : undefined) ?? seasons[0]
+  // 当前选中的赛季（用于选择器旁的状态标记）；没选中具体赛季时没有。
+  const currentSeason = currentSeasonId !== null
+    ? seasons.find((season) => season.id === currentSeasonId)
+    : undefined
 
   const closeDialog = useCallback(() => {
     setDialog(null)
@@ -113,6 +123,8 @@ export function OrganizerHeader({
             onSeasonChange={setCurrentSeasonId}
           />
         </div>
+
+        {currentSeason ? <SeasonStatusChip season={currentSeason} /> : null}
 
         <div className="flex flex-wrap items-center gap-2">
           <Button ref={triggerRef} onClick={openCreate} disabled={Boolean(dialog)}>
@@ -195,6 +207,28 @@ export function OrganizerHeader({
           </div>
         </div>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * 选择器旁的当前赛季状态胶囊。
+ *
+ * 选项文本里已经带了状态，但下拉框收起后只剩一行文字；这里用一个带色胶囊
+ * 把状态再强调一次（草稿灰、待批琥珀、进行中绿……），与公开页的
+ * `SeasonStatusBadge` 同一套色板。待批准不是独立 status，所以先判
+ * `upcoming + approvedAt 为空`。
+ */
+function SeasonStatusChip({ season }: { season: PickableSeason }) {
+  const pending = season.status === 'upcoming' && !season.approvedAt
+  const meta = pending
+    ? { label: '待批准', tone: 'warning' as const }
+    : seasonStatusMeta(season.status)
+  return (
+    <div className="flex items-end pb-1">
+      <Chip tone={meta.tone} dot aria-label={`当前赛季状态：${meta.label}`}>
+        {meta.label}
+      </Chip>
     </div>
   )
 }
