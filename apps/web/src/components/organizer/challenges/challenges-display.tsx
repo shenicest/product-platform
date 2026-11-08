@@ -5,8 +5,10 @@ import { challengeStatusMeta } from '@/lib/boomland'
 import { challengeTypeLabel } from '@shenicest/shared'
 import {
   capacityLabel,
+  challengeProjectRows,
   challengeThemeLabel,
   challengeTitleLabel,
+  challengeVersionRows,
   cooperationDisplayRows,
   fivePieceSummary,
   type ChallengeDto,
@@ -209,8 +211,175 @@ export function ChallengeLibrarySection({
           description="这个赛季还没有命题。点右上「新建命题草稿」开始，五件套可以之后补齐。"
         />
       ) : (
-        <div className="ui-panel ui-panel--flush">
+        <div className="ui-panel ui-panel--flush min-w-0">
           <ChallengeTable items={items} organizerNames={organizerNames} renderActions={renderActions} />
+        </div>
+      )}
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 版本记录（契约 §4.2 第 2 条）
+// ---------------------------------------------------------------------------
+
+/**
+ * 版本记录表。
+ *
+ * 展示形态：**一张表 + 「命题」列**，而不是按命题分块。理由：
+ *   · 版本条数不确定，分块会让页面在命题多的时候被拉得很长；
+ *   · 表格能横向对比「哪条命题改得最频繁」，分块做不到；
+ *   · 「命题」列保证多命题混排时仍能读到归属，不会出现「这条 v3 是谁的」。
+ * 排序：先按命题库顺序，同一命题内版本号从新到旧（后端写入即按时间递增）。
+ */
+export function ChallengeVersionTable({ items }: { items: ChallengeDto[] }) {
+  const rows = challengeVersionRows(items)
+  return (
+    <div className="overflow-x-auto">
+      <table className="console-table" aria-label="命题版本记录">
+        <thead>
+          <tr>
+            <th scope="col">命题</th>
+            <th scope="col">版本</th>
+            <th scope="col">说明</th>
+            <th scope="col">操作人</th>
+            <th scope="col">时间</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={`${row.challengeId}-${row.id}`} data-version-id={row.id}>
+              <td className="min-w-48 max-w-80">
+                <span className="block font-bold text-foreground">{row.challengeTitle}</span>
+              </td>
+              <td className="whitespace-nowrap font-mono text-meta text-foreground">
+                {row.versionLabel}
+              </td>
+              <td className="min-w-56 text-muted-foreground">{row.note}</td>
+              <td className="min-w-32 font-mono text-meta text-muted-foreground">
+                {row.changedBy}
+              </td>
+              <td className="whitespace-nowrap font-mono text-meta text-muted-foreground">
+                {row.timeLabel}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+/**
+ * 版本记录区块。
+ *
+ * 说明文案写清「什么时候会有记录」：新建草稿 / 发布 / 已发布命题的内容更新，
+ * 这样空态不会让人以为功能坏了（草稿只建过一次时也会有一条 v1）。
+ */
+export function ChallengeVersionSection({ items }: { items: ChallengeDto[] }) {
+  const rows = challengeVersionRows(items)
+  return (
+    <section aria-labelledby="challenge-versions-title" className="mt-10">
+      <SectionHead
+        title="版本记录"
+        meta={`${rows.length} 条`}
+        lead="新建草稿、发布命题、以及已发布命题的内容更新都会写一条记录（含变更说明与操作人）。版本号只增不减，旧版本不会被覆盖；「变更说明」在命题库行内的「编辑详情」里填写。"
+      />
+
+      {rows.length === 0 ? (
+        <EmptyState
+          title="NO VERSION RECORDS"
+          description="这个赛季的命题还没有版本记录。后端会在新建草稿 / 发布 / 内容更新时自动写入；如果刚更新过命题，刷新页面再看。"
+        />
+      ) : (
+        <div className="ui-panel ui-panel--flush min-w-0">
+          <ChallengeVersionTable items={items} />
+        </div>
+      )}
+    </section>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 选择本命题的项目（契约 §4.2 第 3 条）
+// ---------------------------------------------------------------------------
+
+/**
+ * 「选择本命题的项目」表。
+ *
+ * 展示形态：**一张表 + 「命题」列**，与版本记录同口径。列按契约给
+ * 命题 / 项目 / 阶段 / 负责人；阶段用 shared 的 `seasonProjectStageLabel`
+ * （本批只展示，不提供阶段流转入口）。
+ *
+ * 只读：项目选择命题（CHG-003）与权益/容量校验不在本批，所以这里不摆
+ * 任何「移除 / 调整」按钮 —— 一个点不动的按钮比没有按钮更让人困惑。
+ */
+export function ChallengeProjectTable({ items }: { items: ChallengeDto[] }) {
+  const rows = challengeProjectRows(items)
+  return (
+    <div className="overflow-x-auto">
+      <table className="console-table" aria-label="选择本命题的项目">
+        <thead>
+          <tr>
+            <th scope="col">命题</th>
+            <th scope="col">项目</th>
+            <th scope="col">阶段</th>
+            <th scope="col">负责人</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr
+              key={`${row.challengeId}-${row.seasonProjectId}`}
+              data-season-project-id={row.seasonProjectId}
+            >
+              <td className="min-w-48 max-w-80">
+                <span className="block font-bold text-foreground">{row.challengeTitle}</span>
+              </td>
+              <td className="min-w-56">
+                <span className="block text-foreground">{row.name}</span>
+                <span className="mt-1 block font-mono text-meta text-muted-foreground">
+                  #{row.projectId}
+                </span>
+              </td>
+              <td className="whitespace-nowrap">
+                <Chip tone="neutral" className="text-meta">
+                  {row.stageLabel}
+                </Chip>
+              </td>
+              <td className="min-w-32 text-muted-foreground">{row.ownerName}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+/**
+ * 「选择本命题的项目」区块。
+ *
+ * 说明文案强调「项目选择命题由选手侧发起」：主办方在这里只能看，
+ * 免得有人以为漏了一个录入入口。
+ */
+export function ChallengeProjectSection({ items }: { items: ChallengeDto[] }) {
+  const rows = challengeProjectRows(items)
+  return (
+    <section aria-labelledby="challenge-projects-title" className="mt-10">
+      <SectionHead
+        title="选择本命题的项目"
+        meta={`${rows.length} 个项目`}
+        lead="赛季项目在选择命题时挂上本命题，这里按命题汇总展示。阶段只前进（本批只展示，不做流转）；选择命题时的权益快照与容量校验不在本批。"
+      />
+
+      {rows.length === 0 ? (
+        <EmptyState
+          title="NO SELECTED PROJECTS"
+          description="还没有项目选择这些命题。项目选择命题由选手在赛季项目里发起，主办方这里只做查看。"
+        />
+      ) : (
+        <div className="ui-panel ui-panel--flush min-w-0">
+          <ChallengeProjectTable items={items} />
         </div>
       )}
     </section>
@@ -316,7 +485,7 @@ export function CooperationSection({
           description="这个赛季还没有登记企业合作配置。点右上「编辑」添加企业、档位与费用。"
         />
       ) : (
-        <div className="ui-panel ui-panel--flush">
+        <div className="ui-panel ui-panel--flush min-w-0">
           <CooperationTable items={items} />
         </div>
       )}

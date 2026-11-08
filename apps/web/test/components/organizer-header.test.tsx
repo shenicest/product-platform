@@ -76,11 +76,12 @@ describe('OrganizerHeader season picker', () => {
     expect(screen.getByRole('option', { name: '暂无赛季' })).toBeInTheDocument()
   })
 
-  it('lists the seasons with an “all seasons” option and navigates on change', async () => {
+  it('lists every season and navigates on change', async () => {
     const user = userEvent.setup()
     renderHeader()
     expect(picker()).toBeEnabled()
-    expect(within(picker()).getByRole('option', { name: '全部赛季' })).toBeInTheDocument()
+    // 没有「全部赛季」这一档：后台每个 tab 都按赛季组织。
+    expect(within(picker()).queryByRole('option', { name: '全部赛季' })).not.toBeInTheDocument()
 
     await user.selectOptions(picker(), '21')
     expect(push).toHaveBeenCalledWith('/organizer/overview?season=21')

@@ -218,6 +218,20 @@
       "when": 1794117703504,
       "tag": "0030_add-challenge-enterprise",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1794135605336,
+      "tag": "0031_add-season-team-recruitment",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "5",
+      "when": 1794139703871,
+      "tag": "0032_bumpy_chamber",
+      "breakpoints": true
     }
   ]
 }

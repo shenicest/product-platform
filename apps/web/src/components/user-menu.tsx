@@ -114,6 +114,10 @@ export function UserMenu() {
        * 这里不叠加 Tailwind 的 shadow-* —— 那是与皮肤无关的固定投影，
        * 会让 rock / night 皮肤下的浮层失去同一套层次语言。 */}
       <Card static className="absolute top-full right-0 z-50 mt-3 min-w-48 p-2">
+        <Link href="/me/applications" className={MENU_ITEM} onClick={closeMenu}>
+          工作台
+        </Link>
+
         <Link href="/connections" className={MENU_ITEM} onClick={closeMenu}>
           <span>连接记录</span>
           {pending > 0 ? (

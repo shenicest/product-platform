@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { ALL_SEASONS_VALUE, type SeasonPickerOption } from '@/lib/organizer'
+import { type SeasonPickerOption } from '@/lib/organizer'
 import { DEFAULT_ORGANIZER_TAB, ORGANIZER_TABS } from '@/components/organizer/organizer-tabs'
 
 /**
@@ -24,13 +24,18 @@ export function SeasonPicker({
   seasonId: number | null
   /** 当前 tab 的 slug：切换赛季后要回到同一个 tab。 */
   tab: string
-  /** 可选：外部还想知道选中了谁（比如草稿弹窗要跟着换源赛季）。 */
-  onSeasonChange?: (seasonId: number | null) => void
+  /**
+   * 可选：外部还想知道选中了谁（比如草稿弹窗要跟着换源赛季）。
+   *
+   * 没有「全部赛季」这一档之后，回调只会收到一个具体 id —— 调用方不用再处理
+   * null 分支（选择器本身也不会在空值上触发导航）。
+   */
+  onSeasonChange?: (seasonId: number) => void
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const disabled = options.length === 0
-  const value = seasonId === null ? ALL_SEASONS_VALUE : String(seasonId)
+  const value = seasonId === null ? '' : String(seasonId)
 
   // 受控值：路由跳转要等服务端 RSC 往返，期间如果直接回落到旧的 prop，
   // 下拉框会闪回上一个赛季。这里记住“自己刚选过什么”，并用导航状态作为
@@ -41,12 +46,12 @@ export function SeasonPicker({
 
   function onChange(next: string) {
     setSelection({ for: value, value: next })
-    const nextSeasonId = next === ALL_SEASONS_VALUE ? null : Number(next)
+    // 没有「全部赛季」这一档：空值只可能来自占位的「暂无赛季」选项，不触发导航。
+    if (!next) return
+    const nextSeasonId = Number(next)
     onSeasonChange?.(nextSeasonId)
     const slug = ORGANIZER_TABS.some((item) => item.slug === tab) ? tab : DEFAULT_ORGANIZER_TAB.slug
-    const base = `/organizer/${slug}`
-    const href = nextSeasonId === null ? base : `${base}?season=${nextSeasonId}`
-    startTransition(() => router.push(href))
+    startTransition(() => router.push(`/organizer/${slug}?season=${nextSeasonId}`))
   }
 
   return (

@@ -1,5 +1,6 @@
 import { request } from './client-api'
 import type {
+  ChallengeDetailPayload,
   ChallengeDraftPayload,
   ChallengeDto,
   ChallengeResourceDto,
@@ -25,8 +26,18 @@ export function createChallenge(seasonId: number, body: ChallengeDraftPayload) {
   return request<ChallengeDto>('POST', `/seasons/${seasonId}/challenges`, body)
 }
 
-/** `PATCH /challenges/:id` —— 改命题内容；已发布的命题会让 `version` +1。 */
-export function updateChallenge(challengeId: number, body: ChallengeDraftPayload) {
+/**
+ * `PATCH /challenges/:id` —— 改命题内容；已发布的命题会让 `version` +1。
+ *
+ * body 有两种来源，都走同一个后端接口：
+ *   · `ChallengeDraftPayload`（命题草稿弹窗：标题 / 类型 / 主题 / 容量 / 五件套）；
+ *   · `ChallengeDetailPayload`（命题详情弹窗：命题卡正文 / 权重 / 权益 + `changeNote`）。
+ * 后端把每个字段都声明成可选，所以合并后的请求体永远是「部分更新」。
+ */
+export function updateChallenge(
+  challengeId: number,
+  body: ChallengeDraftPayload | ChallengeDetailPayload,
+) {
   return request<ChallengeDto>('PATCH', `/challenges/${challengeId}`, body)
 }
 

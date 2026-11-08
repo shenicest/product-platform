@@ -1,4 +1,4 @@
-import { Elysia } from 'elysia'
+import { Elysia, t } from 'elysia'
 import { dbPlugin } from '../../plugins/db'
 import { authPlugin } from '../../plugins/auth'
 import { db } from '../../db'
@@ -9,6 +9,7 @@ import {
   CreateChallengeBody,
   ListSeasonChallengesQuery,
   PatchChallengeResourceBody,
+  PublishChallengeBody,
   ReplaceChallengeResourcesBody,
   SeasonChallengesParams,
   UpdateChallengeBody,
@@ -36,6 +37,21 @@ export const challengeModule = new Elysia()
     params: ChallengeIdParams,
     detail: { summary: 'Get challenge detail', tags: ['Challenge'], security: [{ bearerAuth: [] }, {}] },
   })
+  // 关注 / 取消关注（契约 §3.2）。两者都幂等：重复关注不报错、不重复计数。
+  .post('/challenges/:id/follow', async ({ user, params }) => {
+    return challengeService.follow(params.id, user.userId)
+  }, {
+    auth: true,
+    params: ChallengeIdParams,
+    detail: { summary: 'Follow a challenge', tags: ['Challenge'] },
+  })
+  .delete('/challenges/:id/follow', async ({ user, params }) => {
+    return challengeService.unfollow(params.id, user.userId)
+  }, {
+    auth: true,
+    params: ChallengeIdParams,
+    detail: { summary: 'Unfollow a challenge', tags: ['Challenge'] },
+  })
   .post('/seasons/:id/challenges', async ({ user, params, body }) => {
     return challengeService.create(params.id, user.userId, body)
   }, {
@@ -59,11 +75,13 @@ export const challengeModule = new Elysia()
     params: ChallengeIdParams,
     detail: { summary: 'Mark a challenge as reference', tags: ['Challenge'] },
   })
-  .post('/challenges/:id/publish', async ({ user, params }) => {
-    return challengeService.publish(params.id, user.userId)
+  .post('/challenges/:id/publish', async ({ user, params, body }) => {
+    return challengeService.publish(params.id, user.userId, body?.changeNote)
   }, {
     auth: true,
     params: ChallengeIdParams,
+    // body 可选：老的调用方（按钮直接 POST 无 body）必须继续可用。
+    body: t.Optional(PublishChallengeBody),
     detail: { summary: 'Publish a challenge', tags: ['Challenge'] },
   })
   .post('/challenges/:id/close', async ({ user, params }) => {

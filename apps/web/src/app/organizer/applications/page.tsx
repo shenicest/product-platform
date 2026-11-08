@@ -19,11 +19,11 @@ import {
   summarizeApplicationReview,
   type ApplicationListPage,
 } from '@/lib/organizer-applications'
-import { parseSeasonId } from '@/lib/organizer'
 import {
   OrganizerApiError,
   getSeasonApplications,
   getSeasonManageDetail,
+  resolveOrganizerSeasonId,
 } from '@/server/organizer'
 import type { SeasonManageDetail } from '@/lib/organizer'
 
@@ -61,7 +61,10 @@ export default async function OrganizerApplicationsPage(props: {
 }) {
   const searchParams = await props.searchParams
   const rawSeason = searchParams.season
-  const seasonId = parseSeasonId(Array.isArray(rawSeason) ? rawSeason[0] : rawSeason)
+  // 没有 `?season=` 时回落到最新赛季：后台按赛季组织，默认值不该是「未选中」。
+  const seasonId = await resolveOrganizerSeasonId(
+    Array.isArray(rawSeason) ? rawSeason[0] : rawSeason,
+  )
   const params = parseApplicationReviewParams(searchParams)
 
   if (seasonId === null) return <NoSeasonSelectedForReview />

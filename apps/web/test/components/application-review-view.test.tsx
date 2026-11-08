@@ -128,6 +128,25 @@ describe('ApplicationReviewView · queue', () => {
     expect(table.parentElement).toHaveClass('overflow-x-auto')
   })
 
+  it('keeps the table from widening the page shell', () => {
+    // 外层是 `grid`，grid item 的 `min-width` 默认 `auto` —— 会取表格的
+    // min-content 宽度，于是 `overflow-x-auto` 永远轮不到自己滚动，整张表
+    // 直接把 `.shell--narrow` 的 1120px 顶开。这一格必须是 `min-w-0`。
+    const { container } = renderView()
+    const table = screen.getByRole('table', { name: '报名审核队列' })
+    const scrollBox = table.parentElement as HTMLElement
+    const panel = scrollBox.parentElement as HTMLElement
+
+    expect(scrollBox).toHaveClass('overflow-x-auto')
+    // 滚动容器本身不能带任何 min-width（否则它会先被内容撑开）。
+    expect(scrollBox.className).not.toMatch(/\bmin-w-(?:full|max|screen)\b/)
+    // 面板与它的外层 section 都归零最小宽度，滚动才发生在 scrollBox 里。
+    expect(panel).toHaveClass('min-w-0')
+    expect(panel.parentElement).toHaveClass('min-w-0')
+    // 视图根节点同样要 min-w-0，避免它把 grid 的 auto 最小宽度传下去。
+    expect(container.firstElementChild).toHaveClass('min-w-0')
+  })
+
   it('shows a terminal row without actions', () => {
     renderView({ items: [application({ status: 'accepted' })] })
     expect(screen.getByText('已是终态')).toBeInTheDocument()

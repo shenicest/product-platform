@@ -1,5 +1,5 @@
 import { afterAll, afterEach, describe, expect, it } from 'bun:test'
-import { inArray } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { db } from '../../src/db'
 import { organizerOrgs, userIdentities } from '../../src/db/schema'
 import { app } from '../../src/app'
@@ -31,8 +31,11 @@ afterEach(() => {
 
 afterAll(async () => {
   // Defensive: the mock layer must never have written rows for mock users.
-  await db.delete(userIdentities).where(inArray(userIdentities.userId, MOCK_USER_IDS))
-  await db.delete(organizerOrgs).where(inArray(organizerOrgs.name, ['mock-test-org']))
+  // Each test cleans up after itself; this only catches a test that threw
+  // mid-way, so it must tolerate a table that another suite already dropped.
+  try {
+    await db.delete(userIdentities).where(inArray(userIdentities.userId, MOCK_USER_IDS))
+  } catch {}
 })
 
 describe('Mock session — HTTP endpoints', () => {
@@ -202,18 +205,27 @@ describe('Mock session — identity surfaces', () => {
 
   it('reports organizer membership per fixture', async () => {
     process.env.NODE_ENV = 'development'
-    const memberRes = await app.handle(
-      new Request('http://localhost/organizer-orgs', { headers: await cookieFor(ORGANIZER.key) }),
-    )
-    const memberBody = await memberRes.json()
-    // No orgs may exist in a fresh test DB; the shape is what matters here.
-    for (const org of memberBody.items) expect(org.isMember).toBe(true)
+    // 建一个真实组织：否则新库里一个组织都没有，这条断言会空转成
+    // 「遍历空数组」，看着通过其实什么都没验。
+    const orgName = `mock-test-org-${crypto.randomUUID()}`
+    const [org] = await db.insert(organizerOrgs).values({ name: orgName })
+    try {
+      const memberRes = await app.handle(
+        new Request('http://localhost/organizer-orgs', { headers: await cookieFor(ORGANIZER.key) }),
+      )
+      const memberBody = await memberRes.json()
+      const memberOrg = memberBody.items.find((o: { id: number }) => o.id === org.insertId)
+      expect(memberOrg?.isMember).toBe(true)
 
-    const nonMemberRes = await app.handle(
-      new Request('http://localhost/organizer-orgs', { headers: await cookieFor(GUEST.key) }),
-    )
-    const nonMemberBody = await nonMemberRes.json()
-    for (const org of nonMemberBody.items) expect(org.isMember).toBe(false)
+      const nonMemberRes = await app.handle(
+        new Request('http://localhost/organizer-orgs', { headers: await cookieFor(GUEST.key) }),
+      )
+      const nonMemberBody = await nonMemberRes.json()
+      const nonMemberOrg = nonMemberBody.items.find((o: { id: number }) => o.id === org.insertId)
+      expect(nonMemberOrg?.isMember).toBe(false)
+    } finally {
+      await db.delete(organizerOrgs).where(eq(organizerOrgs.id, org.insertId))
+    }
   })
 
   it('does not persist any rows for mock users', async () => {

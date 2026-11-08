@@ -1,14 +1,22 @@
 import {
   CHALLENGE_CAPACITY_LIMITS,
+  CHALLENGE_CARD_LIMITS,
   CHALLENGE_RESOURCE_KINDS,
   CHALLENGE_RESOURCE_KIND_LABELS,
   CHALLENGE_RESOURCE_STATUSES,
   CHALLENGE_RESOURCE_STATUS_LABELS,
+  CHALLENGE_RIGHTS_FIELDS,
+  CHALLENGE_RIGHTS_FIELD_LABELS,
+  CHALLENGE_SCORING_DIMENSIONS,
+  CHALLENGE_SCORING_DIMENSION_LABELS,
+  CHALLENGE_SCORING_WEIGHT_MAX,
+  CHALLENGE_SCORING_WEIGHT_TOTAL,
   CHALLENGE_TYPES,
   CHALLENGE_TYPE_HINTS,
   CHALLENGE_TYPE_LABELS,
   ChallengeResourceKind,
   ChallengeResourceStatus,
+  ChallengeScoringDimension,
   ChallengeStatus,
   ENTERPRISE_COOPERATION_AMOUNT_LIMITS,
   ENTERPRISE_COOPERATION_STATUS_LABELS,
@@ -21,6 +29,7 @@ import {
   enterpriseCooperationStatusLabel,
   enterpriseCooperationTierLabel,
   enterprisePublicScopeLabel,
+  seasonProjectStageLabel,
 } from '@shenicest/shared'
 import type { SeasonChallenge } from '@/lib/boomland'
 
@@ -58,12 +67,43 @@ export type ChallengeResourceDto = {
   updatedAt?: string
 }
 
+/** 命题版本记录的一行（`challenge_versions`，契约 §1.2）。 */
+export type ChallengeVersionDto = {
+  id: number
+  /** 该条记录对应的命题版本号。 */
+  version: number
+  /** 变更说明（后端自动生成或取 `changeNote`）。 */
+  note: string
+  /** 操作人。 */
+  changedBy: string
+  createdAt: string
+}
+
+/**
+ * 「选择本命题的项目」的一行（契约 §3.1 的 `projects`）。
+ *
+ * 与赛季项目列表同口径：只有未归档、且 `challengeIds` 含本命题的赛季项目。
+ */
+export type ChallengeProjectDto = {
+  seasonProjectId: number
+  projectId: number
+  name: string
+  tagline: string | null
+  /** `SeasonProjectStage`；阶段只前进，本批只做展示。 */
+  stage: string
+  ownerName: string | null
+}
+
 /**
  * `GET /seasons/:id/challenges?includeDrafts=true` 的一行。
  *
  * 在既有五件套字段上新增 `type` / `theme` / `enterpriseName` / `capacity`
  * 与三个派生字段（`selectedCount` / `fivePieceComplete` / `missingFields`）。
  * 派生字段以后端为准，前端不重算 —— 发布按钮的可用性必须与后端判定一致。
+ *
+ * 第二批（命题详情页契约 §1.1 / §3.1）又加了命题卡正文、评分、七项权益、
+ * `versions` 与 `projects`。**这些字段全部声明成可空**：后端可能还没上线，
+ * 页面读不到时必须当成「未填写」，而不是崩在 `undefined.length` 上。
  */
 export type ChallengeDto = SeasonChallenge & {
   type: string | null
@@ -77,6 +117,39 @@ export type ChallengeDto = SeasonChallenge & {
   /** 缺失字段的中文名，发布按钮据此给提示。 */
   missingFields: string[]
   resources: ChallengeResourceDto[]
+
+  /** 命题卡正文（契约 §1.1）。 */
+  summary?: string | null
+  background?: string | null
+  /** 目标客户 / 产业对象。 */
+  industry?: string | null
+  scope?: string | null
+  outOfScope?: string | null
+  monthlyGoal?: string | null
+  suggestedSkills?: string[]
+  /** 团队容量（该命题下最多几个项目团队）；null = 不限。 */
+  teamCapacity?: number | null
+  ownerName?: string | null
+  responseSla?: string | null
+
+  /** 评分与奖励：五维权重；null = 未配置（按等权）。 */
+  scoringWeights?: Record<string, number> | null
+  /** 命题单次评分上限；null = 用赛季上限。 */
+  singleWorkCap?: number | null
+
+  /** 公开与权益：七项平铺在命题上，不套 `rights` 对象。 */
+  rightsPublicScope?: string | null
+  rightsConfidentiality?: string | null
+  rightsIp?: string | null
+  rightsEnterpriseUsage?: string | null
+  rightsProcurement?: string | null
+  rightsSpecialTerms?: string | null
+  rightsExclusivity?: string | null
+
+  /** 版本记录；后端未上线时缺省，视图一律 `?? []`。 */
+  versions?: ChallengeVersionDto[]
+  /** 选择本命题的项目；后端未上线时缺省，视图一律 `?? []`。 */
+  projects?: ChallengeProjectDto[]
 }
 
 /** 企业合作配置的一行（`GET /seasons/:id/cooperations`）。 */
@@ -410,6 +483,519 @@ export function toChallengePayload(values: ChallengeDraftValues): ChallengeDraft
     resourceCommitment: values.resourceCommitment.trim() || null,
   }
 }
+
+// ---------------------------------------------------------------------------
+// 命题详情：命题卡内容 / 评分与奖励 / 公开与权益（契约 §1.1、§3.3、§4.2）
+// ---------------------------------------------------------------------------
+
+/**
+ * 命题详情表单值。
+ *
+ * 全部用字符串（含权重与容量）：输入框需要保留「正在输入的中间态」，
+ * 提交前再由 {@link toChallengeDetailPayload} 转成数字 / null。
+ * 建议技能用逗号分隔的字符串 —— 胶囊输入在输入过程中也需要一个原始字符串。
+ */
+export type ChallengeDetailValues = {
+  summary: string
+  background: string
+  /** 目标客户 / 产业对象。 */
+  industry: string
+  scope: string
+  outOfScope: string
+  monthlyGoal: string
+  /** 建议技能：逗号（中英文均可）分隔，≤ 10 条，单条 ≤ 30 字。 */
+  suggestedSkills: string
+  teamCapacity: string
+  ownerName: string
+  responseSla: string
+  /** 五维权重：每维一个字符串（0–100 整数）。 */
+  weights: Record<ChallengeScoringDimension, string>
+  singleWorkCap: string
+  rightsPublicScope: string
+  rightsConfidentiality: string
+  rightsIp: string
+  rightsEnterpriseUsage: string
+  rightsProcurement: string
+  rightsSpecialTerms: string
+  rightsExclusivity: string
+  /** 变更说明：只用于写版本记录，不落 `challenges` 表。 */
+  changeNote: string
+}
+
+/**
+ * 表单错误。
+ *
+ * `weights` 是「合计 ≠ 100」这类**组级**错误（摆在五个数字输入下方），
+ * `weightOf` 是单维的格式错误（标红对应输入框）。两者分开：合计错了
+ * 不代表某一维填错了，把五个框一起标红只会让人不知道改哪个。
+ */
+export type ChallengeDetailErrors = Partial<
+  Record<Exclude<keyof ChallengeDetailValues, 'weights'>, string>
+> & {
+  weights?: string
+  weightOf?: Partial<Record<ChallengeScoringDimension, string>>
+}
+
+/** `PATCH /challenges/:id` 的请求体（详情部分 + 版本说明）。 */
+export type ChallengeDetailPayload = {
+  summary: string | null
+  background: string | null
+  industry: string | null
+  scope: string | null
+  outOfScope: string | null
+  monthlyGoal: string | null
+  suggestedSkills: string[]
+  teamCapacity: number | null
+  ownerName: string | null
+  responseSla: string | null
+  scoringWeights: Record<string, number> | null
+  singleWorkCap: number | null
+  rightsPublicScope: string | null
+  rightsConfidentiality: string | null
+  rightsIp: string | null
+  rightsEnterpriseUsage: string | null
+  rightsProcurement: string | null
+  rightsSpecialTerms: string | null
+  rightsExclusivity: string | null
+  /** 只有填写了才发：空串会被后端当成一条「没有说明」的版本记录。 */
+  changeNote?: string
+}
+
+/** 空的权重表单值：全部空串 = 未配置（保存时落 null，按等权）。 */
+export function emptyScoringWeights(): Record<ChallengeScoringDimension, string> {
+  return CHALLENGE_SCORING_DIMENSIONS.reduce(
+    (acc, dimension) => ({ ...acc, [dimension]: '' }),
+    {} as Record<ChallengeScoringDimension, string>,
+  )
+}
+
+export function emptyChallengeDetailDraft(): ChallengeDetailValues {
+  return {
+    summary: '',
+    background: '',
+    industry: '',
+    scope: '',
+    outOfScope: '',
+    monthlyGoal: '',
+    suggestedSkills: '',
+    teamCapacity: '',
+    ownerName: '',
+    responseSla: '',
+    weights: emptyScoringWeights(),
+    singleWorkCap: '',
+    rightsPublicScope: '',
+    rightsConfidentiality: '',
+    rightsIp: '',
+    rightsEnterpriseUsage: '',
+    rightsProcurement: '',
+    rightsSpecialTerms: '',
+    rightsExclusivity: '',
+    changeNote: '',
+  }
+}
+
+/** 建议技能的展示 / 回填口径：`、` 分隔（与详情页一致），提交前再拆开。 */
+export function formatSuggestedSkills(skills: readonly string[] | null | undefined): string {
+  return (skills ?? []).filter((skill) => skill.trim().length > 0).join('、')
+}
+
+/** 拆分建议技能：中英文逗号、顿号、换行都算分隔符；trim 后去空。 */
+export function parseSuggestedSkills(raw: string): string[] {
+  return raw
+    .split(/[,，、\n]/)
+    .map((skill) => skill.trim())
+    .filter((skill) => skill.length > 0)
+}
+
+/** 权重表单值：null / 缺失 = 未配置（全部空串），不伪造默认权重。 */
+export function scoringWeightFormValues(
+  weights: Record<string, number> | null | undefined,
+): Record<ChallengeScoringDimension, string> {
+  const base = emptyScoringWeights()
+  if (!weights) return base
+  for (const dimension of CHALLENGE_SCORING_DIMENSIONS) {
+    const value = weights[dimension]
+    if (typeof value === 'number' && Number.isFinite(value)) base[dimension] = String(value)
+  }
+  return base
+}
+
+/**
+ * 五维权重合计（表单值的实时合计）。
+ *
+ * 空串按 0 计；非数字按 0 计 —— 合计提示只用来表达「离 100 还差多少」，
+ * 具体的格式错误由校验函数逐维报。
+ */
+export function scoringWeightsTotal(
+  weights: Record<ChallengeScoringDimension, string>,
+): number {
+  return CHALLENGE_SCORING_DIMENSIONS.reduce((sum, dimension) => {
+    const value = Number(weights[dimension]?.trim())
+    return sum + (Number.isFinite(value) ? value : 0)
+  }, 0)
+}
+
+/** 权重是否全部为空 / 0（= 未配置，保存时清空为 null）。 */
+export function scoringWeightsAreEmpty(
+  weights: Record<ChallengeScoringDimension, string>,
+): boolean {
+  return CHALLENGE_SCORING_DIMENSIONS.every((dimension) => {
+    const raw = weights[dimension]?.trim()
+    return !raw || Number(raw) === 0
+  })
+}
+
+/**
+ * 合计提示文案。
+ *
+ * 合计 ≠ 100 时返回一句**可直接展示**的说明（含当前合计与差额），
+ * 合计正确或未配置时返回 `undefined` —— 正确的时候不该再占一行。
+ */
+export function scoringWeightsTotalHint(
+  weights: Record<ChallengeScoringDimension, string>,
+): string | undefined {
+  if (scoringWeightsAreEmpty(weights)) return undefined
+  const total = scoringWeightsTotal(weights)
+  if (total === CHALLENGE_SCORING_WEIGHT_TOTAL) return undefined
+  const diff = CHALLENGE_SCORING_WEIGHT_TOTAL - total
+  return diff > 0
+    ? `五维权重合计 ${total}，还差 ${diff} 才到 100，保存前需要补齐`
+    : `五维权重合计 ${total}，超出 ${Math.abs(diff)}，保存前需要调整`
+}
+
+/**
+ * 权重校验。
+ *
+ * 规则来自契约 §3.3：key 必须是五维之一（这里由类型保证）、值为 0–100 整数、
+ * 合计必须为 100；**全 0 视为清空**（落 null，按等权），此时不要求合计。
+ */
+export function validateScoringWeights(
+  weights: Record<ChallengeScoringDimension, string>,
+): { weightOf: Partial<Record<ChallengeScoringDimension, string>>; weights?: string } {
+  const weightOf: Partial<Record<ChallengeScoringDimension, string>> = {}
+  for (const dimension of CHALLENGE_SCORING_DIMENSIONS) {
+    const raw = weights[dimension]?.trim() ?? ''
+    if (!raw) continue
+    if (!/^\d+$/.test(raw)) {
+      weightOf[dimension] = '权重必须是 0–100 的整数'
+      continue
+    }
+    const value = Number(raw)
+    if (value > CHALLENGE_SCORING_WEIGHT_MAX) {
+      weightOf[dimension] = `权重必须在 0–${CHALLENGE_SCORING_WEIGHT_MAX} 之间`
+    }
+  }
+  if (Object.keys(weightOf).length > 0) return { weightOf }
+  if (scoringWeightsAreEmpty(weights)) return { weightOf }
+  const total = scoringWeightsTotal(weights)
+  if (total !== CHALLENGE_SCORING_WEIGHT_TOTAL) {
+    const diff = CHALLENGE_SCORING_WEIGHT_TOTAL - total
+    return {
+      weightOf,
+      weights:
+        diff > 0
+          ? `五维权重合计必须等于 100，当前 ${total}（还差 ${diff}）`
+          : `五维权重合计必须等于 100，当前 ${total}（超出 ${Math.abs(diff)}）`,
+    }
+  }
+  return { weightOf }
+}
+
+/** 编辑模式：用命题库的一行回填详情表单。缺失字段一律按「未填写」处理。 */
+export function challengeDetailDraftFromRow(row: ChallengeDetailSource): ChallengeDetailValues {
+  return {
+    summary: row.summary ?? '',
+    background: row.background ?? '',
+    industry: row.industry ?? '',
+    scope: row.scope ?? '',
+    outOfScope: row.outOfScope ?? '',
+    monthlyGoal: row.monthlyGoal ?? '',
+    suggestedSkills: formatSuggestedSkills(row.suggestedSkills),
+    teamCapacity: row.teamCapacity === null || row.teamCapacity === undefined
+      ? ''
+      : String(row.teamCapacity),
+    ownerName: row.ownerName ?? '',
+    responseSla: row.responseSla ?? '',
+    weights: scoringWeightFormValues(row.scoringWeights),
+    singleWorkCap: row.singleWorkCap === null || row.singleWorkCap === undefined
+      ? ''
+      : String(row.singleWorkCap),
+    rightsPublicScope: row.rightsPublicScope ?? '',
+    rightsConfidentiality: row.rightsConfidentiality ?? '',
+    rightsIp: row.rightsIp ?? '',
+    rightsEnterpriseUsage: row.rightsEnterpriseUsage ?? '',
+    rightsProcurement: row.rightsProcurement ?? '',
+    rightsSpecialTerms: row.rightsSpecialTerms ?? '',
+    rightsExclusivity: row.rightsExclusivity ?? '',
+    changeNote: '',
+  }
+}
+
+/** {@link challengeDetailDraftFromRow} 的入参：只取回填要用的字段，可空。 */
+export type ChallengeDetailSource = Partial<
+  Pick<
+    ChallengeDto,
+    | 'summary'
+    | 'background'
+    | 'industry'
+    | 'scope'
+    | 'outOfScope'
+    | 'monthlyGoal'
+    | 'suggestedSkills'
+    | 'teamCapacity'
+    | 'ownerName'
+    | 'responseSla'
+    | 'scoringWeights'
+    | 'singleWorkCap'
+    | 'rightsPublicScope'
+    | 'rightsConfidentiality'
+    | 'rightsIp'
+    | 'rightsEnterpriseUsage'
+    | 'rightsProcurement'
+    | 'rightsSpecialTerms'
+    | 'rightsExclusivity'
+  >
+>
+
+/** 文本字段的长度上限表（与后端共用 `CHALLENGE_CARD_LIMITS`）。 */
+const DETAIL_TEXT_LIMITS: Array<{
+  key: keyof ChallengeDetailValues
+  label: string
+  max: number
+}> = [
+  { key: 'summary', label: '简介', max: CHALLENGE_CARD_LIMITS.summary.max },
+  { key: 'background', label: '背景', max: CHALLENGE_CARD_LIMITS.background.max },
+  { key: 'industry', label: '目标客户 / 产业对象', max: CHALLENGE_CARD_LIMITS.industry.max },
+  { key: 'scope', label: '范围', max: CHALLENGE_CARD_LIMITS.scope.max },
+  { key: 'outOfScope', label: '不做什么', max: CHALLENGE_CARD_LIMITS.outOfScope.max },
+  { key: 'monthlyGoal', label: '一个月最小成果', max: CHALLENGE_CARD_LIMITS.monthlyGoal.max },
+  { key: 'ownerName', label: '负责人', max: CHALLENGE_CARD_LIMITS.ownerName.max },
+  { key: 'responseSla', label: '响应时限', max: CHALLENGE_CARD_LIMITS.responseSla.max },
+]
+
+/** 整数范围字段的解析：空串 = 不限（null），非整数 / 越界给错误。 */
+function parseOptionalInt(
+  raw: string,
+  limits: { min: number; max: number },
+  label: string,
+): { value: number | null; error?: string } {
+  const trimmed = raw.trim()
+  if (!trimmed) return { value: null }
+  if (!/^\d+$/.test(trimmed)) return { value: null, error: `${label}必须是整数` }
+  const value = Number(trimmed)
+  if (value < limits.min || value > limits.max) {
+    return { value: null, error: `${label}必须在 ${limits.min}–${limits.max} 之间` }
+  }
+  return { value }
+}
+
+/**
+ * 详情表单校验。
+ *
+ * **没有必填项**：契约 §1.1 明确这些字段都不进发布门槛（发布仍只看五件套）。
+ * 这里只校验格式与长度，避免把「先记一半」的动作堵死。
+ */
+export function validateChallengeDetailDraft(
+  values: ChallengeDetailValues,
+): ChallengeDetailErrors {
+  const errors: ChallengeDetailErrors = {}
+
+  for (const field of DETAIL_TEXT_LIMITS) {
+    const raw = String(values[field.key] ?? '').trim()
+    if (raw.length > field.max) {
+      errors[field.key] = `${field.label}最多 ${field.max} 个字符`
+    }
+  }
+
+  const skills = parseSuggestedSkills(values.suggestedSkills)
+  if (skills.length > CHALLENGE_CARD_LIMITS.suggestedSkills.max) {
+    errors.suggestedSkills = `建议技能最多 ${CHALLENGE_CARD_LIMITS.suggestedSkills.max} 条`
+  } else if (skills.some((skill) => skill.length > CHALLENGE_CARD_LIMITS.suggestedSkills.itemMax)) {
+    errors.suggestedSkills = `单条建议技能最多 ${CHALLENGE_CARD_LIMITS.suggestedSkills.itemMax} 个字符`
+  }
+
+  const teamCapacity = parseOptionalInt(
+    values.teamCapacity,
+    CHALLENGE_CARD_LIMITS.teamCapacity,
+    '团队容量',
+  )
+  if (teamCapacity.error) errors.teamCapacity = teamCapacity.error
+
+  const singleWorkCap = parseOptionalInt(
+    values.singleWorkCap,
+    CHALLENGE_CARD_LIMITS.singleWorkCap,
+    '单次评分上限',
+  )
+  if (singleWorkCap.error) errors.singleWorkCap = singleWorkCap.error
+
+  const weightErrors = validateScoringWeights(values.weights)
+  if (Object.keys(weightErrors.weightOf).length > 0) errors.weightOf = weightErrors.weightOf
+  if (weightErrors.weights) errors.weights = weightErrors.weights
+
+  for (const field of CHALLENGE_RIGHTS_FIELDS) {
+    const raw = values[field] ?? ''
+    if (raw.trim().length > CHALLENGE_CARD_LIMITS.rights.max) {
+      errors[field] = `最多 ${CHALLENGE_CARD_LIMITS.rights.max} 个字符`
+    }
+  }
+
+  if (values.changeNote.trim().length > 255) {
+    errors.changeNote = '变更说明最多 255 个字符'
+  }
+
+  return errors
+}
+
+/** 表单 → 请求体；调用前应先通过 {@link validateChallengeDetailDraft}。 */
+export function toChallengeDetailPayload(
+  values: ChallengeDetailValues,
+): ChallengeDetailPayload {
+  const text = (raw: string) => raw.trim() || null
+  const changeNote = values.changeNote.trim()
+
+  return {
+    summary: text(values.summary),
+    background: text(values.background),
+    industry: text(values.industry),
+    scope: text(values.scope),
+    outOfScope: text(values.outOfScope),
+    monthlyGoal: text(values.monthlyGoal),
+    suggestedSkills: parseSuggestedSkills(values.suggestedSkills),
+    teamCapacity: parseOptionalInt(
+      values.teamCapacity,
+      CHALLENGE_CARD_LIMITS.teamCapacity,
+      '团队容量',
+    ).value,
+    ownerName: text(values.ownerName),
+    responseSla: text(values.responseSla),
+    // 全 0 / 全空 = 清空（落 null，按等权）；否则逐维转数字。
+    scoringWeights: scoringWeightsAreEmpty(values.weights)
+      ? null
+      : CHALLENGE_SCORING_DIMENSIONS.reduce<Record<string, number>>((acc, dimension) => {
+          const raw = values.weights[dimension]?.trim()
+          acc[dimension] = raw ? Number(raw) : 0
+          return acc
+        }, {}),
+    singleWorkCap: parseOptionalInt(
+      values.singleWorkCap,
+      CHALLENGE_CARD_LIMITS.singleWorkCap,
+      '单次评分上限',
+    ).value,
+    rightsPublicScope: text(values.rightsPublicScope),
+    rightsConfidentiality: text(values.rightsConfidentiality),
+    rightsIp: text(values.rightsIp),
+    rightsEnterpriseUsage: text(values.rightsEnterpriseUsage),
+    rightsProcurement: text(values.rightsProcurement),
+    rightsSpecialTerms: text(values.rightsSpecialTerms),
+    rightsExclusivity: text(values.rightsExclusivity),
+    ...(changeNote ? { changeNote } : {}),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 版本记录 / 选择本命题的项目（展示用）
+// ---------------------------------------------------------------------------
+
+/** 版本记录表的一行：命题 + 版本 + 说明 + 操作人 + 时间。 */
+export type ChallengeVersionRow = {
+  id: number
+  challengeId: number
+  /** 所属命题标题；表格加「命题」列后，多命题混排也能读。 */
+  challengeTitle: string
+  versionLabel: string
+  note: string
+  changedBy: string
+  /** 展示用日期时间；无法解析时给「待定」。 */
+  timeLabel: string
+}
+
+/**
+ * 把所有命题的版本记录拍平成一张表的数据。
+ *
+ * 为什么加「命题」列而不是按命题分块：版本记录条数不定，分块会让页面在
+ * 命题多的时候被撑得很长；一张表 + 「命题」列既能横向对比，也能按命题读。
+ * 顺序：先按传入的命题顺序（= 命题库顺序），同一命题内版本号从新到旧。
+ */
+export function challengeVersionRows(
+  challenges: readonly Pick<ChallengeDto, 'id' | 'title' | 'versions'>[],
+): ChallengeVersionRow[] {
+  return challenges.flatMap((challenge) => {
+    const versions = [...(challenge.versions ?? [])]
+    versions.sort((a, b) => b.version - a.version || b.id - a.id)
+    return versions.map((version) => ({
+      id: version.id,
+      challengeId: challenge.id,
+      challengeTitle: challengeTitleLabel(challenge.title),
+      versionLabel: `v${version.version}`,
+      note: version.note?.trim() || '—',
+      changedBy: version.changedBy?.trim() || '—',
+      timeLabel: formatDetailTimestamp(version.createdAt),
+    }))
+  })
+}
+
+/** 项目表的一行：命题 + 项目 + 阶段 + 负责人。 */
+export type ChallengeProjectRow = {
+  seasonProjectId: number
+  projectId: number
+  challengeId: number
+  challengeTitle: string
+  name: string
+  stageLabel: string
+  ownerName: string
+}
+
+/**
+ * 把所有命题已选的项目拍平成一张表。
+ *
+ * 阶段用 shared 的 `seasonProjectStageLabel`（阶段只前进，本批只展示，
+ * 不提供流转入口）；负责人为空时给破折号而不是空白。
+ */
+export function challengeProjectRows(
+  challenges: readonly Pick<ChallengeDto, 'id' | 'title' | 'projects'>[],
+): ChallengeProjectRow[] {
+  return challenges.flatMap((challenge) =>
+    (challenge.projects ?? []).map((project) => ({
+      seasonProjectId: project.seasonProjectId,
+      projectId: project.projectId,
+      challengeId: challenge.id,
+      challengeTitle: challengeTitleLabel(challenge.title),
+      name: project.name?.trim() || '未命名项目',
+      stageLabel: seasonProjectStageLabel(project.stage),
+      ownerName: project.ownerName?.trim() || '—',
+    })),
+  )
+}
+
+const DETAIL_TIMESTAMP = new Intl.DateTimeFormat('zh-CN', {
+  timeZone: 'Asia/Shanghai',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+})
+
+/** `2026/11/08 20:10`；无法解析时给「待定」而不是 `Invalid Date`。 */
+export function formatDetailTimestamp(value: string | null | undefined): string {
+  if (!value) return '待定'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '待定'
+  return DETAIL_TIMESTAMP.format(date).replace(/\//g, '-')
+}
+
+/** 五维权重在展示时用的中文名（表单与表格共用，不另抄一份）。 */
+export const SCORING_WEIGHT_OPTIONS = CHALLENGE_SCORING_DIMENSIONS.map((dimension) => ({
+  dimension,
+  label: CHALLENGE_SCORING_DIMENSION_LABELS[dimension],
+}))
+
+/** 七项权益的表单字段（顺序即展示顺序，标签取 shared）。 */
+export const CHALLENGE_RIGHTS_FORM_FIELDS = CHALLENGE_RIGHTS_FIELDS.map((field) => ({
+  key: field,
+  label: CHALLENGE_RIGHTS_FIELD_LABELS[field],
+}))
 
 // ---------------------------------------------------------------------------
 // 资源清单

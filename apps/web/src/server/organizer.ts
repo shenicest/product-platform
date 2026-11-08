@@ -9,6 +9,7 @@ import type {
   SeasonManageDetail,
   SeasonReadiness,
 } from '@/lib/organizer'
+import { resolveSeasonId } from '@/lib/organizer'
 import type {
   ChallengeDto,
   EnterpriseCooperationDto,
@@ -88,6 +89,26 @@ export const getOrganizerOrgOptions = cache(
     if (error || !data) return []
     const items = (data as { items: OrganizerOrg[] }).items ?? []
     return options.isOperator ? items : items.filter((org) => org.isMember)
+  },
+)
+
+/**
+ * 解析「这一屏该看哪个赛季」。
+ *
+ * URL 里有合法 `?season=` 就用它；没有则回落到**最新赛季**（列表按
+ * `updatedAt` 倒序，第一项就是最近动过的那个）—— 后台没有「全部赛季」这种
+ * 聚合视图，缺省值给 null 只会把用户挡在空态前面。
+ *
+ * 与客户端 `OrganizerShell` 走同一个纯函数 `resolveSeasonId`，所以选择器
+ * 显示哪个赛季、页面取的是哪个赛季，永远一致。
+ *
+ * 赛季列表读失败时降级成空列表 → 返回 null → 页面给「先建赛季」的空态，
+ * 而不是把列表错误伪装成「没有权限」。
+ */
+export const resolveOrganizerSeasonId = cache(
+  async (raw: string | null | undefined): Promise<number | null> => {
+    const page = await getManagedSeasons().catch(() => null)
+    return resolveSeasonId(raw, page?.items ?? [])
   },
 )
 

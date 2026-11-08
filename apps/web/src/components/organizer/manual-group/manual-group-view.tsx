@@ -117,7 +117,10 @@ function ManualGroupBoard({
   }
 
   return (
-    <div className="grid gap-6">
+    // `min-w-0`：本组件是 `grid` 容器，grid item 的 `min-width` 默认 `auto`
+    // 会取表格的 min-content 宽度，把 `overflow-x-auto` 架空、整张表顶破
+    // `.shell--narrow`。归零最小宽度，滚动才真的发生在表格容器里。
+    <div className="grid min-w-0 gap-6">
       <ManualGroupNotice />
 
       <div className="grid gap-2">
@@ -129,7 +132,7 @@ function ManualGroupBoard({
         ) : null}
       </div>
 
-      <section className="ui-panel" aria-labelledby="manual-group-list-title">
+      <section className="ui-panel min-w-0" aria-labelledby="manual-group-list-title">
         <div className="mb-4 grid gap-2">
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h2 id="manual-group-list-title" className="text-h3 font-bold text-foreground">

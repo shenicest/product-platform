@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { SEASON_RULE_DEFAULTS } from '@shenicest/shared'
 import {
-  ALL_SEASONS_VALUE,
+  defaultSeasonId,
   draftFromCurrentSeason,
   draftFromPreviousSeason,
   emptySeasonDraft,
   nextSeasonName,
   parseSeasonId,
+  resolveSeasonId,
   seasonPickerStatusLabel,
   suggestSeasonCode,
   toCreateSeasonPayload,
@@ -310,13 +311,13 @@ describe('season picker helpers', () => {
     expect(toSeasonPickerOptions([])).toEqual([])
   })
 
-  it('puts an “all seasons” entry first and keeps the given order', () => {
+  it('maps every season to one option and keeps the given order', () => {
     const options = toSeasonPickerOptions([
       { id: 2, name: '春季', code: 'S2' },
       { id: 1, name: '冬季', code: 'S1' },
     ])
-    expect(options[0]).toEqual({ value: ALL_SEASONS_VALUE, label: '全部赛季' })
-    expect(options.slice(1)).toEqual([
+    // 没有「全部赛季」这一档：后台每个 tab 都是按赛季组织的。
+    expect(options).toEqual([
       { value: '2', label: '春季 · S2' },
       { value: '1', label: '冬季 · S1' },
     ])
@@ -330,7 +331,7 @@ describe('season picker helpers', () => {
       { id: 6, name: '暂停季', code: 'S1', status: 'suspended', approvedAt: '2026-01-01T00:00:00.000Z' },
       { id: 7, name: '取消季', code: 'C1', status: 'cancelled', approvedAt: null },
     ])
-    expect(options.slice(1).map((option) => option.label)).toEqual([
+    expect(options.map((option) => option.label)).toEqual([
       '草稿季 · D1 · 草稿',
       '进行季 · A1 · 进行中',
       '待批季 · P1 · 待批准',
@@ -344,7 +345,7 @@ describe('season picker helpers', () => {
       { id: 8, name: '归档季', code: 'R1', status: 'archived', approvedAt: '2026-01-01T00:00:00.000Z' },
       { id: 9, name: '结束季', code: 'E1', status: 'ended', approvedAt: '2026-01-01T00:00:00.000Z' },
     ])
-    expect(options.slice(1).map((option) => option.label)).toEqual([
+    expect(options.map((option) => option.label)).toEqual([
       '归档季 · R1 · 已归档',
       '结束季 · E1 · 已结束',
     ])
@@ -364,5 +365,39 @@ describe('season picker helpers', () => {
     expect(parseSeasonId('all')).toBeNull()
     expect(parseSeasonId('-1')).toBeNull()
     expect(parseSeasonId(null)).toBeNull()
+  })
+})
+
+describe('default / resolved season', () => {
+  const SEASONS = [{ id: 31 }, { id: 21 }, { id: 11 }]
+
+  it('defaults to the first season, which the API returns newest-first', () => {
+    // 后端按 updatedAt 倒序返回，第一项就是最近动过的赛季。
+    expect(defaultSeasonId(SEASONS)).toBe(31)
+  })
+
+  it('has no default when there is no season at all', () => {
+    expect(defaultSeasonId([])).toBeNull()
+  })
+
+  it('keeps an explicit ?season= from the URL', () => {
+    expect(resolveSeasonId('21', SEASONS)).toBe(21)
+  })
+
+  it('falls back to the newest season when the URL has no season', () => {
+    // 这是「点进后台默认选最新赛季」的核心口径：缺省不是 null（空态），
+    // 而是列表第一项。
+    expect(resolveSeasonId(null, SEASONS)).toBe(31)
+    expect(resolveSeasonId('', SEASONS)).toBe(31)
+    expect(resolveSeasonId('all', SEASONS)).toBe(31)
+    expect(resolveSeasonId(undefined, SEASONS)).toBe(31)
+  })
+
+  it('returns null only when there is genuinely no season to fall back to', () => {
+    expect(resolveSeasonId(null, [])).toBeNull()
+    expect(resolveSeasonId('all', [])).toBeNull()
+    // URL 里写了合法赛季时以 URL 为准，即使列表读失败降级成空 —— 用户明确要求
+    // 看这个赛季，页面自己会把它读失败的情况渲染成错误卡片。
+    expect(resolveSeasonId('42', [])).toBe(42)
   })
 })

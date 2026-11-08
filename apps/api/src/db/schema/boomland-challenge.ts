@@ -1,8 +1,10 @@
-import { index, int, mysqlTable, text, timestamp, varchar } from 'drizzle-orm/mysql-core'
+import { index, int, json, mysqlTable, text, timestamp, uniqueIndex, varchar } from 'drizzle-orm/mysql-core'
 import {
+  CHALLENGE_CARD_LIMITS,
   ChallengeResourceStatus,
   EnterpriseCooperationStatus,
   EnterprisePublicScope,
+  type ChallengeScoringDimension,
 } from '@shenicest/shared'
 
 export const challenges = mysqlTable('challenges', {
@@ -26,6 +28,50 @@ export const challenges = mysqlTable('challenges', {
   minimumDeliverable: text('minimum_deliverable'),
   resourceCommitment: text('resource_commitment'),
   resultEvidenceRules: text('result_evidence_rules'),
+
+  // ---- 命题详情页「命题卡」tab 的正文（都不是发布必填项） ----------------
+  /** 简介：标题下面那一句，公开页与卡片共用。 */
+  summary: varchar('summary', { length: CHALLENGE_CARD_LIMITS.summary.max }),
+  /** 背景。 */
+  background: text('background'),
+  /** 目标客户 / 产业对象。 */
+  industry: varchar('industry', { length: CHALLENGE_CARD_LIMITS.industry.max }),
+  /** 范围。 */
+  scope: text('scope'),
+  /** 不做什么。 */
+  outOfScope: text('out_of_scope'),
+  /** 一个月最小成果。 */
+  monthlyGoal: text('monthly_goal'),
+  /** 建议技能（JSON 字符串数组）。 */
+  suggestedSkills: json('suggested_skills').$type<string[]>().notNull().default([]),
+  /** 团队容量：该命题下最多几个项目团队；null = 不限。 */
+  teamCapacity: int('team_capacity'),
+  /** 负责人（展示用姓名，不指向平台账号）。 */
+  ownerName: varchar('owner_name', { length: CHALLENGE_CARD_LIMITS.ownerName.max }),
+  /** 响应时限，如「工作日 48 小时内」。 */
+  responseSla: varchar('response_sla', { length: CHALLENGE_CARD_LIMITS.responseSla.max }),
+
+  // ---- 评分与奖励 -------------------------------------------------------
+  /**
+   * 五维权重；null = 未配置（按等权）。合计必须为 100。
+   *
+   * 不落默认值：产品文档 CHG-02 的口径是「未配置按等权」，把默认权重写进
+   * 每一行会让「没配过」和「配成默认值」变得无法区分。
+   */
+  scoringWeights: json('scoring_weights').$type<Record<ChallengeScoringDimension, number>>(),
+  /** 命题单次评分上限；null = 用赛季 `rules.singleWorkCap`。 */
+  singleWorkCap: int('single_work_cap'),
+
+  // ---- 公开与权益 -------------------------------------------------------
+  /** 七项权益条款分别存、分别展示（见 `CHALLENGE_RIGHTS_FIELDS`）。 */
+  rightsPublicScope: text('rights_public_scope'),
+  rightsConfidentiality: text('rights_confidentiality'),
+  rightsIp: text('rights_ip'),
+  rightsEnterpriseUsage: text('rights_enterprise_usage'),
+  rightsProcurement: text('rights_procurement'),
+  rightsSpecialTerms: text('rights_special_terms'),
+  rightsExclusivity: text('rights_exclusivity'),
+
   status: varchar('status', { length: 16 }).notNull().default('draft'),
   version: int('version').notNull().default(1),
   createdBy: varchar('created_by', { length: 255 }).notNull(),
@@ -93,4 +139,40 @@ export const seasonEnterpriseCooperations = mysqlTable('season_enterprise_cooper
   updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
 }, (table) => [
   index('idx_season_cooperations_season_order').on(table.seasonId, table.sortOrder),
+])
+
+/**
+ * 命题版本记录（命题详情页「版本记录」侧栏）。
+ *
+ * **不是快照**：产品口径是「发布后编辑使 `version` +1，不做版本快照」，所以
+ * 这里只留一行「什么时候、谁、因为什么改了第几版」，正文永远只有 `challenges` 里
+ * 那一份。想回看旧内容请查 `audit_logs` 的变更明细。
+ */
+export const challengeVersions = mysqlTable('challenge_versions', {
+  id: int('id').primaryKey().autoincrement(),
+  challengeId: int('challenge_id').notNull(),
+  /** 这条记录对应的命题版本号（与 `challenges.version` 同口径）。 */
+  version: int('version').notNull(),
+  /** 变更说明：主办方填的 `changeNote`，或后端按字段清单生成的摘要。 */
+  note: varchar('note', { length: 255 }).notNull(),
+  changedBy: varchar('changed_by', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => [
+  index('idx_challenge_versions_challenge').on(table.challengeId, table.version),
+])
+
+/**
+ * 命题关注（命题详情页 Header 的「+ 关注」）。
+ *
+ * 与 `follows`（关注 Founder）无关：那个挂在 User 上，这个挂在命题上。
+ * 关注数是 COUNT 出来的，不加冗余字段（同 ADR-0008 的口径）。
+ */
+export const challengeFollows = mysqlTable('challenge_follows', {
+  id: int('id').primaryKey().autoincrement(),
+  challengeId: int('challenge_id').notNull(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => [
+  uniqueIndex('uq_challenge_follows_challenge_user').on(table.challengeId, table.userId),
+  index('idx_challenge_follows_user').on(table.userId),
 ])

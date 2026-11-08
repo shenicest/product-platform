@@ -116,7 +116,7 @@ export function ApplicationReviewView({
     : items.find((item) => item.id === detailId) ?? null
 
   return (
-    <div className="grid gap-6">
+    <div className="grid min-w-0 gap-6">
       <ApplicationStatsRow stats={stats} />
 
       <p className="ui-hint">
@@ -144,7 +144,7 @@ export function ApplicationReviewView({
         </p>
       ) : null}
 
-      <section aria-labelledby="application-queue-title">
+      <section aria-labelledby="application-queue-title" className="min-w-0">
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
           <div>
             <h2 id="application-queue-title" className="text-h3 font-bold text-foreground">
@@ -159,7 +159,11 @@ export function ApplicationReviewView({
           </span>
         </div>
 
-        <div className="ui-panel ui-panel--flush">
+        {/* `min-w-0` 是这张表不撑破版心的关键：外层是 `grid`，而 grid item 的
+            `min-width` 默认是 `auto` —— 它会取内容（表格）的 min-content 宽度，
+            于是 `overflow-x-auto` 永远轮不到自己滚动，整张表直接把 `.shell--narrow`
+            的 1120px 顶开。把这一格的最小宽度归零，滚动才真的发生在容器里。 */}
+        <div className="ui-panel ui-panel--flush min-w-0">
           <ApplicationTable
             items={items}
             onSelect={(application) => setDetailId(application.id)}

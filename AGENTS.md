@@ -7,6 +7,8 @@
 - [docs/boomland/CONTEXT.md](./docs/boomland/CONTEXT.md) — BoomLand 领域术语表（Season、Organizer Org、Application、Participant、Challenge 等）
 - [docs/boomland/pre-start-season-api.md](./docs/boomland/pre-start-season-api.md) — BoomLand 开赛前赛季与报名后端契约（数据模型、状态机、API、错误码）
 - [docs/boomland/pre-start-season-frontend.md](./docs/boomland/pre-start-season-frontend.md) — BoomLand 开赛前赛季与报名前端页面契约
+- [docs/boomland/organizer-challenges-contract.md](./docs/boomland/organizer-challenges-contract.md) — 主办方后台「命题与资源」契约（命题库 / 资源承诺 / 企业合作）
+- [docs/boomland/challenge-detail-contract.md](./docs/boomland/challenge-detail-contract.md) — 命题详情页契约（命题卡 / 评分与奖励 / 公开与权益 / 版本记录 / 关注）
 - [docs/spec-v1-backend-api.md](./docs/spec-v1-backend-api.md) — v1.0 后端 API 完整规格说明
 - [docs/auth.md](./docs/auth.md) — 鉴权体系：JWT 认证、角色/属主授权、前后端守卫
 - [docs/main-site-sso-integration.md](./docs/main-site-sso-integration.md) — 主站（PHP）SSO 接入契约，交给主站维护者/AI 用
@@ -29,6 +31,7 @@
   - [0014-platform-project-connection-requests.md](./docs/adr/0014-platform-project-connection-requests.md) — 平台项目建联独立建表，复用建联原语与通知
   - [0015-boomland-season-context-and-identity-boundary.md](./docs/adr/0015-boomland-season-context-and-identity-boundary.md) — BoomLand 是独立赛季上下文，只共享平台 User
   - [0016-season-publish-readiness-minimal-dependencies.md](./docs/adr/0016-season-publish-readiness-minimal-dependencies.md) — 赛季发布就绪使用真实的最小依赖，不用假数据
+  - [0017-challenge-detail-columns-and-version-records.md](./docs/adr/0017-challenge-detail-columns-and-version-records.md) — 命题详情字段落在 challenges 上，版本记录只留痕不留快照
 
 修改领域模型前必须先阅读对应上下文的 CONTEXT.md。
 

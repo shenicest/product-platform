@@ -542,7 +542,13 @@ export function suggestSeasonCode(previousCode: string, existing: readonly strin
 // 赛季选择器
 // ---------------------------------------------------------------------------
 
-/** 选择器里的一档：全部赛季 / 一个赛季。没有赛季时只剩“全部赛季”。 */
+/**
+ * 选择器里的一档：一个赛季。
+ *
+ * 没有「全部赛季」这一档 —— 主办方后台的每个 tab 都是**按赛季**组织的
+ * （报名队列、选手名单、命题库、赛季设置都挂在一个赛季上），
+ * 「全部赛季」既取不到数据，也会让用户先选一次才能开始干活。
+ */
 export type SeasonPickerOption = { value: string; label: string }
 
 /** 选择器需要的最小赛季字段（状态用来在选项里标注）。 */
@@ -554,7 +560,16 @@ export type PickableSeason = {
   approvedAt: string | null
 }
 
-export const ALL_SEASONS_VALUE = 'all'
+/**
+ * 默认选中的赛季：列表里最新的那个。
+ *
+ * 列表由后端按 `updatedAt` 倒序返回（见 `SeasonService.listManaged`），
+ * 所以第一项就是「最近动过的赛季」—— 也就是主办方打开后台时最可能要继续
+ * 处理的那一个。没有赛季时返回 null，调用方据此渲染空态。
+ */
+export function defaultSeasonId(seasons: ReadonlyArray<{ id: number }>): number | null {
+  return seasons[0]?.id ?? null
+}
 
 /**
  * 选择器里的状态文案。
@@ -588,10 +603,9 @@ export function seasonPickerStatusLabel(season: {
 /**
  * 把赛季列表折成选择器选项。
  *
- * 顺序保持调用方给的顺序（管理器按更新时间倒序，选择器里最新的赛季在最上面），
- * 并在前面挂一个“全部赛季”。每个赛季的 label 末尾带上状态，一眼能看出
- * 哪一个是草稿、哪一个在等批准、哪一个正在跑。没有赛季时返回空数组 ——
- * 调用方据此禁用选择器。
+ * 顺序保持调用方给的顺序（管理器按更新时间倒序，选择器里最新的赛季在最上面）。
+ * 每个赛季的 label 末尾带上状态，一眼能看出哪一个是草稿、哪一个在等批准、
+ * 哪一个正在跑。没有赛季时返回空数组 —— 调用方据此禁用选择器。
  */
 export function toSeasonPickerOptions(
   seasons: ReadonlyArray<{
@@ -602,22 +616,35 @@ export function toSeasonPickerOptions(
     approvedAt?: string | null
   }>,
 ): SeasonPickerOption[] {
-  if (seasons.length === 0) return []
-  return [
-    { value: ALL_SEASONS_VALUE, label: '全部赛季' },
-    ...seasons.map((season) => {
-      const base = `${season.name} · ${season.code}`
-      const status = season.status
-        ? ` · ${seasonPickerStatusLabel({ status: season.status, approvedAt: season.approvedAt ?? null })}`
-        : ''
-      return { value: String(season.id), label: `${base}${status}` }
-    }),
-  ]
+  return seasons.map((season) => {
+    const base = `${season.name} · ${season.code}`
+    const status = season.status
+      ? ` · ${seasonPickerStatusLabel({ status: season.status, approvedAt: season.approvedAt ?? null })}`
+      : ''
+    return { value: String(season.id), label: `${base}${status}` }
+  })
 }
 
-/** 从 URL query 里解析当前选中的赛季 id；非数字或缺失一律视为“全部赛季”。 */
+/** 从 URL query 里解析当前选中的赛季 id；非数字或缺失返回 null（由调用方回落到最新赛季）。 */
 export function parseSeasonId(raw: string | null | undefined): number | null {
   if (!raw || !/^\d+$/.test(raw)) return null
   const id = Number(raw)
   return Number.isSafeInteger(id) && id > 0 ? id : null
+}
+
+/**
+ * 决定「这一屏该看哪个赛季」：URL 里有合法 id 就用它，否则回落到最新赛季。
+ *
+ * 主办方后台没有「全部赛季」这种聚合视图 —— 每个 tab 的数据都挂在一个赛季上，
+ * 所以缺省值不能是 null（那只会把用户挡在空态前面），必须是列表里的第一个。
+ * 列表由后端按 `updatedAt` 倒序返回，第一项就是最近动过的赛季。
+ *
+ * `OrganizerShell`（选择器高亮、tab 链接）与各页面的服务端取数都走这一个函数，
+ * 两边的「默认赛季」因此永远一致，不会出现选择器显示 A、页面取的是 B。
+ */
+export function resolveSeasonId(
+  raw: string | null | undefined,
+  seasons: ReadonlyArray<{ id: number }>,
+): number | null {
+  return parseSeasonId(raw) ?? defaultSeasonId(seasons)
 }

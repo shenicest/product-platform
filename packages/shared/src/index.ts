@@ -721,3 +721,301 @@ export function seasonRequiredRuleCardItems(input: {
   }))
 }
 
+// ---------------------------------------------------------------------------
+// 赛季项目与组队招募（个人中心「组队」tab）
+// ---------------------------------------------------------------------------
+
+/**
+ * 赛季项目状态（PRD 5.3）。
+ *
+ * `draft` → `published` → `archived`。本批只落 `published`（发起即发布）与
+ * `archived`（退出赛季/项目归档时写），`draft` 先留着给「先存后发」的编辑流。
+ */
+export const SeasonProjectStatus = {
+  Draft: 'draft',
+  Published: 'published',
+  Archived: 'archived',
+} as const
+export type SeasonProjectStatus =
+  (typeof SeasonProjectStatus)[keyof typeof SeasonProjectStatus]
+
+/**
+ * 赛季项目的形成方式（PRD LIB-003）。
+ *
+ * `created` = 赛季内新建；`brought_in` = 把本人已有的长期项目带入赛季。
+ * 两者在赛季层的规则完全相同，只有来源标记与「项目内容是否已存在」不同。
+ */
+export const SeasonProjectSource = {
+  Created: 'created',
+  BroughtIn: 'brought_in',
+} as const
+export type SeasonProjectSource =
+  (typeof SeasonProjectSource)[keyof typeof SeasonProjectSource]
+
+export const SEASON_PROJECT_SOURCE_LABELS: Record<SeasonProjectSource, string> = {
+  [SeasonProjectSource.Created]: '赛季内新建',
+  [SeasonProjectSource.BroughtIn]: '带入已有项目',
+}
+
+export function seasonProjectSourceLabel(source: string): string {
+  return SEASON_PROJECT_SOURCE_LABELS[source as SeasonProjectSource] ?? source
+}
+
+/** 赛季项目核心成员的角色与状态。本批只写 owner；邀请留给 P1。 */
+export const SeasonProjectMemberRole = {
+  Owner: 'owner',
+  Core: 'core',
+} as const
+export type SeasonProjectMemberRole =
+  (typeof SeasonProjectMemberRole)[keyof typeof SeasonProjectMemberRole]
+
+export const SeasonProjectMemberStatus = {
+  Invited: 'invited',
+  Accepted: 'accepted',
+  Removed: 'removed',
+} as const
+export type SeasonProjectMemberStatus =
+  (typeof SeasonProjectMemberStatus)[keyof typeof SeasonProjectMemberStatus]
+
+/** 招募卡状态（PRD 5.8）：`open` → `closed`。 */
+export const RecruitmentCardStatus = {
+  Open: 'open',
+  Closed: 'closed',
+} as const
+export type RecruitmentCardStatus =
+  (typeof RecruitmentCardStatus)[keyof typeof RecruitmentCardStatus]
+
+/** 招募申请状态（PRD 5.8）：`pending` → `accepted` / `declined`。 */
+export const RecruitmentApplicationStatus = {
+  Pending: 'pending',
+  Accepted: 'accepted',
+  Declined: 'declined',
+} as const
+export type RecruitmentApplicationStatus =
+  (typeof RecruitmentApplicationStatus)[keyof typeof RecruitmentApplicationStatus]
+
+export const RECRUITMENT_APPLICATION_STATUS_LABELS: Record<
+  RecruitmentApplicationStatus,
+  string
+> = {
+  [RecruitmentApplicationStatus.Pending]: '待处理',
+  [RecruitmentApplicationStatus.Accepted]: '已接受',
+  [RecruitmentApplicationStatus.Declined]: '已拒绝',
+}
+
+export function recruitmentApplicationStatusLabel(status: string): string {
+  return (
+    RECRUITMENT_APPLICATION_STATUS_LABELS[
+      status as RecruitmentApplicationStatus
+    ] ?? status
+  )
+}
+
+/**
+ * 发起项目 / 发布招募卡的长度与数量上限。
+ *
+ * 与后端 TypeBox 校验、前端表单校验共用同一份 —— 两处各写一遍必然漂移，
+ * 而「表单说可以、后端 422」是最难解释的一类错误。
+ */
+export const SEASON_PROJECT_LIMITS = {
+  name: { min: 1, max: 100 },
+  tagline: { max: 200 },
+  /** 每个项目可选的赛季方向数（PRD：平行、无主次）。 */
+  themes: { max: 5 },
+  /** 角色条目：1—10 条，每条 ≤ 50 字。 */
+  roles: { min: 1, max: 10, itemMax: 50 },
+  /** 技能关键词：可空，≤ 10 条。 */
+  skills: { max: 10, itemMax: 50 },
+  description: { min: 1, max: 2000 },
+} as const
+
+/**
+ * 赛季项目阶段（PRD 6.4 PRJ-02）。
+ *
+ * `seed → sprout → grow → bloom → fruit → boom`，**只前进不回退**；
+ * `boom` 由赛季结算确认（本批只做展示，不做阶段流转接口）。
+ */
+export const SeasonProjectStage = {
+  Seed: 'seed',
+  Sprout: 'sprout',
+  Grow: 'grow',
+  Bloom: 'bloom',
+  Fruit: 'fruit',
+  Boom: 'boom',
+} as const
+export type SeasonProjectStage =
+  (typeof SeasonProjectStage)[keyof typeof SeasonProjectStage]
+
+/** 阶段顺序即展示顺序（也是「只前进」的比较基准）。 */
+export const SEASON_PROJECT_STAGES: readonly SeasonProjectStage[] = [
+  SeasonProjectStage.Seed,
+  SeasonProjectStage.Sprout,
+  SeasonProjectStage.Grow,
+  SeasonProjectStage.Bloom,
+  SeasonProjectStage.Fruit,
+  SeasonProjectStage.Boom,
+]
+
+export const SEASON_PROJECT_STAGE_LABELS: Record<SeasonProjectStage, string> = {
+  [SeasonProjectStage.Seed]: '种子',
+  [SeasonProjectStage.Sprout]: '发芽',
+  [SeasonProjectStage.Grow]: '生长',
+  [SeasonProjectStage.Bloom]: '开花',
+  [SeasonProjectStage.Fruit]: '结果',
+  [SeasonProjectStage.Boom]: '爆炸',
+}
+
+export function seasonProjectStageLabel(stage: string | null | undefined): string {
+  if (!stage) return SEASON_PROJECT_STAGE_LABELS[SeasonProjectStage.Seed]
+  return SEASON_PROJECT_STAGE_LABELS[stage as SeasonProjectStage] ?? stage
+}
+
+/**
+ * 阶段在生长阶梯上的序号（0 = seed）。
+ *
+ * 展示进度点、判断「能否推进」都用它；未知阶段返回 -1，调用方据此不画进度。
+ */
+export function seasonProjectStageIndex(stage: string | null | undefined): number {
+  if (!stage) return -1
+  return SEASON_PROJECT_STAGES.indexOf(stage as SeasonProjectStage)
+}
+
+// ---------------------------------------------------------------------------
+// 命题详情页（命题卡内容 / 五维评分 / 公开与权益）
+// ---------------------------------------------------------------------------
+
+/**
+ * 命题卡正文各字段的长度上限。
+ *
+ * 与后端 TypeBox、前端表单校验共用一份：两处各写一遍必然漂移，而
+ * 「表单说可以、后端 422」是最难解释的一类错误。
+ */
+export const CHALLENGE_CARD_LIMITS = {
+  summary: { max: 200 },
+  background: { max: 4000 },
+  industry: { max: 100 },
+  scope: { max: 4000 },
+  outOfScope: { max: 4000 },
+  monthlyGoal: { max: 2000 },
+  ownerName: { max: 100 },
+  responseSla: { max: 100 },
+  /** 建议技能：可空，≤ 10 条，单条 ≤ 30 字。 */
+  suggestedSkills: { max: 10, itemMax: 30 },
+  /** 团队容量（该命题下最多几个项目团队）。 */
+  teamCapacity: { min: 1, max: 99 },
+  /** 命题单次评分上限。 */
+  singleWorkCap: { min: 1, max: 10_000 },
+  /** 权益条款单条上限。 */
+  rights: { max: 2000 },
+} as const
+
+/**
+ * 五维评分维度（PRD CHG-02「权重与版本」）。
+ *
+ * 五维权重**不是发布必填项**：未配置按等权。权重变更要生成新版本，
+ * 评分保存规则快照 —— 所以权重落在命题上，历史版本靠 `challenge_versions` 留痕。
+ */
+export const ChallengeScoringDimension = {
+  /** 真实商业结果 */
+  CommercialResult: 'commercial_result',
+  /** 交付质量与客户价值 */
+  DeliveryQuality: 'delivery_quality',
+  /** 原创方法与产业洞察 */
+  OriginalMethod: 'original_method',
+  /** 行动、证据与有效迭代 */
+  ActionEvidence: 'action_evidence',
+  /** 共建、开源和复用价值 */
+  ReuseValue: 'reuse_value',
+} as const
+export type ChallengeScoringDimension =
+  (typeof ChallengeScoringDimension)[keyof typeof ChallengeScoringDimension]
+
+export const CHALLENGE_SCORING_DIMENSIONS: readonly ChallengeScoringDimension[] = [
+  ChallengeScoringDimension.CommercialResult,
+  ChallengeScoringDimension.DeliveryQuality,
+  ChallengeScoringDimension.OriginalMethod,
+  ChallengeScoringDimension.ActionEvidence,
+  ChallengeScoringDimension.ReuseValue,
+]
+
+export const CHALLENGE_SCORING_DIMENSION_LABELS: Record<ChallengeScoringDimension, string> = {
+  [ChallengeScoringDimension.CommercialResult]: '真实商业结果',
+  [ChallengeScoringDimension.DeliveryQuality]: '交付质量与客户价值',
+  [ChallengeScoringDimension.OriginalMethod]: '原创方法与产业洞察',
+  [ChallengeScoringDimension.ActionEvidence]: '行动、证据与有效迭代',
+  [ChallengeScoringDimension.ReuseValue]: '共建、开源和复用价值',
+}
+
+/**
+ * 五维默认权重（合计 100）。
+ *
+ * 与产品文档的引导权重一致；未配置权重时前端按这份展示，但**不会**写进命题行 ——
+ * 「未配置」和「配置成默认值」是两种状态，落库时会丢掉这个区别。
+ */
+export const CHALLENGE_SCORING_DEFAULT_WEIGHTS: Record<ChallengeScoringDimension, number> = {
+  [ChallengeScoringDimension.CommercialResult]: 35,
+  [ChallengeScoringDimension.DeliveryQuality]: 25,
+  [ChallengeScoringDimension.OriginalMethod]: 15,
+  [ChallengeScoringDimension.ActionEvidence]: 15,
+  [ChallengeScoringDimension.ReuseValue]: 10,
+}
+
+/** 权重合计必须等于 100（分母固定，避免出现「合计 80 的百分比」）。 */
+export const CHALLENGE_SCORING_WEIGHT_TOTAL = 100
+
+/** 单个维度的权重上限（= 合计值，允许某一维独大）。 */
+export const CHALLENGE_SCORING_WEIGHT_MAX = 100
+
+/**
+ * 公开与权益的字段（顺序即展示顺序）。
+ *
+ * 七项分别存、分别展示：产品文档 CHG-006 的口径是「先明示再签」，任何
+ * 把它们合成一段自由文本的做法都会让某一项在公开页里消失。
+ */
+export const CHALLENGE_RIGHTS_FIELDS = [
+  'rightsPublicScope',
+  'rightsConfidentiality',
+  'rightsIp',
+  'rightsEnterpriseUsage',
+  'rightsProcurement',
+  'rightsSpecialTerms',
+  'rightsExclusivity',
+] as const
+export type ChallengeRightsField = (typeof CHALLENGE_RIGHTS_FIELDS)[number]
+
+export const CHALLENGE_RIGHTS_FIELD_LABELS: Record<ChallengeRightsField, string> = {
+  rightsPublicScope: '公开范围',
+  rightsConfidentiality: '保密',
+  rightsIp: '知识产权',
+  rightsEnterpriseUsage: '企业使用权',
+  rightsProcurement: '采购或后续合作',
+  rightsSpecialTerms: '特殊条件',
+  rightsExclusivity: '独家或排他',
+}
+
+/** 命题详情页的 tab（顺序即展示顺序）。 */
+export const CHALLENGE_DETAIL_TABS = [
+  { key: 'card', label: '命题卡' },
+  { key: 'resources', label: '资源承诺' },
+  { key: 'evidence', label: '结果与证据' },
+  { key: 'scoring', label: '评分与奖励' },
+  { key: 'rights', label: '公开与权益' },
+  { key: 'report', label: '命题报告' },
+] as const
+export type ChallengeDetailTabKey = (typeof CHALLENGE_DETAIL_TABS)[number]['key']
+
+/**
+ * 本批**未实现**的 tab：只做待开发占位。
+ *
+ * 写在这里而不是散在组件里：等结果与证据 / 命题报告落地时，把 key 从这里删掉，
+ * 类型检查会逼着调用方把那两个 tab 的真内容接上。
+ */
+export const CHALLENGE_DETAIL_PENDING_TABS: readonly ChallengeDetailTabKey[] = [
+  'evidence',
+  'report',
+]
+
+export function isChallengeDetailTabPending(tab: string): boolean {
+  return (CHALLENGE_DETAIL_PENDING_TABS as readonly string[]).includes(tab)
+}
+

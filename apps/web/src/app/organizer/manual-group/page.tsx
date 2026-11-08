@@ -7,8 +7,12 @@ import {
   NoSeasonSelected,
 } from '@/components/organizer/manual-group/manual-group-display'
 import { ManualGroupView } from '@/components/organizer/manual-group/manual-group-view'
-import { OrganizerApiError, getSeasonManageDetail, getSeasonParticipants } from '@/server/organizer'
-import { parseSeasonId } from '@/lib/organizer'
+import {
+  OrganizerApiError,
+  getSeasonManageDetail,
+  getSeasonParticipants,
+  resolveOrganizerSeasonId,
+} from '@/server/organizer'
 import type { SeasonParticipantsPage } from '@/lib/organizer-manual-group'
 
 export const metadata: Metadata = { title: '人工拉群 · 主办方后台' }
@@ -38,7 +42,10 @@ export default async function OrganizerManualGroupPage(props: {
 }) {
   const searchParams = await props.searchParams
   const rawSeason = searchParams.season
-  const seasonId = parseSeasonId(Array.isArray(rawSeason) ? rawSeason[0] : rawSeason)
+  // 没有 `?season=` 时回落到最新赛季：后台按赛季组织，默认值不该是「未选中」。
+  const seasonId = await resolveOrganizerSeasonId(
+    Array.isArray(rawSeason) ? rawSeason[0] : rawSeason,
+  )
 
   if (seasonId === null) return <NoSeasonSelected />
 

@@ -138,6 +138,35 @@ _Avoid_：题目、项目（项目是参赛作品，不在本批）。
 发布命题前必须全部填写的五个字段：`realProblem` / `targetCustomer` / `minimumDeliverable` / `resourceCommitment` / `resultEvidenceRules`。
 _Avoid_：必填项（易混淆）、命题详情。
 
+**Challenge Card（命题卡）**：
+命题详情页「命题卡」tab 展示的正文：背景、真实问题、目标客户 / 产业对象、范围、不做什么、
+一个月最小成果、建议技能、团队容量、负责人、响应时限。
+_Avoid_：命题详情（详情页是页面，命题卡是其中的内容段）、命题介绍。
+
+**Challenge Detail Page（命题详情页）**：
+公开页 `/challenges/<命题 id>`。Header + 六个 tab（命题卡 / 资源承诺 / 结果与证据 /
+评分与奖励 / 公开与权益 / 命题报告）+ 右栏（入座、选择本命题的项目、版本记录）。
+_Avoid_：命题页、题目页。
+
+**Challenge Version Record（命题版本记录）**：
+命题版本号变化时留下的一行「第几版、谁、为什么改、什么时候」。**不是快照** ——
+正文只有 `challenges` 里那一份，历史内容查 Audit Log。
+_Avoid_：版本快照、历史版本（会让人以为能回滚）。
+
+**Challenge Follow（命题关注）**：
+用户对某条命题的关注关系。与 Follow（关注 Founder）无关，挂在命题上。
+_Avoid_：收藏、订阅。
+
+**Scoring Weight（五维评分权重）**：
+命题上可选的五个维度权重（真实商业结果 / 交付质量与客户价值 / 原创方法与产业洞察 /
+行动、证据与有效迭代 / 共建、开源和复用价值），合计 100。**非发布必填**，未配置按等权。
+_Avoid_：评分规则（规则是赛季级配置）、评分标准。
+
+**Challenge Rights（公开与权益）**：
+命题详情页「公开与权益」tab 的七项条款：公开范围、保密、知识产权、企业使用权、
+采购或后续合作、特殊条件、独家或排他。七项**分别记录、分别展示**。
+_Avoid_：权益条款包（合成一段文本会让某一项消失）、合同。
+
 **Challenge Status（命题状态）**：
 `draft` / `reference` / `published` / `closed` / `archived`。发布后编辑会使 `version` +1，不做版本快照。
 _Avoid_：上线/下线（用 publish/close）。

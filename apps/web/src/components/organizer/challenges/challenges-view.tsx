@@ -8,14 +8,18 @@ import {
   type OrganizerActionIconName,
 } from '@/components/organizer/action-icon'
 import { ChallengeDraftDialog } from '@/components/organizer/challenges/challenge-draft-dialog'
+import { ChallengeDetailDialog } from '@/components/organizer/challenges/challenge-detail-dialog'
 import {
   ChallengeLibrarySection,
+  ChallengeProjectSection,
+  ChallengeVersionSection,
   CooperationSection,
 } from '@/components/organizer/challenges/challenges-display'
 import { CooperationEditorDialog } from '@/components/organizer/challenges/cooperation-editor-dialog'
 import { ResourceFulfillmentSection } from '@/components/organizer/challenges/resource-fulfillment'
 import {
   CHALLENGE_ROW_ACTION_LABELS,
+  canEditChallenge,
   challengeRowActions,
   publishBlockedReason,
   type ChallengeDto,
@@ -61,7 +65,9 @@ export function ChallengesView({
 }) {
   const router = useRouter()
 
-  const [dialog, setDialog] = useState<'create' | { edit: ChallengeDto } | 'cooperations' | null>(null)
+  const [dialog, setDialog] = useState<
+    'create' | { edit: ChallengeDto } | { detail: ChallengeDto } | 'cooperations' | null
+  >(null)
   const [pendingAction, setPendingAction] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -93,7 +99,10 @@ export function ChallengesView({
   }
 
   return (
-    <div className="grid gap-0">
+    // `min-w-0`：本组件是 `grid` 容器，grid item 的 `min-width` 默认 `auto`
+    // 会取表格的 min-content 宽度，把 `overflow-x-auto` 架空、整张表顶破
+    // `.shell--narrow`。归零最小宽度，滚动才真的发生在表格容器里。
+    <div className="grid min-w-0 gap-0">
       {actionError ? (
         <p role="alert" className="ui-field-error mb-4">
           {actionError}
@@ -120,6 +129,7 @@ export function ChallengesView({
             pendingAction={pendingAction}
             disabled={busy}
             onEdit={() => setDialog({ edit: challenge })}
+            onDetail={() => setDialog({ detail: challenge })}
             onAction={(action, run) => void runAction(challenge, action, run)}
           />
         )}
@@ -142,6 +152,10 @@ export function ChallengesView({
         }
       />
 
+      {/* 版本记录与「选择本命题的项目」都是纯展示（数据由命题库那一次请求带回）。 */}
+      <ChallengeVersionSection items={challenges} />
+      <ChallengeProjectSection items={challenges} />
+
       {dialog === 'create' ? (
         <ChallengeDraftDialog
           seasonId={seasonId}
@@ -153,13 +167,21 @@ export function ChallengesView({
         />
       ) : null}
 
-      {dialog !== null && typeof dialog === 'object' ? (
+      {dialog !== null && typeof dialog === 'object' && 'edit' in dialog ? (
         <ChallengeDraftDialog
           seasonId={seasonId}
           seasonName={seasonName}
           themes={themes}
           mode="edit"
           initial={dialog.edit}
+          onCancel={() => setDialog(null)}
+          onSaved={() => setDialog(null)}
+        />
+      ) : null}
+
+      {dialog !== null && typeof dialog === 'object' && 'detail' in dialog ? (
+        <ChallengeDetailDialog
+          challenge={dialog.detail}
           onCancel={() => setDialog(null)}
           onSaved={() => setDialog(null)}
         />
@@ -195,25 +217,33 @@ export function ChallengesView({
  * 一颗就 90px 宽，五个并排 400px，把「命题标题」「企业」这类内容列挤成一行
  * 两三个字；图标按钮每个 32px，五个 180px 就够，加上冻结列还能横向滚动。
  * 语义不丢：`aria-label` 与原来的文字按钮完全一致（`发布` / `转参考资料` /
- * `编辑` / `关闭` / `归档` + 命题标题），`title` 带命题标题与进行中说明。
+ * `编辑` / `编辑详情` / `关闭` / `归档` + 命题标题），`title` 带命题标题与进行中说明。
+ *
+ * 「编辑详情」与「编辑」是两个入口，不是重复：
+ *   · `编辑`（铅笔）→ 命题草稿弹窗：标题 / 类型 / 主题 / 容量 / 五件套；
+ *   · `编辑详情`（文档）→ 详情弹窗：命题卡正文 / 五维权重 / 七项权益 + 变更说明。
+ * 详情字段没有必填项、校验口径也不同，合成一个弹窗只会让两边都变长。
  */
 function RowActions({
   challenge,
   pendingAction,
   disabled,
   onEdit,
+  onDetail,
   onAction,
 }: {
   challenge: ChallengeDto
   pendingAction: string | null
   disabled: boolean
   onEdit: () => void
+  onDetail: () => void
   onAction: (
     action: ChallengeRowActionKey,
     run: () => Promise<{ error: { body: { error: { message: string } } } | null }>,
   ) => void
 }) {
   const actions = challengeRowActions(challenge.status)
+  const editable = canEditChallenge(challenge.status)
   if (actions.length === 0) {
     // 已归档是终态，不是动作：保持纯文字说明。
     return <span className="text-meta text-muted-foreground">已归档</span>
@@ -223,6 +253,19 @@ function RowActions({
 
   return (
     <span className="flex flex-nowrap items-center justify-end gap-1.5">
+      {/* 详情入口只在可编辑状态下出现：已关闭 / 已归档的命题后端会拒 PATCH。 */}
+      {editable ? (
+        <button
+          type="button"
+          className="ui-icon-btn ui-icon-btn--sm"
+          onClick={onDetail}
+          disabled={disabled}
+          aria-label={`编辑详情 ${challenge.title}`}
+          title={`编辑详情 ${challenge.title}（命题卡内容 / 评分与奖励 / 公开与权益）`}
+        >
+          <OrganizerActionIcon name="detail" />
+        </button>
+      ) : null}
       {actions.map((action) => {
         const pending = pendingAction === `${challenge.id}:${action}`
         const label = CHALLENGE_ROW_ACTION_LABELS[action]

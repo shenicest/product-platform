@@ -21,6 +21,7 @@ import { seasonModule } from './modules/season'
 import { challengeModule } from './modules/challenge'
 import { seasonConfigModule } from './modules/season-config'
 import { seasonApplicationModule } from './modules/season-application'
+import { seasonTeamModule } from './modules/season-team'
 import { isMockAuthEnabled } from './mock'
 import { env } from './lib/env'
 import { mockModule } from './modules/mock'
@@ -96,6 +97,7 @@ export const app = new Elysia()
   .use(challengeModule)
   .use(seasonConfigModule)
   .use(seasonApplicationModule)
+  .use(seasonTeamModule)
   .use(localMockModule)
   .get('/health', () => ({ status: 'ok' as const, env: env('NODE_ENV') }), {
     detail: {

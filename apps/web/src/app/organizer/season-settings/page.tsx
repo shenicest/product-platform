@@ -15,8 +15,8 @@ import {
   getOrganizerOrgOptions,
   getSeasonManageDetail,
   getSeasonReadiness,
+  resolveOrganizerSeasonId,
 } from '@/server/organizer'
-import { parseSeasonId } from '@/lib/organizer'
 import { toSeasonSettingsDetail, type SeasonSettingsDetail } from '@/lib/organizer-settings'
 import type { SeasonAnnouncement } from '@/lib/boomland'
 import type { OrganizerOrg, SeasonReadiness } from '@/lib/organizer'
@@ -56,7 +56,10 @@ export default async function OrganizerSeasonSettingsPage(props: {
 }) {
   const searchParams = await props.searchParams
   const rawSeason = searchParams.season
-  const seasonId = parseSeasonId(Array.isArray(rawSeason) ? rawSeason[0] : rawSeason)
+  // 没有 `?season=` 时回落到最新赛季：后台按赛季组织，默认值不该是「未选中」。
+  const seasonId = await resolveOrganizerSeasonId(
+    Array.isArray(rawSeason) ? rawSeason[0] : rawSeason,
+  )
 
   if (seasonId === null) return <NoSeasonSelected />
 

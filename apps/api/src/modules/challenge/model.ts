@@ -16,6 +16,16 @@ export const ListSeasonChallengesQuery = t.Object({
   includeDrafts: t.Optional(t.String({ description: '"true" to include drafts' })),
 })
 
+/**
+ * 发布命题的可选说明（契约 §1.2：`note = changeNote ?? '发布命题'`）。
+ *
+ * 单独一个 model 而不是复用 UpdateChallengeBody：发布只改状态，不该允许
+ * 顺手改内容（那会让「发布」和「编辑」两个版本记录的语义混在一起）。
+ */
+export const PublishChallengeBody = t.Object({
+  changeNote: t.Optional(t.Union([t.String(), t.Null()])),
+})
+
 const ChallengeTextField = t.Optional(t.Union([t.String({ minLength: 1, maxLength: 20000 }), t.Null()]))
 
 /**
@@ -30,6 +40,40 @@ const ChallengeThemeField = t.Optional(t.Union([t.String({ maxLength: 50 }), t.N
 const ChallengeEnterpriseField = t.Optional(t.Union([t.String({ maxLength: 255 }), t.Null()]))
 const ChallengeCapacityField = t.Optional(t.Union([t.Number(), t.Null()]))
 
+/**
+ * 命题详情页新增的可选字段（契约 §3.3）。
+ *
+ * 这里**只校验形状**：长度上限（`CHALLENGE_CARD_LIMITS`）、五维权重合计、
+ * 整数区间全部放在 service —— 只有那里才能返回带 `field` 的
+ * `VALIDATION_ERROR`，前端表单才标得出具体是哪个输入框。
+ * 把 `maxLength` 写进 TypeBox 只会得到一条没有 field 的通用 400。
+ */
+const ChallengeDetailFields = {
+  summary: t.Optional(t.Union([t.String(), t.Null()])),
+  background: t.Optional(t.Union([t.String(), t.Null()])),
+  industry: t.Optional(t.Union([t.String(), t.Null()])),
+  scope: t.Optional(t.Union([t.String(), t.Null()])),
+  outOfScope: t.Optional(t.Union([t.String(), t.Null()])),
+  monthlyGoal: t.Optional(t.Union([t.String(), t.Null()])),
+  /** 建议技能：条数与单条长度在 service 校验（`suggestedSkills`）。 */
+  suggestedSkills: t.Optional(t.Union([t.Array(t.String()), t.Null()])),
+  teamCapacity: t.Optional(t.Union([t.Number(), t.Null()])),
+  ownerName: t.Optional(t.Union([t.String(), t.Null()])),
+  responseSla: t.Optional(t.Union([t.String(), t.Null()])),
+  /** 五维权重：key 合法性、0–100 整数、合计 100 在 service 校验。 */
+  scoringWeights: t.Optional(t.Union([t.Record(t.String(), t.Number()), t.Null()])),
+  singleWorkCap: t.Optional(t.Union([t.Number(), t.Null()])),
+  rightsPublicScope: t.Optional(t.Union([t.String(), t.Null()])),
+  rightsConfidentiality: t.Optional(t.Union([t.String(), t.Null()])),
+  rightsIp: t.Optional(t.Union([t.String(), t.Null()])),
+  rightsEnterpriseUsage: t.Optional(t.Union([t.String(), t.Null()])),
+  rightsProcurement: t.Optional(t.Union([t.String(), t.Null()])),
+  rightsSpecialTerms: t.Optional(t.Union([t.String(), t.Null()])),
+  rightsExclusivity: t.Optional(t.Union([t.String(), t.Null()])),
+  /** 只用于写 `challenge_versions`，不落 `challenges` 表。 */
+  changeNote: t.Optional(t.Union([t.String(), t.Null()])),
+}
+
 export const CreateChallengeBody = t.Object({
   title: t.String({ minLength: 2, maxLength: 255 }),
   realProblem: ChallengeTextField,
@@ -41,6 +85,7 @@ export const CreateChallengeBody = t.Object({
   theme: ChallengeThemeField,
   enterpriseName: ChallengeEnterpriseField,
   capacity: ChallengeCapacityField,
+  ...ChallengeDetailFields,
 })
 
 export const UpdateChallengeBody = t.Object({
@@ -54,6 +99,7 @@ export const UpdateChallengeBody = t.Object({
   theme: ChallengeThemeField,
   enterpriseName: ChallengeEnterpriseField,
   capacity: ChallengeCapacityField,
+  ...ChallengeDetailFields,
 })
 
 /**
@@ -93,5 +139,6 @@ export const PatchChallengeResourceBody = t.Object({
 
 export type CreateChallengeBody = typeof CreateChallengeBody.static
 export type UpdateChallengeBody = typeof UpdateChallengeBody.static
+export type PublishChallengeBody = typeof PublishChallengeBody.static
 export type ReplaceChallengeResourcesBody = typeof ReplaceChallengeResourcesBody.static
 export type PatchChallengeResourceBody = typeof PatchChallengeResourceBody.static

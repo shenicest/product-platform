@@ -42,6 +42,8 @@ describe('UserMenu', () => {
     render(<UserMenu />)
 
     expect(screen.getByText('name@example.com')).toBeInTheDocument()
+    // 工作台入口对所有登录用户可见，落在个人中心的第一屏（报名）。
+    expect(screen.getByRole('link', { name: '工作台' })).toHaveAttribute('href', '/me/applications')
     expect(screen.getByRole('link', { name: /连接记录/ })).toHaveAttribute('href', '/connections')
     expect(screen.getByRole('link', { name: '编辑我的档案' })).toHaveAttribute('href', '/talents/me/edit')
     expect(screen.getByRole('link', { name: '创始人后台' })).toBeInTheDocument()

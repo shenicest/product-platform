@@ -2,17 +2,22 @@ import { and, eq, inArray, ne } from 'drizzle-orm'
 import { db } from './index'
 import {
   auditLogs,
+  challengeFollows,
   challengeResources,
+  challengeVersions,
   challenges,
   organizerOrgMembers,
   organizerOrgs,
   pointAllocations,
+  projects,
   seasonAnnouncements,
   seasonApplications,
   seasonBudgets,
   seasonOrganizers,
   seasonParticipants,
   seasonPointPools,
+  seasonProjectMembers,
+  seasonProjects,
   seasonRuleCardItems,
   seasonEnterpriseCooperations,
   seasonVerifierGrants,
@@ -25,16 +30,24 @@ import { encryptBoomlandContact } from '../lib/boomland-contact-encryption'
 import {
   ApplicationVisibility,
   BudgetStatus,
+  CHALLENGE_RIGHTS_FIELDS,
   ChallengeResourceKind,
   ChallengeResourceStatus,
+  ChallengeScoringDimension,
   ChallengeStatus,
   ChallengeType,
   EnterpriseCooperationStatus,
   EnterpriseCooperationTier,
   EnterprisePublicScope,
   PointAllocationStatus,
+  ProjectStatus,
   Role,
   SEASON_RULE_DEFAULTS,
+  SeasonProjectMemberRole,
+  SeasonProjectMemberStatus,
+  SeasonProjectSource,
+  SeasonProjectStage,
+  SeasonProjectStatus,
   seasonRequiredRuleCardItems,
   SeasonApplicationStatus,
   SeasonParticipantStatus,
@@ -76,8 +89,6 @@ import {
 
 const NOW = Date.now()
 const at = (offsetMs: number) => new Date(NOW + offsetMs)
-
-const rules: SeasonRules = { ...SEASON_RULE_DEFAULTS }
 
 const userIdentity = new UserIdentityService(db)
 
@@ -148,6 +159,13 @@ type SeasonSeed = {
   verifiers: DemoAccountKey[]
   submittedAt: Date
   approvedAt: Date
+  /**
+   * 赛季规则的覆盖项（未写的键沿用 `SEASON_RULE_DEFAULTS`）。
+   *
+   * 不直接写整份 rules：默认值集中在 shared 里，seed 只声明「本季与默认不同」
+   * 的那几项，默认值调整时不用回来改每个赛季。
+   */
+  rules?: Partial<SeasonRules>
 }
 
 const SEASONS: SeasonSeed[] = [
@@ -248,6 +266,9 @@ const SEASONS: SeasonSeed[] = [
     verifiers: ['verifierA', 'verifierB'],
     submittedAt: at(-35 * DAY),
     approvedAt: at(-30 * DAY),
+    // 与命题详情页截图一致：单次上限 300 分、大额复核阈值 280 分、1 积分 = ¥1。
+    // 命题卡上的「单次上限 300」与赛季上限取较小值 —— 两边都是 300 才对得上。
+    rules: { singleWorkCap: 300, reviewThreshold: 280, exchangeRatio: 1 },
   },
   {
     code: 'H03-SH',
@@ -403,8 +424,60 @@ type ChallengeSeed = {
   minimumDeliverable: string
   resourceCommitment: string
   resultEvidenceRules: string
+  // ---- 命题详情页「命题卡」tab 的正文（契约 §1.1，都不是发布必填项） ----
+  summary?: string | null
+  background?: string | null
+  industry?: string | null
+  scope?: string | null
+  outOfScope?: string | null
+  monthlyGoal?: string | null
+  suggestedSkills?: string[]
+  teamCapacity?: number | null
+  ownerName?: string | null
+  responseSla?: string | null
+  // ---- 评分与奖励 ----
+  scoringWeights?: Record<string, number> | null
+  singleWorkCap?: number | null
+  // ---- 公开与权益（七项分别存） ----
+  rights?: Partial<Record<ChallengeRightsField, string | null>>
+  /** 版本号；有 `versions` 时取最后一条的版本号，避免两处写不一致。 */
+  version?: number
+  /** 版本记录（`challenge_versions`）。日期显式给出，不用相对时间。 */
+  versions?: ChallengeVersionSeed[]
+  /**
+   * 演示用的「选择本命题的项目」：每个元素是一个阶段，按顺序对齐
+   * `projects` 表里的前 N 条已上线项目。找不到足够的项目行就跳过。
+   */
+  projectStages?: SeasonProjectStageValue[]
   /** 资源兑现清单（CHG-004）：主办方逐条跟踪的承诺，不是五件套里的那段摘要文本。 */
   resources?: ChallengeResourceSeed[]
+}
+
+type ChallengeVersionSeed = {
+  version: number
+  note: string
+  createdAt: Date
+  changedBy?: string
+}
+
+type SeasonProjectStageValue = (typeof SeasonProjectStage)[keyof typeof SeasonProjectStage]
+type ChallengeRightsField =
+  (typeof CHALLENGE_RIGHTS_FIELDS)[number]
+
+/**
+ * 版本记录的演示日期（10 月 15 / 22 / 26 日）。
+ *
+ * 用固定月日而不是相对 `now`：版本记录是「历史留痕」，日期必须稳定可读。
+ * 年份取当前年；如果那条日期还没到（例如在 3 月跑 seed），退到上一年，
+ * 保证时间轴不会出现「未来发生过的版本」。
+ */
+function versionDate(month: number, day: number): Date {
+  const now = new Date()
+  const candidate = new Date(Date.UTC(now.getUTCFullYear(), month - 1, day, 10, 0, 0))
+  if (candidate.getTime() > now.getTime()) {
+    return new Date(Date.UTC(now.getUTCFullYear() - 1, month - 1, day, 10, 0, 0))
+  }
+  return candidate
 }
 
 const CHALLENGES: Record<string, ChallengeSeed[]> = {
@@ -421,30 +494,105 @@ const CHALLENGES: Record<string, ChallengeSeed[]> = {
       minimumDeliverable: '一套可跑在真实电表数据上的充放电策略 + 运维告警面板，覆盖 1 个真实站点。',
       resourceCommitment: '曜石储能提供 3 个站点历史数据、现场调试窗口与 1 名电气工程师对接。',
       resultEvidenceRules: 'R3：站点连续运行 14 天并出具业主盖章的试用确认；R4：签署正式采购合同。',
+      // ---- 命题卡正文（命题详情页截图里的内容） ---------------------------
+      summary: '谁会为一台 100—200 kWh 的储能柜付第一笔钱？找到客户、算清账、把单签下来。',
+      background:
+        '曜石储能今年在长三角装了 12 台工商业储能柜，装机不缺，缺的是「第一笔真实的付费订单」。'
+        + '已装的柜子里，超过一半因为没人做峰谷套利策略、没人盯运维告警，实际收益远低于销售时的测算，'
+        + '业主不愿复购，也不愿做案例背书。这条命题要的不是又一份方案，而是一个能签字的客户。',
+      industry: '园区里的中小制造企业、冷库、连锁商超',
+      scope:
+        '面向 100—200 kWh 单柜容量的工商业场景，围绕「找到一个真实业主 → 用其电费与负荷数据算清账 → '
+        + '拿到试用或采购承诺」这一条完整链路做验证。可用曜石储能提供的站点数据、工程师对接与现场调试窗口。',
+      outOfScope: '不做电芯研发，不做电网侧大型储能项目',
+      monthlyGoal:
+        '一个月内交付：1 家真实业主的电费-负荷测算报告（含峰谷套利收益测算与回本周期）、'
+        + '1 份业主签字的需求确认单，以及 1 个能跑在真实电表数据上的充放电策略原型。',
+      suggestedSkills: ['销售', '能源测算', '产品'],
+      teamCapacity: 6,
+      ownerName: '王岚',
+      responseSla: '工作日 48 小时内',
+      scoringWeights: {
+        [ChallengeScoringDimension.CommercialResult]: 35,
+        [ChallengeScoringDimension.DeliveryQuality]: 25,
+        [ChallengeScoringDimension.OriginalMethod]: 15,
+        [ChallengeScoringDimension.ActionEvidence]: 15,
+        [ChallengeScoringDimension.ReuseValue]: 10,
+      },
+      singleWorkCap: 300,
+      rights: {
+        rightsPublicScope: '命题卡内容、五件套与评分维度对外公开；站点原始电表数据与业主身份不公开。',
+        rightsConfidentiality: '业主身份、电费明细与合同条款属双方保密信息，仅限本赛季评审与核验使用。',
+        rightsIp: '参赛团队在命题内产出的策略代码与方法文档归团队所有，曜石储能获得非独占的实施许可。',
+        rightsEnterpriseUsage: '曜石储能可在自有站点内使用参赛产出的策略与面板，不额外付费；对外销售需另行约定。',
+        rightsProcurement: '试点验收通过后，曜石储能优先采购该团队的运维服务，单站点年度服务预算 3—8 万元。',
+        rightsSpecialTerms: '涉及业主数据的分析须先签署保密协议；现场调试须由业主陪同并提前 3 天报备。',
+        rightsExclusivity: '不设排他：同一方向可与其他团队并行验证，曜石储能按验收结果择优合作。',
+      },
+      versions: [
+        {
+          version: 1,
+          note: '初版命题卡：确立「拿到第一张真实订单」的命题目标与五件套。',
+          createdAt: versionDate(10, 15),
+        },
+        {
+          version: 2,
+          note: '补充目标客户与产业对象，明确不做电芯研发与电网侧大型储能项目。',
+          createdAt: versionDate(10, 22),
+        },
+        {
+          version: 3,
+          note: '补齐五维权重与七项权益条款，单次评分上限调整为 300 分。',
+          createdAt: versionDate(10, 26),
+        },
+      ],
+      // 4 个已选项目，阶段分布覆盖 seed / sprout / grow / fruit。
+      projectStages: [
+        SeasonProjectStage.Seed,
+        SeasonProjectStage.Sprout,
+        SeasonProjectStage.Grow,
+        SeasonProjectStage.Fruit,
+      ],
       resources: [
         {
-          kind: ChallengeResourceKind.Database,
-          title: '3 个工商业站点历史电表数据',
-          quantity: '3 个站点 / 近 12 个月',
-          conditions: '脱敏后使用，结论可对外，原始数据不得外传',
-          owner: '李二（曜石储能）',
+          kind: ChallengeResourceKind.Funding,
+          title: '试点采购预算',
+          quantity: '¥80,000（单站点上限 ¥30,000）',
+          conditions: '按验收节点分批支付，需业主签字确认验收结果',
+          owner: '王岚（曜石储能）',
+          status: ChallengeResourceStatus.Committed,
+        },
+        {
+          kind: ChallengeResourceKind.RealDemand,
+          title: '3 个工商业站点真实需求与业主对接',
+          quantity: '3 个站点 / 每站点 1 次现场走访',
+          conditions: '走访需提前 3 天预约，由曜石储能商务陪同',
+          owner: '王岚（曜石储能）',
           status: ChallengeResourceStatus.Provided,
         },
         {
           kind: ChallengeResourceKind.ExpertChannel,
-          title: '电气工程师现场对接',
-          quantity: '1 名工程师 / 每周 4 小时',
-          conditions: '需提前 3 天预约',
+          title: '电气工程师与售前顾问对接',
+          quantity: '2 名专家 / 每周各 4 小时',
+          conditions: '工作日 48 小时内响应，需提前排期',
           owner: '李二（曜石储能）',
-          status: ChallengeResourceStatus.Provided,
+          status: ChallengeResourceStatus.Applicable,
         },
         {
           kind: ChallengeResourceKind.ToolVenue,
-          title: '园区调试窗口',
-          quantity: '2 次现场调试',
-          conditions: '进园需报备，由业主陪同',
+          title: '园区调试窗口与储能柜测试环境',
+          quantity: '2 次现场调试 / 1 套测试柜',
+          conditions: '进园需报备并由业主陪同；测试柜仅限本赛季使用',
           owner: '张一（组委会）',
-          status: ChallengeResourceStatus.Committed,
+          status: ChallengeResourceStatus.Provided,
+        },
+        {
+          kind: ChallengeResourceKind.Partnership,
+          title: '合作机会：赛季后运维服务商资格',
+          quantity: '1 个名额',
+          conditions: '需完成试点验收并提供可对外复用的案例',
+          owner: '王岚（曜石储能）',
+          status: ChallengeResourceStatus.Unfulfilled,
         },
       ],
     },
@@ -706,7 +854,7 @@ const ANNOUNCEMENTS: Record<string, AnnouncementSeed[]> = {
     },
     {
       title: '规则澄清：积分归项目，不按命题分账',
-      content: '一个项目可以坐多张牌桌，但积分统一归项目账户；单次评分上限 100 分，超过 50 分进入复核。',
+      content: '一个项目可以坐多张牌桌，但积分统一归项目账户；单次评分上限 300 分，超过 280 分进入大额复核。',
       category: 'rules',
       hoursAgo: 8,
     },
@@ -1011,6 +1159,10 @@ async function upsertSeason(seed: SeasonSeed, orgIds: Record<BoomlandOrgKey, num
   })
   if (scheduleError) throw new Error(`${seed.code}: ${scheduleError}`)
 
+  // 每季规则 = 平台默认 + 本季覆盖项。规则卡文案也按这份生成，
+  // 所以「赛季 rules」与「规则卡上写的数字」永远一致。
+  const seasonRules: SeasonRules = { ...SEASON_RULE_DEFAULTS, ...seed.rules }
+
   const values = {
     name: seed.name,
     type: seed.type,
@@ -1036,7 +1188,7 @@ async function upsertSeason(seed: SeasonSeed, orgIds: Record<BoomlandOrgKey, num
     awardingEntity: seed.awardingEntity,
     agreementVersion: 'v1',
     rulesVersion: 2, // 赛程变更过一次（见公告）
-    rules,
+    rules: seasonRules,
     createdBy: OPERATOR_USER_ID,
   }
 
@@ -1071,7 +1223,7 @@ async function upsertSeason(seed: SeasonSeed, orgIds: Record<BoomlandOrgKey, num
 
   // 规则卡：必要项按赛季配置生成后全量 upsert（文案不手写，与读接口同一份来源）
   const ruleCardItems = seasonRequiredRuleCardItems({
-    rules,
+    rules: seasonRules,
     schedule: {
       applyOpen: seed.schedule.applyOpen.toISOString(),
       applyClose: seed.schedule.applyClose.toISOString(),
@@ -1123,20 +1275,55 @@ async function upsertSeason(seed: SeasonSeed, orgIds: Record<BoomlandOrgKey, num
 
 async function seedChallenges(seed: SeasonSeed, seasonId: number) {
   // 命题整表重建：`challenges` 没有 (season, title) 唯一键，没法按 key upsert，
-  // 所以沿用既有做法 —— 先按赛季删干净再插。资源清单是子表，跟着命题一起删。
+  // 所以沿用既有做法 —— 先按赛季删干净再插。
+  //
+  // **三张子表都要跟着删**：`challenge_resources`、`challenge_versions`、
+  // `challenge_follows` 都以 `challenge_id` 关联但没有外键，只删命题会留下
+  // 一批指向已消失 id 的孤儿行（详情页按 id 查不到，后台表格却还在）。
   const existing = await db
     .select({ id: challenges.id })
     .from(challenges)
     .where(eq(challenges.seasonId, seasonId))
-  if (existing.length > 0) {
-    await db.delete(challengeResources).where(
-      inArray(challengeResources.challengeId, existing.map((row) => row.id)),
-    )
+  const staleChallengeIds = existing.map((row) => row.id)
+  if (staleChallengeIds.length > 0) {
+    await db.delete(challengeResources).where(inArray(challengeResources.challengeId, staleChallengeIds))
+    await db.delete(challengeVersions).where(inArray(challengeVersions.challengeId, staleChallengeIds))
+    await db.delete(challengeFollows).where(inArray(challengeFollows.challengeId, staleChallengeIds))
     await db.delete(challenges).where(eq(challenges.seasonId, seasonId))
   }
+
+  // 「选择本命题的项目」需要 `projects` 行，而 `projects` 只由 `bun run seed` 建。
+  // 读不到就跳过（打日志），不让 seed:season 因为没跑过 seed 直接崩。
+  const availableProjects = await db
+    .select({ id: projects.id, userId: projects.userId })
+    .from(projects)
+    .where(eq(projects.status, ProjectStatus.Live))
+    .orderBy(projects.id)
+  // 上一轮 seed 建过的赛季项目引用的是旧命题 id，先按「同一批演示项目」清掉，
+  // 避免留下指向已删除命题的 season_projects（唯一键 (season, project) 也要求 upsert）。
+  const demoProjectIds = availableProjects.slice(0, 8).map((row) => row.id)
+  if (demoProjectIds.length > 0) {
+    await db
+      .delete(seasonProjects)
+      .where(and(
+        eq(seasonProjects.seasonId, seasonId),
+        inArray(seasonProjects.projectId, demoProjectIds),
+      ))
+  }
+
   const list = CHALLENGES[seed.code] ?? []
+  let versionCount = 0
+  let projectCount = 0
   for (const [index, challenge] of list.entries()) {
-    const { resources = [], ...fields } = challenge
+    const {
+      resources = [],
+      versions = [],
+      rights,
+      projectStages = [],
+      ...fields
+    } = challenge
+    // 版本号跟版本记录对齐：最后一条记录写的是第几版，命题就是第几版。
+    const version = versions.at(-1)?.version ?? challenge.version ?? 1
     const [result] = await db.insert(challenges).values({
       seasonId,
       ...fields,
@@ -1144,14 +1331,35 @@ async function seedChallenges(seed: SeasonSeed, seasonId: number) {
       theme: fields.theme ?? null,
       enterpriseName: fields.enterpriseName ?? null,
       capacity: fields.capacity ?? null,
-      version: 1,
+      summary: fields.summary ?? null,
+      background: fields.background ?? null,
+      industry: fields.industry ?? null,
+      scope: fields.scope ?? null,
+      outOfScope: fields.outOfScope ?? null,
+      monthlyGoal: fields.monthlyGoal ?? null,
+      suggestedSkills: fields.suggestedSkills ?? [],
+      teamCapacity: fields.teamCapacity ?? null,
+      ownerName: fields.ownerName ?? null,
+      responseSla: fields.responseSla ?? null,
+      scoringWeights: fields.scoringWeights ?? null,
+      singleWorkCap: fields.singleWorkCap ?? null,
+      rightsPublicScope: rights?.rightsPublicScope ?? null,
+      rightsConfidentiality: rights?.rightsConfidentiality ?? null,
+      rightsIp: rights?.rightsIp ?? null,
+      rightsEnterpriseUsage: rights?.rightsEnterpriseUsage ?? null,
+      rightsProcurement: rights?.rightsProcurement ?? null,
+      rightsSpecialTerms: rights?.rightsSpecialTerms ?? null,
+      rightsExclusivity: rights?.rightsExclusivity ?? null,
+      version,
       createdBy: OPERATOR_USER_ID,
       createdAt: at(-34 * DAY + index * HOUR),
     })
+    const challengeId = Number(result.insertId)
+
     if (resources.length > 0) {
       await db.insert(challengeResources).values(
         resources.map((resource, resourceIndex) => ({
-          challengeId: Number(result.insertId),
+          challengeId,
           kind: resource.kind,
           title: resource.title,
           quantity: resource.quantity ?? null,
@@ -1162,6 +1370,53 @@ async function seedChallenges(seed: SeasonSeed, seasonId: number) {
         })),
       )
     }
+
+    if (versions.length > 0) {
+      await db.insert(challengeVersions).values(
+        versions.map((entry) => ({
+          challengeId,
+          version: entry.version,
+          note: entry.note,
+          changedBy: entry.changedBy ?? OPERATOR_USER_ID,
+          // 显式 createdAt：版本记录是历史留痕，不能用插入时刻。
+          createdAt: entry.createdAt,
+        })),
+      )
+      versionCount += versions.length
+    }
+
+    if (projectStages.length > 0) {
+      const chosen = availableProjects.slice(0, projectStages.length)
+      if (chosen.length < projectStages.length) {
+        console.warn(
+          `    ! 项目行不足：需要 ${projectStages.length} 个、只找到 ${chosen.length} 个；`
+          + '先跑 `bun run seed` 建 projects，再跑 seed:season',
+        )
+      }
+      for (const [projectIndex, project] of chosen.entries()) {
+        const stage = projectStages[projectIndex] ?? SeasonProjectStage.Seed
+        const [link] = await db.insert(seasonProjects).values({
+          seasonId,
+          projectId: project.id,
+          ownerUserId: project.userId || OPERATOR_USER_ID,
+          source: SeasonProjectSource.Created,
+          themes: [challenge.theme ?? (seed.themes[0] ?? '')].filter(Boolean),
+          challengeIds: [challengeId],
+          status: SeasonProjectStatus.Published,
+          stage,
+        })
+        await db
+          .insert(seasonProjectMembers)
+          .values({
+            seasonProjectId: Number(link.insertId),
+            userId: project.userId || OPERATOR_USER_ID,
+            role: SeasonProjectMemberRole.Owner,
+            status: SeasonProjectMemberStatus.Accepted,
+          })
+          .onDuplicateKeyUpdate({ set: { role: SeasonProjectMemberRole.Owner } })
+        projectCount += 1
+      }
+    }
   }
   const byStatus = list.reduce<Record<string, number>>((acc, challenge) => {
     acc[challenge.status] = (acc[challenge.status] ?? 0) + 1
@@ -1171,7 +1426,10 @@ async function seedChallenges(seed: SeasonSeed, seasonId: number) {
     .map(([status, count]) => `${status} x${count}`)
     .join(' / ')
   const resourceCount = list.reduce((sum, challenge) => sum + (challenge.resources?.length ?? 0), 0)
-  console.log(`    ✓ ${list.length} challenges (${summary || 'none'}) / ${resourceCount} resource(s)`)
+  console.log(
+    `    ✓ ${list.length} challenges (${summary || 'none'}) / ${resourceCount} resource(s)`
+    + ` / ${versionCount} version(s) / ${projectCount} season project(s)`,
+  )
 }
 
 /**

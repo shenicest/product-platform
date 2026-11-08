@@ -24,10 +24,14 @@ import { cn } from '@/lib/utils'
  *   · publish   → 上箭头 + 托盘：发布（与「归档」的下箭头托盘区分）；
  *   · reference → 书签：转参考资料；
  *   · close     → 锁：关闭（锁住后续变更）；
- *   · archive   → 归档盒。
+ *   · archive   → 归档盒；
+ *   · detail    → 文档 + 行：编辑详情（命题卡正文 / 评分 / 权益）。
+ *     与 edit 的铅笔区分：铅笔改的是「这条命题是什么」（标题 / 类型），
+ *     文档改的是「这条命题写清楚了吗」（正文 / 权重 / 权益）。
  */
 export type OrganizerActionIconName =
   | 'edit'
+  | 'detail'
   | 'delete'
   | 'show'
   | 'hide'
@@ -63,6 +67,12 @@ export function OrganizerActionIcon({
         <>
           <path d="M4 20h4.5L19 9.5a2.12 2.12 0 0 0-3-3L5.5 17v3z" />
           <path d="M14.5 6.5 17.5 9.5" />
+        </>
+      ) : name === 'detail' ? (
+        <>
+          <path d="M6 3.75h8.5L19 8.25v11A1.75 1.75 0 0 1 17.25 21H6a1.75 1.75 0 0 1-1.75-1.75V5.5A1.75 1.75 0 0 1 6 3.75z" />
+          <path d="M14 3.75V8.5h4.75" />
+          <path d="M8 12.25h7M8 15.75h5" />
         </>
       ) : name === 'delete' ? (
         <>
