@@ -399,10 +399,15 @@ const MONTH_DAY = new Intl.DateTimeFormat('zh-CN', {
   day: 'numeric',
 })
 
-/** `10月26日`；无法解析时给「待定」而不是 `Invalid Date`。 */
-export function formatMonthDay(value: string | null | undefined): string {
+/**
+ * `10月26日`；无法解析时给「待定」而不是 `Invalid Date`。
+ *
+ * 接受 `Date` 是因为 eden treaty 会把 `timestamp` 反序列化成 `Date` ——
+ * 直接 `new Date(date)` 也能工作，但先判一次更清楚地表达了「两种形状都合法」。
+ */
+export function formatMonthDay(value: string | Date | null | undefined): string {
   if (!value) return '待定'
-  const date = new Date(value)
+  const date = value instanceof Date ? value : new Date(value)
   if (Number.isNaN(date.getTime())) return '待定'
   const parts = MONTH_DAY.formatToParts(date)
   const pick = (type: Intl.DateTimeFormatPartTypes) =>
@@ -474,6 +479,20 @@ function stringOrNull(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null
 }
 
+/**
+ * 时间字段归一化成 ISO 字符串。
+ *
+ * **eden treaty 会把 `timestamp` 列反序列化成 `Date` 对象**（`t.Date` 解析器），
+ * 而 TypeScript 里这些字段声明成 `string` —— 于是 `typeof value === 'string'`
+ * 在运行时会失败，日期直接变成空串（页面上显示「待定」）。
+ * 这里两种形状都接受：字符串原样返回，`Date` 转 ISO。
+ */
+function isoOrEmpty(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (value instanceof Date && !Number.isNaN(value.getTime())) return value.toISOString()
+  return ''
+}
+
 function numberOrNull(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
@@ -535,7 +554,7 @@ export function normalizeChallengeDetail(raw: unknown): ChallengeDetailDto {
           version: numberOrNull(version.version) ?? 0,
           note: typeof version.note === 'string' ? version.note : '',
           changedBy: typeof version.changedBy === 'string' ? version.changedBy : '',
-          createdAt: typeof version.createdAt === 'string' ? version.createdAt : '',
+          createdAt: isoOrEmpty(version.createdAt),
         }))
     : []
 
@@ -570,8 +589,8 @@ export function normalizeChallengeDetail(raw: unknown): ChallengeDetailDto {
     status: typeof source.status === 'string' ? source.status : '',
     version: numberOrNull(source.version) ?? 1,
     createdBy: typeof source.createdBy === 'string' ? source.createdBy : '',
-    createdAt: typeof source.createdAt === 'string' ? source.createdAt : '',
-    updatedAt: typeof source.updatedAt === 'string' ? source.updatedAt : '',
+    createdAt: isoOrEmpty(source.createdAt),
+    updatedAt: isoOrEmpty(source.updatedAt),
     type: stringOrNull(source.type),
     theme: stringOrNull(source.theme),
     enterpriseName: stringOrNull(source.enterpriseName),

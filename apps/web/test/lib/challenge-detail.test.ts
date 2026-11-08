@@ -598,4 +598,22 @@ describe('normalizeChallengeDetail', () => {
     expect(detail.versions).toEqual([])
     expect(detail.projects).toHaveLength(2)
   })
+
+  /**
+   * eden treaty 会把 `timestamp` 列反序列化成 `Date`，而类型上写的是 `string`。
+   * 只按 `typeof === 'string'` 判会让版本日期变成空串（页面上显示「待定」）。
+   */
+  it('accepts Date timestamps from the eden treaty client', () => {
+    const createdAt = new Date('2026-10-26T10:00:00.000Z')
+    const detail = normalizeChallengeDetail({
+      id: 1,
+      createdAt,
+      updatedAt: createdAt,
+      versions: [{ id: 1, version: 3, note: '发布', changedBy: 'u1', createdAt }],
+    })
+    expect(detail.createdAt).toBe('2026-10-26T10:00:00.000Z')
+    expect(detail.updatedAt).toBe('2026-10-26T10:00:00.000Z')
+    expect(detail.versions[0].createdAt).toBe('2026-10-26T10:00:00.000Z')
+    expect(challengeVersionRows(detail.versions)[0].dateLabel).toBe('10月26日')
+  })
 })

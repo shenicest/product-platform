@@ -107,7 +107,7 @@ function item(overrides: Partial<MySeasonApplication> = {}): MySeasonApplication
 }
 
 describe('MY_APPLICATION_COLUMNS', () => {
-  it('lists the seven design columns in order', () => {
+  it('lists the seven design columns plus a dedicated action column', () => {
     expect(MY_APPLICATION_COLUMNS.map((column) => column.label)).toEqual([
       '赛季',
       '提交时间',
@@ -116,6 +116,7 @@ describe('MY_APPLICATION_COLUMNS', () => {
       '微信群',
       '赛季标识',
       '条款版本',
+      '操作',
     ])
   })
 })

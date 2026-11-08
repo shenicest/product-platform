@@ -19,9 +19,12 @@ import type { MySeasonApplication } from '@/lib/boomland'
  * `lib/me-applications.ts` 里完成（可单测）。唯一需要交互的撤回按钮
  * 是一个独立的 Client Component。
  *
- * 列严格按设计稿的 7 列：赛季 / 提交时间 / 审核状态 / 审核说明 /
- * 微信群 / 赛季标识 / 条款版本。撤回入口挂在「审核状态」格里，
- * 因为「现在还能不能撤回」本来就是审核状态的一部分，不该多开一列。
+ * 列严格按设计稿的 7 列（赛季 / 提交时间 / 审核状态 / 审核说明 / 微信群 /
+ * 赛季标识 / 条款版本），再单独加一列「操作」放撤回入口。
+ *
+ * 为什么撤回要单独一列：挂在「审核状态」格里时，状态胶囊和按钮上下堆叠，
+ * 窄屏下按钮会被挤到胶囊下面一行，读起来像「这条报名多了一行」；单独一列
+ * 还能按内容收缩（`w-px`），不参与表格的等分拉伸。
  *
  * 宽表在窄屏会横向溢出，所以外层套 `.overflow-x-auto`，
  * 与主办方后台的报名队列同一套做法。
@@ -48,7 +51,7 @@ export function ApplicationsTable({ items }: { items: MySeasonApplication[] }) {
       <div className="overflow-x-auto">
         <table className="console-table" aria-label="我提交过的赛季报名">
           <caption className="sr-only">
-            我提交过的赛季报名：赛季、提交时间、审核状态、审核说明、微信群、赛季标识与条款版本。
+            我提交过的赛季报名：赛季、提交时间、审核状态、审核说明、微信群、赛季标识、条款版本与操作。
           </caption>
           <thead>
             <tr>
@@ -76,15 +79,7 @@ export function ApplicationsTable({ items }: { items: MySeasonApplication[] }) {
                 </td>
 
                 <td className="min-w-32">
-                  <span className="flex flex-col items-start gap-2">
-                    <ApplicationStatusBadge status={row.status} />
-                    {row.canWithdraw ? (
-                      <WithdrawApplicationButton
-                        applicationId={row.applicationId}
-                        seasonName={row.seasonName}
-                      />
-                    ) : null}
-                  </span>
+                  <ApplicationStatusBadge status={row.status} />
                 </td>
 
                 <td className="min-w-44 max-w-72 text-muted-foreground">
@@ -111,6 +106,19 @@ export function ApplicationsTable({ items }: { items: MySeasonApplication[] }) {
 
                 <td className="whitespace-nowrap font-mono text-meta text-muted-foreground">
                   {row.agreementVersion}
+                </td>
+
+                {/* 操作列按内容收缩，不参与表格的等分拉伸；不可撤回时给破折号，
+                    而不是留一个空单元格。 */}
+                <td className="w-px whitespace-nowrap">
+                  {row.canWithdraw ? (
+                    <WithdrawApplicationButton
+                      applicationId={row.applicationId}
+                      seasonName={row.seasonName}
+                    />
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
                 </td>
               </tr>
             ))}

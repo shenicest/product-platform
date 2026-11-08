@@ -33,10 +33,12 @@ const EMPTY_CELL = '—'
 // ---------------------------------------------------------------------------
 
 /**
- * 表头：与设计稿逐列一致（7 列）。
+ * 表头：赛季 / 提交时间 / 审核状态 / 审核说明 / 微信群 / 赛季标识 / 条款版本 / 操作。
  *
- * 撤回入口放在「审核状态」格里而不是单独加一列 —— 设计稿的列数固定为 7，
- * 而「能不能撤回」本来就是审核状态的一部分。
+ * 撤回入口**单独占一列**（而不是挂在「审核状态」格里）：挂进状态格时，
+ * 状态胶囊 + 撤回按钮在同一格里上下堆叠，窄屏下按钮会被挤到下一行，
+ * 看起来像「这条报名多了一行」。单独一列还能让操作区按内容收缩（`w-px`），
+ * 不参与表格的等分拉伸。
  */
 export const MY_APPLICATION_COLUMNS = [
   { key: 'season', label: '赛季' },
@@ -46,6 +48,7 @@ export const MY_APPLICATION_COLUMNS = [
   { key: 'wechat', label: '微信群' },
   { key: 'seasonCode', label: '赛季标识' },
   { key: 'agreementVersion', label: '条款版本' },
+  { key: 'actions', label: '操作' },
 ] as const
 
 export type MyApplicationColumnKey = (typeof MY_APPLICATION_COLUMNS)[number]['key']
@@ -79,7 +82,7 @@ export function canWithdrawApplication(status: string): boolean {
   return WITHDRAWABLE_APPLICATION_STATUSES.includes(status)
 }
 
-/** 表格一行：已经拆成 7 列需要的展示值。 */
+/** 表格一行：已经拆成各列需要的展示值。 */
 export type MyApplicationRow = {
   applicationId: number
   seasonId: number

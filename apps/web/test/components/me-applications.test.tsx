@@ -86,7 +86,7 @@ beforeEach(() => {
 })
 
 describe('ApplicationsTable', () => {
-  it('renders the seven design columns in order', () => {
+  it('renders the seven design columns plus the action column in order', () => {
     render(<ApplicationsTable items={[item()]} />)
     const table = screen.getByRole('table', { name: '我提交过的赛季报名' })
     const headers = within(table).getAllByRole('columnheader').map((cell) => cell.textContent)
@@ -98,6 +98,7 @@ describe('ApplicationsTable', () => {
       '微信群',
       '赛季标识',
       '条款版本',
+      '操作',
     ])
   })
 
@@ -116,7 +117,7 @@ describe('ApplicationsTable', () => {
     const row = within(table).getAllByRole('row')[1]
     const cells = within(row).getAllByRole('cell')
 
-    expect(cells).toHaveLength(7)
+    expect(cells).toHaveLength(8)
     expect(cells[0]).toHaveTextContent('A4BBS 产业商业赛季')
     expect(within(cells[0]).getByRole('link')).toHaveAttribute('href', '/seasons?season=502')
     expect(cells[1]).toHaveTextContent('2026.10.26 09:40')
@@ -125,6 +126,8 @@ describe('ApplicationsTable', () => {
     expect(cells[4]).toHaveTextContent('已加入')
     expect(cells[5]).toHaveTextContent('502')
     expect(cells[6]).toHaveTextContent('v3')
+    // 撤回入口在独立的操作列里，不在审核状态格。
+    expect(within(cells[7]).getByRole('button', { name: /撤回/ })).toBeInTheDocument()
   })
 
   it('shows an em dash for an empty review note and a non-participant', () => {
@@ -163,6 +166,11 @@ describe('ApplicationsTable', () => {
     ).toBeInTheDocument()
     // 已通过的报名不能撤回 —— 只有一行出现撤回按钮。
     expect(screen.getAllByRole('button', { name: /撤回 .* 的报名$/ })).toHaveLength(1)
+
+    // 不可撤回的那一行，操作列是破折号而不是空单元格。
+    const rows = screen.getAllByRole('row').slice(1)
+    const acceptedCells = within(rows[1]).getAllByRole('cell')
+    expect(acceptedCells[7]).toHaveTextContent('—')
   })
 })
 
