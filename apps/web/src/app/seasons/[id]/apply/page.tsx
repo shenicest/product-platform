@@ -5,13 +5,24 @@ import { SeasonApplicationForm } from '@/components/boomland/season-application-
 import { ApplicationStatusBadge } from '@/components/boomland/application-status-badge'
 import { SeasonStatusBadge } from '@/components/boomland/season-status-badge'
 import { ButtonLink } from '@/components/ui/button'
-import { Eyebrow } from '@/components/ui/typography'
 import { getMySeasonApplication, getSeason } from '@/server/boomland'
 import { applicationWindowReason, formatDateTime } from '@/lib/boomland'
 
 export const metadata = { title: '报名赛季' }
 export const dynamic = 'force-dynamic'
 
+/**
+ * 报名表单页（设计稿 `#apply`）。
+ *
+ * 视觉：900px 单栏、顶部返回链接 + 大标题、说明提示条、白底表单面板、
+ * 两列字段网格、右下角操作区。字段与提交逻辑完全沿用原来的
+ * `SeasonApplicationForm`，这里只换外壳与分区标题。
+ *
+ * 三种状态保持原样：
+ *   · 已提交过 → 展示状态与「查看我的报名」；
+ *   · 报名未开放 / 已截止 → 提示条 + 说明面板；
+ *   · 可报名 → 表单。
+ */
 export default async function SeasonApplyPage(props: PageProps<'/seasons/[id]/apply'>) {
   const rawId = (await props.params).id
   if (!/^\d+$/.test(rawId)) notFound()
@@ -25,70 +36,89 @@ export default async function SeasonApplyPage(props: PageProps<'/seasons/[id]/ap
 
   const myApplication = await getMySeasonApplication(seasonId).catch(() => null)
   const reason = applicationWindowReason(season)
+  const alreadyApplied =
+    myApplication && myApplication.application.status !== 'withdrawn'
 
   return (
-    <main>
-      <section className="shell shell--narrow pt-10 pb-16 sm:pt-14">
-        <Link
-          href={`/seasons?season=${season.id}`}
-          className="font-mono text-meta tracking-[0.08em] text-muted-foreground transition-colors hover:text-brand-text"
-        >
-          ← 返回{season.name}
+    <main className="v26 v26-apply">
+      <div className="v26-shell v26-shell--narrow">
+        <Link href={`/seasons/${season.id}`} className="v26-apply__back">
+          <span aria-hidden>←</span> 返回 {season.name}
         </Link>
 
-        <header className="mt-8 border-b border-border pb-8">
-          <div className="flex flex-wrap items-center gap-2">
-            <Eyebrow tone="accent">APPLICATION / {season.code}</Eyebrow>
+        <header className="v26-apply__head">
+          <div>
+            <span className="v26-eyebrow">APPLICATION / {season.code}</span>
             <SeasonStatusBadge status={season.status} />
           </div>
-          <h1 className="page-title">报名 · {season.name}</h1>
-          <p className="page-lead">
+          <h1>报名 · {season.name}</h1>
+          <p>
             报名窗口
-            <span className="mx-2 font-mono text-foreground">
+            <span style={{ color: 'var(--v26-ink)', fontWeight: 600 }}>
+              {' '}
               {formatDateTime(season.applicationWindow.opensAt)} —{' '}
-              {formatDateTime(season.applicationWindow.closesAt)}
+              {formatDateTime(season.applicationWindow.closesAt)}{' '}
             </span>
             。信息仅主办方与平台运营可见，通过后会邀请你加入赛季微信群完成组队。
           </p>
         </header>
 
-        <div className="ui-panel mt-8">
-          {myApplication && myApplication.application.status !== 'withdrawn' ? (
-            <div className="grid gap-4">
-              <p className="ui-panel__label">ALREADY APPLIED</p>
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-h3 font-bold text-foreground">你已提交过报名</h2>
-                <ApplicationStatusBadge status={myApplication.application.status} />
-              </div>
-              <p className="text-body-sm text-muted-foreground">
+        {reason && !alreadyApplied ? (
+          <p className="v26-notice" role="status">
+            <span aria-hidden>ⓘ</span>
+            {reason}
+          </p>
+        ) : null}
+
+        {alreadyApplied ? (
+          <section className="v26-form-panel" aria-labelledby="already-applied-title">
+            <h2 id="already-applied-title" className="v26-form-panel__title">
+              你已提交过报名
+            </h2>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
+              <ApplicationStatusBadge status={myApplication.application.status} />
+              <span className="v26-muted v26-small">
                 提交时间 {formatDateTime(myApplication.application.createdAt)}
-                {myApplication.application.status === 'withdrawn'
-                  ? '，该报名已撤回，可在下方重新提交。'
-                  : '。如需查看进度，请前往「我的报名」。'}
-              </p>
-              <div className="flex flex-wrap gap-3">
-                <ButtonLink href="/me/applications" variant="secondary">
-                  查看我的报名 <span className="ui-btn__arrow" aria-hidden>→</span>
-                </ButtonLink>
-              </div>
+              </span>
             </div>
-          ) : reason ? (
-            <div className="grid gap-4">
-              <p className="ui-panel__label">CLOSED</p>
-              <h2 className="text-h3 font-bold text-foreground">暂不可报名</h2>
-              <p className="text-body-sm text-muted-foreground">{reason}</p>
-              <ButtonLink href={`/seasons?season=${season.id}`} variant="secondary" className="w-fit">
+            <p className="v26-muted" style={{ marginTop: 14, fontSize: 13 }}>
+              无需重复报名，可以在「我的报名」查看审核进度
+              {myApplication.application.status === 'withdrawn'
+                ? '；该报名已撤回，可在下方重新提交。'
+                : '。'}
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 22 }}>
+              <ButtonLink href="/me/applications" variant="secondary">
+                查看我的报名 <span className="ui-btn__arrow" aria-hidden>→</span>
+              </ButtonLink>
+              <ButtonLink href={`/seasons/${season.id}`} variant="ghost">
+                返回赛季详情
+              </ButtonLink>
+            </div>
+          </section>
+        ) : reason ? (
+          <section className="v26-form-panel" aria-labelledby="closed-title">
+            <h2 id="closed-title" className="v26-form-panel__title">
+              暂不可报名
+            </h2>
+            <p className="v26-muted" style={{ fontSize: 13, lineHeight: 1.8 }}>
+              {reason}。你可以先查看赛季详情与命题，报名开放后会在赛季页给出入口。
+            </p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 22 }}>
+              <ButtonLink href={`/seasons/${season.id}`} variant="secondary">
                 查看赛季详情 <span className="ui-btn__arrow" aria-hidden>→</span>
               </ButtonLink>
             </div>
-          ) : (
-            <div className="grid gap-6">
-              <p className="ui-panel__label">APPLICATION FORM</p>
-              <SeasonApplicationForm season={season} />
-            </div>
-          )}
-        </div>
-      </section>
+          </section>
+        ) : (
+          <section className="v26-form-panel" aria-labelledby="application-form-title">
+            <h2 id="application-form-title" className="v26-form-panel__title">
+              个人报名表
+            </h2>
+            <SeasonApplicationForm season={season} />
+          </section>
+        )}
+      </div>
     </main>
   )
 }

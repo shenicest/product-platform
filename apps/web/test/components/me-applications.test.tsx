@@ -119,7 +119,7 @@ describe('ApplicationsTable', () => {
 
     expect(cells).toHaveLength(8)
     expect(cells[0]).toHaveTextContent('A4BBS 产业商业赛季')
-    expect(within(cells[0]).getByRole('link')).toHaveAttribute('href', '/seasons?season=502')
+    expect(within(cells[0]).getByRole('link')).toHaveAttribute('href', '/seasons/502')
     expect(cells[1]).toHaveTextContent('2026.10.26 09:40')
     expect(cells[2]).toHaveTextContent('已提交')
     expect(cells[3]).toHaveTextContent('方向不匹配')
@@ -230,7 +230,7 @@ describe('PublicSeasonGrid', () => {
     expect(within(card).getByText('进行中')).toBeInTheDocument()
     expect(within(card).getByText('报名已截止')).toBeInTheDocument()
     expect(within(card).getByRole('link', { name: 'A4BBS 产业商业赛季' }))
-      .toHaveAttribute('href', '/seasons?season=502')
+      .toHaveAttribute('href', '/seasons/502')
     expect(within(card).getByText('报名 10月12日 10:00 — 10月26日 23:59（北京时间）'))
       .toBeInTheDocument()
     expect(within(card).getByText('已通过 19 / 名额 20')).toBeInTheDocument()

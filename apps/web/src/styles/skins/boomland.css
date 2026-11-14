@@ -151,4 +151,100 @@
   /* 赛季详情拼贴首屏：由运营提供的整张 banner（含雕像 / 星芒 / 棋盘格）。
    * 放在 L0 是因为它是设计素材；上层只消费 --season-hero-image。 */
   --boom-season-hero-art: url('https://shenicest-projects-1422809617.cos.ap-shanghai.myqcloud.com/assets/product-platform/boomland/banner.png');
+
+  /* ==========================================================================
+   * V2.6 · 火热赛季 / 命题 / 报名 / 个人中心（设计稿 BoomLand V2.6）
+   * --------------------------------------------------------------------------
+   * 这一组是**页面级战役配色**，只在 `.v26` 作用域内被 v26.css 消费，
+   * 不参与全站「生长」皮肤的语义 token，因此不会影响产品共生、人才等页面。
+   *
+   * 取值来源：`C:\Code\NewBoomland\styles.css` 的 :root 与 #header / .hero 等
+   * 段落。色值只允许出现在 L0（本文件），上层一律引用 --boom-v26-*。
+   * ======================================================================== */
+
+  /* 主粉 · 文字粉 · 悬停粉 */
+  --boom-v26-pink: #f72585;
+  --boom-v26-pink-dark: #a00058;
+  --boom-v26-pink-hover: #dd176f;
+  --boom-v26-pink-solid: #ff318b;
+
+  /* 墨色 / 灰阶 */
+  --boom-v26-ink: #17202b;
+  --boom-v26-ink-soft: #141414;
+  --boom-v26-muted: #756e79;
+  --boom-v26-muted-2: #626166;
+  --boom-v26-muted-3: #706370;
+
+  /* 纸面 / 线条 */
+  --boom-v26-white: #ffffff;
+  --boom-v26-line: #eae3e8;
+  --boom-v26-line-soft: #f2e2e8;
+  --boom-v26-line-strong: #ddd3dc;
+  --boom-v26-placeholder: #afa3b0;
+
+  /* 粉色浅底 */
+  --boom-v26-tint: #fff0f6;
+  --boom-v26-wash: #fff8fb;
+  --boom-v26-wash-2: #fff7fb;
+
+  /* 功能色 */
+  --boom-v26-yellow: #ffe16a;
+  --boom-v26-yellow-soft: #fff9df;
+  --boom-v26-yellow-line: #eee0a4;
+  --boom-v26-yellow-text: #8a6412;
+  --boom-v26-green: #197455;
+  --boom-v26-green-soft: #ebf7ef;
+  --boom-v26-green-line: #d0e9da;
+  --boom-v26-red: #bb3656;
+  --boom-v26-red-soft: #fff0f2;
+  --boom-v26-red-line: #e7b6c1;
+
+  /* 徽章 / 表格 / 状态 */
+  --boom-v26-chip-bg: #f4f0f4;
+  --boom-v26-chip-line: #eae2e9;
+  --boom-v26-chip-ink: #635769;
+  --boom-v26-pink-chip-bg: #ffe0ec;
+  --boom-v26-pink-chip-line: #ffc9df;
+  --boom-v26-table-head: #faf6f9;
+  --boom-v26-row-hover: #fffbfd;
+  --boom-v26-status-gray: #f0edef;
+  --boom-v26-status-yellow: #fff1c3;
+
+  /* 票券（season ticket） */
+  --boom-v26-ticket-stroke: #f3a8c8;
+  --boom-v26-ticket-stitch: #f3a8c8;
+  --boom-v26-ticket-fill: #fffcfd;
+
+  /* 焦点：设计稿 #da2b8c，比主粉深一档，压在白/粉底上都够对比 */
+  --boom-v26-focus: #da2b8c;
+
+  /* 阴影：设计稿 --shadow: 0 5px 20px #3b122408 */
+  --boom-v26-shadow: 0 5px 20px rgba(59, 18, 36, 0.031);
+  --boom-v26-shadow-switch: 0 3px 6px rgba(59, 18, 36, 0.067);
+
+  /* 首屏落在拼贴上的标题色 */
+  --boom-v26-hero-ink: #101a2c;
+
+  /* 首屏底部活动切换条：粉色柔光带 */
+  --boom-v26-switcher-bg: linear-gradient(90deg, #ffd9e9, #ffeef6 45%, #ffd9e9);
+
+  /* 票券卡投影与描边 */
+  --boom-v26-ticket-shadow: rgba(59, 18, 36, 0.16);
+  --boom-v26-ticket-cta-line: #ff94ca;
+  --boom-v26-ticket-cta-bg: #fff3fa;
+  --boom-v26-ticket-code-bg: #fff7f5;
+  --boom-v26-ticket-track: #f6dfe9;
+  --boom-v26-collage-fallback: #fceee3;
+  --boom-v26-card-hover: rgba(59, 18, 36, 0.07);
+
+  /* 时间轴 */
+  --boom-v26-timeline-line: #e7dde4;
+  --boom-v26-timeline-dot: #d7cbd4;
+
+  /* 设计素材：拼贴主视觉、票券轮廓与 CTA 票根 */
+  --boom-v26-collage: url('/brand/season-collage.jpg');
+  --boom-v26-ticket-mask: url('/brand/season-ticket-mask.svg');
+  --boom-v26-ticket-frame: url('/brand/season-ticket-frame.svg');
+  --boom-v26-ticket-open: url('/brand/season-ticket-open.svg');
+  --boom-v26-ticket-disabled: url('/brand/season-ticket-disabled.svg');
 }

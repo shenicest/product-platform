@@ -29,6 +29,9 @@
 @import '../styles/components.css';
 @import '../styles/patterns.css';
 
+/* --- L3 页面：BoomLand V2.6（火热赛季 / 命题 / 报名 / 个人中心） -------- */
+@import '../styles/v26.css';
+
 @custom-variant dark (&:is(.dark *));
 
 /* ==========================================================================

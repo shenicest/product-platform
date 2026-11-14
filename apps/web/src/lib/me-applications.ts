@@ -88,7 +88,7 @@ export type MyApplicationRow = {
   seasonId: number
   seasonName: string
   seasonCode: string
-  /** 赛季详情页地址（`/seasons?season=` 是现有赛季页的定位方式）。 */
+  /** 赛季详情页地址（V2.6 起赛季详情是独立路由 `/seasons/:id`）。 */
   seasonHref: string
   submittedAt: string
   status: string
@@ -109,7 +109,7 @@ export function myApplicationRow(item: MySeasonApplication): MyApplicationRow {
     seasonId: season.id,
     seasonName: season.name,
     seasonCode: season.code,
-    seasonHref: `/seasons?season=${season.id}`,
+    seasonHref: `/seasons/${season.id}`,
     submittedAt: formatDateTime(application.createdAt),
     status: application.status,
     statusLabel: status.label,
@@ -314,7 +314,7 @@ export function publicSeasonCards(
         code: season.code,
         name: season.name,
         typeLabel: seasonTypeLabel(season.type),
-        href: `/seasons?season=${season.id}`,
+        href: `/seasons/${season.id}`,
         seasonStatus: season.status,
         seasonStatusLabel: status.label,
         seasonStatusTone: status.tone,

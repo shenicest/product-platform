@@ -100,136 +100,189 @@ export function SeasonApplicationForm({ season }: { season: SeasonDetail }) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-6" noValidate>
-      <FormField label="你的技能" htmlFor="apply-skills" required error={fieldErrors.skills}>
-        <TextArea
-          id="apply-skills"
-          name="skills"
-          value={skills}
-          onChange={setSkills}
-          placeholder="例如：储能 BMS 固件、React 前端、供应链 BD"
-          rows={3}
-          maxLength={2000}
-        />
-      </FormField>
+    <form onSubmit={onSubmit} className="v26-apply-form" noValidate>
+      <section className="v26-form-section">
+        <h2>认识一下你</h2>
+        <div className="v26-form-grid">
+          <div className="v26-form-full">
+            <FormField label="你的技能" htmlFor="apply-skills" required error={fieldErrors.skills}>
+              <TextArea
+                id="apply-skills"
+                name="skills"
+                value={skills}
+                onChange={setSkills}
+                placeholder="例如：储能 BMS 固件、React 前端、供应链 BD"
+                rows={3}
+                maxLength={2000}
+              />
+            </FormField>
+          </div>
 
-      <FormField label="相关经历" htmlFor="apply-experience" required error={fieldErrors.experience}>
-        <TextArea
-          id="apply-experience"
-          name="experience"
-          value={experience}
-          onChange={setExperience}
-          placeholder="做过什么、做到什么程度，一两段即可"
-          rows={4}
-          maxLength={4000}
-        />
-      </FormField>
-
-      <FormField
-        label={`报名方向（最多 ${MAX_THEMES} 个）`}
-        htmlFor="apply-themes"
-        required
-        group
-        error={fieldErrors.themes}
-        hint="必须在本赛季主题范围内选择"
-      >
-        <div className="flex flex-wrap gap-2" role="group" aria-label="选择报名方向">
-          {season.themes.map((theme) => (
-            <ChipButton
-              key={theme}
-              aria-pressed={themes.includes(theme)}
-              tone={themes.includes(theme) ? 'accent' : 'neutral'}
-              onClick={() => toggleTheme(theme)}
+          <div className="v26-form-full">
+            <FormField
+              label="相关经历"
+              htmlFor="apply-experience"
+              required
+              error={fieldErrors.experience}
             >
-              {theme}
-            </ChipButton>
-          ))}
+              <TextArea
+                id="apply-experience"
+                name="experience"
+                value={experience}
+                onChange={setExperience}
+                placeholder="做过什么、做到什么程度，一两段即可"
+                rows={4}
+                maxLength={4000}
+              />
+            </FormField>
+          </div>
+
+          <div className="v26-form-full">
+            <FormField
+              label={`报名方向（最多 ${MAX_THEMES} 个）`}
+              htmlFor="apply-themes"
+              required
+              group
+              error={fieldErrors.themes}
+              hint="必须在本赛季主题范围内选择"
+            >
+              <div className="flex flex-wrap gap-2" role="group" aria-label="选择报名方向">
+                {season.themes.map((theme) => (
+                  <ChipButton
+                    key={theme}
+                    aria-pressed={themes.includes(theme)}
+                    tone={themes.includes(theme) ? 'accent' : 'neutral'}
+                    onClick={() => toggleTheme(theme)}
+                  >
+                    {theme}
+                  </ChipButton>
+                ))}
+              </div>
+              {themes.length ? (
+                <p className="ui-hint">
+                  已选 {themes.length} / {MAX_THEMES}：{themes.join('、')}
+                </p>
+              ) : null}
+            </FormField>
+          </div>
+
+          <FormField
+            label="可投入时间"
+            htmlFor="apply-availability"
+            required
+            error={fieldErrors.availability}
+          >
+            <TextInput
+              id="apply-availability"
+              name="availability"
+              value={availability}
+              onChange={setAvailability}
+              placeholder="例如：每周 15 小时 / 全职冲刺"
+              maxLength={500}
+            />
+          </FormField>
+
+          <FormField
+            label="参与方式"
+            htmlFor="apply-city-mode"
+            required
+            error={fieldErrors.cityMode}
+          >
+            <TextInput
+              id="apply-city-mode"
+              name="cityMode"
+              value={cityMode}
+              onChange={setCityMode}
+              placeholder={season.city ? `线上 / ${season.city}线下` : '线上 / 线下'}
+              maxLength={200}
+            />
+          </FormField>
         </div>
-        {themes.length ? (
-          <p className="ui-hint">已选 {themes.length} / {MAX_THEMES}：{themes.join('、')}</p>
-        ) : null}
-      </FormField>
+      </section>
 
-      <FormField label="组队意向" htmlFor="apply-team-intent" required error={fieldErrors.teamIntent}>
-        <TextArea
-          id="apply-team-intent"
-          name="teamIntent"
-          value={teamIntent}
-          onChange={setTeamIntent}
-          placeholder="想加入什么方向的队伍、或者已经和谁约好"
-          rows={2}
-          maxLength={1000}
-        />
-      </FormField>
+      <section className="v26-form-section">
+        <h2>你想怎样参与</h2>
+        <div className="v26-form-grid">
+          <div className="v26-form-full">
+            <FormField
+              label="组队意向"
+              htmlFor="apply-team-intent"
+              required
+              error={fieldErrors.teamIntent}
+            >
+              <TextArea
+                id="apply-team-intent"
+                name="teamIntent"
+                value={teamIntent}
+                onChange={setTeamIntent}
+                placeholder="想加入什么方向的队伍、或者已经和谁约好"
+                rows={2}
+                maxLength={1000}
+              />
+            </FormField>
+          </div>
 
-      <div className="ui-field">
-        <CheckboxInput id="apply-accepts-solo" name="acceptsSolo" checked={acceptsSolo} onChange={setAcceptsSolo}>
-          找不到队伍也愿意一个人参赛
-        </CheckboxInput>
-      </div>
+          <FormField
+            label="微信号"
+            htmlFor="apply-wechat"
+            hint="与手机号至少填一项，仅主办方可见"
+            error={fieldErrors.contact}
+          >
+            <TextInput
+              id="apply-wechat"
+              name="wechat"
+              value={wechat}
+              onChange={setWechat}
+              placeholder="wechat id"
+              maxLength={100}
+              invalid={Boolean(fieldErrors.contact)}
+            />
+          </FormField>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="可投入时间" htmlFor="apply-availability" required error={fieldErrors.availability}>
-          <TextInput
-            id="apply-availability"
-            name="availability"
-            value={availability}
-            onChange={setAvailability}
-            placeholder="例如：每周 15 小时 / 全职冲刺"
-            maxLength={500}
-          />
-        </FormField>
-        <FormField label="参与方式" htmlFor="apply-city-mode" required error={fieldErrors.cityMode}>
-          <TextInput
-            id="apply-city-mode"
-            name="cityMode"
-            value={cityMode}
-            onChange={setCityMode}
-            placeholder={season.city ? `线上 / ${season.city}线下` : '线上 / 线下'}
-            maxLength={200}
-          />
-        </FormField>
-      </div>
+          <FormField label="手机号" htmlFor="apply-phone">
+            <TextInput
+              id="apply-phone"
+              name="phone"
+              value={phone}
+              onChange={setPhone}
+              placeholder="138 0000 0000"
+              maxLength={50}
+              invalid={Boolean(fieldErrors.contact)}
+            />
+          </FormField>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="微信号" htmlFor="apply-wechat" hint="与手机号至少填一项，仅主办方可见" error={fieldErrors.contact}>
-          <TextInput
-            id="apply-wechat"
-            name="wechat"
-            value={wechat}
-            onChange={setWechat}
-            placeholder="wechat id"
-            maxLength={100}
-            invalid={Boolean(fieldErrors.contact)}
-          />
-        </FormField>
-        <FormField label="手机号" htmlFor="apply-phone">
-          <TextInput
-            id="apply-phone"
-            name="phone"
-            value={phone}
-            onChange={setPhone}
-            placeholder="138 0000 0000"
-            maxLength={50}
-            invalid={Boolean(fieldErrors.contact)}
-          />
-        </FormField>
-      </div>
+          <div className="v26-form-full v26-check">
+            <CheckboxInput
+              id="apply-accepts-solo"
+              name="acceptsSolo"
+              checked={acceptsSolo}
+              onChange={setAcceptsSolo}
+            >
+              找不到队伍也愿意一个人参赛
+            </CheckboxInput>
+          </div>
 
-      <div className="ui-field">
-        <CheckboxInput id="apply-agreement" name="agreement" checked={agreed} onChange={setAgreed}>
-          我已阅读并同意本赛季协议（{season.agreementVersion}）与规则卡
-        </CheckboxInput>
-      </div>
+          <div className="v26-form-full v26-check">
+            <CheckboxInput
+              id="apply-agreement"
+              name="agreement"
+              checked={agreed}
+              onChange={setAgreed}
+            >
+              我已阅读并同意本赛季协议（{season.agreementVersion}）与规则卡
+            </CheckboxInput>
+          </div>
+        </div>
+      </section>
 
       <FieldError>{formError}</FieldError>
 
-      <div className="flex items-center gap-3">
+      <div className="v26-form-footer">
+        <Button variant="secondary" onClick={() => router.back()} disabled={pending}>
+          返回
+        </Button>
         <Button type="submit" disabled={pending}>
           {pending ? '提交中…' : '提交报名'}
-        </Button>
-        <Button variant="ghost" onClick={() => router.back()} disabled={pending}>
-          返回
         </Button>
       </div>
     </form>

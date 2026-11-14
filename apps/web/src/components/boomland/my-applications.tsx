@@ -57,7 +57,7 @@ function ApplicationCard({ item }: { item: MySeasonApplication }) {
         </div>
 
         <h3 className="card-title mt-2">
-          <Link href={`/seasons?season=${season.id}`} className="transition-colors hover:text-brand-text">
+          <Link href={`/seasons/${season.id}`} className="transition-colors hover:text-brand-text">
             {season.name}
           </Link>
         </h3>
@@ -73,7 +73,7 @@ function ApplicationCard({ item }: { item: MySeasonApplication }) {
       </div>
 
       <footer className="card-footer">
-        <ButtonLink href={`/seasons?season=${season.id}`} variant="ghost" size="sm">
+        <ButtonLink href={`/seasons/${season.id}`} variant="ghost" size="sm">
           查看赛季
         </ButtonLink>
         {canWithdraw ? (

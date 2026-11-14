@@ -78,8 +78,8 @@ export default async function ChallengeDetailPage(props: PageProps<'/challenges/
   // 保留赛季外壳与返回入口，只让内容区降级。
   if (result.status === 'failed') {
     return (
-      <div className="season-page">
-        <div className="shell challenge-page">
+      <div className="v26 v26-challenge-page">
+        <div className="v26-shell challenge-page">
           <p className="challenge-crumb">BOOMLAND / CHALLENGES</p>
           <EmptyState
             title="LOAD FAILED"
@@ -107,8 +107,8 @@ export default async function ChallengeDetailPage(props: PageProps<'/challenges/
   ]
 
   return (
-    <div className="season-page">
-      <div className="shell challenge-page">
+    <div className="v26 v26-challenge-page">
+      <div className="v26-shell challenge-page">
         <nav className="challenge-crumb" aria-label="面包屑">
           <Link href={`/seasons/${challenge.seasonId}`}>BOOMLAND / 赛季</Link>
           <span aria-hidden> / </span>
