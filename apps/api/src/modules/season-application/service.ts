@@ -347,7 +347,10 @@ export class SeasonApplicationService {
     const items = await Promise.all(rows.map(async (row) => {
       const summary = await getSeasonSummaryById(this.db, row.seasonId)
       const participantRows = await this.db
-        .select({ wechatStatus: seasonParticipants.wechatStatus })
+        .select({
+          wechatStatus: seasonParticipants.wechatStatus,
+          status: seasonParticipants.status,
+        })
         .from(seasonParticipants)
         .where(
           and(
@@ -363,6 +366,9 @@ export class SeasonApplicationService {
         },
         season: summary!,
         wechatStatus: participantRows[0]?.wechatStatus ?? null,
+        // 退出赛季只写选手行，报名记录仍是 accepted。前端据此区分
+        // 「已退赛」与「已撤回」，不能从报名状态猜。
+        participantStatus: participantRows[0]?.status ?? null,
       }
     }))
     return {

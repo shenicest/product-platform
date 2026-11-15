@@ -537,6 +537,52 @@ export interface SeasonSchedule {
   settleDate: string
 }
 
+/**
+ * 赛程八个节点的固定顺序（与 `SeasonSchedule` 的声明顺序一致）。
+ *
+ * 后端校验、主办方后台表单、公开页时间线与公告文案都按这份顺序展示与比较：
+ * 顺序只写一处，就不会出现「表单里 A 在 B 前、公告里 B 在 A 前」这种错位。
+ */
+export const SEASON_SCHEDULE_KEYS = [
+  'applyOpen',
+  'applyClose',
+  'startAt',
+  'teamDeadline',
+  'challengeFreezeAt',
+  'workDeadline',
+  'scoreDeadline',
+  'settleDate',
+] as const satisfies readonly (keyof SeasonSchedule)[]
+
+export type SeasonScheduleKey = (typeof SEASON_SCHEDULE_KEYS)[number]
+
+/**
+ * 必须**严格递增**的六个主时间点（`SEASON_SCHEDULE_KEYS` 的子序列）。
+ *
+ * `challengeFreezeAt` / `workDeadline` 不在这条链里：它们只受各自的
+ * `challengeFreezeAt <= teamDeadline`、`workDeadline <= scoreDeadline` 约束。
+ */
+export const SEASON_SCHEDULE_CHAIN = [
+  'applyOpen',
+  'applyClose',
+  'startAt',
+  'teamDeadline',
+  'scoreDeadline',
+  'settleDate',
+] as const satisfies readonly SeasonScheduleKey[]
+
+/** 赛程节点的中文名（表单标签、公告摘要、错误文案共用）。 */
+export const SEASON_SCHEDULE_LABELS: Record<SeasonScheduleKey, string> = {
+  applyOpen: '报名开放',
+  applyClose: '报名截止',
+  startAt: '开赛',
+  teamDeadline: '组队截止',
+  challengeFreezeAt: '命题冻结',
+  workDeadline: '作品截止',
+  scoreDeadline: '评分截止',
+  settleDate: '结算日',
+}
+
 export interface SeasonRules {
   maxChallengesPerProject: number
   maxProjectsPerParticipant: number
@@ -633,8 +679,17 @@ function scorelessOr(value: number | null | undefined, format: (value: number) =
   return isScorelessValue(value) ? SEASON_RULE_CARD_SCORELESS : format(value as number)
 }
 
-/** 规则卡里展示的截止时间；未排期时给「待定」。 */
-function deadlineText(value: string | null | undefined, timeZone: string): string {
+/**
+ * 赛季时间点的统一文案：`2027年2月20日 23:59`（默认北京时间）。
+ *
+ * 赛程、规则卡必要条目、赛程变更公告都用它渲染：三处说的是同一个时刻，
+ * 就不该出现三种写法。时间缺失或非法时给「待定」，不抛错 —— 未排期的赛季
+ * 是正常状态，不是异常。
+ */
+export function formatSeasonDateTime(
+  value: string | null | undefined,
+  timeZone = 'Asia/Shanghai',
+): string {
   if (!value) return '待定'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '待定'
@@ -690,8 +745,8 @@ export function seasonRequiredRuleCardValue(
     case 'review_threshold':
       return scorelessOr(rules.reviewThreshold, (value) => `单次评分超过 ${value} 分需大额复核`)
     case 'work_and_score_deadline': {
-      const work = deadlineText(schedule?.workDeadline, 'Asia/Shanghai')
-      const score = deadlineText(schedule?.scoreDeadline, 'Asia/Shanghai')
+      const work = formatSeasonDateTime(schedule?.workDeadline)
+      const score = formatSeasonDateTime(schedule?.scoreDeadline)
       return `作品 ${work} 截止；评分 ${score} 截止（北京时间）`
     }
     case 'point_pool_and_awards': {

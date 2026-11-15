@@ -1,7 +1,11 @@
 'use client'
 
 import { useId, useMemo, useState } from 'react'
-import { SEASON_AGREEMENT_CONTENT_MAX_LENGTH, SEASON_RULE_LIMITS } from '@shenicest/shared'
+import {
+  SEASON_AGREEMENT_CONTENT_MAX_LENGTH,
+  SEASON_RULE_LIMITS,
+  type SeasonScheduleKey,
+} from '@shenicest/shared'
 import { Button } from '@/components/ui/button'
 import { ChipButton } from '@/components/ui/chip'
 import {
@@ -92,6 +96,7 @@ export function SeasonDraftForm({
   organizerOrgOptions,
   mode,
   sourceSeasonName,
+  lockedScheduleKeys,
   onSubmit,
   onCancel,
 }: {
@@ -101,6 +106,12 @@ export function SeasonDraftForm({
   /** `create` 新建空白草稿；`copy` 以上一季为模板；`edit` 更新当前赛季。 */
   mode: 'create' | 'copy' | 'edit'
   sourceSeasonName?: string
+  /**
+   * 已过去、不允许再修改的赛程节点（只有 `edit` 模式传）。
+   *
+   * 传了就置灰对应输入框，并让这些节点不参与赛程校验 —— 后端同样拒绝修改它们。
+   */
+  lockedScheduleKeys?: ReadonlySet<SeasonScheduleKey>
   /**
    * 真正的提交动作（发什么请求由调用方决定）。
    *
@@ -161,7 +172,10 @@ export function SeasonDraftForm({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setFormError(null)
-    const nextErrors = validateSeasonDraft(value, { organizerOrgOptions: allowedOrgIds })
+    const nextErrors = validateSeasonDraft(value, {
+      organizerOrgOptions: allowedOrgIds,
+      lockedScheduleKeys,
+    })
     setErrors(nextErrors)
     if (Object.keys(nextErrors).length > 0) {
       setFormError('请先补全表单中标红的字段')
@@ -415,24 +429,34 @@ export function SeasonDraftForm({
 
       <fieldset className="grid gap-4">
         <legend className="ui-label mb-1">赛程（可稍后填写）</legend>
-        <p className="ui-hint -mt-2">要么全部留空，要么八个节点都填；时间必须严格递增。</p>
+        <p className="ui-hint -mt-2">
+          要么全部留空，要么八个节点都填；时间必须严格递增。
+          {lockedScheduleKeys && lockedScheduleKeys.size > 0
+            ? '已经过去的节点已锁定，不能再改。'
+            : ''}
+        </p>
         <div className="grid gap-4 sm:grid-cols-2">
-          {SCHEDULE_FIELDS.map((field) => (
-            <FormField
-              key={field.key}
-              label={field.label}
-              htmlFor={id(`schedule-${field.key}`)}
-              error={errorOf(`schedule.${field.key}`)}
-            >
-              <TextInput
-                id={id(`schedule-${field.key}`)}
-                name={field.key}
-                type="datetime-local"
-                value={value.schedule[field.key]}
-                onChange={(next) => setSchedule(field.key, next)}
-              />
-            </FormField>
-          ))}
+          {SCHEDULE_FIELDS.map((field) => {
+            const isLocked = lockedScheduleKeys?.has(field.key) ?? false
+            return (
+              <FormField
+                key={field.key}
+                label={field.label}
+                htmlFor={id(`schedule-${field.key}`)}
+                error={errorOf(`schedule.${field.key}`)}
+                hint={isLocked ? '已经过去，不可修改' : undefined}
+              >
+                <TextInput
+                  id={id(`schedule-${field.key}`)}
+                  name={field.key}
+                  type="datetime-local"
+                  value={value.schedule[field.key]}
+                  onChange={(next) => setSchedule(field.key, next)}
+                  disabled={isLocked}
+                />
+              </FormField>
+            )
+          })}
         </div>
       </fieldset>
 

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   SeasonApplicationStatus,
+  SeasonParticipantStatus,
   SeasonStatus,
   SeasonType,
   WechatStatus,
@@ -10,7 +11,7 @@ import {
 } from '@shenicest/shared'
 import { ApplicationsTable } from '@/components/me/applications-table'
 import { PublicSeasonGrid } from '@/components/me/public-season-grid'
-import { withdrawSeasonApplication } from '@/lib/boomland-api'
+import { withdrawSeasonApplication, withdrawSeasonParticipant } from '@/lib/boomland-api'
 import type { MySeasonApplication, SeasonSummary } from '@/lib/boomland'
 
 const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }))
@@ -23,6 +24,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/lib/boomland-api', () => ({
   withdrawSeasonApplication: vi.fn(),
+  withdrawSeasonParticipant: vi.fn(),
 }))
 
 // 组件里没有 await `cookies()` 这类运行时依赖，可以直接渲染；
@@ -97,12 +99,19 @@ function application(overrides: Partial<MySeasonApplication['application']> = {}
 }
 
 function item(overrides: Partial<MySeasonApplication> = {}): MySeasonApplication {
-  return { application: application(), season: season(), wechatStatus: null, ...overrides }
+  return {
+    application: application(),
+    season: season(),
+    wechatStatus: null,
+    participantStatus: null,
+    ...overrides,
+  }
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(withdrawSeasonApplication).mockResolvedValue({ data: {} as never, error: null })
+  vi.mocked(withdrawSeasonParticipant).mockResolvedValue({ data: {} as never, error: null })
 })
 
 describe('ApplicationsTable', () => {
@@ -129,6 +138,7 @@ describe('ApplicationsTable', () => {
           item({
             application: application({ reviewReason: '方向不匹配' }),
             wechatStatus: WechatStatus.Joined,
+            participantStatus: SeasonParticipantStatus.Active,
           }),
         ]}
       />,
@@ -237,6 +247,147 @@ describe('ApplicationsTable · withdraw', () => {
 
     expect(await screen.findByRole('alert')).toHaveTextContent('该报名已通过审核，无法撤回')
     expect(refresh).not.toHaveBeenCalled()
+  })
+})
+
+describe('ApplicationsTable · 退出赛季', () => {
+  /** 组队截止在 2099 年 —— 永远在「组队截止前」。 */
+  const beforeDeadline = season({ schedule: openSchedule() })
+  /** 组队截止钉在 2020 年 —— 组队早已截止。 */
+  const afterDeadline = season({
+    schedule: { ...openSchedule(), teamDeadline: '2020-01-02T00:00:00.000Z' },
+  })
+
+  const accepted = (
+    target: SeasonSummary,
+    participantStatus: SeasonParticipantStatus,
+  ) =>
+    item({
+      application: application({ status: SeasonApplicationStatus.Accepted }),
+      season: target,
+      participantStatus,
+    })
+
+  function actionCell() {
+    const table = screen.getByRole('table', { name: '我提交过的赛季报名' })
+    return within(within(table).getAllByRole('row')[1]).getAllByRole('cell')[7]
+  }
+
+  it('offers exit to an accepted active participant before the team deadline', () => {
+    render(
+      <ApplicationsTable items={[accepted(beforeDeadline, SeasonParticipantStatus.Active)]} />,
+    )
+    expect(
+      within(actionCell()).getByRole('button', {
+        name: '退出 A4BBS 产业商业赛季 的赛季',
+      }),
+    ).toBeInTheDocument()
+  })
+
+  it('asks for confirmation before calling the participant withdraw API', async () => {
+    const user = userEvent.setup()
+    render(
+      <ApplicationsTable items={[accepted(beforeDeadline, SeasonParticipantStatus.Active)]} />,
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: '退出 A4BBS 产业商业赛季 的赛季' }),
+    )
+    expect(withdrawSeasonParticipant).not.toHaveBeenCalled()
+
+    await user.click(
+      screen.getByRole('button', { name: '确认退出 A4BBS 产业商业赛季 的赛季' }),
+    )
+    expect(withdrawSeasonParticipant).toHaveBeenCalledWith(502, 'u-1')
+    await waitFor(() => expect(refresh).toHaveBeenCalled())
+  })
+
+  it('can be cancelled without touching the backend', async () => {
+    const user = userEvent.setup()
+    render(
+      <ApplicationsTable items={[accepted(beforeDeadline, SeasonParticipantStatus.Active)]} />,
+    )
+
+    await user.click(
+      screen.getByRole('button', { name: '退出 A4BBS 产业商业赛季 的赛季' }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: '取消退出 A4BBS 产业商业赛季 的赛季' }),
+    )
+
+    expect(withdrawSeasonParticipant).not.toHaveBeenCalled()
+    expect(
+      screen.getByRole('button', { name: '退出 A4BBS 产业商业赛季 的赛季' }),
+    ).toBeInTheDocument()
+  })
+
+  it('reports the backend message and does not refresh on failure', async () => {
+    vi.mocked(withdrawSeasonParticipant).mockResolvedValue({
+      data: null,
+      error: {
+        status: 409,
+        body: {
+          error: {
+            code: 'PARTICIPANT_WITHDRAW_LOCKED',
+            message: '组队截止后请由主办方处理退出',
+          },
+        },
+      },
+    } as never)
+
+    const user = userEvent.setup()
+    render(
+      <ApplicationsTable items={[accepted(beforeDeadline, SeasonParticipantStatus.Active)]} />,
+    )
+    await user.click(
+      screen.getByRole('button', { name: '退出 A4BBS 产业商业赛季 的赛季' }),
+    )
+    await user.click(
+      screen.getByRole('button', { name: '确认退出 A4BBS 产业商业赛季 的赛季' }),
+    )
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('组队截止后请由主办方处理退出')
+    expect(refresh).not.toHaveBeenCalled()
+  })
+
+  it('replaces the button with a hint once the team deadline passed', () => {
+    render(
+      <ApplicationsTable items={[accepted(afterDeadline, SeasonParticipantStatus.Active)]} />,
+    )
+
+    expect(actionCell()).toHaveTextContent('组队已截止，退出请联系主办方')
+    expect(
+      within(actionCell()).queryByRole('button', { name: /退出 .* 的赛季/ }),
+    ).toBeNull()
+  })
+
+  it('shows 已退赛 and no action for a withdrawn participant', () => {
+    render(
+      <ApplicationsTable items={[accepted(beforeDeadline, SeasonParticipantStatus.Withdrawn)]} />,
+    )
+
+    expect(screen.getByText('已退赛')).toBeInTheDocument()
+    expect(actionCell()).toHaveTextContent('—')
+    expect(
+      within(actionCell()).queryByRole('button', { name: /退出 .* 的赛季/ }),
+    ).toBeNull()
+  })
+
+  it('keeps the application withdraw button separate from the season exit', () => {
+    render(
+      <ApplicationsTable
+        items={[
+          item({ application: application({ id: 1, status: SeasonApplicationStatus.Submitted }) }),
+          accepted(beforeDeadline, SeasonParticipantStatus.Active),
+        ]}
+      />,
+    )
+
+    const rows = screen.getAllByRole('row').slice(1)
+    expect(within(rows[0]).getByRole('button', { name: /撤回 .* 的报名$/ })).toBeInTheDocument()
+    expect(within(rows[0]).queryByRole('button', { name: /退出 .* 的赛季/ })).toBeNull()
+    expect(within(rows[1]).queryByRole('button', { name: /撤回 .* 的报名$/ })).toBeNull()
+    expect(within(rows[1]).getByRole('button', { name: /退出 .* 的赛季/ })).toBeInTheDocument()
   })
 })
 

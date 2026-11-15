@@ -47,7 +47,7 @@ Platform Admin 对待批赛季的批准或驳回。批准写入 `approvedAt` / `
 _Avoid_：上架、发布（发布 readiness 是另一概念）。
 
 **Season Schedule（赛程）**：
-八个时间点全部必填：`applyOpen` < `applyClose` < `startAt` < `teamDeadline` < `scoreDeadline` < `settleDate` 严格递增，且 `workDeadline <= scoreDeadline`、`challengeFreezeAt <= teamDeadline`。
+八个时间点全部必填：`applyOpen` < `applyClose` < `startAt` < `teamDeadline` < `scoreDeadline` < `settleDate` 严格递增，且 `workDeadline <= scoreDeadline`、`challengeFreezeAt <= teamDeadline`。修改走增量提交：只提交改动的节点，已经过去的时间点锁定、不再参与校验。
 _Avoid_：时间表、日程。
 
 **Season Theme（赛季主题）**：

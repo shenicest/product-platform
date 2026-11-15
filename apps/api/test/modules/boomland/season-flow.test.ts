@@ -351,6 +351,19 @@ describe('BoomLand pre-start season flow', () => {
     const participantsBody = await participants.json() as { items: Array<{ userId: string; wechatStatus: string }> }
     expect(participantsBody.items.find((item) => item.userId === APPLICANT)?.wechatStatus).toBe('not_invited')
 
+    // 个人报名列表必须带上选手行状态：报名页据此判断「能不能退出赛季」。
+    const mine = await call('GET', '/me/applications', applicantToken)
+    expect(mine.status).toBe(200)
+    const mineRow = ((await mine.json()) as {
+      items: Array<{
+        application: { id: number; status: string }
+        wechatStatus: string | null
+        participantStatus: string | null
+      }>
+    }).items.find((item) => item.application.id === applicationId)
+    expect(mineRow?.application.status).toBe('accepted')
+    expect(mineRow?.participantStatus).toBe('active')
+
     // 录取结果同时写进报名者的收件箱（个人公告）。
     const inbox = (await (await call('GET', '/me/announcements', applicantToken)).json()) as {
       items: Array<{ title: string; type: string; isRead: boolean }>
@@ -472,6 +485,18 @@ describe('BoomLand pre-start season flow', () => {
     const items = (await participants.json() as { items: Array<{ userId: string; status: string }> }).items
     expect(items.find((item) => item.userId === APPLICANT)?.status).toBe('withdrawn')
     expect(items.find((item) => item.userId === APPLICANT_3)?.status).toBe('active')
+
+    // 退出赛季后：报名记录仍是 accepted，只有选手行变成 withdrawn ——
+    // 报名页的「已退赛」必须读 participantStatus，不能读报名状态。
+    const mine = (await (await call('GET', '/me/applications', applicantToken)).json()) as {
+      items: Array<{
+        application: { id: number; status: string }
+        participantStatus: string | null
+      }>
+    }
+    const mineRow = mine.items.find((item) => item.application.id === applicationId)
+    expect(mineRow?.application.status).toBe('accepted')
+    expect(mineRow?.participantStatus).toBe('withdrawn')
   })
 
   it('advances the WeChat state machine for active participants only', async () => {

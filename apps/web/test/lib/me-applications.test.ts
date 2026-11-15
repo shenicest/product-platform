@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   SeasonApplicationStatus,
+  SeasonParticipantStatus,
   SeasonStatus,
   SeasonType,
   WechatStatus,
@@ -9,9 +10,12 @@ import {
 import type { MySeasonApplication, SeasonSummary } from '@/lib/boomland'
 import {
   APPLICATIONS_FOOTNOTE,
+  EXITED_SEASON_STATUS,
   MY_APPLICATION_COLUMNS,
   MY_APPLICATIONS_PAGE_SIZE,
   PUBLIC_SEASON_LIMIT,
+  SEASON_EXIT_CLOSED_HINT,
+  applicationStatusCell,
   applicationWindowLabel,
   applyDeadlineHint,
   canWithdrawApplication,
@@ -100,6 +104,7 @@ function item(overrides: Partial<MySeasonApplication> = {}): MySeasonApplication
     application: application(),
     season: season(),
     wechatStatus: null,
+    participantStatus: null,
     ...overrides,
   }
 }
@@ -164,6 +169,90 @@ describe('canWithdrawApplication', () => {
   })
 })
 
+describe('seasonExitEntry', () => {
+  /** 报名已通过 + 选手仍是 active：退赛判断的唯一合法输入。 */
+  const active = (overrides: Partial<MySeasonApplication> = {}) =>
+    item({
+      application: application({ status: SeasonApplicationStatus.Accepted }),
+      participantStatus: SeasonParticipantStatus.Active,
+      ...overrides,
+    })
+
+  it('lets an accepted active participant exit before the team deadline', () => {
+    // NOW = 11月8日，组队截止 11月10日 23:59。
+    const row = myApplicationRow(active(), NOW)
+    expect(row.canExitSeason).toBe(true)
+    expect(row.exitBlockedReason).toBeNull()
+    expect(row.statusLabel).toBe('已报名')
+  })
+
+  it('refuses self-exit after the team deadline and names who to ask', () => {
+    const row = myApplicationRow(active(), new Date('2026-11-11T00:00:00.000Z'))
+    expect(row.canExitSeason).toBe(false)
+    expect(row.exitBlockedReason).toBe(SEASON_EXIT_CLOSED_HINT)
+    expect(row.exitBlockedReason).toBe('组队已截止，退出请联系主办方')
+  })
+
+  it('allows exit when the schedule has no team deadline', () => {
+    // 后端也只在「有截止时间且已过」时拒绝，两边必须同一套判断。
+    const row = myApplicationRow(
+      active({ season: season({ schedule: schedule({ teamDeadline: null }) }) }),
+      NOW,
+    )
+    expect(row.canExitSeason).toBe(true)
+  })
+
+  it('never offers exit to a non-participant', () => {
+    const row = myApplicationRow(
+      item({ application: application({ status: SeasonApplicationStatus.Accepted }) }),
+      NOW,
+    )
+    expect(row.canExitSeason).toBe(false)
+    expect(row.exitBlockedReason).toBeNull()
+  })
+
+  it('never offers exit to an application that was not accepted', () => {
+    const row = myApplicationRow(
+      active({ application: application({ status: SeasonApplicationStatus.Submitted }) }),
+      NOW,
+    )
+    expect(row.canExitSeason).toBe(false)
+    expect(row.exitBlockedReason).toBeNull()
+  })
+
+  it('marks a withdrawn participant as 已退赛 while the application stays accepted', () => {
+    const row = myApplicationRow(
+      active({ participantStatus: SeasonParticipantStatus.Withdrawn }),
+      NOW,
+    )
+    expect(row.status).toBe(SeasonApplicationStatus.Accepted)
+    expect(row.statusLabel).toBe(EXITED_SEASON_STATUS.label)
+    expect(row.statusLabel).toBe('已退赛')
+    expect(row.statusTone).toBe('neutral')
+    expect(row.canExitSeason).toBe(false)
+    expect(row.exitBlockedReason).toBeNull()
+  })
+})
+
+describe('applicationStatusCell', () => {
+  it('uses the review result for a non-participant', () => {
+    expect(
+      applicationStatusCell(item({ application: application({ status: SeasonApplicationStatus.Rejected }) })),
+    ).toMatchObject({ label: '未通过', tone: 'danger' })
+  })
+
+  it('prefers 已退赛 over the accepted application status', () => {
+    expect(
+      applicationStatusCell(
+        item({
+          application: application({ status: SeasonApplicationStatus.Accepted }),
+          participantStatus: SeasonParticipantStatus.Withdrawn,
+        }),
+      ),
+    ).toEqual(EXITED_SEASON_STATUS)
+  })
+})
+
 describe('reapplyEntry', () => {
   /** 报名窗口仍开着：2026-10-12 ~ 2026-10-26，取中点。 */
   const OPEN = new Date('2026-10-20T00:00:00.000Z')
@@ -220,7 +309,11 @@ describe('reapplyEntry', () => {
 
   it('stays silent when the applicant is already a participant', () => {
     const row = myApplicationRow(
-      { ...withdrawn, wechatStatus: WechatStatus.Joined },
+      {
+        ...withdrawn,
+        wechatStatus: WechatStatus.Joined,
+        participantStatus: SeasonParticipantStatus.Active,
+      },
       OPEN,
     )
     expect(row.reapplyHref).toBeNull()
@@ -243,6 +336,7 @@ describe('myApplicationRow', () => {
     expect(row).toMatchObject({
       applicationId: 11,
       seasonId: 502,
+      userId: 'u-1',
       seasonName: 'A4BBS 产业商业赛季',
       seasonCode: '502',
       seasonHref: '/seasons/502',
@@ -252,6 +346,8 @@ describe('myApplicationRow', () => {
       wechat: '已加入',
       agreementVersion: 'v3',
       canWithdraw: false,
+      canExitSeason: false,
+      exitBlockedReason: null,
     })
     // 2026-10-26T01:40Z = 北京 10月26日 09:40
     expect(row.submittedAt).toBe('2026.10.26 09:40')

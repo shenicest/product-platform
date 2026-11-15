@@ -2,9 +2,13 @@ import {
   isScorelessValue,
   SEASON_RULE_DEFAULTS,
   SEASON_RULE_LIMITS,
+  SEASON_SCHEDULE_CHAIN,
+  SEASON_SCHEDULE_KEYS,
+  SEASON_SCHEDULE_LABELS,
   SeasonStatus,
   type SeasonRules,
   type SeasonSchedule,
+  type SeasonScheduleKey,
 } from '@shenicest/shared'
 import { boomlandError } from './errors'
 
@@ -33,23 +37,15 @@ export function normalizeThemes(themes: string[] | undefined): string[] {
 }
 
 export function validateSchedule(schedule: SeasonSchedule): string | null {
-  const order = [
-    'applyOpen',
-    'applyClose',
-    'startAt',
-    'teamDeadline',
-    'scoreDeadline',
-    'settleDate',
-  ] as const
   const values: number[] = []
-  for (const key of order) {
+  for (const key of SEASON_SCHEDULE_CHAIN) {
     const timestamp = Date.parse(schedule[key])
     if (!Number.isFinite(timestamp)) return `赛程时间不合法：${key}`
     values.push(timestamp)
   }
   for (let i = 1; i < values.length; i += 1) {
     if (values[i] <= values[i - 1]) {
-      return `赛程必须严格递增：${order[i - 1]} 必须早于 ${order[i]}`
+      return `赛程必须严格递增：${SEASON_SCHEDULE_CHAIN[i - 1]} 必须早于 ${SEASON_SCHEDULE_CHAIN[i]}`
     }
   }
   const workDeadline = Date.parse(schedule.workDeadline)
@@ -59,6 +55,216 @@ export function validateSchedule(schedule: SeasonSchedule): string | null {
   if (!Number.isFinite(challengeFreezeAt)) return '赛程时间不合法：challengeFreezeAt'
   if (challengeFreezeAt > values[3]) return '命题冻结不能晚于组队截止'
   return null
+}
+
+// ---------------------------------------------------------------------------
+// 赛程增量修改（PATCH /seasons/:id/schedule）
+// ---------------------------------------------------------------------------
+
+/**
+ * 本次增量修改的错误。
+ *
+ * `httpStatus` 与 `field` 一起返回，是因为「已过去的时间不能改」是**冲突**
+ * （409，当前资源状态导致不允许），而「顺序不合法」是**参数问题**（400）；
+ * 调用方（Elysia handler）不需要再翻译一遍错误码。
+ */
+export type SeasonSchedulePatchIssue = {
+  code: 'SCHEDULE_INVALID' | 'SCHEDULE_MILESTONE_LOCKED'
+  httpStatus: 400 | 409
+  message: string
+  /** 点号路径（`schedule.startAt`），与前端表单错误的 key 口径一致。 */
+  field: string
+}
+
+export type SeasonSchedulePatchOutcome =
+  | {
+      /** 合并后的完整赛程（八个节点齐全）。 */
+      schedule: SeasonSchedule
+      /** 真正发生变化的节点，按 `SEASON_SCHEDULE_KEYS` 顺序。 */
+      changed: SeasonScheduleKey[]
+      /** 已经过去、本次被锁定的节点。 */
+      locked: SeasonScheduleKey[]
+    }
+  | { error: SeasonSchedulePatchIssue }
+
+function scheduleIssue(
+  code: SeasonSchedulePatchIssue['code'],
+  httpStatus: SeasonSchedulePatchIssue['httpStatus'],
+  message: string,
+  field: string,
+): { error: SeasonSchedulePatchIssue } {
+  return { error: { code, httpStatus, message, field } }
+}
+
+/**
+ * 某个赛程节点是否已经过去。
+ *
+ * 口径是**严格早于现在**：正好等于现在的那一毫秒仍然算「还没过去」，
+ * 不然刚填好的截止时间会在提交瞬间变成历史。
+ */
+export function isPastScheduleValue(
+  value: string | null | undefined,
+  now: Date = new Date(),
+): boolean {
+  if (!value) return false
+  const timestamp = Date.parse(value)
+  return Number.isFinite(timestamp) && timestamp < now.getTime()
+}
+
+/** 已经过去、不能再改的赛程节点（没有现有值 = 还没排期，不算过去）。 */
+export function lockedScheduleKeys(
+  schedule: SeasonSchedule | null | undefined,
+  now: Date = new Date(),
+): SeasonScheduleKey[] {
+  if (!schedule) return []
+  return SEASON_SCHEDULE_KEYS.filter((key) => isPastScheduleValue(schedule[key], now))
+}
+
+/**
+ * 把「只改几个节点」的增量提交合并成完整赛程并校验。
+ *
+ * 三条规则同时成立：
+ *   1. **已过去的节点锁定**：库里已经过去的时间点是历史事实，本次只能原样重复
+ *      提交（幂等），改一个毫秒都返回 `SCHEDULE_MILESTONE_LOCKED`。
+ *   2. **旧节点不再参与校验**：顺序与 `<=` 约束只看「仍然可编辑」的节点。
+ *      已过去的节点是既成事实，把它们的旧值再拿来比较，只会让「改后面的节点」
+ *      被前面已经发生的事莫名拦住。
+ *   3. **新值不能落到过去**：没被锁定的节点（新排期或原来的未来节点）提交的时间
+ *      必须不早于现在。否则改完立刻变成锁定的历史，且顺序约束会被绕开。
+ *
+ * 未提交的节点一律沿用库里的值，所以调用方只传真正改动的字段即可；
+ * 首次排期（库里没有赛程）必须一次给齐八个节点。
+ */
+export function applySchedulePatch(input: {
+  /** 库里现有的赛程；从未排期（或历史数据缺列）时为 null。 */
+  current: SeasonSchedule | null
+  /** 本次提交的节点子集。 */
+  patch: Partial<SeasonSchedule>
+  now?: Date
+}): SeasonSchedulePatchOutcome {
+  const now = input.now ?? new Date()
+  const nowMs = now.getTime()
+
+  // 1. 只解析本次提交的节点。
+  const submitted: SeasonScheduleKey[] = []
+  const parsed: Partial<Record<SeasonScheduleKey, number>> = {}
+  for (const key of SEASON_SCHEDULE_KEYS) {
+    const raw = input.patch[key]
+    if (raw === undefined) continue
+    submitted.push(key)
+    const timestamp = typeof raw === 'string' ? Date.parse(raw) : Number.NaN
+    if (!Number.isFinite(timestamp)) {
+      return scheduleIssue(
+        'SCHEDULE_INVALID',
+        400,
+        `赛程时间不合法：${SEASON_SCHEDULE_LABELS[key]}`,
+        `schedule.${key}`,
+      )
+    }
+    parsed[key] = timestamp
+  }
+
+  // 2. 现有值：用来判断哪些节点已经过去、以及合并未提交的节点。
+  const currentValues: Partial<Record<SeasonScheduleKey, number>> = {}
+  if (input.current) {
+    for (const key of SEASON_SCHEDULE_KEYS) {
+      const timestamp = Date.parse(input.current[key])
+      if (Number.isFinite(timestamp)) currentValues[key] = timestamp
+    }
+  }
+  const locked = new Set<SeasonScheduleKey>(
+    SEASON_SCHEDULE_KEYS.filter((key) => {
+      const timestamp = currentValues[key]
+      return timestamp !== undefined && timestamp < nowMs
+    }),
+  )
+
+  // 3. 已过去的节点只能原样重复提交。
+  for (const key of submitted) {
+    if (locked.has(key) && parsed[key] !== currentValues[key]) {
+      return scheduleIssue(
+        'SCHEDULE_MILESTONE_LOCKED',
+        409,
+        `${SEASON_SCHEDULE_LABELS[key]}已经过去，不能再修改`,
+        `schedule.${key}`,
+      )
+    }
+  }
+
+  // 4. 合并：未提交的节点沿用库里的值。
+  const merged = {} as SeasonSchedule
+  const missing: SeasonScheduleKey[] = []
+  for (const key of SEASON_SCHEDULE_KEYS) {
+    const timestamp = parsed[key] ?? currentValues[key]
+    if (timestamp === undefined) {
+      missing.push(key)
+      continue
+    }
+    merged[key] = new Date(timestamp).toISOString()
+  }
+  if (missing.length > 0) {
+    return scheduleIssue(
+      'SCHEDULE_INVALID',
+      400,
+      `赛程尚未填写完整：还缺 ${missing.map((key) => SEASON_SCHEDULE_LABELS[key]).join('、')}`,
+      'schedule',
+    )
+  }
+
+  // 5. 新提交且未被锁定的时间不能落到过去。
+  for (const key of submitted) {
+    if (locked.has(key)) continue
+    if ((parsed[key] as number) < nowMs) {
+      return scheduleIssue(
+        'SCHEDULE_INVALID',
+        400,
+        `${SEASON_SCHEDULE_LABELS[key]}不能早于当前时间`,
+        `schedule.${key}`,
+      )
+    }
+  }
+
+  // 6. 只校验仍然可编辑的节点。
+  const editableChain = SEASON_SCHEDULE_CHAIN.filter((key) => !locked.has(key))
+  for (let i = 1; i < editableChain.length; i += 1) {
+    const previousKey = editableChain[i - 1]
+    const currentKey = editableChain[i]
+    if (Date.parse(merged[currentKey]) <= Date.parse(merged[previousKey])) {
+      return scheduleIssue(
+        'SCHEDULE_INVALID',
+        400,
+        `${SEASON_SCHEDULE_LABELS[currentKey]} 必须晚于${SEASON_SCHEDULE_LABELS[previousKey]}`,
+        `schedule.${currentKey}`,
+      )
+    }
+  }
+  const editable = (key: SeasonScheduleKey) => !locked.has(key)
+  if (
+    editable('workDeadline')
+    && editable('scoreDeadline')
+    && Date.parse(merged.workDeadline) > Date.parse(merged.scoreDeadline)
+  ) {
+    return scheduleIssue('SCHEDULE_INVALID', 400, '作品截止不能晚于评分截止', 'schedule.workDeadline')
+  }
+  if (
+    editable('challengeFreezeAt')
+    && editable('teamDeadline')
+    && Date.parse(merged.challengeFreezeAt) > Date.parse(merged.teamDeadline)
+  ) {
+    return scheduleIssue(
+      'SCHEDULE_INVALID',
+      400,
+      '命题冻结不能晚于组队截止',
+      'schedule.challengeFreezeAt',
+    )
+  }
+
+  // 7. 变化集合按**时间戳**比较：同一时刻的不同写法（`Z` / `+08:00`）不算改动。
+  const changed = SEASON_SCHEDULE_KEYS.filter(
+    (key) => currentValues[key] !== Date.parse(merged[key]),
+  )
+
+  return { schedule: merged, changed: [...changed], locked: [...locked] }
 }
 
 /**

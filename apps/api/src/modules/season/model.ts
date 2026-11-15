@@ -102,8 +102,15 @@ const AnnouncementInput = t.Object({
   content: t.Optional(t.String({ minLength: 1, maxLength: 5000 })),
 })
 
+/**
+ * `PATCH /seasons/:id/schedule` —— **增量**提交赛程。
+ *
+ * 只传真正要改的节点即可：未传的节点沿用库里已保存的值，已过去的节点会被
+ * 服务端锁定（见 `applySchedulePatch`）。`schedule` 整体可省略，用于只发一条
+ * 赛程相关公告。
+ */
 export const UpdateScheduleBody = t.Object({
-  schedule: SeasonScheduleSchema,
+  schedule: t.Optional(t.Partial(SeasonScheduleSchema)),
   announcement: t.Optional(AnnouncementInput),
 })
 

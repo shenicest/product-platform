@@ -27,3 +27,18 @@ export function listMyApplications(query: { seasonId?: number; page?: number; pa
 export function withdrawSeasonApplication(applicationId: number) {
   return request<SeasonApplication>('POST', `/applications/${applicationId}/withdraw`)
 }
+
+/**
+ * `POST /seasons/:id/participants/:userId/withdraw` —— 退出赛季。
+ *
+ * 报名页的「退出赛季」用它：`confirm` 必须为 true，后端凭这个字段区分误触与
+ * 真的要走，缺了会 400 `VALIDATION_ERROR`。组队截止后本人不能再退（409
+ * `PARTICIPANT_WITHDRAW_LOCKED`），只能由主办方处理。
+ */
+export function withdrawSeasonParticipant(seasonId: number, userId: string) {
+  return request<unknown>(
+    'POST',
+    `/seasons/${seasonId}/participants/${encodeURIComponent(userId)}/withdraw`,
+    { confirm: true },
+  )
+}

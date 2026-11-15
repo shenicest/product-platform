@@ -112,6 +112,7 @@ export function TextInput({
   min,
   max,
   invalid,
+  disabled,
 }: {
   id: string
   name: string
@@ -126,6 +127,8 @@ export function TextInput({
   max?: number
   /** 组级约束下的 invalid（本控件自己没错，但整组不合格）。 */
   invalid?: boolean
+  /** 只读展示值（例如已经过去、不允许再改的赛程节点）。 */
+  disabled?: boolean
 }) {
   const describedBy = useFieldDescription(error ? `${id}-error` : undefined, invalid)
   return (
@@ -140,6 +143,7 @@ export function TextInput({
       maxLength={maxLength}
       min={type === 'number' ? min : undefined}
       max={type === 'number' ? max : undefined}
+      disabled={disabled}
       className="ui-input"
       {...describedBy}
     />

@@ -11,6 +11,7 @@ import { ReviewActionIcon } from '@/components/organizer/applications/review-act
 import {
   applicationReviewActions,
   isReviewable,
+  ORGANIZER_APPLICATIONS_REFRESH_EVENT,
   reviewFilterDescription,
   reviewOutcomeMessage,
   reviewStatusMeta,
@@ -93,6 +94,9 @@ export function ApplicationReviewView({
       // 后端可能把 `accepted` 降级成 `waitlisted`（名额满），所以反馈文案
       // 必须用响应里的**实际状态**，不能拿请求的目标状态去拼。
       setNotice(reviewOutcomeMessage(target, data.status ?? target))
+      // 「报名审核」tab 的红点由外壳自己取数（layout 拿不到当前赛季），
+      // 这里通知它重算 —— 否则审完一条，红点会停在旧数字上。
+      window.dispatchEvent(new Event(ORGANIZER_APPLICATIONS_REFRESH_EVENT))
       router.refresh()
       return true
     },

@@ -123,6 +123,7 @@ function application(
       publishedChallengeCount: 3,
     },
     wechatStatus: null,
+    participantStatus: null,
   }
 }
 

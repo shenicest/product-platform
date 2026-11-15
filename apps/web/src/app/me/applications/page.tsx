@@ -58,7 +58,7 @@ export default async function MeApplicationsPage(props: {
         <Eyebrow tone="accent">MY / APPLICATIONS</Eyebrow>
         <h2 className="page-title mt-3">报名</h2>
         <p className="page-lead">
-          你提交过的赛季报名与审核进度。审核前可以随时撤回；通过后主办方会邀请你加入赛季微信群，组队结果以群内登记为准。
+          你提交过的赛季报名与审核进度。审核前可以随时撤回；通过后主办方会邀请你加入赛季微信群。组队截止前可以在操作列里退出赛季，截止后请联系主办方。
         </p>
       </header>
 

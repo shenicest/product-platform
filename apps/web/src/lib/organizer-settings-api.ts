@@ -29,8 +29,9 @@ export type UpdateSeasonCoreBody = {
   participantCapacity?: number | null
 }
 
+/** `PATCH /seasons/:id/schedule` —— 只提交真正改动的节点（增量）。 */
 export type UpdateSeasonScheduleBody = {
-  schedule: SeasonSchedule
+  schedule?: Partial<SeasonSchedule>
   announcement?: AnnouncementInput
 }
 
@@ -61,7 +62,7 @@ export function updateSeasonCore(seasonId: number, body: UpdateSeasonCoreBody) {
 }
 
 export function updateSeasonSchedule(seasonId: number, body: UpdateSeasonScheduleBody) {
-  return request<SeasonManageDetail>('PUT', `/seasons/${seasonId}/schedule`, body)
+  return request<SeasonManageDetail>('PATCH', `/seasons/${seasonId}/schedule`, body)
 }
 
 export function updateSeasonRules(seasonId: number, body: UpdateSeasonRulesBody) {

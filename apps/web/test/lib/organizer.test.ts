@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SEASON_RULE_DEFAULTS } from '@shenicest/shared'
+import { SEASON_RULE_DEFAULTS, type SeasonScheduleKey } from '@shenicest/shared'
 import {
   defaultSeasonId,
   draftFromCurrentSeason,
@@ -98,6 +98,22 @@ describe('validateSeasonDraft', () => {
   it('rejects out-of-order milestones', () => {
     const errors = validateScheduleDraft({ ...SCHEDULE, applyClose: '2026-12-01T00:00' })
     expect(errors['schedule.applyClose']).toMatch(/必须晚于/)
+  })
+
+  it('does not demand or compare milestones that already passed', () => {
+    const locked = new Set<SeasonScheduleKey>(['applyOpen'])
+    const optionsWithLock = { ...options, lockedScheduleKeys: locked }
+
+    // 已锁定的节点不要求补全。
+    const cleared = { ...SCHEDULE, applyOpen: '' }
+    expect(validateSeasonDraft(values({ schedule: cleared }), optionsWithLock)).toEqual({})
+    expect(validateSeasonDraft(values({ schedule: cleared }), options)['schedule.applyOpen']).toBeTruthy()
+
+    // 已锁定的节点不参与顺序比较：applyClose 早于过去的 applyOpen 也不算错。
+    const outOfOrder = { ...SCHEDULE, applyClose: '2026-12-01T00:00' }
+    expect(validateSeasonDraft(values({ schedule: outOfOrder }), optionsWithLock)).toEqual({})
+    expect(validateSeasonDraft(values({ schedule: outOfOrder }), options)['schedule.applyClose'])
+      .toBeTruthy()
   })
 
   it('rejects work deadline after score deadline and freeze after team deadline', () => {

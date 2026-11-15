@@ -1,8 +1,10 @@
 import { request } from './client-api'
-import type {
-  ApplicationAuditEntry,
-  ApplicationDetail,
-  ApplicationReviewTarget,
+import {
+  DEFAULT_REVIEW_STATUS_FILTER,
+  type ApplicationAuditEntry,
+  type ApplicationDetail,
+  type ApplicationListPage,
+  type ApplicationReviewTarget,
 } from './organizer-applications'
 import type { CreateSeasonPayload, SeasonManageDetail } from './organizer'
 
@@ -61,4 +63,29 @@ export function getApplicationAuditTrail(seasonId: number, applicationId: number
     'GET',
     `/seasons/${seasonId}/audit-logs?${params.toString()}`,
   )
+}
+
+/**
+ * `GET /seasons/:id/applications?status=submitted` —— 待处理队列的条数。
+ *
+ * 只回一个 `total`：tab 红点只要数字，不需要任何一条报名内容，所以固定
+ * `pageSize=1`（后端仍会算完整条数，但只回一行）。读取失败返回 `null`，
+ * 外壳据此不画红点 —— 一个数字取不到不该让整屏变成错误态。
+ *
+ * 放在客户端是因为它要跟着**用户选中的赛季**走：`layout` 按 Next 约定拿不到
+ * `searchParams`，服务端渲染时并不知道当前在看哪一季；给列表里每一季都预取
+ * 一次又会把一个数字变成 N 个请求。
+ */
+export async function getPendingApplicationCount(seasonId: number): Promise<number | null> {
+  const params = new URLSearchParams({
+    status: DEFAULT_REVIEW_STATUS_FILTER,
+    page: '1',
+    pageSize: '1',
+  })
+  const { data, error } = await request<Pick<ApplicationListPage, 'total'>>(
+    'GET',
+    `/seasons/${seasonId}/applications?${params.toString()}`,
+  )
+  if (error || !data) return null
+  return data.total
 }

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Chip } from '@/components/ui/chip'
 
 /**
- * 「找队友」卡 —— 组队 tab 的第 3 张卡。
+ * 「找队友」卡 —— 组队 tab 的第 2 张卡。
  *
  * 只做展示 + 一个跳转：未组队名单放在共鸣之地（`/talents`），组队 tab
  * 不重复实现筛选（契约 §5）。所以这里唯一要写清楚的是**去哪儿找**，

@@ -226,6 +226,7 @@ export const listMyApplications = (query?: { seasonId?: number }) =>
   - `waitlisted` 候补中
   - `rejected` 未通过（原因见「审核说明」列）
   - `withdrawn` 已撤回
+  - 报名仍 `accepted` 但选手已退出 → 已退赛（读 `MyApplication.participantStatus`，不看报名状态）
 - `submitted` 状态提供“撤回报名”按钮（二次确认），调用 `POST /applications/:id/withdraw`。
 - `withdrawn` 且报名窗口开放时提供“重新报名”入口，回到报名表单；提交后复用同一条记录。
 - `accepted` 且当前是 `active` 选手、组队截止前，提供“退出赛季”入口（二次确认），调用 `POST /seasons/:id/participants/:userId/withdraw { confirm: true }`；截止后隐藏并提示联系主办方。
@@ -267,7 +268,10 @@ export const listMyApplications = (query?: { seasonId?: number }) =>
 Tab：
 
 1. **概览**：状态、readiness 九项（通过/失败 + detail）、关键时间、参与人数/名额/候补数、待批/驳回原因；操作：提交、开赛、暂停、恢复、取消、复制。
-2. **赛程**：八个 datetime 输入；保存时校验 `applyOpen < applyClose < startAt < teamDeadline < scoreDeadline < settleDate`，并校验 `workDeadline <= scoreDeadline`、`challengeFreezeAt <= teamDeadline`；已批准赛季保存后可填写公告标题/内容（留空自动摘要）。
+2. **赛程**：八个 datetime 输入；已经过去（早于当前时间）的节点置灰、不可修改，
+   也不参与校验；保存时只提交改动的节点（`PATCH /seasons/:id/schedule` 增量提交）。
+   仍可编辑的节点校验 `applyOpen < applyClose < startAt < teamDeadline < scoreDeadline < settleDate`，
+   并校验 `workDeadline <= scoreDeadline`、`challengeFreezeAt <= teamDeadline`；已批准赛季保存后可填写公告标题/内容（留空自动摘要）。
 3. **规则**：类型化表单（命题上限 1–3、每人项目数、团队人数 1–3、单次评分上限、兑换比例、复核阈值、每日限额开关）；仅 draft/upcoming 可编辑。
 4. **规则卡**：拖拽排序；必要项固定不可删/不可隐藏；可选条目增删；保存可附公告。
 5. **协议与规则卡**：编辑协议正文（`PUT /seasons/:id/agreement`）；草稿与待批准可改，批准后只读；已发布后可跳转 `/seasons/[id]/agreement` 预览。规则卡仍在上一条区块维护。
@@ -301,6 +305,7 @@ readiness 未就绪时，“提交待批”禁用并提示缺项；管理员“�
 
 页面：
 
+- 「报名审核」tab 上有红点：当前赛季**待处理**（`submitted`）的报名条数，`0` 条不显示，超过 99 显示 `99+`。数字由 `OrganizerShell` 按选中的赛季单独取（`GET /seasons/:id/applications?status=submitted&pageSize=1` 的 `total`）—— layout 拿不到 `searchParams`，服务端不知道当前是哪一季；审核成功后派发 `organizer-applications-refresh` 事件让红点重算（`router.refresh()` 不会重跑那个 effect）。
 - 筛选：`?status=`（默认 `submitted`「待处理」，`all` 表示全部）+ 可见性、关键词（后端支持，UI 暂只暴露状态）。
 - 列表列：报名人、提交时间、技能与经历、兴趣主题、组队、拉群联系方式（掩码）、状态、操作。
 - 点击行打开详情抽屉：完整联系方式、经历、组队意向、接受单人、城市模式、协议版本、审核历史（`GET /seasons/:id/audit-logs?targetType=season_application&targetId=<id>`）。
@@ -309,7 +314,7 @@ readiness 未就绪时，“提交待批”禁用并提示缺项；管理员“�
   - 通过 → `PATCH /applications/:id/status {status:'accepted'}`；若名额已满且未到组队截止，返回 `waitlisted`，提示“名额已满，该报名已进入候补队列”；截止后返回 `409 CAPACITY_FULL`。
   - 待定/候补 → 直接提交，原因可选；不通过 → 对话框必填原因。
   - accepted / withdrawn 后没有动作，显示终态。
-- 审核后 `router.refresh()`，列表、选手数与候补数一起重算；不在此页做微信群操作（跳转「人工拉群」）。
+- 审核后 `router.refresh()`，列表、选手数与候补数一起重算，并派发 `organizer-applications-refresh` 让 tab 红点跟着减；不在此页做微信群操作（跳转「人工拉群」）。
 - 赛季已取消时整列动作禁用并给出说明（后端也会拒）。
 
 ### 4.9 `/organizer/seasons/[id]/participants` 选手与拉群

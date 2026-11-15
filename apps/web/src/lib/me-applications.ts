@@ -1,4 +1,9 @@
-import { SeasonApplicationStatus, SeasonStatus, type WechatStatus } from '@shenicest/shared'
+import {
+  SeasonApplicationStatus,
+  SeasonParticipantStatus,
+  SeasonStatus,
+  type WechatStatus,
+} from '@shenicest/shared'
 import type { ChipTone } from '@/components/ui/chip'
 import {
   applicationStatusMeta,
@@ -41,10 +46,10 @@ const EMPTY_CELL = '—'
 /**
  * 表头：赛季 / 提交时间 / 审核状态 / 审核说明 / 微信群 / 赛季标识 / 条款版本 / 操作。
  *
- * 报名者能做的动作（撤回 / 重新报名）**单独占一列**（而不是挂在「审核状态」
- * 格里）：挂进状态格时，状态胶囊 + 按钮在同一格里上下堆叠，窄屏下按钮会被
- * 挤到下一行，看起来像「这条报名多了一行」。单独一列还能让操作区按内容
- * 收缩（`w-px`），不参与表格的等分拉伸。
+ * 报名者能做的动作（撤回报名 / 退出赛季 / 重新报名）**单独占一列**（而不是
+ * 挂在「审核状态」格里）：挂进状态格时，状态胶囊 + 按钮在同一格里上下堆叠，
+ * 窄屏下按钮会被挤到下一行，看起来像「这条报名多了一行」。单独一列还能让
+ * 操作区按内容收缩（`w-px`），不参与表格的等分拉伸。
  */
 export const MY_APPLICATION_COLUMNS = [
   { key: 'season', label: '赛季' },
@@ -89,6 +94,68 @@ export function canWithdrawApplication(status: string): boolean {
 }
 
 /**
+ * 「已退赛」：报名记录仍是 `accepted`，选手行被置为 `withdrawn`。
+ *
+ * 与「已撤回」严格区分：撤回是审核前反悔，窗口内可以重新报名；退赛是已通过
+ * 报名后在组队截止前离开赛季，名额会按顺序递补给候补的人。
+ */
+export const EXITED_SEASON_STATUS: { label: string; tone: ChipTone } = {
+  label: '已退赛',
+  tone: 'neutral',
+}
+
+/**
+ * 审核状态格。
+ *
+ * 退赛优先于报名审核结果 —— 一条 `accepted` 的报名在选手退出后必须显示
+ * 「已退赛」，否则用户会以为自己还在赛季里。
+ */
+export function applicationStatusCell(item: MySeasonApplication) {
+  if (item.participantStatus === SeasonParticipantStatus.Withdrawn) {
+    return EXITED_SEASON_STATUS
+  }
+  return applicationStatusMeta(item.application.status)
+}
+
+/** 组队截止后不能自己退赛，只能找主办方 —— 与后端 409 同一句话。 */
+export const SEASON_EXIT_CLOSED_HINT = '组队已截止，退出请联系主办方'
+
+export type SeasonExitEntry = {
+  /** 报名已通过、选手仍是 active、且组队截止前 → 可以退出赛季。 */
+  canExitSeason: boolean
+  /** 曾经可以退、但组队已截止时给一句原因；其余情况为 null。 */
+  exitBlockedReason: string | null
+}
+
+/**
+ * 能不能退出赛季。
+ *
+ * 三个条件缺一不可：报名已 `accepted`、选手行仍是 `active`、组队截止时间
+ * 未过。组队截止后只能由主办方处理（后端 `withdrawParticipant` 同样返回
+ * `409 PARTICIPANT_WITHDRAW_LOCKED`）。
+ *
+ * 赛程没有排组队截止时间时按「还能退」处理：后端也只在**有截止时间且已过**
+ * 时拒绝，两边必须同一套判断。
+ */
+export function seasonExitEntry(
+  item: MySeasonApplication,
+  now: Date = new Date(),
+): SeasonExitEntry {
+  const isActiveParticipant = item.participantStatus === SeasonParticipantStatus.Active
+  const accepted = item.application.status === SeasonApplicationStatus.Accepted
+  if (!isActiveParticipant || !accepted) {
+    return { canExitSeason: false, exitBlockedReason: null }
+  }
+
+  const deadline = item.season.schedule?.teamDeadline
+  const deadlineTime = deadline ? new Date(deadline).getTime() : null
+  if (deadlineTime !== null && !Number.isNaN(deadlineTime) && deadlineTime <= now.getTime()) {
+    return { canExitSeason: false, exitBlockedReason: SEASON_EXIT_CLOSED_HINT }
+  }
+  return { canExitSeason: true, exitBlockedReason: null }
+}
+
+/**
  * 「已撤回」之后还能不能再报名。
  *
  * 复用赛季卡片 / 海报那套 CTA 推导（`seasonApplicationCta`）：
@@ -106,7 +173,7 @@ export function reapplyEntry(
   // 已有选手行（「报名已撤回但仍是选手」的边界）也没有重新报名：
   // 报名接口会用 ALREADY_PARTICIPANT 拒绝，入口给了也是死路。
   const withdrawn = myApplicationState(item.application.status) === 'withdrawn'
-  if (!withdrawn || item.wechatStatus !== null) {
+  if (!withdrawn || item.participantStatus !== null) {
     return { reapplyHref: null, reapplyBlockedReason: null }
   }
 
@@ -128,6 +195,8 @@ export function reapplyEntry(
 export type MyApplicationRow = {
   applicationId: number
   seasonId: number
+  /** 报名人（个人中心里恒为当前登录用户）—— 退出赛季接口需要它。 */
+  userId: string
   seasonName: string
   seasonCode: string
   /** 赛季详情页地址（V2.6 起赛季详情是独立路由 `/seasons/:id`）。 */
@@ -139,8 +208,13 @@ export type MyApplicationRow = {
   reviewNote: string
   wechat: string
   wechatStatus: WechatStatus | null
+  participantStatus: SeasonParticipantStatus | null
   agreementVersion: string
   canWithdraw: boolean
+  /** 组队截止前、已通过报名的 active 选手可以退出赛季。 */
+  canExitSeason: boolean
+  /** 组队已截止时的退赛说明；其余情况为 null。 */
+  exitBlockedReason: string | null
   /** 已撤回且报名窗口开放时的「重新报名」入口；其余情况为 null。 */
   reapplyHref: string | null
   /** 已撤回但暂时报不上名时，操作列给的原因；其余情况为 null。 */
@@ -152,10 +226,11 @@ export function myApplicationRow(
   now: Date = new Date(),
 ): MyApplicationRow {
   const { application, season } = item
-  const status = applicationStatusMeta(application.status)
+  const status = applicationStatusCell(item)
   return {
     applicationId: application.id,
     seasonId: season.id,
+    userId: application.userId,
     seasonName: season.name,
     seasonCode: season.code,
     seasonHref: `/seasons/${season.id}`,
@@ -166,8 +241,10 @@ export function myApplicationRow(
     reviewNote: reviewNoteText(application.reviewReason),
     wechat: wechatCellLabel(item),
     wechatStatus: item.wechatStatus,
+    participantStatus: item.participantStatus,
     agreementVersion: application.agreementVersion?.trim() || EMPTY_CELL,
     canWithdraw: canWithdrawApplication(application.status),
+    ...seasonExitEntry(item, now),
     ...reapplyEntry(item, now),
   }
 }

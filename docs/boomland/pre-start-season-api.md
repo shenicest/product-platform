@@ -451,7 +451,9 @@ type SeasonSchedule = {
 赛程校验：八个时间全部非空。以下六个时间点严格递增：
 `applyOpen < applyClose < startAt < teamDeadline < scoreDeadline < settleDate`。
 额外约束：`workDeadline <= scoreDeadline`、`challengeFreezeAt <= teamDeadline`。
-允许编辑时整体替换；不允许只改一个导致顺序错误。
+
+修改赛程走**增量提交**（`PATCH /seasons/:id/schedule`，见第 6 章接口）：只传改动的
+节点，未传的节点沿用已保存的值；已经过去的时间点锁定、且不参与校验。
 
 ### 4.5 `season_rule_card_items`
 
@@ -1007,24 +1009,35 @@ type SeasonManageDetail = SeasonDetail & {
 - 审计：`season.updated`。
 - 响应：`SeasonManageDetail`。
 
-#### `PUT /seasons/:id/schedule`
+#### `PATCH /seasons/:id/schedule`
 
 - 认证：Season Organizer / Platform Admin。
 - 允许状态：`draft` / `upcoming` / `active` / `suspended`。
-- 请求：
+- 请求：**增量提交**，只传需要改的节点；未传的节点沿用库里已保存的值。
 
 ```ts
 type UpdateScheduleBody = {
-  schedule: SeasonSchedule
+  /** 只包含改动的节点；整体可省略（只发一条赛程公告时）。 */
+  schedule?: Partial<SeasonSchedule>
   announcement?: { title?: string; content?: string }
 }
 ```
 
-- 校验八个时间非空、六个主时间点严格递增，以及 `workDeadline <= scoreDeadline`、`challengeFreezeAt <= teamDeadline`；否则 `400 SCHEDULE_INVALID`。
+- 校验：
+  - **已过去的节点锁定**：库里现值严格早于当前时间的节点只允许原样重复提交；
+    改了返回 `409 SCHEDULE_MILESTONE_LOCKED`（`error.field = schedule.<key>`）。
+  - **已过去的节点不参与校验**：六个主时间点的严格递增与两条 `<=` 约束只看仍然
+    可编辑的节点 —— 已经发生的事是既定事实，不该让「改后面的节点」被它拦住。
+  - 提交的节点不能早于当前时间（`400 SCHEDULE_INVALID`）：不允许把未来节点挪成过去。
+  - 首次排期（库里还没有完整赛程）必须一次给齐八个节点，否则 `400 SCHEDULE_INVALID`。
+  - `workDeadline <= scoreDeadline`、`challengeFreezeAt <= teamDeadline` 同样只看
+    两侧都可编辑时才比较。
 - 副作用：
-  - 更新七列；`rules_version += 1`。
-  - 写 `audit_logs`：`season.schedule_updated`（detail 含 before/after）。
-  - 若赛季已批准（`approvedAt != null`）：创建公告。未提供 `announcement` 时生成自动摘要；提供时标题/内容必须非空。
+  - 只写真正变化的列；`rules_version += 1`。
+  - 没有任何变化时不写库、不推版本、不写审计；仅在显式给了公告内容时创建公告。
+  - 写 `audit_logs`：`season.schedule_updated`（detail 含 `before` / `after` / `changed`）。
+  - 若赛季已批准（`approvedAt != null`）且有变化：创建公告。未提供 `announcement`
+    时，自动摘要只列本次改动的节点（`旧值 → 新值`，北京时间）。
 - 响应：`SeasonManageDetail`。
 
 #### `PUT /seasons/:id/rules`
@@ -1497,6 +1510,7 @@ type MyApplication = {
   application: SeasonApplication
   season: SeasonSummary
   wechatStatus: WechatStatus | null   // 未成为选手时为 null
+  participantStatus: SeasonParticipantStatus | null  // 未成为选手时为 null；退出赛季后为 withdrawn，报名记录仍是 accepted
 }
 ```
 
@@ -1646,6 +1660,7 @@ type SeasonParticipant = {
 | `SEASON_SUSPENDED` | 409 | 暂停期间报名/开赛 |
 | `SEASON_CANCELLED` | 409 | 已取消赛季的写操作 |
 | `SCHEDULE_INVALID` | 400 | 赛程缺失或顺序错误 |
+| `SCHEDULE_MILESTONE_LOCKED` | 409 | 已过去的赛程节点不能修改 |
 | `RULES_INVALID` | 400 | 规则字段非法 |
 | `RULE_CARD_REQUIRED_ITEM` | 400 | 必要规则卡条目缺失或被隐藏 |
 | `NOT_SEASON_ORGANIZER` | 403 | 非本赛季主办方 |

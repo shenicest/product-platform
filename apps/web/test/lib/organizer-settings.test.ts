@@ -28,6 +28,7 @@ import {
   canSuspendSeason,
   isPendingApproval,
   isoToBeijingInput,
+  lockedScheduleKeys,
   readinessCheckHref,
   readinessCheckLinkLabel,
   readinessCheckTab,
@@ -37,6 +38,7 @@ import {
   submitActionLabel,
   summarizeReadiness,
   toScheduleDraft,
+  toSchedulePatch,
   toSchedulePayload,
   validateScheduleChange,
 } from '@/lib/organizer-settings'
@@ -163,6 +165,41 @@ describe('toSchedulePayload', () => {
   })
 })
 
+describe('lockedScheduleKeys', () => {
+  // 「现在」固定在 2027-02-10，此时报名已开放、报名截止还没到。
+  const NOW = new Date('2027-02-10T00:00:00.000Z')
+
+  it('lists only the milestones that are already strictly in the past', () => {
+    expect(lockedScheduleKeys(SCHEDULE, NOW)).toEqual(new Set(['applyOpen']))
+    expect(lockedScheduleKeys(null, NOW)).toEqual(new Set())
+    // 正好等于现在的节点还不算过去（否则刚填好的截止会在提交瞬间变历史）。
+    const boundary = new Date(Date.parse(SCHEDULE.applyClose))
+    expect(lockedScheduleKeys(SCHEDULE, boundary).has('applyClose')).toBe(false)
+  })
+})
+
+describe('toSchedulePatch', () => {
+  it('returns only the milestones that changed', () => {
+    const draft = { ...toScheduleDraft(SCHEDULE), settleDate: '2027-03-20T10:00' }
+    expect(toSchedulePatch(SCHEDULE, draft)).toEqual({
+      settleDate: '2027-03-20T02:00:00.000Z',
+    })
+  })
+
+  it('returns an empty patch when nothing changed', () => {
+    expect(toSchedulePatch(SCHEDULE, toScheduleDraft(SCHEDULE))).toEqual({})
+  })
+
+  it('sends every filled milestone when the season has no schedule yet', () => {
+    expect(Object.keys(toSchedulePatch(null, toScheduleDraft(SCHEDULE)))).toHaveLength(8)
+  })
+
+  it('ignores empty fields instead of sending them', () => {
+    const draft = { ...toScheduleDraft(SCHEDULE), settleDate: '' }
+    expect(toSchedulePatch(SCHEDULE, draft)).toEqual({})
+  })
+})
+
 describe('validateScheduleChange', () => {
   // 「现在」固定在 2027-02-10，此时报名已开放、报名截止还没到。
   const NOW = new Date('2027-02-10T00:00:00.000Z')
@@ -175,24 +212,28 @@ describe('validateScheduleChange', () => {
         key === 'applyOpen' ? value : new Date(Date.parse(value) + 7 * 86400000).toISOString(),
       ]),
     ) as unknown as SeasonSchedule
-    expect(validateScheduleChange(SCHEDULE, later, NOW)).toEqual({})
+    expect(validateScheduleChange(SCHEDULE, later, { now: NOW })).toEqual({})
   })
 
-  it('refuses to move a milestone that is already in the past', () => {
+  it('does not validate milestones that already passed', () => {
+    // 已过去的节点在表单里置灰、不提交，因此不参与校验 —— 它的新值不产生错误。
     const moved = { ...SCHEDULE, applyOpen: '2027-02-15T00:00:00.000Z' }
-    expect(validateScheduleChange(SCHEDULE, moved, NOW)['schedule.applyOpen']).toMatch(/已经过去/)
+    expect(validateScheduleChange(SCHEDULE, moved, { now: NOW })).toEqual({})
   })
 
   it('refuses to pull a deadline inside the 48 hour lead time', () => {
     // applyClose 原为 2027-02-20，改成「明天」= 缩短到 24 小时内。
     const shortened = { ...SCHEDULE, applyClose: '2027-02-11T00:00:00.000Z' }
-    expect(validateScheduleChange(SCHEDULE, shortened, NOW)['schedule.applyClose']).toMatch(/48 小时/)
+    expect(validateScheduleChange(SCHEDULE, shortened, { now: NOW })['schedule.applyClose'])
+      .toMatch(/48 小时/)
   })
 
   it('accepts a shortened deadline that still keeps 48 hours of notice', () => {
     // 提前到 2027-02-14（4 天后）符合 48 小时口径。
     const shortened = { ...SCHEDULE, applyClose: '2027-02-14T00:00:00.000Z' }
-    expect(validateScheduleChange(SCHEDULE, shortened, NOW)['schedule.applyClose']).toBeUndefined()
+    expect(
+      validateScheduleChange(SCHEDULE, shortened, { now: NOW })['schedule.applyClose'],
+    ).toBeUndefined()
   })
 
   it('accepts a first-time schedule as long as every node is in the future', () => {
@@ -203,8 +244,9 @@ describe('validateScheduleChange', () => {
           new Date(Date.parse(value) + days * 86400000).toISOString(),
         ]),
       ) as unknown as SeasonSchedule
-    expect(validateScheduleChange(null, shift(365), NOW)).toEqual({})
-    expect(validateScheduleChange(null, SCHEDULE, NOW)['schedule.applyOpen']).toMatch(/不能早于当前时间/)
+    expect(validateScheduleChange(null, shift(365), { now: NOW })).toEqual({})
+    expect(validateScheduleChange(null, SCHEDULE, { now: NOW })['schedule.applyOpen'])
+      .toMatch(/不能早于当前时间/)
   })
 })
 

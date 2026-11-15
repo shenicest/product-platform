@@ -2,6 +2,7 @@ import {
   AnnouncementCategory,
   ChallengeStatus,
   SeasonApplicationStatus,
+  SeasonParticipantStatus,
   SeasonStatus,
   SeasonType,
   WechatStatus,
@@ -107,6 +108,13 @@ export type MySeasonApplication = {
   application: SeasonApplication
   season: SeasonSummary
   wechatStatus: WechatStatus | null
+  /**
+   * 选手行状态；还没成为选手时为 null。
+   *
+   * 退出赛季只把选手行置为 `withdrawn`，报名记录仍是 `accepted` ——
+   * 「已退赛」只能从这里读。
+   */
+  participantStatus: SeasonParticipantStatus | null
 }
 
 export type SeasonListResponse = {

@@ -72,6 +72,49 @@ describe('OrganizerTabs', () => {
   })
 })
 
+/**
+ * 「报名审核」的红点：数字来自 `pendingReviewCount`（外壳按当前赛季取好），
+ * 这里只验证画法 —— 有数字才画、只画在报名审核上、文案和无障碍名一致。
+ */
+describe('OrganizerTabs · pending review badge', () => {
+  it('puts the pending count on the applications tab only', () => {
+    pathname = '/organizer/overview'
+    render(<OrganizerTabs seasonId={21} pendingReviewCount={3} />)
+
+    const applications = screen.getByRole('link', { name: /报名审核/ })
+    const badge = within(applications).getByTestId('pending-review-badge')
+    expect(badge).toHaveTextContent('3')
+    // 红点在无障碍树上不是纯装饰：读屏能念出「3 条待处理报名」。
+    expect(badge).toHaveAttribute('aria-label', '3 条待处理报名')
+
+    // 其余 tab 不带红点（这个数只属于报名审核队列）。
+    const others = within(screen.getByRole('navigation', { name: '主办方后台导航' }))
+      .getAllByRole('link')
+      .filter((link) => !link.textContent?.includes('报名审核'))
+    for (const link of others) {
+      expect(within(link).queryByTestId('pending-review-badge')).not.toBeInTheDocument()
+    }
+  })
+
+  it('keeps the tab clean when nothing is waiting', () => {
+    pathname = '/organizer/overview'
+    render(<OrganizerTabs seasonId={21} pendingReviewCount={0} />)
+
+    // 0 条不画红点：没有待办就该是一个安静的 tab，名字也还是原来的四个字。
+    expect(screen.getByRole('link', { name: '报名审核' })).toBeInTheDocument()
+    expect(screen.queryByTestId('pending-review-badge')).not.toBeInTheDocument()
+  })
+
+  it('caps the visible number at 99+ but keeps the real count for screen readers', () => {
+    pathname = '/organizer/applications'
+    render(<OrganizerTabs seasonId={21} pendingReviewCount={128} />)
+
+    const badge = screen.getByTestId('pending-review-badge')
+    expect(badge).toHaveTextContent('99+')
+    expect(badge).toHaveAttribute('aria-label', '128 条待处理报名')
+  })
+})
+
 describe('WorkInProgress', () => {
   it('states that the tab is under development and what it will hold', () => {
     render(<WorkInProgress tab="budget" title="预算与结算" scope="预算版本与结算法式。" />)

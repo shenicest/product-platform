@@ -32,8 +32,11 @@ vi.mock('next/navigation', () => ({
 /**
  * 组队 tab 的行为测试。
  *
- * 只测 Client 组件（Server Component 不直接测，见根 AGENTS.md）：5 张卡的
- * 内容、退出二次确认、发布招募卡弹窗、申请处理。视觉细节走截图走查。
+ * 只测 Client 组件（Server Component 不直接测，见根 AGENTS.md）：4 张卡的
+ * 内容、发布招募卡弹窗、申请处理。视觉细节走截图走查。
+ *
+ * 「退出赛季」已移到 `/me/applications`，它的行为测试在
+ * `me-applications.test.tsx` 里。
  */
 
 function workbench(overrides: Partial<TeamWorkbenchDto> = {}): TeamWorkbenchDto {
@@ -204,14 +207,15 @@ beforeEach(() => {
   refresh.mockClear()
 })
 
-describe('TeamWorkbench · 5 张卡', () => {
-  it('renders the five cards with their headings', () => {
+describe('TeamWorkbench · 4 张卡', () => {
+  it('renders the four cards with their headings', () => {
     renderWorkbench()
     expect(screen.getByRole('heading', { name: '还没有项目' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: '退出赛季' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '找队友' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '招募卡与申请' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: '组队规则' })).toBeInTheDocument()
+    // 退出赛季已迁到报名页，组队 tab 不再有这颗按钮。
+    expect(screen.queryByRole('heading', { name: '退出赛季' })).not.toBeInTheDocument()
   })
 
   it('shows the empty-project copy and the create entry point', () => {
@@ -266,77 +270,6 @@ describe('TeamWorkbench · 5 张卡', () => {
     expect(screen.getByText('冷库电费管家')).toBeInTheDocument()
     expect(screen.getByText('待处理')).toBeInTheDocument()
     expect(screen.getByText(/接受申请不等于登记为赛季核心成员/)).toBeInTheDocument()
-  })
-})
-
-describe('TeamWithdrawCard · 二次确认', () => {
-  it('asks for confirmation before calling the API', async () => {
-    const user = userEvent.setup()
-    let called = false
-    server.use(
-      http.post('/api/seasons/7/participants/9001/withdraw', () => {
-        called = true
-        return HttpResponse.json({ status: 'withdrawn' })
-      }),
-    )
-
-    renderWorkbench()
-    await user.click(screen.getByRole('button', { name: '退出 A4BBS' }))
-    expect(called).toBe(false)
-    expect(screen.getByRole('button', { name: '确认退出 A4BBS' })).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: '确认退出 A4BBS' }))
-    await waitFor(() => expect(called).toBe(true))
-    expect(refresh).toHaveBeenCalled()
-  })
-
-  it('can cancel the confirmation without calling the API', async () => {
-    const user = userEvent.setup()
-    let called = false
-    server.use(
-      http.post('/api/seasons/7/participants/9001/withdraw', () => {
-        called = true
-        return HttpResponse.json({ status: 'withdrawn' })
-      }),
-    )
-
-    renderWorkbench()
-    await user.click(screen.getByRole('button', { name: '退出 A4BBS' }))
-    await user.click(screen.getByRole('button', { name: '取消' }))
-    expect(called).toBe(false)
-    expect(screen.getByRole('button', { name: '退出 A4BBS' })).toBeInTheDocument()
-  })
-
-  it('shows the backend message when the withdrawal fails', async () => {
-    const user = userEvent.setup()
-    server.use(
-      http.post('/api/seasons/7/participants/9001/withdraw', () =>
-        HttpResponse.json(
-          { error: { code: 'PARTICIPANT_WITHDRAW_LOCKED', message: '组队截止后请由主办方处理退出' } },
-          { status: 409 },
-        ),
-      ),
-    )
-
-    renderWorkbench()
-    await user.click(screen.getByRole('button', { name: '退出 A4BBS' }))
-    await user.click(screen.getByRole('button', { name: '确认退出 A4BBS' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('组队截止后请由主办方处理退出')
-  })
-
-  it('explains why withdrawal is unavailable once the deadline passed', () => {
-    renderWorkbench({
-      participant: { userId: '9001', status: 'active', wechatStatus: 'joined', canWithdraw: false },
-      rules: {
-        maxCoreMembers: 3,
-        maxProjectsPerParticipant: 1,
-        maxChallengesPerProject: 2,
-        teamDeadline: '2026-11-01T15:59:00.000Z',
-        deadlinePassed: true,
-      },
-    })
-    expect(screen.getByText('组队已截止，退出请找主办方处理。')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /退出 A4BBS/ })).not.toBeInTheDocument()
   })
 })
 

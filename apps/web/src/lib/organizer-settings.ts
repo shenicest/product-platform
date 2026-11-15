@@ -23,6 +23,7 @@ export {
   beijingInputToIso,
   isoToBeijingInput,
   toScheduleDraft,
+  toSchedulePatch,
   toSchedulePayload,
 } from '@/lib/organizer'
 
@@ -110,39 +111,59 @@ export function scheduleMilestoneRows(
 export const SCHEDULE_MIN_LEAD_MS = 48 * 60 * 60 * 1000
 
 /**
+ * 已经过去、不允许再修改的赛程节点。
+ *
+ * 口径与后端 `applySchedulePatch` 一致：**严格早于现在**才算过去（正好等于
+ * 现在的那一毫秒仍可编辑）。这些节点在表单里置灰、不提交，也不参与校验。
+ *
+ * 用打开表单时的「现在」算一次，而不是每次渲染都算：否则用户填到一半，
+ * 某个节点悄悄跨过当前时间，界面会在输入过程中突然变成只读。
+ */
+export function lockedScheduleKeys(
+  schedule: SeasonSchedule | null | undefined,
+  now: Date = new Date(),
+): Set<keyof SeasonSchedule> {
+  const locked = new Set<keyof SeasonSchedule>()
+  if (!schedule) return locked
+  const nowMs = now.getTime()
+  for (const field of SCHEDULE_FIELDS) {
+    const timestamp = Date.parse(schedule[field.key])
+    if (Number.isFinite(timestamp) && timestamp < nowMs) locked.add(field.key)
+  }
+  return locked
+}
+
+/**
  * 「已过去的截止不能再改」与「缩短的截止至少提前 48 小时」。
  *
- * 这两条是页面对主办方的承诺，后端 `updateSchedule` 目前只校验先后顺序，
- * 所以在前端拦住 —— 与其让人提交成功后才发现被别处拒绝，不如当场说清楚。
+ * 后端已经做了「已过去的节点锁定 + 新值不能落到过去」，这里再拦一遍是为了
+ * 当场说清楚：与其让人提交成功后才发现被拒绝，不如在表单里直接标红。
  *
  * 口径：
- *   · 已经过去的节点是历史事实：新值必须与旧值一致，往前挪或往后挪都不行；
+ *   · 已经过去的节点（`locked`）**不参与校验**：它们只能保持原值，也不会被提交；
  *   · 首次排期（没有旧值）时，任何节点都不能早于现在；
- *   · 任何节点被**提前**时，新时间必须至少距现在 48 小时。
+ *   · 任何未来节点被**提前**时，新时间必须至少距现在 48 小时。
  *
  * 返回 `{ '<key>': '错误文案' }`，与 `validateScheduleDraft` 的 key 口径一致。
  */
 export function validateScheduleChange(
   previous: SeasonSchedule | null | undefined,
   next: SeasonSchedule,
-  now: Date = new Date(),
+  options: { now?: Date; locked?: ReadonlySet<keyof SeasonSchedule> } = {},
 ): Record<string, string> {
   const errors: Record<string, string> = {}
+  const now = options.now ?? new Date()
   const nowMs = now.getTime()
+  const locked = options.locked ?? lockedScheduleKeys(previous, now)
 
   for (const field of SCHEDULE_FIELDS) {
+    // 已经过去的节点是历史事实：置灰、不提交，也不参与校验。
+    if (locked.has(field.key)) continue
     const nextMs = Date.parse(next[field.key])
     if (!Number.isFinite(nextMs)) continue
     const previousMs = previous ? Date.parse(previous[field.key]) : Number.NaN
 
     if (Number.isFinite(previousMs)) {
-      // 已经过去的节点：只允许原样保留。
-      if (previousMs < nowMs) {
-        if (nextMs !== previousMs) {
-          errors[`schedule.${field.key}`] = `${field.label}已经过去，不能再改`
-        }
-        continue
-      }
       // 提前的节点：至少留 48 小时。
       if (nextMs < previousMs && nextMs - nowMs < SCHEDULE_MIN_LEAD_MS) {
         errors[`schedule.${field.key}`] = `${field.label}缩短后至少要在 48 小时之后`

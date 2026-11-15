@@ -235,14 +235,14 @@ describe('SeasonSettingsView · draft season', () => {
 
 describe('SeasonSettingsView · 草稿编辑弹窗', () => {
   const SCHEDULE = {
-    applyOpen: '2026-11-01T02:00:00.000Z',
-    applyClose: '2026-11-10T02:00:00.000Z',
-    startAt: '2026-11-20T02:00:00.000Z',
-    teamDeadline: '2026-11-25T02:00:00.000Z',
-    challengeFreezeAt: '2026-11-24T02:00:00.000Z',
-    workDeadline: '2026-12-01T02:00:00.000Z',
-    scoreDeadline: '2026-12-05T02:00:00.000Z',
-    settleDate: '2026-12-10T02:00:00.000Z',
+    applyOpen: '2035-11-01T02:00:00.000Z',
+    applyClose: '2035-11-10T02:00:00.000Z',
+    startAt: '2035-11-20T02:00:00.000Z',
+    teamDeadline: '2035-11-25T02:00:00.000Z',
+    challengeFreezeAt: '2035-11-24T02:00:00.000Z',
+    workDeadline: '2035-12-01T02:00:00.000Z',
+    scoreDeadline: '2035-12-05T02:00:00.000Z',
+    settleDate: '2035-12-10T02:00:00.000Z',
   }
 
   it('offers the 编辑 entry only for a draft season', () => {
@@ -276,8 +276,8 @@ describe('SeasonSettingsView · 草稿编辑弹窗', () => {
     expect(within(dialog).getByLabelText(/赛季编号/)).toHaveAttribute('readonly')
 
     // 赛程按北京时间回填成 datetime-local（UTC 02:00 → 10:00）。
-    expect(within(dialog).getByLabelText('报名开放')).toHaveValue('2026-11-01T10:00')
-    expect(within(dialog).getByLabelText('结算日')).toHaveValue('2026-12-10T10:00')
+    expect(within(dialog).getByLabelText('报名开放')).toHaveValue('2035-11-01T10:00')
+    expect(within(dialog).getByLabelText('结算日')).toHaveValue('2035-12-10T10:00')
 
     // 规则回填。
     expect(within(dialog).getByLabelText('团队核心成员上限')).toHaveValue(2)
@@ -318,7 +318,7 @@ describe('SeasonSettingsView · 草稿编辑弹窗', () => {
 
     const settle = within(dialog).getByLabelText('结算日')
     await user.clear(settle)
-    await user.type(settle, '2026-12-12T10:00')
+    await user.type(settle, '2035-12-12T10:00')
 
     const members = within(dialog).getByLabelText('团队核心成员上限')
     await user.clear(members)
@@ -328,9 +328,10 @@ describe('SeasonSettingsView · 草稿编辑弹窗', () => {
 
     await waitFor(() => expect(updateSeasonSchedule).toHaveBeenCalledTimes(1))
     const schedule = vi.mocked(updateSeasonSchedule).mock.calls[0][1].schedule
-    // 北京时间 2026-12-12 10:00 → UTC 02:00。
-    expect(schedule.settleDate).toBe('2026-12-12T02:00:00.000Z')
-    expect(schedule.applyOpen).toBe(SCHEDULE.applyOpen)
+    // 北京时间 2035-12-12 10:00 → UTC 02:00；只提交改动的节点，没动的不发。
+    expect(schedule?.settleDate).toBe('2035-12-12T02:00:00.000Z')
+    expect(schedule?.applyOpen).toBeUndefined()
+    expect(Object.keys(schedule ?? {})).toEqual(['settleDate'])
 
     expect(updateSeasonRules).toHaveBeenCalledTimes(1)
     expect(vi.mocked(updateSeasonRules).mock.calls[0][1].rules.maxCoreMembers).toBe(2)

@@ -22,14 +22,17 @@ import {
   EnterprisePublicScope,
   ENTERPRISE_COOPERATION_AMOUNT_LIMITS,
   ENTERPRISE_COOPERATION_TIERS,
+  formatSeasonDateTime,
   SEASON_REQUIRED_RULE_CARD_KEYS,
   SEASON_RULE_CARD_SCORELESS,
+  SEASON_SCHEDULE_LABELS,
   seasonRequiredRuleCardItems,
   SeasonApplicationStatus,
   SeasonParticipantStatus,
   SeasonStatus,
   type SeasonRules,
   type SeasonSchedule,
+  type SeasonScheduleKey,
 } from '@shenicest/shared'
 import type { Database } from '../../db'
 import {
@@ -55,6 +58,7 @@ import { UserProfileService } from '../user/service'
 import { announcementService } from '../announcement'
 import type { AnnouncementWriter } from '../announcement/service'
 import {
+  applySchedulePatch,
   BoomlandAccessService,
   boomlandError,
   getSeasonSummary,
@@ -314,6 +318,26 @@ function generatedRequiredItems(rules: SeasonRules, schedule: SeasonSchedule | n
   return new Map<string, ReturnType<typeof seasonRequiredRuleCardItems>[number]>(
     seasonRequiredRuleCardItems({ rules, schedule }).map((item) => [item.key as string, item]),
   )
+}
+
+/**
+ * 赛程变更公告的默认正文：只列本次真正改动的节点，旧值 → 新值。
+ *
+ * 增量提交时通常只动一两个节点，把八个时间整段重述一遍反而看不出改了什么。
+ * 时间统一按北京时间渲染（与规则卡、公开页同口径）。
+ */
+function scheduleChangeSummary(
+  before: SeasonSchedule | null,
+  after: SeasonSchedule,
+  changed: SeasonScheduleKey[],
+): string {
+  const lines = changed.map((key) => {
+    const label = SEASON_SCHEDULE_LABELS[key]
+    const to = formatSeasonDateTime(after[key])
+    const from = before ? formatSeasonDateTime(before[key]) : null
+    return from ? `${label}：${from} → ${to}` : `${label}：${to}`
+  })
+  return `${lines.join('\n')}（北京时间）`
 }
 
 /**
@@ -993,14 +1017,54 @@ export class SeasonService {
     return this.getManageDetail(seasonId, userId)
   }
 
+  /**
+   * 增量修改赛程。
+   *
+   * 与「整段替换」的区别全在 `applySchedulePatch` 里：调用方只传改动的节点，
+   * 已过去的节点被锁定（只能原样重复提交），顺序校验也只看仍然可编辑的节点。
+   *
+   * 没有实际变化时不推 `rulesVersion`、不写审计，只在调用方显式给了公告内容时
+   * 发一条赛程说明 —— 保存一次表单却凭空多出一个规则版本 + 一条公告，是主办方
+   * 最不想要的副作用。
+   */
   async updateSchedule(seasonId: number, userId: string, body: UpdateScheduleBody) {
     const row = await this.getSeasonRow(seasonId)
     await this.access.assertSeasonAccess(seasonId, userId)
     this.assertStatus(row, RULE_EDITABLE_STATUSES, '当前状态不能修改赛程')
-    const error = validateSchedule(body.schedule)
-    if (error) throw boomlandError('SCHEDULE_INVALID', error, 400, { field: 'schedule' })
+    const before = scheduleFromRow(row)
+    const outcome = applySchedulePatch({
+      current: before,
+      patch: body.schedule ?? {},
+    })
+    if ('error' in outcome) {
+      throw boomlandError(outcome.error.code, outcome.error.message, outcome.error.httpStatus, {
+        field: outcome.error.field,
+      })
+    }
+    const { schedule, changed } = outcome
+
+    if (changed.length === 0) {
+      // 时间没变：允许只发一条赛程说明公告，其余什么都不写。
+      if (body.announcement?.title?.trim() || body.announcement?.content?.trim()) {
+        await this.announce(
+          row,
+          userId,
+          AnnouncementCategory.Schedule,
+          body.announcement,
+          '赛程说明',
+          '赛程暂无时间调整，本公告为赛程相关说明。',
+        )
+      }
+      return this.getManageDetail(seasonId, userId)
+    }
+
+    // 只写真正变化的列：未提交的节点在库里本来就是这个值，没必要重写一遍。
+    const columns = scheduleToColumns(schedule)
+    const updates = Object.fromEntries(
+      changed.map((key) => [key, columns[key]]),
+    ) as Partial<typeof seasons.$inferInsert>
     await this.db.update(seasons).set({
-      ...scheduleToColumns(body.schedule),
+      ...updates,
       rulesVersion: row.rulesVersion + 1,
     }).where(eq(seasons.id, seasonId))
     await writeAudit(this.db, {
@@ -1009,7 +1073,7 @@ export class SeasonService {
       targetType: 'season',
       targetId: String(seasonId),
       seasonId,
-      detail: { before: scheduleFromRow(row), after: body.schedule },
+      detail: { before, after: schedule, changed },
     })
     await this.announce(
       row,
@@ -1017,7 +1081,7 @@ export class SeasonService {
       AnnouncementCategory.Schedule,
       body.announcement,
       '赛程已更新',
-      `报名 ${body.schedule.applyOpen} 至 ${body.schedule.applyClose}，开赛 ${body.schedule.startAt}。`,
+      scheduleChangeSummary(before, schedule, changed),
     )
     return this.getManageDetail(seasonId, userId)
   }

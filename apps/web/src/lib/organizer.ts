@@ -2,8 +2,12 @@ import {
   SEASON_AGREEMENT_CONTENT_MAX_LENGTH,
   SEASON_RULE_DEFAULTS,
   SEASON_RULE_LIMITS,
+  SEASON_SCHEDULE_CHAIN,
+  SEASON_SCHEDULE_KEYS,
+  SEASON_SCHEDULE_LABELS,
   type SeasonRules,
   type SeasonSchedule,
+  type SeasonScheduleKey,
   type SeasonType,
 } from '@shenicest/shared'
 import type { SeasonSummary } from '@/lib/boomland'
@@ -122,17 +126,9 @@ export const EMPTY_SCHEDULE_DRAFT: SeasonScheduleDraft = {
   settleDate: '',
 }
 
-/** 赛程字段的展示顺序与中文名（与 `SCHEDULE_MILESTONES` 保持一致）。 */
-export const SCHEDULE_FIELDS: ReadonlyArray<{ key: keyof SeasonSchedule; label: string }> = [
-  { key: 'applyOpen', label: '报名开放' },
-  { key: 'applyClose', label: '报名截止' },
-  { key: 'startAt', label: '开赛' },
-  { key: 'teamDeadline', label: '组队截止' },
-  { key: 'challengeFreezeAt', label: '命题冻结' },
-  { key: 'workDeadline', label: '作品截止' },
-  { key: 'scoreDeadline', label: '评分截止' },
-  { key: 'settleDate', label: '结算日' },
-]
+/** 赛程字段的展示顺序与中文名（顺序与名称都来自 shared，与后端校验同源）。 */
+export const SCHEDULE_FIELDS: ReadonlyArray<{ key: SeasonScheduleKey; label: string }> =
+  SEASON_SCHEDULE_KEYS.map((key) => ({ key, label: SEASON_SCHEDULE_LABELS[key] }))
 
 /** 赛季编号：与后端 `CreateSeasonBody.code` 的 pattern 一致。 */
 export const SEASON_CODE_PATTERN = /^[A-Za-z0-9_-]+$/
@@ -204,7 +200,7 @@ export function toScheduleDraft(schedule: SeasonSchedule | null | undefined): Se
 }
 
 /**
- * 表单草稿 → `PUT /seasons/:id/schedule` 的 `schedule`。
+ * 表单草稿 → 完整赛程（`POST /seasons` 的 `schedule`，以及「首次排期」的整份提交）。
  *
  * 全空表示「这个赛季不排期」，返回 null；只要有一格填了就必须八格齐全，
  * 任何一格空/非法也返回 null —— 调用前应先跑 {@link validateScheduleDraft}，
@@ -219,6 +215,31 @@ export function toSchedulePayload(draft: SeasonScheduleDraft): SeasonSchedule | 
     schedule[field.key] = iso
   }
   return schedule
+}
+
+/**
+ * 表单草稿 → **增量**补丁（`PATCH /seasons/:id/schedule` 的 `schedule`）。
+ *
+ * 只返回相对已保存赛程真正变了的节点：改一个截止就只发一个字段，
+ * 没动的节点（尤其是已经过去、被服务端锁定的节点）一个都不发。
+ *
+ * 比较口径是「北京时间墙上时间的分钟」，与输入框的精度一致：库里的值带毫秒
+ * 或秒时，只要分钟没变就算没改，不会因为往返转换把未改动的节点误判成改动。
+ */
+export function toSchedulePatch(
+  previous: SeasonSchedule | null | undefined,
+  draft: SeasonScheduleDraft,
+): Partial<SeasonSchedule> {
+  const patch: Partial<SeasonSchedule> = {}
+  for (const field of SCHEDULE_FIELDS) {
+    const value = draft[field.key].trim()
+    if (!value) continue
+    if (previous && isoToBeijingInput(previous[field.key]) === value) continue
+    const iso = beijingInputToIso(value)
+    if (!iso) continue
+    patch[field.key] = iso
+  }
+  return patch
 }
 
 /** 表单 → 请求体的输出结构（`POST /seasons`）。 */
@@ -248,10 +269,18 @@ export type CreateSeasonPayload = {
  */
 export type SeasonDraftErrors = Partial<Record<string, string>>
 
-/** 草稿至少要有编号、名称、类型，以及一个可选的主办方组织（后端必填）。 */
+/**
+ * 草稿至少要有编号、名称、类型，以及一个可选的主办方组织（后端必填）。
+ *
+ * `lockedScheduleKeys` 只在「编辑已有赛季」时传入：已经过去的赛程节点不允许改，
+ * 也不参与赛程校验（详见 `validateScheduleDraft`）。
+ */
 export function validateSeasonDraft(
   values: SeasonDraftValues,
-  options: { organizerOrgOptions: readonly number[] },
+  options: {
+    organizerOrgOptions: readonly number[]
+    lockedScheduleKeys?: ReadonlySet<SeasonScheduleKey>
+  },
 ): SeasonDraftErrors {
   const errors: SeasonDraftErrors = {}
 
@@ -302,30 +331,42 @@ export function validateSeasonDraft(
     errors.themes = '单个主题不能超过 50 个字符'
   }
 
-  Object.assign(errors, validateScheduleDraft(values.schedule))
+  Object.assign(
+    errors,
+    validateScheduleDraft(values.schedule, { skipKeys: options.lockedScheduleKeys }),
+  )
   Object.assign(errors, validateRulesDraft(values.rules))
 
   return errors
 }
 
 /**
- * 赛程校验（与后端 `validateSchedule` 同序同口径）。
+ * 赛程校验（与后端 `applySchedulePatch` 同序同口径）。
  *
- * 全部留空 = 合法的“草稿还没排期”；但只要填了一个，就必须八个都填且严格递增。
+ * 全部留空 = 合法的“草稿还没排期”；但只要填了一个，就必须（除被锁定的节点外）
+ * 全都填且严格递增。
+ *
+ * `skipKeys` 是**已经过去、不允许再修改**的节点：它们不参与校验 —— 既不需要
+ * 补全，也不参与顺序比较。后端口径相同（见 `applySchedulePatch`），否则「改后面
+ * 的节点」会因为前面已经发生的事被拦下。
  */
-export function validateScheduleDraft(schedule: SeasonScheduleDraft): SeasonDraftErrors {
+export function validateScheduleDraft(
+  schedule: SeasonScheduleDraft,
+  options: { skipKeys?: ReadonlySet<SeasonScheduleKey> } = {},
+): SeasonDraftErrors {
   const errors: SeasonDraftErrors = {}
-  const filled = SCHEDULE_FIELDS.filter((field) => schedule[field.key].trim() !== '')
+  const fields = SCHEDULE_FIELDS.filter((field) => !options.skipKeys?.has(field.key))
+  const filled = fields.filter((field) => schedule[field.key].trim() !== '')
   if (filled.length === 0) return errors
-  if (filled.length !== SCHEDULE_FIELDS.length) {
-    for (const field of SCHEDULE_FIELDS) {
+  if (filled.length !== fields.length) {
+    for (const field of fields) {
       if (schedule[field.key].trim()) continue
       errors[`schedule.${field.key}`] = '请补全赛程（要么全部留空）'
     }
     return errors
   }
 
-  const parsed = SCHEDULE_FIELDS.map((field) => ({
+  const parsed = fields.map((field) => ({
     key: field.key,
     label: field.label,
     time: Date.parse(schedule[field.key]),
@@ -337,8 +378,8 @@ export function validateScheduleDraft(schedule: SeasonScheduleDraft): SeasonDraf
   }
   if (Object.keys(errors).length > 0) return errors
 
-  const order = ['applyOpen', 'applyClose', 'startAt', 'teamDeadline', 'scoreDeadline', 'settleDate'] as const
   const byKey = new Map(parsed.map((item) => [item.key, item]))
+  const order = SEASON_SCHEDULE_CHAIN.filter((key) => byKey.has(key))
   for (let i = 1; i < order.length; i += 1) {
     const previous = byKey.get(order[i - 1])!
     const current = byKey.get(order[i])!
@@ -346,14 +387,14 @@ export function validateScheduleDraft(schedule: SeasonScheduleDraft): SeasonDraf
       errors[`schedule.${current.key}`] = `${current.label} 必须晚于${previous.label}`
     }
   }
-  const workDeadline = byKey.get('workDeadline')!
-  const scoreDeadline = byKey.get('scoreDeadline')!
-  if (workDeadline.time > scoreDeadline.time) {
+  const workDeadline = byKey.get('workDeadline')
+  const scoreDeadline = byKey.get('scoreDeadline')
+  if (workDeadline && scoreDeadline && workDeadline.time > scoreDeadline.time) {
     errors['schedule.workDeadline'] = '作品截止不能晚于评分截止'
   }
-  const challengeFreezeAt = byKey.get('challengeFreezeAt')!
-  const teamDeadline = byKey.get('teamDeadline')!
-  if (challengeFreezeAt.time > teamDeadline.time) {
+  const challengeFreezeAt = byKey.get('challengeFreezeAt')
+  const teamDeadline = byKey.get('teamDeadline')
+  if (challengeFreezeAt && teamDeadline && challengeFreezeAt.time > teamDeadline.time) {
     errors['schedule.challengeFreezeAt'] = '命题冻结不能晚于组队截止'
   }
   return errors
