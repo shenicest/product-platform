@@ -1,5 +1,5 @@
 import { t } from 'elysia'
-import { SEASON_RULE_LIMITS } from '@shenicest/shared'
+import { SEASON_AGREEMENT_CONTENT_MAX_LENGTH, SEASON_RULE_LIMITS } from '@shenicest/shared'
 
 export const SeasonIdParams = t.Object({
   id: t.Numeric({ description: 'Season ID' }),
@@ -49,6 +49,17 @@ export const SeasonRulesSchema = t.Object({
 
 const SeasonTypeSchema = t.Union([t.Literal('season'), t.Literal('hackathon')])
 
+/**
+ * 协议正文：纯文本，按空行分段渲染。
+ *
+ * 空串按「没填」处理（落库为 null），所以请求层允许字符串或 null，
+ * 上限取 shared 的 `SEASON_AGREEMENT_CONTENT_MAX_LENGTH`，与后台表单同口径。
+ */
+const AgreementContentSchema = t.Union([
+  t.String({ maxLength: SEASON_AGREEMENT_CONTENT_MAX_LENGTH }),
+  t.Null(),
+])
+
 export const CreateSeasonBody = t.Object({
   code: t.String({ minLength: 1, maxLength: 32, pattern: '^[A-Za-z0-9_-]+$' }),
   name: t.String({ minLength: 2, maxLength: 255 }),
@@ -60,6 +71,7 @@ export const CreateSeasonBody = t.Object({
   rules: t.Optional(t.Partial(SeasonRulesSchema)),
   organizerOrgIds: t.Array(t.Number(), { minItems: 1 }),
   agreementVersion: t.Optional(t.String({ minLength: 1, maxLength: 32 })),
+  agreementContent: t.Optional(AgreementContentSchema),
   awardingEntity: t.Optional(t.Union([t.String({ maxLength: 255 }), t.Null()])),
   participantCapacity: t.Optional(t.Union([t.Integer({ minimum: 1, maximum: 100000 }), t.Null()])),
 })
@@ -73,6 +85,16 @@ export const UpdateSeasonBody = t.Object({
   agreementVersion: t.Optional(t.String({ minLength: 1, maxLength: 32 })),
   awardingEntity: t.Optional(t.Union([t.String({ maxLength: 255 }), t.Null()])),
   participantCapacity: t.Optional(t.Union([t.Integer({ minimum: 1, maximum: 100000 }), t.Null()])),
+})
+
+/**
+ * `PUT /seasons/:id/agreement` —— 协议正文整段替换。
+ *
+ * 只有未发布的赛季（草稿，或已提交但还没批准）能改：协议是报名时勾选确认的
+ * 对象，公开后再改正文会让已提交的报名指向不同内容，必须走版本升级而不是静默覆盖。
+ */
+export const UpdateAgreementBody = t.Object({
+  agreementContent: AgreementContentSchema,
 })
 
 const AnnouncementInput = t.Object({
@@ -193,6 +215,7 @@ export const AuditQuery = t.Object({
 
 export type CreateSeasonBody = typeof CreateSeasonBody.static
 export type UpdateSeasonBody = typeof UpdateSeasonBody.static
+export type UpdateAgreementBody = typeof UpdateAgreementBody.static
 export type UpdateScheduleBody = typeof UpdateScheduleBody.static
 export type UpdateRulesBody = typeof UpdateRulesBody.static
 export type UpdateRuleCardBody = typeof UpdateRuleCardBody.static

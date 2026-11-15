@@ -574,6 +574,14 @@ export const SEASON_RULE_LIMITS = {
 } as const
 
 /**
+ * 赛季协议正文的字数上限。
+ *
+ * 正文落在 `seasons.agreement_content`（MySQL TEXT，64KB 字节），20k 个中文字符
+ * 仍在列容量内；前后端共用同一个上限，避免「后台能填、保存被拒」。
+ */
+export const SEASON_AGREEMENT_CONTENT_MAX_LENGTH = 20_000
+
+/**
  * 必要规则卡条目：由赛季配置生成，主办方不能新增、删除或隐藏，也不能改名称。
  *
  * 顺序即默认展示顺序，与产品文档 6.5「SEA-05 可配置规则卡」的八项一一对应。
@@ -1018,4 +1026,46 @@ export const CHALLENGE_DETAIL_PENDING_TABS: readonly ChallengeDetailTabKey[] = [
 export function isChallengeDetailTabPending(tab: string): boolean {
   return (CHALLENGE_DETAIL_PENDING_TABS as readonly string[]).includes(tab)
 }
+
+/**
+ * 公告类型：只影响图标、分组与文案，**不参与可见性判断**。
+ * 可见性只由 `scope` + 收件人决定，见 docs/announcement-center.md。
+ */
+export const AnnouncementType = {
+  System: 'system',
+  Season: 'season',
+  Application: 'application',
+  Team: 'team',
+  Challenge: 'challenge',
+} as const
+export type AnnouncementType = (typeof AnnouncementType)[keyof typeof AnnouncementType]
+
+export const ANNOUNCEMENT_TYPE_LABELS: Record<AnnouncementType, string> = {
+  system: '平台',
+  season: '赛季',
+  application: '报名',
+  team: '组队',
+  challenge: '命题',
+}
+
+/** 公告的视觉语气（info 普通 / success 好消息 / warning 需要留意）。 */
+export const AnnouncementLevel = {
+  Info: 'info',
+  Success: 'success',
+  Warning: 'warning',
+} as const
+export type AnnouncementLevel = (typeof AnnouncementLevel)[keyof typeof AnnouncementLevel]
+
+/**
+ * 公告受众：`global` 所有登录用户可见；`direct` 只有 announcement_recipients
+ * 里列出的用户可见。二选一，一条公告不会同时是两者。
+ */
+export const AnnouncementScope = {
+  Global: 'global',
+  Direct: 'direct',
+} as const
+export type AnnouncementScope = (typeof AnnouncementScope)[keyof typeof AnnouncementScope]
+
+/** 未读角标上限：超过这个数展示 `99+`（与个人中心 tab 角标同一口径）。 */
+export const ANNOUNCEMENT_UNREAD_CAP = 99
 

@@ -168,6 +168,23 @@ type SeasonSeed = {
   rules?: Partial<SeasonRules>
 }
 
+/**
+ * 演示用的协议正文。
+ *
+ * 真实法律文本必须由主办方在后台录入；seed 只负责让公开协议页在演示环境里
+ * 不是空页，因此这里写的是「按空行分段」的结构示例，而不是正式条款。
+ */
+function demoAgreement(name: string): string {
+  return [
+    `《${name}》参赛协议（演示文本）`,
+    '一、参赛资格\n报名者应年满 18 周岁，按赛季要求如实填写技能、经历与联系方式，并对所填信息的真实性负责。',
+    '二、作品与知识产权\n参赛作品须为团队原创，不得侵犯第三方知识产权。参赛期间产生的成果归创作团队所有，主办方可在约定范围内进行展示与宣传。',
+    '三、评分与奖励\n赛季积分由有效评委人工评分产生，按赛季规则卡与积分池口径结算。任何奖励的发放以主办方公告与最终核定结果为准。',
+    '四、行为规范\n禁止抄袭、刷分、恶意占用名额及其他影响公平的行为。违规者主办方有权取消其参赛资格与相关成绩。',
+    '五、其他\n本协议与赛季规则卡、公告共同构成参赛约定。正式文本以主办方在报名页公示的版本为准。',
+  ].join('\n\n')
+}
+
 const SEASONS: SeasonSeed[] = [
   {
     code: 'AI4BBS',
@@ -1187,6 +1204,7 @@ async function upsertSeason(seed: SeasonSeed, orgIds: Record<BoomlandOrgKey, num
     cancelReason: null,
     awardingEntity: seed.awardingEntity,
     agreementVersion: 'v1',
+    agreementContent: demoAgreement(seed.name),
     rulesVersion: 2, // 赛程变更过一次（见公告）
     rules: seasonRules,
     createdBy: OPERATOR_USER_ID,

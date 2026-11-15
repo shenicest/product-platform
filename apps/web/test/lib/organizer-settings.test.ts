@@ -16,6 +16,7 @@ import {
   canApproveSeason,
   canCancelSeason,
   canCreateAnnouncement,
+  canEditSeasonAgreement,
   canEditSeasonCore,
   canEditSeasonOrganizers,
   canEditSeasonRuleCard,
@@ -438,6 +439,16 @@ describe('editability predicates', () => {
   it('only lets drafts edit core fields', () => {
     expect(canEditSeasonCore(SeasonStatus.Draft)).toBe(true)
     expect(canEditSeasonCore(SeasonStatus.Upcoming)).toBe(false)
+  })
+
+  it('edits agreement content until the season is published', () => {
+    expect(canEditSeasonAgreement(SeasonStatus.Draft, null)).toBe(true)
+    // 已提交待批（upcoming + approvedAt 为空）仍是未发布，可以补正文。
+    expect(canEditSeasonAgreement(SeasonStatus.Upcoming, null)).toBe(true)
+    // 批准即发布，正文锁定。
+    expect(canEditSeasonAgreement(SeasonStatus.Upcoming, '2026-01-01T00:00:00.000Z')).toBe(false)
+    expect(canEditSeasonAgreement(SeasonStatus.Active, '2026-01-01T00:00:00.000Z')).toBe(false)
+    expect(canEditSeasonAgreement(SeasonStatus.Cancelled, null)).toBe(false)
   })
 
   it('lets drafts and operators edit organizer orgs, never a cancelled season', () => {

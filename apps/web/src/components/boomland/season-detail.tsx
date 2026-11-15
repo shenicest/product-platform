@@ -14,6 +14,7 @@ import { SeasonTimeline } from '@/components/boomland/season-timeline'
 import { SeasonAnnouncements } from '@/components/boomland/v26/season-announcements'
 import { SeasonPoster } from '@/components/boomland/v26/season-poster'
 import { SeasonStatGrid } from '@/components/boomland/v26/season-stat-grid'
+import { seasonRegistration } from '@/lib/season-registration'
 
 function ReviewDisclosure() {
   return (
@@ -80,6 +81,10 @@ export function SeasonDetailPage({
   isLoggedIn: boolean
 }) {
   const reason = applicationWindowReason(season)
+  const registration = seasonRegistration(season)
+  // 「报名状态：报名已截止（报名已截止）」这种重复没有意义，只在 reason
+  // 说出了额外信息（暂停 / 取消 / 哪天开放）时才补括号。
+  const reasonNote = reason && reason !== registration.label ? `（${reason}）` : ''
 
   return (
     <div className="v26 v26-season">
@@ -125,7 +130,9 @@ export function SeasonDetailPage({
         <p className="v26-muted v26-small" style={{ marginTop: 28 }}>
           报名窗口 {formatDateTime(season.applicationWindow.opensAt)} —{' '}
           {formatDateTime(season.applicationWindow.closesAt)}
-          {reason ? ` · ${reason}` : ''}
+          {' · '}
+          报名状态：{registration.label}
+          {reasonNote}
           {' · '}
           赛季状态：{seasonStatusMeta(season.status).label}
         </p>

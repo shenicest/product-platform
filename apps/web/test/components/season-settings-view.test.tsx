@@ -32,6 +32,7 @@ vi.mock('@/lib/organizer-api', () => ({
 }))
 
 vi.mock('@/lib/organizer-settings-api', () => ({
+  updateSeasonAgreement: vi.fn(),
   updateSeasonCore: vi.fn(),
   updateSeasonSchedule: vi.fn(),
   updateSeasonRules: vi.fn(),
@@ -93,6 +94,7 @@ function detail(overrides: Partial<SeasonSettingsDetail> = {}): SeasonSettingsDe
     rulesVersion: 1,
     awardingEntity: null,
     agreementVersion: 'v1',
+    agreementContent: null,
     startedAt: null,
     applicationWindow: { opensAt: null, closesAt: null, isOpen: false },
     rules: SEASON_RULE_DEFAULTS,

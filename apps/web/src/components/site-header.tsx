@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AnnouncementBell } from '@/components/announcement-bell';
 import { UserMenu } from '@/components/user-menu';
 import { SheNicestLogo } from '@/components/brand-logos';
 
@@ -60,6 +61,7 @@ export function SiteHeader() {
           <Link href="/submit" className="ui-btn ui-btn--primary ui-btn--small">
             <span aria-hidden>＋</span> 提交产品
           </Link>
+          <AnnouncementBell />
           <UserMenu />
         </div>
       </div>

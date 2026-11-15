@@ -1,7 +1,13 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { SeasonApplicationStatus, SeasonStatus, SeasonType, WechatStatus } from '@shenicest/shared'
+import {
+  SeasonApplicationStatus,
+  SeasonStatus,
+  SeasonType,
+  WechatStatus,
+  type SeasonSchedule,
+} from '@shenicest/shared'
 import { ApplicationsTable } from '@/components/me/applications-table'
 import { PublicSeasonGrid } from '@/components/me/public-season-grid'
 import { withdrawSeasonApplication } from '@/lib/boomland-api'
@@ -47,6 +53,20 @@ function season(overrides: Partial<SeasonSummary> = {}): SeasonSummary {
     participantCount: 19,
     publishedChallengeCount: 3,
     ...overrides,
+  }
+}
+
+/** 报名窗口仍在开放中：用 2099 年的截止时间，不受运行时刻影响。 */
+function openSchedule(): SeasonSchedule {
+  return {
+    applyOpen: '2020-01-01T00:00:00.000Z',
+    applyClose: '2099-01-01T00:00:00.000Z',
+    startAt: '2099-02-01T00:00:00.000Z',
+    teamDeadline: '2099-02-10T00:00:00.000Z',
+    challengeFreezeAt: '2099-02-15T00:00:00.000Z',
+    workDeadline: '2099-03-01T00:00:00.000Z',
+    scoreDeadline: '2099-03-10T00:00:00.000Z',
+    settleDate: '2099-03-20T00:00:00.000Z',
   }
 }
 
@@ -121,7 +141,7 @@ describe('ApplicationsTable', () => {
     expect(cells[0]).toHaveTextContent('A4BBS 产业商业赛季')
     expect(within(cells[0]).getByRole('link')).toHaveAttribute('href', '/seasons/502')
     expect(cells[1]).toHaveTextContent('2026.10.26 09:40')
-    expect(cells[2]).toHaveTextContent('已提交')
+    expect(cells[2]).toHaveTextContent('审核中')
     expect(cells[3]).toHaveTextContent('方向不匹配')
     expect(cells[4]).toHaveTextContent('已加入')
     expect(cells[5]).toHaveTextContent('502')
@@ -220,8 +240,56 @@ describe('ApplicationsTable · withdraw', () => {
   })
 })
 
+describe('ApplicationsTable · reapply', () => {
+  /** 报名窗口仍开着的赛程：2099 年截止，不受运行时刻影响。 */
+  const openSeason = season({ schedule: openSchedule() })
+  /** 报名已结束的赛程：把截止时间钉死在过去。 */
+  const closedSeason = season({
+    schedule: { ...openSchedule(), applyClose: '2020-01-02T00:00:00.000Z' },
+  })
+
+  const withdrawn = (target: SeasonSummary) =>
+    item({
+      application: application({ status: SeasonApplicationStatus.Withdrawn }),
+      season: target,
+    })
+
+  it('freezes the action column for horizontal scrolling', () => {
+    render(<ApplicationsTable items={[item()]} />)
+    const table = screen.getByRole('table', { name: '我提交过的赛季报名' })
+    // 冻结列由这两个类撑起：sticky 规则 + 「铺在页面底色上」的底色。
+    expect(table).toHaveClass(
+      'console-table',
+      'console-table--sticky-actions',
+      'console-table--sticky-actions-page',
+    )
+    expect(table.parentElement).toHaveClass('overflow-x-auto')
+  })
+
+  it('offers a re-apply link while the application window is still open', () => {
+    render(<ApplicationsTable items={[withdrawn(openSeason)]} />)
+    const table = screen.getByRole('table', { name: '我提交过的赛季报名' })
+    const actionCell = within(within(table).getAllByRole('row')[1]).getAllByRole('cell')[7]
+
+    expect(
+      within(actionCell).getByRole('link', { name: '重新报名 A4BBS 产业商业赛季' }),
+    ).toHaveAttribute('href', '/seasons/502/apply')
+    // 已撤回的报名不能再撤回。
+    expect(within(actionCell).queryByRole('button', { name: /撤回/ })).toBeNull()
+  })
+
+  it('explains a closed window instead of offering a dead-end button', () => {
+    render(<ApplicationsTable items={[withdrawn(closedSeason)]} />)
+    const table = screen.getByRole('table', { name: '我提交过的赛季报名' })
+    const actionCell = within(within(table).getAllByRole('row')[1]).getAllByRole('cell')[7]
+
+    expect(actionCell).toHaveTextContent('报名已截止')
+    expect(within(actionCell).queryByRole('link', { name: /重新报名/ })).toBeNull()
+  })
+})
+
 describe('PublicSeasonGrid', () => {
-  it('renders the badge, type, name, window, capacity and deadline hint', () => {
+  it('renders the badge, type, name, window and deadline hint', () => {
     render(<PublicSeasonGrid seasons={[season()]} />)
 
     const card = screen.getByRole('article')
@@ -233,7 +301,9 @@ describe('PublicSeasonGrid', () => {
       .toHaveAttribute('href', '/seasons/502')
     expect(within(card).getByText('报名 10月12日 10:00 — 10月26日 23:59（北京时间）'))
       .toBeInTheDocument()
-    expect(within(card).getByText('已通过 19 / 名额 20')).toBeInTheDocument()
+    // 报名已截止：名额与已通过人数不再展示。
+    expect(within(card).queryByText(/已通过/)).toBeNull()
+    expect(within(card).queryByText(/名额/)).toBeNull()
     expect(within(card).getByText(/报名已于 10月26日 23:59 截止/)).toBeInTheDocument()
   })
 
@@ -257,33 +327,28 @@ describe('PublicSeasonGrid', () => {
     expect(within(cards[1]).getByText('普通赛季')).toBeInTheDocument()
   })
 
-  it('says 名额不限 when the season has no capacity', () => {
-    render(<PublicSeasonGrid seasons={[season({ participantCapacity: null, participantCount: 7 })]} />)
-    expect(screen.getByText('已通过 7 人 · 名额不限')).toBeInTheDocument()
-  })
-
-  it('shows the open state with its deadline while applications are still possible', () => {
-    // applyClose 在 2026-10-26，用一个更早的 now 渲染不了 —— 组件内部用当前时间。
-    // 这里改用「未截止」的赛程，断言卡片不会误挂 🔒。
+  it('shows the quota while registration is open, and 名额不限 without capacity', () => {
     render(
       <PublicSeasonGrid
         seasons={[
           season({
-            schedule: {
-              applyOpen: '2020-01-01T00:00:00.000Z',
-              applyClose: '2099-01-01T00:00:00.000Z',
-              startAt: '2099-02-01T00:00:00.000Z',
-              teamDeadline: '2099-02-10T00:00:00.000Z',
-              challengeFreezeAt: '2099-02-15T00:00:00.000Z',
-              workDeadline: '2099-03-01T00:00:00.000Z',
-              scoreDeadline: '2099-03-10T00:00:00.000Z',
-              settleDate: '2099-03-20T00:00:00.000Z',
-            },
+            participantCapacity: null,
+            participantCount: 7,
+            schedule: openSchedule(),
           }),
         ]}
       />,
     )
     expect(screen.getByText('报名中')).toBeInTheDocument()
+    expect(screen.getByText('已通过 7 人 · 名额不限')).toBeInTheDocument()
+  })
+
+  it('shows the open state with its deadline and quota while applications are still possible', () => {
+    // applyClose 在 2026-10-26，用一个更早的 now 渲染不了 —— 组件内部用当前时间。
+    // 这里改用「未截止」的赛程，断言卡片不会误挂 🔒。
+    render(<PublicSeasonGrid seasons={[season({ schedule: openSchedule() })]} />)
+    expect(screen.getByText('报名中')).toBeInTheDocument()
+    expect(screen.getByText('已通过 19 / 名额 20')).toBeInTheDocument()
     expect(screen.getByText(/报名截止 1月1日/)).toBeInTheDocument()
     expect(screen.queryByText(/报名已于/)).not.toBeInTheDocument()
   })

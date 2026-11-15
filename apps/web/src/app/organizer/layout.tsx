@@ -6,6 +6,7 @@ import { getManagedSeasons, getOrganizerOrgOptions } from '@/server/organizer'
 import { OrganizerShell } from '@/components/organizer/organizer-shell'
 import { canAccessOrganizerConsole } from '@/lib/organizer-access'
 import type { PickableSeason } from '@/lib/organizer'
+import { NO_INDEX_ROBOTS } from '@/lib/site-metadata'
 import { ButtonLink } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/surface'
 import { Eyebrow } from '@/components/ui/typography'
@@ -13,6 +14,8 @@ import { Eyebrow } from '@/components/ui/typography'
 export const metadata: Metadata = {
   title: '主办方后台',
   description: 'BoomLand 赛季主办方后台：赛季草稿、报名审核、命题与预算。',
+  // 后台依赖登录态与组织归属，不应该出现在搜索结果和分享卡片里。
+  robots: NO_INDEX_ROBOTS,
 }
 
 export const dynamic = 'force-dynamic'

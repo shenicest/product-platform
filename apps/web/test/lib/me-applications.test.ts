@@ -13,8 +13,6 @@ import {
   MY_APPLICATIONS_PAGE_SIZE,
   PUBLIC_SEASON_LIMIT,
   applicationWindowLabel,
-  applicationWindowMeta,
-  applicationWindowState,
   applyDeadlineHint,
   canWithdrawApplication,
   monthDayTimeLabel,
@@ -166,6 +164,70 @@ describe('canWithdrawApplication', () => {
   })
 })
 
+describe('reapplyEntry', () => {
+  /** 报名窗口仍开着：2026-10-12 ~ 2026-10-26，取中点。 */
+  const OPEN = new Date('2026-10-20T00:00:00.000Z')
+
+  const withdrawn = item({
+    application: application({ status: SeasonApplicationStatus.Withdrawn }),
+  })
+
+  it('links back to the apply form while the window is open', () => {
+    const row = myApplicationRow(withdrawn, OPEN)
+    expect(row.reapplyHref).toBe('/seasons/502/apply')
+    expect(row.reapplyBlockedReason).toBeNull()
+    expect(row.canWithdraw).toBe(false)
+  })
+
+  it('explains a closed window instead of a dead-end button', () => {
+    const row = myApplicationRow(withdrawn, NOW)
+    expect(row.reapplyHref).toBeNull()
+    expect(row.reapplyBlockedReason).toBe('报名已截止')
+  })
+
+  it('explains a window that has not opened yet', () => {
+    const row = myApplicationRow(withdrawn, new Date('2026-09-01T00:00:00.000Z'))
+    expect(row.reapplyHref).toBeNull()
+    expect(row.reapplyBlockedReason).toBe('报名 10月12日 开放')
+  })
+
+  it('follows the season status when the season is paused or cancelled', () => {
+    expect(
+      myApplicationRow(
+        { ...withdrawn, season: season({ status: SeasonStatus.Suspended }) },
+        OPEN,
+      ).reapplyBlockedReason,
+    ).toBe('报名已暂停')
+    expect(
+      myApplicationRow(
+        { ...withdrawn, season: season({ status: SeasonStatus.Cancelled }) },
+        OPEN,
+      ).reapplyBlockedReason,
+    ).toBe('赛季已取消')
+  })
+
+  it('only offers re-application to withdrawn applications', () => {
+    for (const status of [
+      SeasonApplicationStatus.Submitted,
+      SeasonApplicationStatus.Accepted,
+      SeasonApplicationStatus.Rejected,
+    ]) {
+      const row = myApplicationRow(item({ application: application({ status }) }), OPEN)
+      expect(row.reapplyHref).toBeNull()
+      expect(row.reapplyBlockedReason).toBeNull()
+    }
+  })
+
+  it('stays silent when the applicant is already a participant', () => {
+    const row = myApplicationRow(
+      { ...withdrawn, wechatStatus: WechatStatus.Joined },
+      OPEN,
+    )
+    expect(row.reapplyHref).toBeNull()
+    expect(row.reapplyBlockedReason).toBeNull()
+  })
+})
+
 describe('myApplicationRow', () => {
   it('maps a full application into the seven table cells', () => {
     const row = myApplicationRow(
@@ -257,51 +319,6 @@ describe('applicationWindowLabel', () => {
   })
 })
 
-describe('applicationWindowState', () => {
-  it('reads an open window', () => {
-    expect(applicationWindowState(season(), new Date('2026-10-20T00:00:00.000Z'))).toBe('open')
-  })
-
-  it('reads a closed window once applyClose has passed', () => {
-    // NOW 是 2026-11-08，applyClose 是 2026-10-26 —— 已截止。
-    expect(applicationWindowState(season(), NOW)).toBe('closed')
-    // 窗口内（10-20）则是报名中。
-    expect(applicationWindowState(season(), new Date('2026-10-20T00:00:00.000Z'))).toBe('open')
-  })
-
-  it('reads a not-yet-open window before applyOpen', () => {
-    const early = new Date('2026-09-01T00:00:00.000Z')
-    expect(applicationWindowState(season(), early)).toBe('not-open-yet')
-  })
-
-  it('reports the season state before the window state', () => {
-    expect(applicationWindowState(season({ status: SeasonStatus.Suspended }), NOW)).toBe(
-      'suspended',
-    )
-    expect(applicationWindowState(season({ status: SeasonStatus.Cancelled }), NOW)).toBe(
-      'cancelled',
-    )
-  })
-
-  it('reports an unpublished window when applyClose is missing', () => {
-    expect(applicationWindowState(season({ schedule: null }), NOW)).toBe('unpublished')
-    expect(
-      applicationWindowState(season({ schedule: schedule({ applyClose: null }) }), NOW),
-    ).toBe('unpublished')
-  })
-})
-
-describe('applicationWindowMeta', () => {
-  it('gives every state a label and a tone', () => {
-    expect(applicationWindowMeta('open')).toEqual({ label: '报名中', tone: 'success' })
-    expect(applicationWindowMeta('closed').label).toBe('报名已截止')
-    expect(applicationWindowMeta('not-open-yet').label).toBe('报名未开始')
-    expect(applicationWindowMeta('unpublished').label).toBe('报名时间待公布')
-    expect(applicationWindowMeta('suspended').tone).toBe('warning')
-    expect(applicationWindowMeta('cancelled').tone).toBe('danger')
-  })
-})
-
 describe('applyDeadlineHint', () => {
   it('says a closed window closed at a specific time', () => {
     const hint = applyDeadlineHint(season(), NOW)
@@ -364,13 +381,28 @@ describe('publicSeasonCards', () => {
       typeLabel: '赛季',
       href: '/seasons/502',
       seasonStatusLabel: '进行中',
-      windowState: 'closed',
-      windowLabel: '报名已截止',
+      registrationState: 'closed',
+      registrationLabel: '报名已截止',
+      registrationOpen: false,
       applyWindow: '报名 10月12日 10:00 — 10月26日 23:59（北京时间）',
       participants: '已通过 19 / 名额 20',
       pinned: false,
     })
     expect(card.deadline).toEqual({ closed: true, text: '报名已于 10月26日 23:59 截止' })
+  })
+
+  it('reads an open registration window as 报名中', () => {
+    const [card] = publicSeasonCards([season()], new Date('2026-10-20T00:00:00.000Z'))
+    expect(card.registrationState).toBe('open')
+    expect(card.registrationLabel).toBe('报名中')
+    expect(card.registrationOpen).toBe(true)
+  })
+
+  it('reads a window that has not opened yet as 未开放', () => {
+    const [card] = publicSeasonCards([season()], new Date('2026-09-01T00:00:00.000Z'))
+    expect(card.registrationState).toBe('not-open')
+    expect(card.registrationLabel).toBe('未开放')
+    expect(card.registrationOpen).toBe(false)
   })
 
   it('labels a hackathon season type through the shared helper', () => {

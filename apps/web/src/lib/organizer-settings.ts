@@ -402,6 +402,17 @@ export function canEditSeasonCore(status: string): boolean {
   return status === SeasonStatus.Draft
 }
 
+/**
+ * 协议正文：未发布的赛季可改。
+ *
+ * 「未发布」= 草稿，或已提交但还没被批准（`upcoming` + `approvedAt` 为空）。
+ * 与后端 `updateAgreement` 的判定一致：批准后再改正文会让报名者已勾选确认的
+ * 内容悄悄变掉，必须升级协议版本并发布公告，不能直接覆盖。
+ */
+export function canEditSeasonAgreement(status: string, approvedAt: string | null): boolean {
+  return canEditSeasonCore(status) || isPendingApproval(status, approvedAt)
+}
+
 /** 主办方组织：草稿可改；提交后只有平台管理员能改。 */
 export function canEditSeasonOrganizers(status: string, isOperator: boolean): boolean {
   if (status === SeasonStatus.Cancelled) return false

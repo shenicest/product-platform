@@ -72,6 +72,15 @@ describe('validateSeasonDraft', () => {
     expect(validateSeasonDraft(values({ participantCapacity: '' }), options).participantCapacity).toBeUndefined()
   })
 
+  it('rejects agreement content over the shared maximum length', () => {
+    expect(
+      validateSeasonDraft(values({ agreementContent: '字'.repeat(20_001) }), options).agreementContent,
+    ).toMatch(/20000/)
+    expect(
+      validateSeasonDraft(values({ agreementContent: '字'.repeat(20_000) }), options).agreementContent,
+    ).toBeUndefined()
+  })
+
   it('accepts a complete, strictly increasing schedule', () => {
     expect(validateSeasonDraft(values({ schedule: SCHEDULE }), options)).toEqual({})
   })
@@ -158,6 +167,13 @@ describe('toCreateSeasonPayload', () => {
   it('converts the capacity to a number', () => {
     expect(toCreateSeasonPayload(values({ participantCapacity: '80' })).participantCapacity).toBe(80)
   })
+
+  it('trims agreement content and sends null when blank', () => {
+    expect(
+      toCreateSeasonPayload(values({ agreementContent: '  第一条 参赛资格  ' })).agreementContent,
+    ).toBe('第一条 参赛资格')
+    expect(toCreateSeasonPayload(values({ agreementContent: '   ' })).agreementContent).toBeNull()
+  })
 })
 
 describe('draftFromPreviousSeason', () => {
@@ -240,6 +256,7 @@ describe('draftFromCurrentSeason', () => {
     approvedAt: null,
     pinned: false,
     agreementVersion: 'v1',
+    agreementContent: '第一条 参赛资格',
     awardingEntity: null,
     participantCapacity: 60,
     organizerOrgIds: [3],
@@ -263,6 +280,7 @@ describe('draftFromCurrentSeason', () => {
     expect(draft.name).toBe('2027 春季赛季')
     expect(draft.themes).toEqual(['储能'])
     expect(draft.rules).toEqual(SEASON_RULE_DEFAULTS)
+    expect(draft.agreementContent).toBe('第一条 参赛资格')
   })
 
   it('backfills the schedule so the edit form shows the current timeline', () => {

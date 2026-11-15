@@ -1,7 +1,9 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { getHackathonProject } from '@/server/projects'
 import { normalizeHackathonTrack, stripTrackAppendix } from '@/lib/hackathon-project'
+import { NO_INDEX_ROBOTS, pageMetadata } from '@/lib/site-metadata'
 import { HackathonTagEvaluator } from '@/components/hackathon-tag-evaluator'
 import { HackathonCover } from '@/components/hackathon-cover'
 import { PublicInteractionBoundary } from '@/components/public-interaction-boundary'
@@ -15,6 +17,26 @@ import { ButtonAnchor } from '@/components/ui/button'
 import { Eyebrow } from '@/components/ui/typography'
 
 export const dynamic = 'force-dynamic'
+
+/** 分享卡片：项目名 + 介绍（去掉赛道附加材料）+ 封面图。 */
+export async function generateMetadata(
+  props: PageProps<'/hackathon/projects/[id]'>,
+): Promise<Metadata> {
+  const rawId = (await props.params).id
+  if (!/^\d+$/.test(rawId)) return { title: '项目不可用', robots: NO_INDEX_ROBOTS }
+  const project = await getHackathonProject(Number(rawId)).catch(() => null)
+  if (!project) return { title: '项目不可用', robots: NO_INDEX_ROBOTS }
+
+  return pageMetadata({
+    title: project.name,
+    description: stripTrackAppendix(project.description) || project.tagline,
+    path: `/hackathon/projects/${project.id}`,
+    type: 'article',
+    images: project.coverUrl
+      ? [{ url: project.coverUrl, alt: project.name }]
+      : undefined,
+  })
+}
 
 function visibleDescription(description: string | null) {
   return stripTrackAppendix(description) || '暂无项目介绍'

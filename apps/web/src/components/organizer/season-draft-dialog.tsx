@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { SeasonDraftForm, type SeasonDraftSubmitResult } from '@/components/organizer/season-draft-form'
 import { createSeasonDraft } from '@/lib/organizer-api'
 import {
+  updateSeasonAgreement,
   updateSeasonCore,
   updateSeasonOrganizers,
   updateSeasonRules,
@@ -44,15 +45,15 @@ export type SeasonDraftDialogMode = 'create' | 'copy' | 'edit'
 const DIALOG_COPY: Record<SeasonDraftDialogMode, { title: string; description: string }> = {
   create: {
     title: '发起赛季草稿',
-    description: '填写赛季的基础信息、赛程与规则。',
+    description: '填写赛季的基础信息、协议正文、赛程与规则。',
   },
   copy: {
     title: '复制上季',
-    description: '已按上一季预填，请确认编号与赛程。',
+    description: '已按上一季预填，请确认编号、协议正文与赛程。',
   },
   edit: {
     title: '编辑赛季草稿',
-    description: '保存后会更新当前赛季的基础信息、赛程与规则。',
+    description: '保存后会更新当前赛季的基础信息、协议正文、赛程与规则。',
   },
 }
 
@@ -142,7 +143,7 @@ export function SeasonDraftDialog({
   /**
    * edit：把表单值写回当前赛季。
    *
-   * 顺序固定为「核心字段 → 赛程 → 规则 → 主题 → 主办方组织」，任一步失败即停，
+   * 顺序固定为「核心字段 → 协议正文 → 赛程 → 规则 → 主题 → 主办方组织」，任一步失败即停，
    * 并把后端文案原样返回。不并发是因为后三步都会 `rulesVersion + 1` 并生成公告，
    * 并发提交会让版本号与公告顺序变得不可预期。
    */
@@ -168,6 +169,20 @@ export function SeasonDraftDialog({
         message: bundle?.message || '保存失败，请稍后重试',
         field: bundle?.field,
         code: bundle?.code,
+      }
+    }
+
+    // ---- 协议正文：只有真的改了才发 PUT（未发布赛季才可写） ----
+    if (values.agreementContent.trim() !== (target.agreementContent ?? '').trim()) {
+      const result = await updateSeasonAgreement(target.id, {
+        agreementContent: values.agreementContent.trim() || null,
+      })
+      if (result.error || !result.data) {
+        return {
+          ok: false,
+          message: result.error?.body.error.message || '协议正文保存失败，请稍后重试',
+          field: 'agreementContent',
+        }
       }
     }
 

@@ -66,6 +66,14 @@ _Avoid_：Season Rules（规则卡不是类型化配置）。
 规则卡中的一行。`key` 在赛季内唯一，`required` / `visible` / `sortOrder` 控制强制性与展示。
 _Avoid_：规则字段。
 
+**Season Agreement（赛季协议）**：
+报名者勾选确认的赛季约定，由协议版本（`agreement_version`）与协议正文（`agreement_content`，纯文本按空行分段）组成。正文与规则卡一起在 `/seasons/:id/agreement` 公开页展示；只有未发布赛季（`draft`，或已提交待批 `upcoming` 且 `approved_at` 为空）可由主办方修改。
+_Avoid_：规则卡（规则卡是可配置的规则条目，不是协议正文）、用户协议（平台级协议是另一回事）。
+
+**Season Agreement Content（协议正文）**：
+`seasons.agreement_content` 的整段文本，由主办方在创建赛季时录入、未发布前可改；不随规则卡自动生成，也不参与 `rules_version` 计数。
+_Avoid_：规则卡文案、公告正文。
+
 **Rules Version（规则版本）**：
 整数，赛季创建时为 1。赛程或规则变更时 +1，用于告知报名者规则已变化。
 _Avoid_：内容版本、乐观锁版本。
@@ -103,6 +111,15 @@ _Avoid_：申请、注册、报名表。
 **Application Status（报名状态）**：
 `submitted` / `accepted` / `pending` / `waitlisted` / `rejected` / `withdrawn`。非 `accepted` 之间可自由流转；`accepted` 为终态。审核前（`submitted`）本人可撤回为 `withdrawn`，窗口内可重新报名。
 _Avoid_：通过/拒绝（是操作，不是状态名）。
+
+**My Application State（我的报名状态）**：
+报名者在赛季卡片与详情页上看到的说法：未报名 / 审核中 / 候补中 / 已报名 / 已撤回 / 未通过。
+它是 Application Status 的展示口径，不是新的状态：`submitted` 与 `pending` 都说「审核中」，`accepted` 说「已报名」，`waitlisted` 说「候补中」，`rejected` 说「未通过」，`withdrawn` 说「已撤回」，没有报名记录是「未报名」。
+_Avoid_：把「审核中」「已报名」当成数据库状态。
+
+**Season Registration State（赛季报名状态）**：
+报名窗口的时间口径：未开放 / 报名中 / 报名已截止。只看报名开放与截止时间，不看赛季状态；赛季被暂停或取消要单独说明，不能改写报名窗口本身。
+_Avoid_：报名状态（裸用会与 Application Status 混淆）、开放中。
 
 **Application Review（报名审核）**：
 主办方或 Platform Admin 修改报名状态的动作，必须审计。拒绝时必须填写原因。

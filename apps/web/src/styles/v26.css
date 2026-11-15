@@ -541,6 +541,13 @@
   font-weight: 600;
 }
 
+/* 报名中才实心突出：未开放 / 已截止时同一枚胶囊保持浅色，不抢首屏视线。 */
+.v26 .v26-hero__badges .ui-chip.is-reg.is-open {
+  border-color: var(--v26-pink-solid);
+  background: var(--v26-pink-solid);
+  color: var(--v26-white);
+}
+
 .v26 .v26-hero__badges .ui-chip.is-type {
   border-color: color-mix(in srgb, var(--v26-white) 60%, transparent);
   background: color-mix(in srgb, var(--v26-white) 78%, transparent);
@@ -897,6 +904,12 @@
   display: none;
 }
 
+/* 报名状态不是「报名中」时，同一枚胶囊改成灰字：位置上仍然是白底票券，
+ * 但不再用粉色强调一个「现在就能报」的错觉。 */
+.v26 .v26-ticket__status.is-reg.is-off {
+  color: var(--v26-muted);
+}
+
 .v26 .v26-ticket__body {
   display: flex;
   flex: 1;
@@ -974,7 +987,6 @@
   align-items: flex-end;
   gap: 2cqw;
   margin-top: auto;
-  padding-right: 26cqw;
 }
 
 .v26 .v26-ticket__quota {
@@ -1027,26 +1039,39 @@
   flex: none;
 }
 
-.v26 .v26-ticket__cta {
-  position: absolute;
-  right: 5.55cqw;
-  bottom: 2.4cqw;
-  z-index: 3;
+/* CTA 与它的透明占位共用同一套盒模型：字号、内边距、边框、gap 一变，
+ * 两者一起变，占位宽度始终等于按钮宽度（见 `.v26-ticket__cta-spacer`）。 */
+.v26 .v26-ticket__cta,
+.v26 .v26-ticket__cta-spacer {
   display: inline-flex;
   min-height: 10.4cqw;
   flex: none;
   align-items: center;
   justify-content: center;
   gap: 1.6cqw;
-  border: 1.4px solid var(--boom-v26-ticket-cta-line);
+  border: 1.4px solid transparent;
   border-radius: 999px;
-  background: var(--boom-v26-ticket-cta-bg);
   padding: 0 3.4cqw;
-  color: var(--v26-ink-soft);
   font-size: 3.2cqw;
   font-weight: 700;
   line-height: 1;
   white-space: nowrap;
+}
+
+.v26 .v26-ticket__cta {
+  position: absolute;
+  right: 5.55cqw;
+  bottom: 2.4cqw;
+  z-index: 3;
+  border-color: var(--boom-v26-ticket-cta-line);
+  background: var(--boom-v26-ticket-cta-bg);
+  color: var(--v26-ink-soft);
+}
+
+/* 只占宽度、不画东西：让底部的报名进度条正好停在按钮左边缘，
+ * 按钮文案再长也不会压住进度条。 */
+.v26 .v26-ticket__cta-spacer {
+  visibility: hidden;
 }
 
 .v26 .v26-ticket:hover .v26-ticket__cta {
@@ -1530,6 +1555,48 @@
   border-top: 1px solid var(--v26-line);
   color: var(--v26-muted);
   font-size: 12px;
+}
+
+/* ---- 协议与规则卡（/seasons/:id/agreement） ---- */
+
+.v26 .v26-agreement-body {
+  display: grid;
+  gap: 14px;
+}
+
+.v26 .v26-agreement-body p {
+  margin: 0;
+  color: var(--v26-ink);
+  font-size: 14px;
+  line-height: 1.95;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.v26 .v26-agreement-rules {
+  margin-top: 24px;
+}
+
+.v26 .v26-agreement-rules__lead {
+  margin: -6px 0 16px;
+}
+
+.v26 .v26-agreement-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.v26 .v26-agreement-link {
+  color: var(--v26-pink-dark);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.v26 .v26-agreement-link:hover {
+  color: var(--v26-pink);
 }
 
 /* ---- 评审披露 / 敬请期待 ---- */
@@ -2754,7 +2821,8 @@
     -webkit-line-clamp: 1;
   }
 
-  .v26 .v26-ticket__cta {
+  .v26 .v26-ticket__cta,
+  .v26 .v26-ticket__cta-spacer {
     font-size: 2.7cqw;
   }
 }

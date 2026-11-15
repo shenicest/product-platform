@@ -1,7 +1,7 @@
 'use client'
 
 import { useId, useMemo, useState } from 'react'
-import { SEASON_RULE_LIMITS } from '@shenicest/shared'
+import { SEASON_AGREEMENT_CONTENT_MAX_LENGTH, SEASON_RULE_LIMITS } from '@shenicest/shared'
 import { Button } from '@/components/ui/button'
 import { ChipButton } from '@/components/ui/chip'
 import {
@@ -395,6 +395,23 @@ export function SeasonDraftForm({
           />
         </FormField>
       </div>
+
+      <FormField
+        label="协议正文"
+        htmlFor={id('agreement-content')}
+        error={errorOf('agreementContent')}
+        hint={`报名页「我已阅读并同意本赛季协议与规则卡」链接到的协议页正文；规则卡由下方规则自动生成。最多 ${SEASON_AGREEMENT_CONTENT_MAX_LENGTH} 字，按空行分段。`}
+      >
+        <TextArea
+          id={id('agreement-content')}
+          name="agreementContent"
+          value={value.agreementContent}
+          onChange={(next) => set('agreementContent', next)}
+          placeholder="例如：第一条 参赛资格……"
+          rows={8}
+          maxLength={SEASON_AGREEMENT_CONTENT_MAX_LENGTH}
+        />
+      </FormField>
 
       <fieldset className="grid gap-4">
         <legend className="ui-label mb-1">赛程（可稍后填写）</legend>

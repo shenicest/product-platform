@@ -19,6 +19,7 @@ import {
   canApproveSeason,
   canCancelSeason,
   canCreateAnnouncement,
+  canEditSeasonAgreement,
   canEditSeasonCore,
   canEditSeasonOrganizers,
   canEditSeasonRuleCard,
@@ -66,6 +67,7 @@ import { SeasonInfoPreview } from '@/components/organizer/season-settings/rule-c
 import { SeasonRulesDialog } from '@/components/organizer/season-settings/season-rules-dialog'
 import { SeasonCoreDialog } from '@/components/organizer/season-settings/season-core-dialog'
 import { SeasonScheduleDialog } from '@/components/organizer/season-settings/season-schedule-dialog'
+import { SeasonAgreementEditor } from '@/components/organizer/season-settings/season-agreement-editor'
 import {
   AnnouncementsSection,
   ReadinessSection,
@@ -135,6 +137,10 @@ export function SeasonSettingsView({
   const status = detail.status
   const approvedAt = detail.timestamps.approvedAt
   const pendingApproval = isPendingApproval(status, approvedAt)
+  const canEditAgreement = canEditSeasonAgreement(status, approvedAt)
+  // 公开协议页走 `getPublicDetail`：未批准 / 已取消的赛季会 404，所以不给入口。
+  const agreementPublicHref =
+    approvedAt && status !== SeasonStatus.Cancelled ? `/seasons/${detail.id}/agreement` : null
 
   /** 统一的写操作执行器：pending 标记 + 错误落位 + 成功后刷新。 */
   async function runAction(
@@ -338,6 +344,15 @@ export function SeasonSettingsView({
             改赛程
           </Button>
         }
+      />
+
+      {/* ---- 协议正文：公开协议页的正文，规则卡在下面单独编辑 ---------------- */}
+      <SeasonAgreementEditor
+        seasonId={detail.id}
+        agreementVersion={detail.agreementVersion}
+        content={detail.agreementContent}
+        canEdit={canEditAgreement}
+        publicHref={agreementPublicHref}
       />
 
       {/* ---- 规则卡编辑 + 预览（共享同一份草稿） --------------------------- */}

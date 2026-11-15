@@ -1,4 +1,5 @@
 import { getFeaturedProjects, getLiveProjects } from '@/server/projects'
+import type { Metadata } from 'next'
 import { ProjectCard } from '@/components/project-card'
 import { FilterBar } from '@/components/filter-bar'
 import { Pagination } from '@/components/pagination'
@@ -15,6 +16,14 @@ import {
 import { PublicInteractionBoundary } from '@/components/public-interaction-boundary'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * 首页的标题、描述、OG 图都由根布局给出，这里只补 `canonical`。
+ * 列表的筛选参数（category / sort / q）不参与 canonical —— 同一批内容不重复收录。
+ */
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+}
 
 export default async function HomePage(props: PageProps<'/'>) {
   const searchParams = await props.searchParams

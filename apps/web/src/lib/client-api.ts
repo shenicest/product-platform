@@ -253,3 +253,51 @@ export function getMyProjectConnection(projectId: number) { return request<MyPro
 export function saveFeaturedProjects(projectIds: number[]) {
   return request<{ data: Array<ProjectData & { sortOrder: number }>; total: number }>('PUT', '/operator/featured-projects', { projectIds })
 }
+
+// ---------------------------------------------------------------------------
+// 公告（收件箱）
+// ---------------------------------------------------------------------------
+
+export interface AnnouncementSummaryData {
+  unreadCount: number
+  /** null = 从未点过「全部已读」，全部可见公告都算未读。 */
+  lastReadAt: string | null
+}
+
+export interface AnnouncementData {
+  id: number
+  type: string
+  level: 'info' | 'success' | 'warning'
+  title: string
+  content: string
+  linkPath: string | null
+  seasonId: number | null
+  publishedAt: string
+  isRead: boolean
+}
+
+export interface AnnouncementListData {
+  items: AnnouncementData[]
+  nextCursor: string | null
+  unreadCount: number
+}
+
+export function getAnnouncementSummary() {
+  return request<AnnouncementSummaryData>('GET', '/me/announcements/summary')
+}
+
+export function getAnnouncements(
+  query: { limit?: number; cursor?: string; unreadOnly?: boolean } = {},
+) {
+  const params = new URLSearchParams()
+  if (query.limit) params.set('limit', String(query.limit))
+  if (query.cursor) params.set('cursor', query.cursor)
+  if (query.unreadOnly) params.set('unreadOnly', 'true')
+  const suffix = params.size ? `?${params.toString()}` : ''
+  return request<AnnouncementListData>('GET', `/me/announcements${suffix}`)
+}
+
+/** 一键已读：服务端把读水位线推到「此刻」，不接受逐条已读。 */
+export function markAllAnnouncementsRead() {
+  return request<{ lastReadAt: string; unreadCount: 0 }>('POST', '/me/announcements/read-all')
+}

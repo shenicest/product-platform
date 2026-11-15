@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ChipButton } from '@/components/ui/chip'
@@ -269,7 +270,15 @@ export function SeasonApplicationForm({ season }: { season: SeasonDetail }) {
               checked={agreed}
               onChange={setAgreed}
             >
-              我已阅读并同意本赛季协议（{season.agreementVersion}）与规则卡
+              我已阅读并同意
+              <Link
+                href={`/seasons/${season.id}/agreement`}
+                target="_blank"
+                rel="noreferrer"
+                className="v26-agreement-link"
+              >
+                本赛季协议（{season.agreementVersion}）与规则卡
+              </Link>
             </CheckboxInput>
           </div>
         </div>

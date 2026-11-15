@@ -214,7 +214,7 @@ export function SeasonCoreDialog({
             </h2>
             <p className="mt-2 text-body-sm text-muted-foreground">
               赛季编号 <span className="font-mono">{detail.code}</span> 创建后不可修改；
-              类型化规则与规则卡在各自的区块里改。
+              协议正文、类型化规则与规则卡在各自的区块里改。
             </p>
           </div>
           <button

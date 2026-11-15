@@ -1,4 +1,5 @@
 import {
+  SEASON_AGREEMENT_CONTENT_MAX_LENGTH,
   SEASON_RULE_DEFAULTS,
   SEASON_RULE_LIMITS,
   type SeasonRules,
@@ -60,6 +61,8 @@ export type SeasonManageDetail = SeasonSummary & {
   rulesVersion: number
   awardingEntity: string | null
   agreementVersion: string
+  /** 协议正文（纯文本）；未填写时后端返回 null。 */
+  agreementContent: string | null
   startedAt: string | null
   applicationWindow: { opensAt: string | null; closesAt: string | null; isOpen: boolean }
   rules: SeasonRules
@@ -98,6 +101,8 @@ export type SeasonDraftValues = {
   intro: string
   themes: string[]
   agreementVersion: string
+  /** 协议正文草稿；空串 = 还没填，提交时转成 null。 */
+  agreementContent: string
   awardingEntity: string
   /** 空串表示不限名额。 */
   participantCapacity: string
@@ -225,6 +230,7 @@ export type CreateSeasonPayload = {
   intro: string | null
   themes: string[]
   agreementVersion: string
+  agreementContent: string | null
   awardingEntity: string | null
   participantCapacity: number | null
   organizerOrgIds: number[]
@@ -267,6 +273,9 @@ export function validateSeasonDraft(
 
   if (values.agreementVersion.trim().length > 32) {
     errors.agreementVersion = '协议版本最多 32 个字符'
+  }
+  if (values.agreementContent.length > SEASON_AGREEMENT_CONTENT_MAX_LENGTH) {
+    errors.agreementContent = `协议正文最多 ${SEASON_AGREEMENT_CONTENT_MAX_LENGTH} 个字符`
   }
 
   const capacity = values.participantCapacity.trim()
@@ -402,6 +411,7 @@ export function toCreateSeasonPayload(values: SeasonDraftValues): CreateSeasonPa
     intro: values.intro.trim() || null,
     themes: values.themes,
     agreementVersion: values.agreementVersion.trim() || 'v1',
+    agreementContent: values.agreementContent.trim() || null,
     awardingEntity: values.awardingEntity.trim() || null,
     participantCapacity: capacity ? Number(capacity) : null,
     organizerOrgIds: values.organizerOrgIds,
@@ -445,6 +455,7 @@ export function emptySeasonDraft(
     intro: '',
     themes: [],
     agreementVersion: 'v1',
+    agreementContent: '',
     awardingEntity: '',
     participantCapacity: '',
     organizerOrgIds,
@@ -476,6 +487,7 @@ export function draftFromSeason(
     intro: season.intro ?? '',
     themes: [...season.themes],
     agreementVersion: season.agreementVersion,
+    agreementContent: season.agreementContent ?? '',
     awardingEntity: season.awardingEntity ?? '',
     participantCapacity: season.participantCapacity === null ? '' : String(season.participantCapacity),
     organizerOrgIds: [...season.organizerOrgIds],

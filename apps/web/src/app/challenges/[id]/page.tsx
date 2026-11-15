@@ -12,19 +12,14 @@ import { ChallengeRightsPanel } from '@/components/challenge/challenge-rights-pa
 import { ChallengeScoringPanel } from '@/components/challenge/challenge-scoring-panel'
 import { EmptyState } from '@/components/ui/surface'
 import { getChallengeDetail } from '@/server/challenge-detail'
+import { NO_INDEX_ROBOTS, pageMetadata } from '@/lib/site-metadata'
 
 export const dynamic = 'force-dynamic'
-
-const DESCRIPTION_MAX_LENGTH = 150
 
 function parseChallengeId(raw: string): number | null {
   if (!/^\d{1,10}$/.test(raw)) return null
   const id = Number(raw)
   return Number.isSafeInteger(id) && id > 0 ? id : null
-}
-
-function truncate(text: string, maxLength: number): string {
-  return text.length <= maxLength ? text : `${text.slice(0, maxLength - 1)}…`
 }
 
 /**
@@ -47,24 +42,15 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { id } = await props.params
   const result = await loadChallenge(id)
-  if (result.status !== 'ok') return { title: '命题不可用' }
+  if (result.status !== 'ok') return { title: '命题不可用', robots: NO_INDEX_ROBOTS }
 
   const { challenge } = result
-  const description = challenge.summary
-    ? truncate(challenge.summary, DESCRIPTION_MAX_LENGTH)
-    : challenge.realProblem
-      ? truncate(challenge.realProblem, DESCRIPTION_MAX_LENGTH)
-      : undefined
-
-  return {
+  return pageMetadata({
     title: challenge.title || '命题',
-    description,
-    openGraph: {
-      title: challenge.title || '命题',
-      description,
-      type: 'article',
-    },
-  }
+    description: challenge.summary || challenge.realProblem,
+    path: `/challenges/${challenge.id}`,
+    type: 'article',
+  })
 }
 
 export default async function ChallengeDetailPage(props: PageProps<'/challenges/[id]'>) {

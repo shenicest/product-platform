@@ -4,6 +4,14 @@ import './globals.css'
 import { AuthProvider } from '@/components/auth-provider'
 import { MockUserSwitcher } from '@/components/dev/mock-user-switcher'
 import { LayoutChrome } from '@/components/layout-chrome'
+import {
+  DEFAULT_SHARE_IMAGE,
+  SITE_DESCRIPTION,
+  SITE_LOCALE,
+  SITE_NAME,
+  SITE_TITLE,
+  resolveSiteUrl,
+} from '@/lib/site-metadata'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 
 const harmony = localFont({
@@ -35,21 +43,36 @@ const dseg7 = localFont({
   adjustFontFallback: false,
 })
 
+/**
+ * 站点级元数据只负责「默认值 + 模板」：标题模板、语言、默认描述、默认分享图。
+ *
+ * 页面级的 `openGraph` / `twitter` 一律由 `lib/site-metadata.ts` 的 `pageMetadata()`
+ * 整体给出 —— Next 的合并是浅合并，子页面声明了 `openGraph` 就会整体替换这里，
+ * 所以不要把「图片」「站点名」当成会被继承的公共字段来用。
+ */
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL ??
-      process.env.SHENICEST_WEB_BASE_URL ??
-      'http://localhost:3000',
-  ),
+  metadataBase: resolveSiteUrl(),
+  applicationName: SITE_NAME,
   title: {
-    default: 'Shenicest · 让好产品自然生长',
-    template: '%s · Shenicest',
+    default: SITE_TITLE,
+    template: `%s · ${SITE_NAME}`,
   },
-  description: '发现、关注并支持正在被打造的早期产品。新产品，新世界。',
+  description: SITE_DESCRIPTION,
   openGraph: {
-    title: 'Shenicest · 让好产品自然生长',
-    description: '发现、关注并支持正在被打造的早期产品。',
-    images: [{ url: '/brand/og-boomland.jpg', width: 1200, height: 630 }],
+    // 首页卡片：分享出去是「Shenicest · 让好产品自然生长」+ 品牌图。
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: '/',
+    siteName: SITE_NAME,
+    locale: SITE_LOCALE,
+    type: 'website',
+    images: [DEFAULT_SHARE_IMAGE],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: [DEFAULT_SHARE_IMAGE.url],
   },
 }
 

@@ -75,11 +75,6 @@ function TicketCard({ card }: { card: SeasonCardView }) {
       ? Math.min(100, Math.round((card.participantCount / card.participantCapacity) * 100))
       : 0
 
-  // 未开始的赛季直接给报名入口；其余状态进详情页。
-  const cta = card.upcoming
-    ? { label: '立即报名', href: `/seasons/${card.id}/apply` }
-    : { label: '查看赛季', href: card.href }
-
   return (
     <article className="v26-ticket">
       {/* 通栏详情链接铺在卡片上，CTA 以更高层级浮在右下角，避免嵌套 <a>。 */}
@@ -106,6 +101,15 @@ function TicketCard({ card }: { card: SeasonCardView }) {
               <span className={`v26-ticket__status is-${card.statusTone}`}>
                 {card.ticketStatusLabel}
               </span>
+              {/* 报名状态（未开放 / 报名中 / 报名已截止）与赛季状态分开表达：
+                  赛季「进行中」不代表还能报名，反过来也一样。 */}
+              <span
+                className={`v26-ticket__status is-reg${
+                  card.registrationOpen ? '' : ' is-off'
+                }`}
+              >
+                {card.registrationLabel}
+              </span>
             </span>
           </span>
 
@@ -124,34 +128,50 @@ function TicketCard({ card }: { card: SeasonCardView }) {
               {card.dateRange}
             </span>
 
-            <span className="v26-ticket__foot">
-              <span className="v26-ticket__quota">
-                <span className="v26-ticket__quota-label">
-                  <span>已通过 {card.participantCount}</span>
-                  <span>
-                    {card.participantCapacity === null
-                      ? '不限名额'
-                      : `共 ${capacityLabel} 个名额`}
+            {/* 名额与报名进度只在报名中展示：窗口没开或已经截止时，这两个
+                数字既不构成「还能报」的信息，也没有进度可言。 */}
+            {card.registrationOpen ? (
+              <span className="v26-ticket__foot">
+                <span className="v26-ticket__quota">
+                  <span className="v26-ticket__quota-label">
+                    <span>已通过 {card.participantCount}</span>
+                    <span>
+                      {card.participantCapacity === null
+                        ? '不限名额'
+                        : `共 ${capacityLabel} 个名额`}
+                    </span>
+                  </span>
+                  <span className="v26-ticket__track" aria-hidden>
+                    <i style={{ width: `${percent}%` }} />
                   </span>
                 </span>
-                <span className="v26-ticket__track" aria-hidden>
-                  <i style={{ width: `${percent}%` }} />
-                </span>
+                {/* 右下角票券 CTA 的透明占位：与按钮同字号、同内边距，所以
+                    宽度完全一致。进度条到此为止，按钮文案再长也不会压住它。 */}
+                {card.ctaLabel ? (
+                  <span className="v26-ticket__cta-spacer" aria-hidden>
+                    {card.ctaLabel} <span aria-hidden>→</span>
+                  </span>
+                ) : null}
               </span>
-            </span>
+            ) : null}
           </span>
         </span>
       </span>
 
       <span className="v26-ticket__frame" aria-hidden />
 
-      <Link
-        href={cta.href}
-        className="v26-ticket__cta"
-        aria-label={`${cta.label}：${card.name}`}
-      >
-        {cta.label} <span aria-hidden>→</span>
-      </Link>
+      {/* CTA 只在报名中才出现：文案按我的报名状态区分（立即报名 / 报名审核中 /
+          候补中 / 查看我的报名 / 重新报名 / 查看未通过原因）。其余报名状态的
+          赛季整卡仍是详情入口，但不给一个点了没用的按钮。 */}
+      {card.ctaHref && card.ctaLabel ? (
+        <Link
+          href={card.ctaHref}
+          className="v26-ticket__cta"
+          aria-label={`${card.ctaLabel}：${card.name}`}
+        >
+          {card.ctaLabel} <span aria-hidden>→</span>
+        </Link>
+      ) : null}
     </article>
   )
 }
@@ -190,8 +210,11 @@ export function SeasonLanding({ cards }: { cards: SeasonCardView[] }) {
         <div className="v26-hero__body">
           <div className="v26-hero__badges">
             <span className="ui-chip is-status">{event.statusLabel}</span>
-            {event.registrationLabel ? (
-              <span className="ui-chip is-reg">{event.registrationLabel}</span>
+            <span className={`ui-chip is-reg${event.registrationOpen ? ' is-open' : ''}`}>
+              {event.registrationLabel}
+            </span>
+            {event.applicationLabel ? (
+              <span className="ui-chip">{event.applicationLabel}</span>
             ) : null}
             <span className="ui-chip is-type">{event.typeLabel}</span>
             <span className="v26-hero__org">{event.organizer}</span>

@@ -51,7 +51,8 @@ bun run test:api           # 仅后端测试
 bun run test:web           # 仅前端测试
 bun run seed               # 初始化种子数据（展示平台：项目 / 人才）
 bun run seed:season        # 初始化 BoomLand 演示数据（火热赛季：赛季 / 命题 / 报名 / 积分池）
-bun run seed:all           # 以上两个都跑
+bun run seed:announcements # 初始化公告中心演示数据（全局 + 按 mock 用户的专属公告，可重复执行）
+bun run seed:all           # 以上三个都跑
 ```
 
 drizzle-kit 命令需在 `apps/api` 目录下执行：

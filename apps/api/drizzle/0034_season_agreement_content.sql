@@ -1,0 +1,1 @@
+ALTER TABLE `seasons` ADD `agreement_content` text;

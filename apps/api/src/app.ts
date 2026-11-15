@@ -22,6 +22,7 @@ import { challengeModule } from './modules/challenge'
 import { seasonConfigModule } from './modules/season-config'
 import { seasonApplicationModule } from './modules/season-application'
 import { seasonTeamModule } from './modules/season-team'
+import { announcementModule } from './modules/announcement'
 import { isMockAuthEnabled } from './mock'
 import { env } from './lib/env'
 import { mockModule } from './modules/mock'
@@ -53,6 +54,7 @@ export const app = new Elysia()
         { name: 'Operator', description: 'Operator review actions, management lists, audit records, and platform statistics' },
         { name: 'Upload', description: 'Pre-signed COS image upload for project assets' },
         { name: 'Talent', description: 'Talent Plaza profiles, discovery, matching, and connection requests' },
+        { name: 'Announcement', description: 'Per-user announcement inbox: global and targeted notices, unread count, one-click read' },
       ],
       security: [{ bearerAuth: [] }],
       components: {
@@ -98,6 +100,7 @@ export const app = new Elysia()
   .use(seasonConfigModule)
   .use(seasonApplicationModule)
   .use(seasonTeamModule)
+  .use(announcementModule)
   .use(localMockModule)
   .get('/health', () => ({ status: 'ok' as const, env: env('NODE_ENV') }), {
     detail: {

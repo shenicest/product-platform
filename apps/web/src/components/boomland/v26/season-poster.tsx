@@ -1,12 +1,17 @@
 import Link from 'next/link'
+import { SeasonStatus } from '@shenicest/shared'
 import {
   applicationWindowReason,
-  formatMilestoneDate,
+  myApplicationMeta,
   nextMilestone,
   type MySeasonApplication,
   type SeasonDetail,
 } from '@/lib/boomland'
 import { dateRangeLabel, isoDate, seasonOrganizerLabel, seasonStatusView } from '@/lib/season-landing'
+import {
+  seasonApplicationCta,
+  seasonRegistration,
+} from '@/lib/season-registration'
 
 function CalendarIcon() {
   return (
@@ -34,9 +39,15 @@ function countdown(season: SeasonDetail): { label: string; at: string; value: st
 /**
  * 赛季详情页海报（设计稿 `.season-state-hero`）。
  *
- * 左边是「状态 / 报名 / 主办方 / 城市」徽章 + 双行字标 + 主题 + 报名/活动时间窗，
- * 右边是拼贴画；右下角一枚票券 CTA。CTA 的四种状态（报名 / 已报名 / 未开放 /
- * 已截止）沿用原来的判定，不新增业务逻辑。
+ * 徽章区同时表达三件事，缺一个用户就会误判自己能不能报名：
+ *   · 赛季状态（即将开始 / 进行中 / 已暂停 / 已取消）；
+ *   · 报名状态（未开放 / 报名中 / 报名已截止）—— 只看报名窗口；
+ *   · 我的报名状态（审核中 / 候补中 / 已报名 / 已撤回 / 未通过）—— 只看我的记录。
+ *
+ * 右下角票券 CTA 的文案由 `seasonApplicationCta()` 统一给出：
+ * 未报名 → 立即报名；审核中 → 报名审核中；候补中 → 候补中；
+ * 已报名 → 查看我的报名；已撤回 → 重新报名；未通过 → 查看未通过原因。
+ * 窗口没开 / 已截止 / 赛季暂停时，同一个位置渲染禁用票券。
  */
 export function SeasonPoster({
   season,
@@ -48,43 +59,35 @@ export function SeasonPoster({
   isLoggedIn: boolean
 }) {
   const status = seasonStatusView(season.status)
+  const registration = seasonRegistration(season)
+  const applicationStatus = myApplication?.application.status ?? null
+  const application = applicationStatus ? myApplicationMeta(applicationStatus) : null
+  const cta = seasonApplicationCta({
+    seasonId: season.id,
+    seasonStatus: season.status,
+    isLoggedIn,
+    registration,
+    applicationStatus,
+  })
   const reason = applicationWindowReason(season)
-  const applied = Boolean(myApplication && myApplication.application.status !== 'withdrawn')
-  const opensLater = Boolean(reason?.startsWith('报名将于'))
+  // 报名状态胶囊已经说了「未开放 / 报名中 / 报名已截止」，这里只补赛季层面的
+  // 例外情况（暂停 / 取消），否则同一句话会在徽章区出现两次。
+  const seasonReason =
+    season.status === SeasonStatus.Suspended || season.status === SeasonStatus.Cancelled
+      ? reason
+      : null
   const displayName = season.name.replace(/^boomland\s*/i, '').trim() || season.name
   const organizer = seasonOrganizerLabel(season)
   const count = countdown(season)
-
-  let cta:
-    | { label: string; href: string; disabled?: false }
-    | { label: string; href?: undefined; disabled: true }
-
-  if (applied) {
-    cta = { label: '查看我的报名', href: '/me/applications' }
-  } else if (season.applicationWindow.isOpen) {
-    cta = {
-      label: isLoggedIn ? '立即报名' : '登录后报名',
-      href: isLoggedIn
-        ? `/seasons/${season.id}/apply`
-        : `/login?returnTo=/seasons/${season.id}/apply`,
-    }
-  } else if (opensLater || season.status === 'upcoming' || season.status === 'draft') {
-    cta = {
-      label: season.applicationWindow.opensAt
-        ? `报名 ${formatMilestoneDate(season.applicationWindow.opensAt)} 开放`
-        : '报名时间待公布',
-      disabled: true,
-    }
-  } else {
-    cta = { label: '报名已截止', disabled: true }
-  }
 
   return (
     <section className="v26-season-hero" aria-labelledby={`season-title-${season.id}`}>
       <div className="v26-season-hero__copy">
         <div className="v26-season-hero__badges">
           <span className="ui-chip ui-chip--accent">{status.label}</span>
-          {reason ? <span className="ui-chip">{reason}</span> : null}
+          <span className="ui-chip">{registration.label}</span>
+          {application ? <span className="ui-chip">{application.label}</span> : null}
+          {seasonReason ? <span className="ui-chip">{seasonReason}</span> : null}
           <span className="ui-chip">{organizer}</span>
           {season.city ? <span className="ui-chip">{season.city}</span> : null}
         </div>
@@ -124,7 +127,7 @@ export function SeasonPoster({
       </div>
 
       <div className="v26-season-hero__actions">
-        {'href' in cta && cta.href ? (
+        {cta.href ? (
           <Link href={cta.href} className="v26-ticket-cta">
             {cta.label} <span aria-hidden>→</span>
           </Link>

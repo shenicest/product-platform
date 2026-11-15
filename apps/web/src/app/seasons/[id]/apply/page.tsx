@@ -73,7 +73,9 @@ export default async function SeasonApplyPage(props: PageProps<'/seasons/[id]/ap
         {alreadyApplied ? (
           <section className="v26-form-panel" aria-labelledby="already-applied-title">
             <h2 id="already-applied-title" className="v26-form-panel__title">
-              你已提交过报名
+              {myApplication.application.status === 'accepted'
+                ? '你已报名本赛季'
+                : '你已提交过报名'}
             </h2>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10 }}>
               <ApplicationStatusBadge status={myApplication.application.status} />
@@ -82,10 +84,13 @@ export default async function SeasonApplyPage(props: PageProps<'/seasons/[id]/ap
               </span>
             </div>
             <p className="v26-muted" style={{ marginTop: 14, fontSize: 13 }}>
-              无需重复报名，可以在「我的报名」查看审核进度
-              {myApplication.application.status === 'withdrawn'
-                ? '；该报名已撤回，可在下方重新提交。'
-                : '。'}
+              {myApplication.application.status === 'rejected'
+                ? '本次报名未通过，可以在「我的报名」查看未通过原因。'
+                : myApplication.application.status === 'waitlisted'
+                  ? '名额已满，你的报名在候补队列里；可以在「我的报名」查看最新进度。'
+                  : myApplication.application.status === 'accepted'
+                    ? '你已成为本赛季选手，后续组队与开赛通知以站内与微信群为准。'
+                    : '无需重复报名，可以在「我的报名」查看审核进度。'}
             </p>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 22 }}>
               <ButtonLink href="/me/applications" variant="secondary">

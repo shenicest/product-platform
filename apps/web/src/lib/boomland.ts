@@ -42,6 +42,8 @@ export type SeasonDetail = SeasonSummary & {
   rulesVersion: number
   awardingEntity: string | null
   agreementVersion: string
+  /** 协议正文（纯文本，按空行分段）；未填写时为 null。 */
+  agreementContent: string | null
   startedAt: string | null
   applicationWindow: {
     opensAt: string | null
@@ -130,14 +132,72 @@ export function seasonTypeLabel(type: string): string {
   return type === SeasonType.Hackathon ? '黑客松' : '赛季'
 }
 
-const APPLICATION_STATUS_META: Record<string, { label: string; tone: ChipTone }> = {
-  [SeasonApplicationStatus.Submitted]: { label: '已提交', tone: 'sky' },
-  [SeasonApplicationStatus.Accepted]: { label: '已通过', tone: 'success' },
-  [SeasonApplicationStatus.Pending]: { label: '待定', tone: 'warning' },
-  [SeasonApplicationStatus.Waitlisted]: { label: '候补', tone: 'warning' },
-  [SeasonApplicationStatus.Rejected]: { label: '未通过', tone: 'danger' },
-  [SeasonApplicationStatus.Withdrawn]: { label: '已撤回', tone: 'neutral' },
+/**
+ * 用户视角的报名状态。
+ *
+ * 后端有 6 个原始状态，用户只关心 6 种说法：未报名 / 审核中 / 候补中 /
+ * 已报名 / 已撤回 / 未通过。其中 `submitted`（已提交）与 `pending`（待定）
+ * 对报名者而言是同一件事 —— 都在等主办方给结论，所以合并成「审核中」；
+ * 分开写只会让人以为自己漏看了什么。
+ */
+export type MyApplicationState =
+  | 'none'
+  | 'reviewing'
+  | 'waitlisted'
+  | 'accepted'
+  | 'withdrawn'
+  | 'rejected'
+
+const APPLICATION_STATE_BY_STATUS: Record<string, MyApplicationState> = {
+  [SeasonApplicationStatus.Submitted]: 'reviewing',
+  [SeasonApplicationStatus.Pending]: 'reviewing',
+  [SeasonApplicationStatus.Waitlisted]: 'waitlisted',
+  [SeasonApplicationStatus.Accepted]: 'accepted',
+  [SeasonApplicationStatus.Withdrawn]: 'withdrawn',
+  [SeasonApplicationStatus.Rejected]: 'rejected',
 }
+
+const MY_APPLICATION_STATE_META: Record<
+  MyApplicationState,
+  { label: string; tone: ChipTone; ctaLabel: string }
+> = {
+  none: { label: '未报名', tone: 'neutral', ctaLabel: '立即报名' },
+  reviewing: { label: '审核中', tone: 'sky', ctaLabel: '报名审核中' },
+  waitlisted: { label: '候补中', tone: 'warning', ctaLabel: '候补中' },
+  accepted: { label: '已报名', tone: 'success', ctaLabel: '查看我的报名' },
+  withdrawn: { label: '已撤回', tone: 'neutral', ctaLabel: '重新报名' },
+  rejected: { label: '未通过', tone: 'danger', ctaLabel: '查看未通过原因' },
+}
+
+/** 原始状态 → 用户视角状态；没有报名（或未知状态）一律是「未报名」。 */
+export function myApplicationState(status?: string | null): MyApplicationState {
+  if (!status) return 'none'
+  return APPLICATION_STATE_BY_STATUS[status] ?? 'none'
+}
+
+/** 用户视角状态的文案 / 色调 / CTA 文案。 */
+export function myApplicationStateMeta(state: MyApplicationState) {
+  return MY_APPLICATION_STATE_META[state]
+}
+
+/** 直接按原始状态取用户视角文案（卡片、海报、表格共用一份）。 */
+export function myApplicationMeta(status?: string | null) {
+  return MY_APPLICATION_STATE_META[myApplicationState(status)]
+}
+
+/**
+ * 审核状态徽章。
+ *
+ * 与 `myApplicationStateMeta()` 同源：表格里的「审核状态」列、详情页的状态
+ * 胶囊、卡片的报名状态都必须说同一句话，所以这里不另立一张表。
+ */
+const APPLICATION_STATUS_META: Record<string, { label: string; tone: ChipTone }> =
+  Object.fromEntries(
+    Object.entries(APPLICATION_STATE_BY_STATUS).map(([status, state]) => {
+      const { label, tone } = MY_APPLICATION_STATE_META[state]
+      return [status, { label, tone }]
+    }),
+  )
 
 export function applicationStatusMeta(status: string) {
   return APPLICATION_STATUS_META[status] ?? { label: status, tone: 'neutral' as const }
