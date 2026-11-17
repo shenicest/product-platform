@@ -20,6 +20,9 @@ const NAV_ITEMS = [
   { href: '/operator/proposals', label: '提案' },
   { href: '/operator/audit-records', label: '审计' },
   { href: '/operator/talents', label: '人才' },
+  // BoomLand 的平台后台是另一个 console（准入、tab、数据源都不同），
+  // 两个后台之间给一条互链，省得管理员每次都要回菜单再进。
+  { href: '/operator/boomland/seasons', label: 'BoomLand 平台后台' },
 ]
 
 export default async function OperatorLayout({

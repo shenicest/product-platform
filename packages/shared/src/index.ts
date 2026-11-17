@@ -970,6 +970,13 @@ export const CHALLENGE_CARD_LIMITS = {
   singleWorkCap: { min: 1, max: 10_000 },
   /** 权益条款单条上限。 */
   rights: { max: 2000 },
+  /**
+   * 五件套正文（真实问题 / 目标客户 / 最小交付物 / 资源投入 / 结果证据规则）单条上限。
+   *
+   * 与后端 `ChallengeTextField` 的 `maxLength: 20000` 一致：这几个字段是
+   * 「发布门槛」，主办方常在这里贴长段验收口径，放宽到与 DB `text` 列相称。
+   */
+  fivePieceText: { max: 20_000 },
 } as const
 
 /**

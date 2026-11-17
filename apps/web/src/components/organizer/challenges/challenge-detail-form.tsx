@@ -31,14 +31,16 @@ import {
 import { updateChallenge } from '@/lib/organizer-challenges-api'
 
 /**
- * 命题详情表单（命题卡内容 / 评分与奖励 / 公开与权益）。
+ * 命题详情表单（命题卡内容 / 评分与奖励 / 公开与权益 / 交付物与结果证据）。
  *
- * 三段与公开命题详情页的 tab 一一对应，方便主办方对照「选手会看到什么」：
+ * 前三段与公开命题详情页的 tab 一一对应，方便主办方对照「选手会看到什么」：
  *   01 命题卡内容 → 02 评分与奖励 → 03 公开与权益。
+ * 04 承载五件套里之前没有录入入口的两项（最小交付物 / 结果证据规则）。
  *
  * 几个刻意的取舍：
- *   · **没有必填项**：契约 §1.1 说这些字段都不进发布门槛（发布仍只看五件套），
- *     所以表单允许只填一半就保存 —— 详情是「逐步补全」的信息，不是门槛；
+ *   · **保存没有必填项**：契约 §1.1 说详情字段都不进发布门槛；04 的两项虽然是
+ *     发布门槛（五件套），但表单仍允许留空保存 —— 草稿阶段就逼着填满，等于把
+ *     「先记一半」这个动作堵死，发布按钮会按五件套状态说明还缺什么；
  *   · **权重用字符串**：输入框要保留「12 打了一半」的中间态；空串 = 该维 0；
  *     五维全空 = 未配置（保存时落 null，按等权），不伪造一份默认权重；
  *   · **合计 ≠ 100 时禁用保存**：后端会 400（`scoringWeights` 合计必须 100），
@@ -395,6 +397,46 @@ export function ChallengeDetailForm({
             />
           </FormField>
         ))}
+      </fieldset>
+
+      {/* ---------------- 04 交付物与结果证据 ---------------- */}
+      <fieldset className="grid gap-4 border-t border-border pt-6">
+        <legend className="eyebrow eyebrow--accent">04 交付物与结果证据</legend>
+        <p className="text-body-sm text-muted-foreground">
+          这两项属于五件套：发布前必须填写，保存时不受限（可以先存一半，发布按钮会按五件套状态提示还缺什么）。
+        </p>
+
+        <FormField
+          label="最小交付物"
+          htmlFor={id('minimumDeliverable')}
+          error={errorOf('minimumDeliverable')}
+          hint={`选手一个月内至少能拿到什么，写具体产物而不是目标；最多 ${CHALLENGE_CARD_LIMITS.fivePieceText.max} 字`}
+        >
+          <TextArea
+            id={id('minimumDeliverable')}
+            name="minimumDeliverable"
+            value={values.minimumDeliverable}
+            onChange={(next) => set('minimumDeliverable', next)}
+            rows={3}
+            maxLength={CHALLENGE_CARD_LIMITS.fivePieceText.max}
+          />
+        </FormField>
+
+        <FormField
+          label="结果证据规则"
+          htmlFor={id('resultEvidenceRules')}
+          error={errorOf('resultEvidenceRules')}
+          hint={`验收时用哪几级证据（R0—R6）判断结果，写清可复核的口径；最多 ${CHALLENGE_CARD_LIMITS.fivePieceText.max} 字`}
+        >
+          <TextArea
+            id={id('resultEvidenceRules')}
+            name="resultEvidenceRules"
+            value={values.resultEvidenceRules}
+            onChange={(next) => set('resultEvidenceRules', next)}
+            rows={3}
+            maxLength={CHALLENGE_CARD_LIMITS.fivePieceText.max}
+          />
+        </FormField>
       </fieldset>
 
       {/* ---------------- 变更说明 + 提交 ---------------- */}

@@ -748,6 +748,8 @@ describe('emptyChallengeDetailDraft', () => {
   it('starts with every text field empty and no weights configured', () => {
     const values = emptyChallengeDetailDraft()
     expect(values.summary).toBe('')
+    expect(values.minimumDeliverable).toBe('')
+    expect(values.resultEvidenceRules).toBe('')
     expect(values.suggestedSkills).toBe('')
     expect(values.teamCapacity).toBe('')
     expect(values.singleWorkCap).toBe('')
@@ -782,6 +784,8 @@ describe('challengeDetailDraftFromRow', () => {
       scope: '范围',
       outOfScope: '不做什么',
       monthlyGoal: '一个月成果',
+      minimumDeliverable: '一套可跑通的策略 + 告警面板',
+      resultEvidenceRules: 'R3：连续运行 14 天并出具业主确认',
       suggestedSkills: ['储能系统', '数据分析'],
       teamCapacity: 6,
       ownerName: '王工',
@@ -798,6 +802,8 @@ describe('challengeDetailDraftFromRow', () => {
     })
 
     expect(values.summary).toBe('谁会为储能柜付第一笔钱？')
+    expect(values.minimumDeliverable).toBe('一套可跑通的策略 + 告警面板')
+    expect(values.resultEvidenceRules).toBe('R3：连续运行 14 天并出具业主确认')
     expect(values.suggestedSkills).toBe('储能系统、数据分析')
     expect(values.teamCapacity).toBe('6')
     expect(values.singleWorkCap).toBe('300')
@@ -809,18 +815,24 @@ describe('challengeDetailDraftFromRow', () => {
   it('treats a missing / null backend payload as 未填写 instead of crashing', () => {
     const values = challengeDetailDraftFromRow({})
     expect(values.summary).toBe('')
+    expect(values.minimumDeliverable).toBe('')
+    expect(values.resultEvidenceRules).toBe('')
     expect(values.suggestedSkills).toBe('')
     expect(values.teamCapacity).toBe('')
     expect(values.weights).toEqual(emptyScoringWeights())
 
     const nulls = challengeDetailDraftFromRow({
       summary: null,
+      minimumDeliverable: null,
+      resultEvidenceRules: null,
       suggestedSkills: [],
       teamCapacity: null,
       scoringWeights: null,
       singleWorkCap: null,
       rightsIp: null,
     })
+    expect(nulls.minimumDeliverable).toBe('')
+    expect(nulls.resultEvidenceRules).toBe('')
     expect(nulls.teamCapacity).toBe('')
     expect(nulls.singleWorkCap).toBe('')
     expect(nulls.weights).toEqual(emptyScoringWeights())
@@ -962,6 +974,19 @@ describe('validateChallengeDetailDraft', () => {
     expect(errors.ownerName).toBe(`负责人最多 ${CHALLENGE_CARD_LIMITS.ownerName.max} 个字符`)
   })
 
+  it('enforces the five-piece text limit on 最小交付物 and 结果证据规则', () => {
+    const tooLong = 'x'.repeat(CHALLENGE_CARD_LIMITS.fivePieceText.max + 1)
+    const errors = validateChallengeDetailDraft(
+      detail({ minimumDeliverable: tooLong, resultEvidenceRules: tooLong }),
+    )
+    expect(errors.minimumDeliverable).toBe(
+      `最小交付物最多 ${CHALLENGE_CARD_LIMITS.fivePieceText.max} 个字符`,
+    )
+    expect(errors.resultEvidenceRules).toBe(
+      `结果证据规则最多 ${CHALLENGE_CARD_LIMITS.fivePieceText.max} 个字符`,
+    )
+  })
+
   it('limits suggested skills to 10 entries of 30 characters', () => {
     const many = Array.from(
       { length: CHALLENGE_CARD_LIMITS.suggestedSkills.max + 1 },
@@ -1027,6 +1052,19 @@ describe('toChallengeDetailPayload', () => {
     expect(payload.background).toBeNull()
     expect(payload.ownerName).toBeNull()
     expect(payload.rightsPublicScope).toBeNull()
+    expect(payload.minimumDeliverable).toBeNull()
+    expect(payload.resultEvidenceRules).toBeNull()
+  })
+
+  it('sends the trimmed five-piece fields', () => {
+    const payload = toChallengeDetailPayload(
+      detail({
+        minimumDeliverable: '  一套可跑通的策略  ',
+        resultEvidenceRules: '  R3：连续运行 14 天  ',
+      }),
+    )
+    expect(payload.minimumDeliverable).toBe('一套可跑通的策略')
+    expect(payload.resultEvidenceRules).toBe('R3：连续运行 14 天')
   })
 
   it('splits the skills string into an array and nulls the numeric blanks', () => {

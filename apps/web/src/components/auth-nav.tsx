@@ -3,6 +3,7 @@
 import { useAuth } from '@/components/auth-provider'
 import Link from 'next/link'
 import { Role } from '@shenicest/shared'
+import { shouldShowPlatformEntry } from '@/lib/platform-console'
 import { Button, ButtonLink } from '@/components/ui/button'
 import { Mono } from '@/components/ui/typography'
 
@@ -23,6 +24,12 @@ export function AuthNav() {
 
   const isFounder = user.roles?.includes(Role.Founder) ?? false
   const isOperator = user.roles?.includes(Role.Operator) ?? false
+  /** 平台后台对主办方组织成员也可见（只读），规则与 `/operator/boomland` 的守卫同源。 */
+  const showPlatformEntry = shouldShowPlatformEntry({
+    isLoggedIn: true,
+    isOperator,
+    isOrganizerMember: user.isOrganizerMember ?? null,
+  })
 
   return (
     <div className="flex items-center gap-3">
@@ -32,6 +39,14 @@ export function AuthNav() {
           className="hidden font-mono text-label text-danger transition-colors hover:text-danger-text sm:inline"
         >
           运营后台
+        </Link>
+      ) : null}
+      {showPlatformEntry ? (
+        <Link
+          href="/operator/boomland/seasons"
+          className="hidden font-mono text-label text-brand-text transition-colors hover:text-brand sm:inline"
+        >
+          平台后台
         </Link>
       ) : null}
       {isFounder ? (

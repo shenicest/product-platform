@@ -25,6 +25,10 @@ export async function request<T>(
     return { data: null, error: { status: res.status, body: errorBody } }
   }
 
+  // 204 没有响应体（例如「移除成员」「删除组织」），不能走 `res.json()`：
+  // 那会抛 `Unexpected end of JSON input`，把一个成功的写操作变成异常。
+  if (res.status === 204) return { data: null, error: null }
+
   const data = (await res.json()) as T
   return { data, error: null }
 }

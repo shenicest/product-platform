@@ -110,6 +110,24 @@ describe('ChallengeDetailForm · fields', () => {
     expect(screen.getByText('03 公开与权益')).toBeInTheDocument()
   })
 
+  it('renders and prefills the five-piece fields of section 04', () => {
+    renderForm({
+      initial: challenge({
+        minimumDeliverable: '一套可跑通的策略 + 告警面板',
+        resultEvidenceRules: 'R3：连续运行 14 天并出具业主确认',
+      }),
+    })
+    expect(screen.getByText('04 交付物与结果证据')).toBeInTheDocument()
+    expect(field(/最小交付物/)).toHaveValue('一套可跑通的策略 + 告警面板')
+    expect(field(/结果证据规则/)).toHaveValue('R3：连续运行 14 天并出具业主确认')
+  })
+
+  it('leaves the five-piece fields empty when the row has no value', () => {
+    renderForm({ initial: challenge({ minimumDeliverable: null, resultEvidenceRules: null }) })
+    expect(field(/最小交付物/)).toHaveValue('')
+    expect(field(/结果证据规则/)).toHaveValue('')
+  })
+
   it('prefills the card content from the row', () => {
     renderForm()
     expect(field(/简介/)).toHaveValue('谁会为一台储能柜付第一笔钱？')
@@ -317,6 +335,28 @@ describe('ChallengeDetailForm · submission', () => {
       rightsIp: null,
     })
     expect(patched).not.toHaveProperty('changeNote')
+  })
+
+  it('includes the five-piece fields in the PATCH payload', async () => {
+    const user = userEvent.setup()
+    let patched: Record<string, unknown> | undefined
+    server.use(
+      http.patch('/api/challenges/42', async ({ request }) => {
+        patched = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json(challenge())
+      }),
+    )
+    renderForm()
+
+    await user.type(field(/最小交付物/), '  一套可跑通的策略  ')
+    await user.type(field(/结果证据规则/), 'R3：连续运行 14 天')
+    await user.click(screen.getByRole('button', { name: '保存详情' }))
+
+    await waitFor(() => expect(patched).toBeDefined())
+    expect(patched).toMatchObject({
+      minimumDeliverable: '一套可跑通的策略',
+      resultEvidenceRules: 'R3：连续运行 14 天',
+    })
   })
 
   it('shows the backend message in a role="alert" and keeps the form open', async () => {

@@ -26,6 +26,8 @@ export interface SeasonSummaryDto {
   pinned: boolean
   participantCapacity: number | null
   approvedAt: string | null
+  /** 授奖主体：平台后台「全部赛季」表要按它列一行（公开信息，不敏感）。 */
+  awardingEntity: string | null
   participantCount: number
   publishedChallengeCount: number
 }
@@ -62,6 +64,7 @@ export async function getSeasonSummary(db: Database, row: SeasonRow): Promise<Se
     pinned: row.pinned,
     participantCapacity: row.participantCapacity,
     approvedAt: iso(row.approvedAt),
+    awardingEntity: row.awardingEntity,
     participantCount: participantRows[0]?.value ?? 0,
     publishedChallengeCount: challengeRows[0]?.value ?? 0,
   }

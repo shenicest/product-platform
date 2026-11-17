@@ -70,6 +70,7 @@ export function SeasonDraftDialog({
   onClose,
   onSaved,
   returnFocusRef,
+  redirectAfterCreate,
 }: {
   mode: SeasonDraftDialogMode
   /** 表单值；`null` 表示还在读取模板（复制上季时）。 */
@@ -84,6 +85,13 @@ export function SeasonDraftDialog({
   onSaved?: () => void
   /** 触发按钮：关闭后把焦点还回去（`aria-modal` 弹窗的焦点契约）。 */
   returnFocusRef?: React.RefObject<HTMLButtonElement | null>
+  /**
+   * 新建成功后的落点；缺省是主办方后台的「赛季设置」。
+   *
+   * 平台后台从同一个弹窗建草稿，但落点应该是平台自己的预览页 —— 否则管理员
+   * 建完一份草稿会被甩到主办方后台，还要再找回来。
+   */
+  redirectAfterCreate?: (seasonId: number) => string
 }) {
   const router = useRouter()
   const closeRef = useRef<HTMLButtonElement | null>(null)
@@ -144,7 +152,10 @@ export function SeasonDraftDialog({
 
     // 新建成功 → 落到同一个后台外壳的「赛季设置」，并选中刚建好的赛季，
     // 让用户能立刻看到它（后续在那里补齐赛程、命题、预算）。
-    router.push(`/organizer/season-settings?season=${data.id}&created=1`)
+    // 平台后台建房时由调用方指定落点（预览页），默认行为保持不变。
+    router.push(
+      redirectAfterCreate?.(data.id) ?? `/organizer/season-settings?season=${data.id}&created=1`,
+    )
     router.refresh()
     onSaved?.()
     return { ok: true }

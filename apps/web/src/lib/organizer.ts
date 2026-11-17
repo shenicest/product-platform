@@ -36,6 +36,10 @@ export type OrganizerOrg = {
 export type ManagedSeason = SeasonSummary & {
   pendingApproval: boolean
   readinessReady: boolean
+  /** 发布门槛已通过项数（平台后台「发布门槛」列显示 `9 / 9`）。 */
+  readinessPassed: number
+  /** 发布门槛总项数；后端当前固定 9 项，但不写死，跟着 checks 走。 */
+  readinessTotal: number
   applicationCount: number
   acceptedCount: number
 }

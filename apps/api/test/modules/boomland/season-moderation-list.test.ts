@@ -112,6 +112,29 @@ describe('GET /admin/seasons/all', () => {
     expect(publicBody.items.some((item) => item.id === seasonId)).toBe(false)
   })
 
+  it('exposes readiness counts and the awarding entity on the moderation list', async () => {
+    // 平台后台的「发布门槛」列显示 `9 / 9`，读的是 listManage（`/admin/seasons`）
+    // 而不是选择器用的 `/admin/seasons/all`；两处口径差一个字段就会让这一列永远空白。
+    const res = await call('GET', '/admin/seasons?pageSize=100', operatorToken)
+    expect(res.status).toBe(200)
+    const body = await res.json() as {
+      items: Array<{
+        id: number
+        awardingEntity: string | null
+        readinessPassed: number
+        readinessTotal: number
+        readinessReady: boolean
+      }>
+    }
+    const created = body.items.find((item) => item.id === seasonId)
+    expect(created).toBeDefined()
+    expect(created!.readinessTotal).toBe(9)
+    expect(created!.readinessPassed).toBeGreaterThanOrEqual(0)
+    expect(created!.readinessPassed).toBeLessThanOrEqual(created!.readinessTotal)
+    expect(created!.readinessReady).toBe(false)
+    expect(created).toHaveProperty('awardingEntity')
+  })
+
   it('filters by status', async () => {
     const drafts = await call('GET', '/admin/seasons/all?status=draft&pageSize=100', operatorToken)
     const draftsBody = await drafts.json() as { items: Array<{ id: number; status: string }> }
