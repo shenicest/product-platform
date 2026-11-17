@@ -108,7 +108,7 @@ export function dateRangeLabel(
   return `${isoDate(start)} — ${isoDate(end)}`
 }
 
-export function seasonOrganizerLabel(season: SeasonDetail): string {
+export function seasonOrganizerLabel(season: Pick<SeasonDetail, 'organizerOrgs'>): string {
   const names = season.organizerOrgs.map((org) => org.name.trim()).filter(Boolean)
   return names.length > 0 ? names.join(' × ') : 'BoomLand'
 }

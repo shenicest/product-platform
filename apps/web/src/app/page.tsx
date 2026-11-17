@@ -1,10 +1,12 @@
 import { getFeaturedProjects, getLiveProjects } from '@/server/projects'
+import { getCurrentSeasonSpotlight } from '@/server/boomland'
 import type { Metadata } from 'next'
 import { ProjectCard } from '@/components/project-card'
 import { FilterBar } from '@/components/filter-bar'
 import { Pagination } from '@/components/pagination'
 import { HeroSection } from '@/components/hero-section'
 import { FeaturedSection } from '@/components/featured-section'
+import { CurrentSeasonGate } from '@/components/current-season-gate'
 import { EmptyState } from '@/components/ui/surface'
 import { ButtonLink } from '@/components/ui/button'
 import { SectionHead } from '@/components/ui/typography'
@@ -31,17 +33,19 @@ export default async function HomePage(props: PageProps<'/'>) {
 
   // The BoomLand cover hero is a full-bleed brand statement with no project
   // slot; curated projects are surfaced by FeaturedSection instead.
-  const [{ data: projects, total }, { data: featuredProjects }] = await Promise.all([
-    getLiveProjects({
-      category,
-      stage,
-      q,
-      sort,
-      offset: (page - 1) * PAGE_SIZE,
-      limit: PAGE_SIZE,
-    }),
-    getFeaturedProjects(),
-  ])
+  const [{ data: projects, total }, { data: featuredProjects }, currentSeason] =
+    await Promise.all([
+      getLiveProjects({
+        category,
+        stage,
+        q,
+        sort,
+        offset: (page - 1) * PAGE_SIZE,
+        limit: PAGE_SIZE,
+      }),
+      getFeaturedProjects(),
+      getCurrentSeasonSpotlight(),
+    ])
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const filtered = hasActiveFilters({ category, stage, q, sort })
@@ -49,6 +53,9 @@ export default async function HomePage(props: PageProps<'/'>) {
   return (
     <PublicInteractionBoundary>
       <HeroSection />
+
+      {/* 当前赛季有时效性，排在精选项目之前；没有赛季时也保留入口。 */}
+      <CurrentSeasonGate season={currentSeason} />
 
       <FeaturedSection projects={featuredProjects} />
 

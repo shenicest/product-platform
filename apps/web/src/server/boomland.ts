@@ -9,6 +9,11 @@ import type {
   SeasonListResponse,
   SeasonSummary,
 } from '@/lib/boomland'
+import {
+  pickCurrentSeason,
+  toSeasonSpotlight,
+  type SeasonSpotlight,
+} from '@/lib/season-spotlight'
 
 async function authHeaders() {
   const token = (await cookies()).get('shenicest_token')?.value
@@ -60,6 +65,26 @@ export const getSeasonChallenges = cache(
     })
     if (error || !data) throw new Error('Failed to load season challenges')
     return (data as { items: SeasonChallenge[] }).items
+  },
+)
+
+/**
+ * 首页「当前赛季」入口。
+ *
+ * 列表按「置顶 → 进行中 → 即将开始」挑选，再补一次详情拿简介与报名窗口；
+ * 详情失败时退回列表字段，不把首页打成错误页。整个接口不可用时返回 null，
+ * 首页会渲染空态入口（仍然链到 `/seasons`）。
+ */
+export const getCurrentSeasonSpotlight = cache(
+  async (): Promise<SeasonSpotlight | null> => {
+    const list = await getSeasons({ status: 'upcoming,active', pageSize: 20 }).catch(
+      () => null,
+    )
+    const summary = pickCurrentSeason(list?.items ?? [])
+    if (!summary) return null
+
+    const detail = await getSeason(summary.id).catch(() => null)
+    return toSeasonSpotlight(summary, detail)
   },
 )
 

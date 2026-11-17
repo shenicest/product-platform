@@ -28,6 +28,9 @@
 /* --- L3 组件与模式 ------------------------------------------------------ */
 @import '../styles/components.css';
 @import '../styles/patterns.css';
+/* --- L3 首页专用：当前赛季入口（首页以外的页面不消费） ------------------ */
+@import '../styles/home.css';
+
 
 /* --- L3 页面：BoomLand V2.6（火热赛季 / 命题 / 报名 / 个人中心） -------- */
 @import '../styles/v26.css';
