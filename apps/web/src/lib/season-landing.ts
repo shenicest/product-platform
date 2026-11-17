@@ -1,16 +1,24 @@
 import {
+  myApplicationMeta,
   seasonTypeLabel,
   type SeasonDetail,
 } from '@/lib/boomland'
 import { SeasonStatus } from '@shenicest/shared'
+import type { ChipTone } from '@/components/ui/chip'
+import {
+  seasonApplicationCta,
+  seasonRegistration,
+  type SeasonRegistrationState,
+} from '@/lib/season-registration'
 
 /**
  * 火热赛季落地页的纯展示模型。
  *
  * 设计稿（BoomLand V2.6）的赛季卡是一张「票券」：编号、状态、标题、主办方、
  * 一句话介绍、类型 / 命题数、时间窗、名额进度与一个 CTA。这里的职责只是把
- * `SeasonDetail` 映射成这些槽位，**不做任何业务判断** —— 报名是否开放仍然
- * 来自后端返回的 `applicationWindow.isOpen`。
+ * `SeasonDetail` 映射成这些槽位，**不做任何业务判断** —— 报名是否开放来自
+ * `lib/season-registration.ts`，用户能不能报名、点哪里去来自同一处的
+ * `seasonApplicationCta()`。
  *
  * 设计稿卡片上还有「项目数 / 作品数 / 奖励池」三项，当前 `SeasonSummary`
  * 不提供这些字段（见 docs/boomland/design-v26-conflicts.md），所以这里只
@@ -47,8 +55,17 @@ export type SeasonCardView = {
   /** 票券卡上的状态文案：设计稿卡片把「即将开始」写作「未开始」。 */
   ticketStatusLabel: string
   statusTone: 'pink' | 'yellow' | 'gray'
-  registrationLabel: string | null
+  /** 赛季报名状态：未开放 / 报名中 / 报名已截止。 */
+  registrationState: SeasonRegistrationState
+  registrationLabel: string
+  registrationTone: ChipTone
   registrationOpen: boolean
+  /** 我的报名状态徽章（未报名时不出徽章）：审核中 / 候补中 / 已报名 / 已撤回 / 未通过。 */
+  applicationLabel: string | null
+  /** 票券 CTA：立即报名 / 报名审核中 / 候补中 / 查看我的报名 / 重新报名 / 查看未通过原因。 */
+  ctaLabel: string | null
+  /** 只在「报名中」且确实可点时才有值；其余情况卡片不展示按钮。 */
+  ctaHref: string | null
   /** 未开始（即将开始）的赛季用另一张封面。 */
   upcoming: boolean
   group: SeasonGroup
@@ -114,31 +131,42 @@ export function seasonStatusView(status: string): {
   }
 }
 
-/** 报名窗口的人话标签；`null` 表示还没有任何报名时间可展示。 */
-export function registrationView(season: SeasonDetail): {
-  label: string | null
-  open: boolean
-} {
-  if (season.applicationWindow.isOpen) return { label: '报名中', open: true }
-  if (!season.applicationWindow.opensAt) return { label: null, open: false }
-  const opensAt = new Date(season.applicationWindow.opensAt).getTime()
-  if (Number.isNaN(opensAt)) return { label: null, open: false }
-  return {
-    label: opensAt > Date.now() ? '报名未开放' : '报名已截止',
-    open: false,
-  }
-}
-
 export function seasonGroup(season: SeasonDetail): SeasonGroup {
-  const registration = registrationView(season)
-  if (registration.open) return '报名中'
+  if (seasonRegistration(season).state === 'open') return '报名中'
   if (season.status === SeasonStatus.Upcoming) return '即将开始'
   return '进行中'
 }
 
-export function toSeasonCard(season: SeasonDetail): SeasonCardView {
+/**
+ * 赛季详情 → 票券卡槽位。
+ *
+ * `viewer` 是「当前看页面的人」：未登录时没有报名状态（`applicationStatus`
+ * 为 null）；登录后由页面把该赛季的报名状态查出来传进来。票券 CTA 的文案
+ * 完全由 `seasonApplicationCta()` 决定，组件不再自己拼条件。
+ *
+ * 票券卡只在「报名中」才给按钮：未开放 / 已截止时卡片只做导航入口，
+ * 不给一个点了也没用的按钮，所以 `ctaLabel` / `ctaHref` 此时都是 null
+ * （详情页海报仍会渲染禁用票券并说明原因，那里有空间解释）。
+ */
+export function toSeasonCard(
+  season: SeasonDetail,
+  viewer: { isLoggedIn?: boolean; applicationStatus?: string | null } = {},
+): SeasonCardView {
   const status = seasonStatusView(season.status)
-  const registration = registrationView(season)
+  const registration = seasonRegistration(season)
+  const applicationStatus = viewer.applicationStatus ?? null
+  const registrationOpen = registration.state === 'open'
+  const cta = seasonApplicationCta({
+    seasonId: season.id,
+    seasonStatus: season.status,
+    isLoggedIn: viewer.isLoggedIn ?? false,
+    registration,
+    applicationStatus,
+  })
+  // 暂停 / 取消的赛季即使窗口还开着也不能报名，同样不给按钮。
+  const ctaVisible = registrationOpen && cta.href !== null
+  const application =
+    applicationStatus === null ? null : myApplicationMeta(applicationStatus)
   return {
     id: season.id,
     code: season.code,
@@ -152,8 +180,13 @@ export function toSeasonCard(season: SeasonDetail): SeasonCardView {
     ticketStatusLabel:
       season.status === SeasonStatus.Upcoming ? '未开始' : status.label,
     statusTone: status.tone,
+    registrationState: registration.state,
     registrationLabel: registration.label,
-    registrationOpen: registration.open,
+    registrationTone: registration.tone,
+    registrationOpen,
+    applicationLabel: application?.label ?? null,
+    ctaLabel: ctaVisible ? cta.label : null,
+    ctaHref: ctaVisible ? cta.href : null,
     upcoming: season.status === SeasonStatus.Upcoming,
     group: seasonGroup(season),
     dateRange: dateRangeLabel(season.schedule?.startAt, season.schedule?.workDeadline),

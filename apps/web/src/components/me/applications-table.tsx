@@ -5,10 +5,12 @@ import { Chip } from '@/components/ui/chip'
 import { EmptyState } from '@/components/ui/surface'
 import { ButtonLink } from '@/components/ui/button'
 import { WithdrawApplicationButton } from '@/components/me/withdraw-application-button'
+import { WithdrawSeasonButton } from '@/components/me/withdraw-season-button'
 import {
   APPLICATIONS_FOOTNOTE,
   MY_APPLICATION_COLUMNS,
   myApplicationRows,
+  type MyApplicationRow,
 } from '@/lib/me-applications'
 import type { MySeasonApplication } from '@/lib/boomland'
 
@@ -16,18 +18,24 @@ import type { MySeasonApplication } from '@/lib/boomland'
  * 「我提交过的报名」表格。
  *
  * 纯展示的 Server Component：数据由页面取好后传入，行映射全部在
- * `lib/me-applications.ts` 里完成（可单测）。唯一需要交互的撤回按钮
- * 是一个独立的 Client Component。
+ * `lib/me-applications.ts` 里完成（可单测）。操作列里只有「撤回报名」与
+ * 「退出赛季」需要交互，各自是独立的 Client Component；「重新报名」是去报名
+ * 表单的普通链接，不必背 `'use client'`。
+ *
+ * 「退出赛季」原本在 `/me/team` 的组队工作台上，移到这里是因为它改的是
+ * 报名状态：只有报名已通过、选手仍是 active、组队截止前的行才给入口，
+ * 截止后只留一句「联系主办方」。
  *
  * 列严格按设计稿的 7 列（赛季 / 提交时间 / 审核状态 / 审核说明 / 微信群 /
- * 赛季标识 / 条款版本），再单独加一列「操作」放撤回入口。
+ * 赛季标识 / 条款版本），再单独加一列「操作」放撤回、退赛与重新报名入口。
  *
- * 为什么撤回要单独一列：挂在「审核状态」格里时，状态胶囊和按钮上下堆叠，
+ * 为什么操作单独一列：挂在「审核状态」格里时，状态胶囊和按钮上下堆叠，
  * 窄屏下按钮会被挤到胶囊下面一行，读起来像「这条报名多了一行」；单独一列
  * 还能按内容收缩（`w-px`），不参与表格的等分拉伸。
  *
- * 宽表在窄屏会横向溢出，所以外层套 `.overflow-x-auto`，
- * 与主办方后台的报名队列同一套做法。
+ * 宽表在窄屏会横向溢出，所以外层套 `.overflow-x-auto`，并用
+ * `console-table--sticky-actions-page` 把操作列冻结在右侧 —— 滚动看中间的
+ * 审核说明时，「撤回报名 / 退出赛季 / 重新报名」始终在手边。
  */
 export function ApplicationsTable({ items }: { items: MySeasonApplication[] }) {
   const rows = myApplicationRows(items)
@@ -49,7 +57,10 @@ export function ApplicationsTable({ items }: { items: MySeasonApplication[] }) {
   return (
     <div>
       <div className="overflow-x-auto">
-        <table className="console-table" aria-label="我提交过的赛季报名">
+        <table
+          className="console-table console-table--sticky-actions console-table--sticky-actions-page"
+          aria-label="我提交过的赛季报名"
+        >
           <caption className="sr-only">
             我提交过的赛季报名：赛季、提交时间、审核状态、审核说明、微信群、赛季标识、条款版本与操作。
           </caption>
@@ -79,7 +90,11 @@ export function ApplicationsTable({ items }: { items: MySeasonApplication[] }) {
                 </td>
 
                 <td className="min-w-32">
-                  <ApplicationStatusBadge status={row.status} />
+                  <ApplicationStatusBadge
+                    status={row.status}
+                    label={row.statusLabel}
+                    tone={row.statusTone}
+                  />
                 </td>
 
                 <td className="min-w-44 max-w-72 text-muted-foreground">
@@ -108,17 +123,10 @@ export function ApplicationsTable({ items }: { items: MySeasonApplication[] }) {
                   {row.agreementVersion}
                 </td>
 
-                {/* 操作列按内容收缩，不参与表格的等分拉伸；不可撤回时给破折号，
-                    而不是留一个空单元格。 */}
+                {/* 操作列按内容收缩，不参与表格的等分拉伸；没有任何动作时给
+                    破折号，而不是留一个空单元格。 */}
                 <td className="w-px whitespace-nowrap">
-                  {row.canWithdraw ? (
-                    <WithdrawApplicationButton
-                      applicationId={row.applicationId}
-                      seasonName={row.seasonName}
-                    />
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
-                  )}
+                  <ApplicationRowAction row={row} />
                 </td>
               </tr>
             ))}
@@ -131,4 +139,64 @@ export function ApplicationsTable({ items }: { items: MySeasonApplication[] }) {
       </p>
     </div>
   )
+}
+
+/**
+ * 操作列的五种形态，按「现在能不能做」排序：
+ *   1. 审核中 → 撤回报名（两步确认，Client Component）；
+ *   2. 已通过且在组队截止前 → 退出赛季（两步确认，Client Component）；
+ *   3. 已通过但组队已截止 → 一句「联系主办方」，不给点了也退不掉的按钮；
+ *   4. 已撤回且报名窗口开放 → 重新报名（回报名表单，提交后复用同一条记录）；
+ *   5. 已撤回但窗口关了 / 赛季暂停或取消 → 一句原因，不给点了也报不上的假按钮；
+ *   其余（未通过 / 已退赛等终态）→ 破折号。
+ *
+ * 带 `aria-label` 把赛季名带进可访问名：一屏里可能同时有好几条报名，
+ * 读屏用户得能分清点的是哪一场。
+ */
+function ApplicationRowAction({ row }: { row: MyApplicationRow }) {
+  if (row.canWithdraw) {
+    return (
+      <WithdrawApplicationButton
+        applicationId={row.applicationId}
+        seasonName={row.seasonName}
+      />
+    )
+  }
+
+  if (row.canExitSeason) {
+    return (
+      <WithdrawSeasonButton
+        seasonId={row.seasonId}
+        userId={row.userId}
+        seasonName={row.seasonName}
+      />
+    )
+  }
+
+  if (row.exitBlockedReason) {
+    return (
+      <span className="text-meta text-muted-foreground">{row.exitBlockedReason}</span>
+    )
+  }
+
+  if (row.reapplyHref) {
+    return (
+      <ButtonLink
+        href={row.reapplyHref}
+        variant="secondary"
+        size="sm"
+        aria-label={`重新报名 ${row.seasonName}`}
+      >
+        重新报名
+      </ButtonLink>
+    )
+  }
+
+  if (row.reapplyBlockedReason) {
+    return (
+      <span className="text-meta text-muted-foreground">{row.reapplyBlockedReason}</span>
+    )
+  }
+
+  return <span className="text-muted-foreground">—</span>
 }

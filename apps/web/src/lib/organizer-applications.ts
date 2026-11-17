@@ -225,6 +225,31 @@ export const DEFAULT_REVIEW_STATUS_FILTER = SeasonApplicationStatus.Submitted
 
 export const ALL_REVIEW_STATUS_FILTER = 'all'
 
+/**
+ * 「报名审核」tab 红点的数字文案；`null` = 不显示红点。
+ *
+ * 口径就是队列默认筛选的「待处理」（`submitted`）条数：红点回答的是
+ * 「还有几条要我看」，不是历史报名总量。0 条不画红点 —— 没有待办就不要
+ * 造一个红点出来（和个人中心 `workbenchTabBadges` 同一条原则）。
+ * 三位数收敛成 `99+`：数字本身没有终点，把 tab 撑开就没有意义了。
+ */
+export function pendingReviewBadgeLabel(count: number): string | null {
+  if (!Number.isFinite(count)) return null
+  const value = Math.trunc(count)
+  if (value <= 0) return null
+  return value > 99 ? '99+' : String(value)
+}
+
+/**
+ * 审核写成功后由 `ApplicationReviewView` 派发。
+ *
+ * tab 红点由 `OrganizerShell` 在客户端按当前赛季单独取数（layout 拿不到
+ * `searchParams`，服务端不知道用户在看哪一季），而 `router.refresh()` 只重渲染
+ * 服务端组件、不会重跑那个 effect —— 不发这个事件，审完一条红点会停在旧数字上。
+ * 与 `announcements-refresh` 是同一套「站内动作 → 角标重算」的做法。
+ */
+export const ORGANIZER_APPLICATIONS_REFRESH_EVENT = 'organizer-applications-refresh'
+
 export type ApplicationReviewParams = {
   /** 后端 query 用的状态；`undefined` = 全部。 */
   status?: ApplicationListQuery['status']

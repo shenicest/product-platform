@@ -350,6 +350,63 @@ describe('BoomLand pre-start season flow', () => {
     expect(participants.status).toBe(200)
     const participantsBody = await participants.json() as { items: Array<{ userId: string; wechatStatus: string }> }
     expect(participantsBody.items.find((item) => item.userId === APPLICANT)?.wechatStatus).toBe('not_invited')
+
+    // 个人报名列表必须带上选手行状态：报名页据此判断「能不能退出赛季」。
+    const mine = await call('GET', '/me/applications', applicantToken)
+    expect(mine.status).toBe(200)
+    const mineRow = ((await mine.json()) as {
+      items: Array<{
+        application: { id: number; status: string }
+        wechatStatus: string | null
+        participantStatus: string | null
+      }>
+    }).items.find((item) => item.application.id === applicationId)
+    expect(mineRow?.application.status).toBe('accepted')
+    expect(mineRow?.participantStatus).toBe('active')
+
+    // 录取结果同时写进报名者的收件箱（个人公告）。
+    const inbox = (await (await call('GET', '/me/announcements', applicantToken)).json()) as {
+      items: Array<{ title: string; type: string; isRead: boolean }>
+    }
+    const acceptedNotice = inbox.items.find((entry) => entry.title === '报名已通过审核')
+    expect(acceptedNotice?.type).toBe('application')
+    expect(acceptedNotice?.isRead).toBe(false)
+  })
+
+  it('mirrors season announcements into participant inboxes', async () => {
+    const before = (await (await call('GET', '/me/announcements/summary', applicantToken)).json()) as {
+      unreadCount: number
+    }
+    const outsiderBefore = (await (await call('GET', '/me/announcements/summary', applicant2Token)).json()) as {
+      unreadCount: number
+    }
+
+    const created = await call('POST', `/seasons/${seasonId}/announcements`, organizerToken, {
+      title: '赛程调整通知',
+      content: '原定 11/20 的评审延后到 11/22。',
+      category: 'schedule',
+    })
+    expect(created.status).toBe(200)
+
+    const after = (await (await call('GET', '/me/announcements/summary', applicantToken)).json()) as {
+      unreadCount: number
+    }
+    expect(after.unreadCount).toBe(before.unreadCount + 1)
+
+    const list = (await (await call('GET', '/me/announcements', applicantToken)).json()) as {
+      items: Array<{ title: string; type: string; level: string; linkPath: string | null }>
+    }
+    const item = list.items.find((entry) => entry.title === '赛程调整通知')
+    expect(item?.linkPath).toBe(`/seasons/${seasonId}`)
+    expect(item?.type).toBe('season')
+    // 赛程/规则变更用 warning 语气，一般公告才是 info。
+    expect(item?.level).toBe('warning')
+
+    // 只投给选手：已提交但未录取的人看不到这条赛季公告。
+    const outsiderAfter = (await (await call('GET', '/me/announcements/summary', applicant2Token)).json()) as {
+      unreadCount: number
+    }
+    expect(outsiderAfter.unreadCount).toBe(outsiderBefore.unreadCount)
   })
 
   it('allows withdrawing an application before review and reapplying within the window', async () => {
@@ -394,6 +451,12 @@ describe('BoomLand pre-start season flow', () => {
     })
     expect(rejected.status).toBe(200)
     expect((await rejected.json() as { status: string }).status).toBe('rejected')
+
+    const inbox = (await (await call('GET', '/me/announcements', applicant2Token)).json()) as {
+      items: Array<{ title: string; content: string }>
+    }
+    const rejectedNotice = inbox.items.find((entry) => entry.title === '报名未通过')
+    expect(rejectedNotice?.content).toContain('本批次方向不匹配')
   })
 
   it('waitlists applications beyond capacity and promotes the next one after withdrawal', async () => {
@@ -422,6 +485,18 @@ describe('BoomLand pre-start season flow', () => {
     const items = (await participants.json() as { items: Array<{ userId: string; status: string }> }).items
     expect(items.find((item) => item.userId === APPLICANT)?.status).toBe('withdrawn')
     expect(items.find((item) => item.userId === APPLICANT_3)?.status).toBe('active')
+
+    // 退出赛季后：报名记录仍是 accepted，只有选手行变成 withdrawn ——
+    // 报名页的「已退赛」必须读 participantStatus，不能读报名状态。
+    const mine = (await (await call('GET', '/me/applications', applicantToken)).json()) as {
+      items: Array<{
+        application: { id: number; status: string }
+        participantStatus: string | null
+      }>
+    }
+    const mineRow = mine.items.find((item) => item.application.id === applicationId)
+    expect(mineRow?.application.status).toBe('accepted')
+    expect(mineRow?.participantStatus).toBe('withdrawn')
   })
 
   it('advances the WeChat state machine for active participants only', async () => {

@@ -388,7 +388,7 @@ export function ScheduleSection({
     <section aria-labelledby="season-schedule-title" className="mt-10">
       <SectionHead
         title="赛程（北京时间）"
-        lead="主办方可直接修改本人赛季的赛程（含延长截止），不需要平台管理员批准；每次修改自动生成公告、审计与规则版本。已过去的截止不能再改；缩短的截止至少在公告发出 48 小时之后。"
+        lead="主办方可直接修改本人赛季的赛程（含延长截止），不需要平台管理员批准；保存时只提交改动的节点，每次改动自动生成公告、审计与规则版本。已过去的节点已锁定、不再参与校验；缩短的截止至少在公告发出 48 小时之后。"
         actions={actions}
       />
 

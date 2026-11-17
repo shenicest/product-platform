@@ -1,10 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { SeasonDraftForm, type SeasonDraftSubmitResult } from '@/components/organizer/season-draft-form'
 import { createSeasonDraft } from '@/lib/organizer-api'
 import {
+  updateSeasonAgreement,
   updateSeasonCore,
   updateSeasonOrganizers,
   updateSeasonRules,
@@ -15,11 +16,13 @@ import {
   SCHEDULE_FIELDS,
   toCreateSeasonPayload,
   toScheduleDraft,
+  toSchedulePatch,
   toSchedulePayload,
   type OrganizerOrg,
   type SeasonDraftValues,
   type SeasonManageDetail,
 } from '@/lib/organizer'
+import { lockedScheduleKeys } from '@/lib/organizer-settings'
 
 /**
  * 「赛季草稿」弹窗：外壳 + 表单 + 三种提交语义。
@@ -31,8 +34,9 @@ import {
  *
  * 语义边界（与产品确认过）：
  *   · create / copy —— `POST /seasons`，后端固定写 draft，绝不改任何赛季状态；
- *   · edit —— 更新**当前赛季**：`PATCH /seasons/:id` 加四条按需触发的 `PUT`
- *     （赛程 / 规则 / 主题 / 主办方组织），只有真的改了才发请求，
+ *   · edit —— 更新**当前赛季**：`PATCH /seasons/:id` 加一条赛程增量
+ *     `PATCH /seasons/:id/schedule` 与三条按需触发的 `PUT`（规则 / 主题 / 主办方组织），
+ *     只有真的改了才发请求，且赛程只提交改动的节点，
  *     避免一次保存把 `rulesVersion` 无谓地推高、凭空生成公告。
  *
  * 错误一律原样展示后端 `error.message`（不吞、不改写成泛泛的「保存失败」），
@@ -44,15 +48,15 @@ export type SeasonDraftDialogMode = 'create' | 'copy' | 'edit'
 const DIALOG_COPY: Record<SeasonDraftDialogMode, { title: string; description: string }> = {
   create: {
     title: '发起赛季草稿',
-    description: '填写赛季的基础信息、赛程与规则。',
+    description: '填写赛季的基础信息、协议正文、赛程与规则。',
   },
   copy: {
     title: '复制上季',
-    description: '已按上一季预填，请确认编号与赛程。',
+    description: '已按上一季预填，请确认编号、协议正文与赛程。',
   },
   edit: {
     title: '编辑赛季草稿',
-    description: '保存后会更新当前赛季的基础信息、赛程与规则。',
+    description: '保存后会更新当前赛季的基础信息、协议正文、赛程与规则。',
   },
 }
 
@@ -84,6 +88,13 @@ export function SeasonDraftDialog({
   const router = useRouter()
   const closeRef = useRef<HTMLButtonElement | null>(null)
   const copy = DIALOG_COPY[mode]
+
+  // 「现在」在打开弹窗时取一次：已过去的赛程节点据此置灰，避免输入过程中突然变只读。
+  const [now] = useState(() => new Date())
+  const lockedKeys = useMemo(
+    () => (editTarget ? lockedScheduleKeys(editTarget.schedule, now) : undefined),
+    [editTarget, now],
+  )
 
   const close = useCallback(() => {
     onClose()
@@ -142,7 +153,7 @@ export function SeasonDraftDialog({
   /**
    * edit：把表单值写回当前赛季。
    *
-   * 顺序固定为「核心字段 → 赛程 → 规则 → 主题 → 主办方组织」，任一步失败即停，
+   * 顺序固定为「核心字段 → 协议正文 → 赛程 → 规则 → 主题 → 主办方组织」，任一步失败即停，
    * 并把后端文案原样返回。不并发是因为后三步都会 `rulesVersion + 1` 并生成公告，
    * 并发提交会让版本号与公告顺序变得不可预期。
    */
@@ -171,26 +182,43 @@ export function SeasonDraftDialog({
       }
     }
 
-    // ---- 赛程：只有真的改了才发 PUT（否则会凭空生成公告与规则版本） ----
+    // ---- 协议正文：只有真的改了才发 PUT（未发布赛季才可写） ----
+    if (values.agreementContent.trim() !== (target.agreementContent ?? '').trim()) {
+      const result = await updateSeasonAgreement(target.id, {
+        agreementContent: values.agreementContent.trim() || null,
+      })
+      if (result.error || !result.data) {
+        return {
+          ok: false,
+          message: result.error?.body.error.message || '协议正文保存失败，请稍后重试',
+          field: 'agreementContent',
+        }
+      }
+    }
+
+    // ---- 赛程：只有真的改了才发 PATCH，且只提交改动的节点 ----
+    const scheduleDraft = toScheduleDraft(target.schedule)
     const scheduleChanged = SCHEDULE_FIELDS.some(
-      (field) => values.schedule[field.key] !== toScheduleDraft(target.schedule)[field.key],
+      (field) => values.schedule[field.key] !== scheduleDraft[field.key],
     )
     if (scheduleChanged) {
-      const schedule = toSchedulePayload(values.schedule)
-      if (!schedule) {
-        // 后端 `PUT /schedule` 的 body 不接受 null，所以「清空赛程」在这里就拦住。
+      // 后端不接受「清空赛程」：要么八个节点都填，要么保持原有赛程。
+      if (!toSchedulePayload(values.schedule)) {
         return {
           ok: false,
           message: '赛程不能整体清空：要么八个节点都填，要么保持原有赛程',
           field: 'schedule',
         }
       }
-      const result = await updateSeasonSchedule(target.id, { schedule })
-      if (result.error || !result.data) {
-        return {
-          ok: false,
-          message: result.error?.body.error.message || '赛程保存失败，请稍后重试',
-          field: 'schedule',
+      const patch = toSchedulePatch(target.schedule, values.schedule)
+      if (Object.keys(patch).length > 0) {
+        const result = await updateSeasonSchedule(target.id, { schedule: patch })
+        if (result.error || !result.data) {
+          return {
+            ok: false,
+            message: result.error?.body.error.message || '赛程保存失败，请稍后重试',
+            field: 'schedule',
+          }
         }
       }
     }
@@ -278,6 +306,7 @@ export function SeasonDraftDialog({
             organizerOrgOptions={organizerOrgs}
             mode={mode}
             sourceSeasonName={sourceSeasonName}
+            lockedScheduleKeys={lockedKeys}
             onSubmit={submit}
             onCancel={close}
           />

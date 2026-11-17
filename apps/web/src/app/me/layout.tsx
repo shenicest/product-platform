@@ -2,12 +2,15 @@ import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { WorkbenchHeader } from '@/components/me/workbench-header'
 import { WorkbenchTabs } from '@/components/me/workbench-tabs'
+import { NO_INDEX_ROBOTS } from '@/lib/site-metadata'
 import { getWorkbenchHeader } from '@/server/me'
 import { workbenchTabBadges } from '@/lib/me'
 
 export const metadata: Metadata = {
   title: '个人中心',
   description: 'BoomLand 个人中心：报名、组队与赛季进展。',
+  // 个人中心内容依赖登录态，不应该出现在搜索结果和分享卡片里。
+  robots: NO_INDEX_ROBOTS,
 }
 
 export const dynamic = 'force-dynamic'

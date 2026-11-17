@@ -34,6 +34,13 @@ export const seasons = mysqlTable('seasons', {
   participantCapacity: int('participant_capacity'),
   awardingEntity: varchar('awarding_entity', { length: 255 }),
   agreementVersion: varchar('agreement_version', { length: 32 }).notNull().default('v1'),
+  /**
+   * 赛季协议正文（报名页「我已阅读并同意…」链接到的公开页）。
+   *
+   * 纯文本，按空行分段渲染；规则卡不在这里 —— 它由 `season_rule_card_items`
+   * 按赛季配置生成，两者在 `/seasons/:id/agreement` 合并展示。
+   */
+  agreementContent: text('agreement_content'),
   rulesVersion: int('rules_version').notNull().default(1),
   rules: json('rules').$type<SeasonRules>().notNull(),
   createdBy: varchar('created_by', { length: 255 }).notNull(),

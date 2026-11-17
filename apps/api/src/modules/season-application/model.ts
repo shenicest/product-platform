@@ -49,10 +49,13 @@ export const CreateApplicationBody = t.Object({
   acceptsSolo: t.Boolean(),
   availability: t.String({ minLength: 1, maxLength: 500 }),
   cityMode: t.String({ minLength: 1, maxLength: 200 }),
-  contact: t.Object({
+  // 联系方式对象允许整体缺席：缺省与「两个字段都为空」是同一件事，统一由
+  // service 的 normalizeContact 拒绝（CONTACT_REQUIRED），别让客户端拿到
+  // 一个笼统的 VALIDATION_ERROR —— 「至少填一项」是业务规则，不是格式错误。
+  contact: t.Optional(t.Object({
     wechat: t.Optional(t.String({ maxLength: 100 })),
     phone: t.Optional(t.String({ maxLength: 50 })),
-  }),
+  })),
   visibility: t.Optional(VisibilitySchema),
   agreementVersion: t.String({ minLength: 1, maxLength: 32 }),
 })

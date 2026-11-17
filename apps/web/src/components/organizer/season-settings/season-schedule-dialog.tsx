@@ -1,24 +1,31 @@
 'use client'
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { SeasonSchedule } from '@shenicest/shared'
 import { Button } from '@/components/ui/button'
 import { FieldError, FormField, TextArea, TextInput } from '@/components/submit/form-fields'
 import { SCHEDULE_FIELDS, validateScheduleDraft, type SeasonScheduleDraft } from '@/lib/organizer'
-import { toScheduleDraft, toSchedulePayload, validateScheduleChange } from '@/lib/organizer-settings'
+import {
+  lockedScheduleKeys,
+  toScheduleDraft,
+  toSchedulePatch,
+  toSchedulePayload,
+  validateScheduleChange,
+} from '@/lib/organizer-settings'
 import { updateSeasonSchedule } from '@/lib/organizer-settings-api'
 
 /**
  * 「改赛程」弹窗：八个 `datetime-local` 输入 + 可选的公告标题 / 内容。
  *
- * 三条关键约束（都来自后端 `updateSchedule`，前端提前拦住）：
- *   1. 要么八格全空（= 不排期），要么八格齐全；
- *   2. 时间必须严格递增，且作品截止 ≤ 评分截止、命题冻结 ≤ 组队截止；
- *   3. 时间按**北京时间**解释 —— 输入框里填的就是北京墙上时间，
- *      转换由 `lib/organizer-settings.ts` 的 `toSchedulePayload` 完成。
+ * 关键约束（与后端 `applySchedulePatch` 同口径）：
+ *   1. **已经过去的节点锁定**：置灰、不能改，也不参与校验与提交；
+ *   2. 其余节点要么全填（首次排期），要么沿用库里已有的值，且严格递增；
+ *   3. **增量提交**：只把真正改动的节点放进 `schedule`，没动的一个都不发；
+ *   4. 时间按**北京时间**解释 —— 输入框里填的就是北京墙上时间，
+ *      转换由 `lib/organizer-settings.ts` 的 `toSchedulePatch` 完成。
  *
  * 公告是可选的：填了就随 `announcement` 一起提交（后端会用它替换自动摘要），
- * 不填则由后端生成默认公告。
+ * 不填则由后端生成默认公告。只改了公告、没改时间也可以保存。
  */
 export function SeasonScheduleDialog({
   seasonId,
@@ -35,6 +42,11 @@ export function SeasonScheduleDialog({
   const uid = useId()
   const closeRef = useRef<HTMLButtonElement | null>(null)
   const titleId = `${uid}-title`
+
+  // 「现在」在打开弹窗时取一次：用户填到一半时节点跨过当前时间，
+  // 界面不该在输入过程中突然变成只读（真正写入时后端还会再拦一道）。
+  const [now] = useState(() => new Date())
+  const lockedKeys = useMemo(() => lockedScheduleKeys(schedule, now), [schedule, now])
 
   const [draft, setDraft] = useState<SeasonScheduleDraft>(() => toScheduleDraft(schedule))
   const [announcementTitle, setAnnouncementTitle] = useState('')
@@ -59,12 +71,16 @@ export function SeasonScheduleDialog({
   }
 
   function validate(): Record<string, string | undefined> {
-    const next: Record<string, string | undefined> = { ...validateScheduleDraft(draft) }
+    const next: Record<string, string | undefined> = {
+      ...validateScheduleDraft(draft, { skipKeys: lockedKeys }),
+    }
     // 先后顺序先过一遍；只有顺序没问题时再谈「已过去 / 缩短 48h」，
     // 否则同一格会同时冒出两条互相矛盾的红字。
     if (Object.keys(next).length === 0) {
       const payload = toSchedulePayload(draft)
-      if (payload) Object.assign(next, validateScheduleChange(schedule, payload))
+      if (payload) {
+        Object.assign(next, validateScheduleChange(schedule, payload, { now, locked: lockedKeys }))
+      }
     }
     const title = announcementTitle.trim()
     const content = announcementContent.trim()
@@ -87,20 +103,23 @@ export function SeasonScheduleDialog({
       return
     }
 
-    const payload = toSchedulePayload(draft)
-    if (!payload) {
-      // 后端 `PUT /seasons/:id/schedule` 的 `schedule` 是必填对象：可以改时间，
-      // 但不能把整个赛程清空（赛季一旦排过期，就没有“回到未排期”这条路）。
+    // 后端不会把赛程清空：赛季一旦排过期，就没有「回到未排期」这条路。
+    if (!toSchedulePayload(draft)) {
       setFormError('赛程不能全部留空：八个节点都需要填写时间')
       return
     }
 
     const title = announcementTitle.trim()
     const content = announcementContent.trim()
+    const patch = toSchedulePatch(schedule, draft)
+    if (Object.keys(patch).length === 0 && !title && !content) {
+      setFormError('没有需要保存的改动：改一个时间，或填写一条公告')
+      return
+    }
 
     setPending(true)
     const { data, error } = await updateSeasonSchedule(seasonId, {
-      schedule: payload,
+      ...(Object.keys(patch).length > 0 ? { schedule: patch } : {}),
       ...(title || content ? { announcement: { title, content } } : {}),
     })
     setPending(false)
@@ -136,8 +155,8 @@ export function SeasonScheduleDialog({
               改赛程
             </h2>
             <p className="mt-2 text-body-sm text-muted-foreground">
-              全部时间按<strong>北京时间</strong>填写。已过去的截止不能再改；缩短的截止至少在公告发出
-              48 小时之后。
+              全部时间按<strong>北京时间</strong>填写。已经过去的节点已锁定，不能再改，也不参与校验；
+              保存时只提交改动的节点。缩短的截止至少在公告发出 48 小时之后。
             </p>
           </div>
           <button
@@ -153,27 +172,32 @@ export function SeasonScheduleDialog({
 
         <form onSubmit={onSubmit} className="grid gap-5" noValidate aria-label="赛季赛程表单">
           <div className="grid gap-4 sm:grid-cols-2">
-            {SCHEDULE_FIELDS.map((field) => (
-              <FormField
-                key={field.key}
-                label={field.label}
-                htmlFor={id(`schedule-${field.key}`)}
-                error={errors[`schedule.${field.key}`]}
-              >
-                <TextInput
-                  id={id(`schedule-${field.key}`)}
-                  name={field.key}
-                  type="datetime-local"
-                  value={draft[field.key]}
-                  onChange={(next) => setField(field.key, next)}
-                />
-              </FormField>
-            ))}
+            {SCHEDULE_FIELDS.map((field) => {
+              const isLocked = lockedKeys.has(field.key)
+              return (
+                <FormField
+                  key={field.key}
+                  label={field.label}
+                  htmlFor={id(`schedule-${field.key}`)}
+                  error={errors[`schedule.${field.key}`]}
+                  hint={isLocked ? '已经过去，不可修改' : undefined}
+                >
+                  <TextInput
+                    id={id(`schedule-${field.key}`)}
+                    name={field.key}
+                    type="datetime-local"
+                    value={draft[field.key]}
+                    onChange={(next) => setField(field.key, next)}
+                    disabled={isLocked}
+                  />
+                </FormField>
+              )
+            })}
           </div>
 
           <p className="ui-hint">
             {schedule
-              ? '八个节点都要填，且时间严格递增；已经排期的赛季不能整体清空赛程。'
+              ? '已过去的节点已锁定；其余节点必须严格递增，保存时只提交改动的节点。'
               : '要么八格全部留空（= 暂不排期），要么八个节点都填，且时间严格递增。'}
           </p>
 

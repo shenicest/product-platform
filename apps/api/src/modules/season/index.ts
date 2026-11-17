@@ -16,6 +16,7 @@ import {
   SeasonIdParams,
   UpdateEnterpriseCooperationsBody,
   UpdateOrganizersBody,
+  UpdateAgreementBody,
   UpdateRuleCardBody,
   UpdateRulesBody,
   UpdateScheduleBody,
@@ -124,13 +125,13 @@ export const seasonModule = new Elysia()
     body: UpdateSeasonBody,
     detail: { summary: 'Update season core fields', tags: ['Season'] },
   })
-  .put('/seasons/:id/schedule', async ({ user, params, body }) => {
+  .patch('/seasons/:id/schedule', async ({ user, params, body }) => {
     return seasonService.updateSchedule(params.id, user.userId, body)
   }, {
     auth: true,
     params: SeasonIdParams,
     body: UpdateScheduleBody,
-    detail: { summary: 'Update season schedule', tags: ['Season'] },
+    detail: { summary: 'Patch season schedule (incremental)', tags: ['Season'] },
   })
   .put('/seasons/:id/rules', async ({ user, params, body }) => {
     return seasonService.updateRules(params.id, user.userId, body)
@@ -147,6 +148,14 @@ export const seasonModule = new Elysia()
     params: SeasonIdParams,
     body: UpdateRuleCardBody,
     detail: { summary: 'Replace season rule card', tags: ['Season'] },
+  })
+  .put('/seasons/:id/agreement', async ({ user, params, body }) => {
+    return seasonService.updateAgreement(params.id, user.userId, body)
+  }, {
+    auth: true,
+    params: SeasonIdParams,
+    body: UpdateAgreementBody,
+    detail: { summary: 'Replace unpublished season agreement content', tags: ['Season'] },
   })
   .put('/seasons/:id/organizers', async ({ user, params, body }) => {
     return seasonService.updateOrganizers(params.id, user.userId, body)

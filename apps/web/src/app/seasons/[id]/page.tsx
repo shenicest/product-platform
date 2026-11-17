@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import { cookies } from 'next/headers'
+import type { Metadata } from 'next'
 import { SeasonDetailPage } from '@/components/boomland/season-detail'
+import { NO_INDEX_ROBOTS, pageMetadata } from '@/lib/site-metadata'
 import {
   getMySeasonApplication,
   getSeason,
@@ -9,6 +11,26 @@ import {
 } from '@/server/boomland'
 
 export const dynamic = 'force-dynamic'
+
+/**
+ * 分享卡片：赛季名 + 简介 + 站内 canonical。
+ * `getSeason` 内部有 `cache()`，metadata 与页面各取一次不会重复请求。
+ */
+export async function generateMetadata(
+  props: PageProps<'/seasons/[id]'>,
+): Promise<Metadata> {
+  const rawId = (await props.params).id
+  if (!/^\d+$/.test(rawId)) return { title: '赛季不可用', robots: NO_INDEX_ROBOTS }
+  const season = await getSeason(Number(rawId)).catch(() => null)
+  if (!season) return { title: '赛季不可用', robots: NO_INDEX_ROBOTS }
+
+  return pageMetadata({
+    title: season.name,
+    description: season.intro,
+    path: `/seasons/${season.id}`,
+    type: 'article',
+  })
+}
 
 /**
  * 单场赛季详情页。

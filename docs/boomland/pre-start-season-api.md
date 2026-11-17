@@ -395,6 +395,7 @@ published / closed ──archive──▶ archived
 | `participant_capacity` | int | null；选手名额，空表示不限 |
 | `awarding_entity` | varchar(255) | null |
 | `agreement_version` | varchar(32) | not null default `'v1'` |
+| `agreement_content` | text | null；协议正文（纯文本，按空行分段），公开协议页渲染 |
 | `rules_version` | int | not null default 1 |
 | `rules` | json | `SeasonRules`, not null |
 | `created_by` | varchar(255) | not null |
@@ -450,7 +451,9 @@ type SeasonSchedule = {
 赛程校验：八个时间全部非空。以下六个时间点严格递增：
 `applyOpen < applyClose < startAt < teamDeadline < scoreDeadline < settleDate`。
 额外约束：`workDeadline <= scoreDeadline`、`challengeFreezeAt <= teamDeadline`。
-允许编辑时整体替换；不允许只改一个导致顺序错误。
+
+修改赛程走**增量提交**（`PATCH /seasons/:id/schedule`，见第 6 章接口）：只传改动的
+节点，未传的节点沿用已保存的值；已经过去的时间点锁定、且不参与校验。
 
 ### 4.5 `season_rule_card_items`
 
@@ -861,6 +864,8 @@ type SeasonDetail = SeasonSummary & {
   ruleCard: RuleCardItem[]
   rulesVersion: number
   awardingEntity: string | null
+  agreementVersion: string
+  agreementContent: string | null
   startedAt: string | null
   applicationWindow: {
     opensAt: string | null
@@ -917,6 +922,7 @@ type CreateSeasonBody = {
   rules?: Partial<SeasonRules>
   organizerOrgIds: number[]
   agreementVersion?: string          // default 'v1'
+  agreementContent?: string | null   // 协议正文，≤ 20000 字符；空串按 null 处理
   awardingEntity?: string | null
   participantCapacity?: number | null // 空表示不限
 }
@@ -1003,24 +1009,35 @@ type SeasonManageDetail = SeasonDetail & {
 - 审计：`season.updated`。
 - 响应：`SeasonManageDetail`。
 
-#### `PUT /seasons/:id/schedule`
+#### `PATCH /seasons/:id/schedule`
 
 - 认证：Season Organizer / Platform Admin。
 - 允许状态：`draft` / `upcoming` / `active` / `suspended`。
-- 请求：
+- 请求：**增量提交**，只传需要改的节点；未传的节点沿用库里已保存的值。
 
 ```ts
 type UpdateScheduleBody = {
-  schedule: SeasonSchedule
+  /** 只包含改动的节点；整体可省略（只发一条赛程公告时）。 */
+  schedule?: Partial<SeasonSchedule>
   announcement?: { title?: string; content?: string }
 }
 ```
 
-- 校验八个时间非空、六个主时间点严格递增，以及 `workDeadline <= scoreDeadline`、`challengeFreezeAt <= teamDeadline`；否则 `400 SCHEDULE_INVALID`。
+- 校验：
+  - **已过去的节点锁定**：库里现值严格早于当前时间的节点只允许原样重复提交；
+    改了返回 `409 SCHEDULE_MILESTONE_LOCKED`（`error.field = schedule.<key>`）。
+  - **已过去的节点不参与校验**：六个主时间点的严格递增与两条 `<=` 约束只看仍然
+    可编辑的节点 —— 已经发生的事是既定事实，不该让「改后面的节点」被它拦住。
+  - 提交的节点不能早于当前时间（`400 SCHEDULE_INVALID`）：不允许把未来节点挪成过去。
+  - 首次排期（库里还没有完整赛程）必须一次给齐八个节点，否则 `400 SCHEDULE_INVALID`。
+  - `workDeadline <= scoreDeadline`、`challengeFreezeAt <= teamDeadline` 同样只看
+    两侧都可编辑时才比较。
 - 副作用：
-  - 更新七列；`rules_version += 1`。
-  - 写 `audit_logs`：`season.schedule_updated`（detail 含 before/after）。
-  - 若赛季已批准（`approvedAt != null`）：创建公告。未提供 `announcement` 时生成自动摘要；提供时标题/内容必须非空。
+  - 只写真正变化的列；`rules_version += 1`。
+  - 没有任何变化时不写库、不推版本、不写审计；仅在显式给了公告内容时创建公告。
+  - 写 `audit_logs`：`season.schedule_updated`（detail 含 `before` / `after` / `changed`）。
+  - 若赛季已批准（`approvedAt != null`）且有变化：创建公告。未提供 `announcement`
+    时，自动摘要只列本次改动的节点（`旧值 → 新值`，北京时间）。
 - 响应：`SeasonManageDetail`。
 
 #### `PUT /seasons/:id/rules`
@@ -1070,6 +1087,26 @@ type UpdateRuleCardBody = {
   审计 `detail.droppedLegacyKeys` 记录被丢弃的 key。
 - 副作用：替换该赛季全部规则卡条目；审计 `season.rule_card_updated`；已批准时可选公告。不改变 `rules_version`。
 - 响应：`{ items: RuleCardItem[] }`。
+
+#### `PUT /seasons/:id/agreement`
+
+- 认证：Season Organizer / Platform Admin。
+- 允许状态：未发布 = `draft`，或 `upcoming` 且 `approved_at` 为空（已提交待批）。
+- 请求：
+
+```ts
+type UpdateAgreementBody = {
+  agreementContent: string | null    // ≤ 20000 字符；空串 / null = 清空
+}
+```
+
+- 说明：协议正文与规则卡共同构成 `/seasons/:id/agreement` 公开页；规则卡不在这条接口里。
+  正文按空行分段渲染，保存时只 trim 首尾空白，保留正文内部换行与缩进。
+- 副作用：更新 `agreement_content`；审计 `season.agreement_updated`
+  （detail 只记 `agreementVersion` 与修改前后长度，不落全文）。
+- 响应：`SeasonManageDetail`。
+- 错误：`SEASON_INVALID_STATUS`（已批准 / 已取消等不允许写入的状态）。
+  已发布后修改正文必须升级 `agreement_version`，不能静默覆盖报名者已勾选确认的内容。
 
 #### `PUT /seasons/:id/organizers`
 
@@ -1144,7 +1181,7 @@ type UpdateRuleCardBody = {
 
 - 认证：Season Organizer / Platform Admin。
 - 请求：`{ code: string; name?: string }`。
-- 复制：`type/city/intro/themes/rules/rule_card/awarding_entity/agreement_version/organizer_org_ids`。
+- 复制：`type/city/intro/themes/rules/rule_card/awarding_entity/agreement_version/agreement_content/organizer_org_ids`。
 - 清空：赛程七列、`approved_*`、`submitted_*`、`rejected_*`、`started_*`、`suspended_*`、`cancelled_*`、`pinned`。
 - 不复制：预算、积分池余额/分配、核验员、命题、报名、选手、公告、审计。
 - 新赛季：`status=draft`、`rules_version=1`、`name` 默认为 `${source.name}（副本）`；创建空积分池（`total=0`）；种入必要规则卡（按来源的 `rules` + 空赛程重新生成，截止时间显示「待定」），可选条目与顺序复制。
@@ -1419,7 +1456,9 @@ type VerifierGrant = {
   - 当前时间在 `[applyOpen, applyClose]` 内。
   - 未暂停、未取消。
   - 该用户在该赛季没有报名；若仅有 `withdrawn` 报名，则复用该记录重新报名。
-  - 该用户不是该赛季选手。
+  - 该用户不是该赛季选手（`season_participants` 存在即拒，不看选手状态）。
+  - 服务端与公开详情共用同一个窗口判断（`isApplicationWindowOpen`）：详情说「报名中」就必须真能提交。
+  - 拒绝口径：未批准 / 不在窗口 / 已暂停前态不满足 → `409 APPLICATION_WINDOW_CLOSED`；暂停 → `409 SEASON_SUSPENDED`；取消 → `409 SEASON_CANCELLED`。
 - 请求：
 
 ```ts
@@ -1441,7 +1480,7 @@ type CreateApplicationBody = {
 ```
 
 - 校验：
-  - `contact.wechat` 与 `contact.phone` 至少一个非空；否则 `400 CONTACT_REQUIRED`。
+  - `contact` 对象可以整体省略；省略与「`wechat` / `phone` 都为空或纯空白」等价，一律 `400 CONTACT_REQUIRED`（`field=contact`）。联系方式是主办方拉群的唯一依据，不做任何「可选」例外。
   - `agreementVersion` 必须等于赛季当前值；否则 `409 AGREEMENT_VERSION_MISMATCH`。
   - `themes` 必须是赛季 `themes` 的子集；否则 `400 APPLICATION_THEME_INVALID`。
 - 副作用：
@@ -1471,6 +1510,7 @@ type MyApplication = {
   application: SeasonApplication
   season: SeasonSummary
   wechatStatus: WechatStatus | null   // 未成为选手时为 null
+  participantStatus: SeasonParticipantStatus | null  // 未成为选手时为 null；退出赛季后为 withdrawn，报名记录仍是 accepted
 }
 ```
 
@@ -1620,6 +1660,7 @@ type SeasonParticipant = {
 | `SEASON_SUSPENDED` | 409 | 暂停期间报名/开赛 |
 | `SEASON_CANCELLED` | 409 | 已取消赛季的写操作 |
 | `SCHEDULE_INVALID` | 400 | 赛程缺失或顺序错误 |
+| `SCHEDULE_MILESTONE_LOCKED` | 409 | 已过去的赛程节点不能修改 |
 | `RULES_INVALID` | 400 | 规则字段非法 |
 | `RULE_CARD_REQUIRED_ITEM` | 400 | 必要规则卡条目缺失或被隐藏 |
 | `NOT_SEASON_ORGANIZER` | 403 | 非本赛季主办方 |

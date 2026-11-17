@@ -233,10 +233,10 @@ type RecruitmentApplication = {
 ## 4. 前端接线约定
 
 - Server 端：`apps/web/src/server/me.ts`（`cache()` 包装），`getTeamWorkbench(seasonId)`。
-- Client 端：`apps/web/src/lib/team-api.ts`，复用 `lib/client-api.ts` 的 `request`。
+- Client 端：`apps/web/src/lib/team-api.ts`，复用 `lib/client-api.ts` 的 `request`；退出赛季的 `withdrawSeasonParticipant` 在 `lib/boomland-api.ts`（报名页使用）。
 - 枚举一律从 `@shenicest/shared` 引入（`SeasonProjectStatus`、`SeasonProjectSource`、`RecruitmentCardStatus`、`RecruitmentApplicationStatus`、`SEASON_PROJECT_LIMITS`）。
 - 错误文案：直接展示后端 `error.message`；字段错误定位到 `error.field`。
-- 退出赛季复用既有接口 `POST /seasons/:id/participants/:userId/withdraw { confirm: true }`，不新增。
+- 退出赛季复用既有接口 `POST /seasons/:id/participants/:userId/withdraw { confirm: true }`，不新增；入口不在组队 tab，在 `/me/applications` 的报名表格里（组队截止前才出现）。
 
 ## 5. 不做
 

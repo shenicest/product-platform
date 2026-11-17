@@ -1,8 +1,17 @@
 import Link from 'next/link'
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { Role } from '@shenicest/shared'
+import { NO_INDEX_ROBOTS } from '@/lib/site-metadata'
 import { getSessionUser } from '@/server/auth'
 import { Eyebrow } from '@/components/ui/typography'
+
+export const metadata: Metadata = {
+  title: '运营后台',
+  description: 'Shenicest 运营后台：项目、提案、精选与审计。',
+  // 后台依赖登录态与角色，不应该出现在搜索结果和分享卡片里。
+  robots: NO_INDEX_ROBOTS,
+}
 
 const NAV_ITEMS = [
   { href: '/operator', label: '总览' },

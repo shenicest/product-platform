@@ -22,6 +22,7 @@
 | `/seasons` | Server + Client Filter | 公开 | 赛季列表：置顶、状态/类型/城市/主题筛选、搜索、分页 |
 | `/seasons/[id]` | Server | 公开 | 赛季详情：赛程、规则卡、公告、已发布命题、报名 CTA |
 | `/seasons/[id]/apply` | Server Shell + Client Form | 登录 | 报名表单；未登录跳转 `/login?next=/seasons/[id]/apply` |
+| `/seasons/[id]/agreement` | Server | 公开 | 赛季协议正文 + 规则卡；报名表单“我已阅读并同意”链接到此 |
 | `/me/applications` | Server + Client UI | 登录 | 我的报名：审核状态、赛季、微信群状态 |
 | `/organizer` | Server Shell | 主办方/管理员 | 重定向到 `/organizer/seasons` |
 | `/organizer/seasons` | Server + Client UI | 主办方/管理员 | 我的赛季列表；新建草稿入口；待办（待批/未就绪） |
@@ -115,7 +116,10 @@ export const listMyApplications = (query?: { seasonId?: number }) =>
 - Hero：标题“BoomLand 赛季”、一句说明、CTA“我的报名”（登录）/“登录后报名”。
 - 置顶赛季卡片：单独高亮，`pinned=true` 只出现一个。
 - 筛选栏（Client）：状态（进行中/即将开始/已暂停）、类型（赛季/黑客松）、城市、主题、搜索。
-- 列表卡片：名称、`code`、状态徽章、类型、城市、主题 chips、赛程（报名截止/开赛）、主办方组织名、参与人数、已发布命题数。
+- 列表卡片：名称、`code`、赛季状态徽章、**报名状态徽章（未开放/报名中/报名已截止）**、类型、城市、主题 chips、赛程（报名截止/开赛）、主办方组织名、参与人数、已发布命题数。
+- 报名状态为「报名中」时，卡片底部才展示名额与已通过人数 + 报名进度条，以及报名 CTA；CTA 文案按登录用户在该赛季的报名状态区分（见 4.2）。
+- CTA 与进度条同处卡片底部：CTA 在 DOM 里有一个同字号、同内边距的透明占位元素，进度条因此正好停在按钮左边缘，按钮文案再长也不会压住进度条。
+- 报名状态不是「报名中」时，卡片不展示按钮，也不展示「已通过多少 / 多少个名额」与进度条；整卡仍可点进赛季详情。
 - 空状态：说明没有匹配赛季，提供“清除筛选”。
 - 分页：上一页/下一页 + 页码；URL query 同步，便于分享。
 
@@ -136,18 +140,29 @@ export const listMyApplications = (query?: { seasonId?: number }) =>
 
 页面：
 
-- Header：名称、`code`、状态、类型、城市、置顶标识、主办方组织、授奖主体。
+- Header：名称、`code`、赛季状态、**报名状态（未开放 / 报名中 / 报名已截止）**、我的报名状态、类型、城市、置顶标识、主办方组织、授奖主体。
 - 赛程时间线：八个节点；高亮当前阶段；`applicationWindow.isOpen` 时显示报名倒计时。
-- 报名 CTA：
-  - 未登录：登录后报名。
-  - 登录且窗口开放且未报名：`/seasons/[id]/apply`。
-  - 已报名：显示状态徽章 + “查看我的报名”。
+- 报名 CTA（同一套文案同时用于赛季卡片与详情页海报）：
+
+  | 我的报名状态 | CTA 文案 | 目标 |
+  |---|---|---|
+  | 未报名 | 立即报名（未登录：登录后报名） | `/seasons/[id]/apply`（未登录先登录） |
+  | 审核中（`submitted` / `pending`） | 报名审核中 | `/me/applications` |
+  | 候补中（`waitlisted`） | 候补中 | `/me/applications` |
+  | 已报名（`accepted`） | 查看我的报名 | `/me/applications` |
+  | 已撤回（`withdrawn`） | 重新报名 | 窗口开放时 `/seasons/[id]/apply`，否则禁用 |
+  | 未通过（`rejected`） | 查看未通过原因 | `/me/applications`（审核说明列给出原因） |
+
+  - 报名窗口未开放 / 已截止时，「未报名」「已撤回」的 CTA 禁用并显示 `报名 X 开放` / `报名已截止`。
+  - 赛季暂停 / 取消时，可报名的 CTA 禁用并显示 `报名已暂停` / `赛季已取消`；已提交过的报名仍可查看进度。
   - 已是选手：显示“已加入本赛季”。
-  - 窗口关闭/暂停/取消：显示原因文案，按钮禁用。
 - 规则卡：按 `sortOrder` 渲染 `label/value`；必要项无隐藏逻辑（后端保证）。
 - 公告：最新 3 条，展开更多；空状态。
 - 命题：已发布命题列表；显示标题与五件套摘要；点击展开详情；`closed` 显示“已关闭”。
 - 非公开赛季：渲染 404 页面（不使用后端错误文案泄漏草稿）。
+
+报名状态与我的报名状态都由 `apps/web/src/lib/season-registration.ts` 推导（纯函数，可单测），
+组件不各自拼条件：列表接口只有 `schedule`、详情接口有 `applicationWindow`，两者必须得出同一结果。
 
 ### 4.3 `/seasons/[id]/apply` 报名表单
 
@@ -172,6 +187,7 @@ export const listMyApplications = (query?: { seasonId?: number }) =>
 | 手机 | Input | 与微信至少一个；1–50 |
 | 公开范围 | Radio：公开 / 仅主办方 | 默认仅主办方 |
 | 协议版本 | 只读展示 + 勾选确认 | 必须等于赛季 `agreementVersion` |
+| 协议与规则卡 | 勾选项内的链接（新窗口） | 打开 `/seasons/[id]/agreement`，勾选仍需在本页完成 |
 
 交互：
 
@@ -181,6 +197,21 @@ export const listMyApplications = (query?: { seasonId?: number }) =>
 - 联系方式输入框 `autoComplete="off"`；不打印到控制台。
 - 方向为空时展示“本赛季未设置方向”，允许提交空数组。
 
+### 4.3.1 `/seasons/[id]/agreement` 协议与规则卡
+
+访问：公开。非公开赛季（`approvedAt` 为空 / 已取消）渲染 404，与赛季详情同口径。
+
+页面：
+
+- 顶部：返回赛季详情、赛季名 + 编号、状态、协议版本（`agreementVersion`）、规则卡版本（`rulesVersion`）。
+- 协议正文：`seasons.agreementContent`，纯文本按空行分段渲染，段内换行保留；
+  正文为空时不编造内容，提示“主办方还没有填写协议正文”。
+- 规则卡：与 `/seasons/[id]` 同一份 `ruleCard`（必要条目由赛季配置生成），复用 `SeasonRulesGrid`。
+- 底部：报名入口（赛季未取消/未暂停时）+ 返回赛季详情。
+
+报名表单的“我已阅读并同意本赛季协议（…）与规则卡”文案即链接到本页，`target="_blank"` 打开，
+不影响报名表单当前填写内容；勾选仍需在报名页完成。
+
 ### 4.4 `/me/applications` 我的报名
 
 数据：`GET /me/applications`。
@@ -189,13 +220,13 @@ export const listMyApplications = (query?: { seasonId?: number }) =>
 
 - 列表项：赛季名称/编号、状态徽章、报名时间、微信群状态（未成为选手显示“—”，成为选手后显示未邀请/已邀请/已加入/邀请失败）。
 - 点击进入赛季详情；已接受显示“已加入赛季”。
-- 状态文案：
-  - `submitted` 已提交
-  - `accepted` 已通过
-  - `pending` 待定
-  - `waitlisted` 候补
-  - `rejected` 未通过（显示原因）
+- 「审核状态」列（与赛季卡片、详情页徽章同一套文案）：
+  - `submitted` / `pending` 审核中
+  - `accepted` 已报名
+  - `waitlisted` 候补中
+  - `rejected` 未通过（原因见「审核说明」列）
   - `withdrawn` 已撤回
+  - 报名仍 `accepted` 但选手已退出 → 已退赛（读 `MyApplication.participantStatus`，不看报名状态）
 - `submitted` 状态提供“撤回报名”按钮（二次确认），调用 `POST /applications/:id/withdraw`。
 - `withdrawn` 且报名窗口开放时提供“重新报名”入口，回到报名表单；提交后复用同一条记录。
 - `accepted` 且当前是 `active` 选手、组队截止前，提供“退出赛季”入口（二次确认），调用 `POST /seasons/:id/participants/:userId/withdraw { confirm: true }`；截止后隐藏并提示联系主办方。
@@ -221,7 +252,7 @@ export const listMyApplications = (query?: { seasonId?: number }) =>
 
 字段：
 
-- 编号（必填，1–32，创建后不可改）、名称、类型（赛季/黑客松）、城市（黑客松必填）、介绍、主题（多选输入）、主办方组织（多选，来自 `GET /organizer-orgs` 中 `isMember` 的组织；管理员可选全部）、协议版本（默认 `v1`）、授奖主体、选手名额（可选，留空表示不限）。
+- 编号（必填，1–32，创建后不可改）、名称、类型（赛季/黑客松）、城市（黑客松必填）、介绍、主题（多选输入）、主办方组织（多选，来自 `GET /organizer-orgs` 中 `isMember` 的组织；管理员可选全部）、协议版本（默认 `v1`）、协议正文（可选，≤ 20000 字，公开协议页渲染）、授奖主体、选手名额（可选，留空表示不限）。
 - 规则（可折叠，带默认值）：命题上限 3、每人项目数 1、团队人数 3、单次评分上限 100、兑换比例 1、复核阈值 50、每日限额关闭。
 - 赛程可暂不填（草稿允许），但页面提示“提交前必须完整”。
 
@@ -237,15 +268,19 @@ export const listMyApplications = (query?: { seasonId?: number }) =>
 Tab：
 
 1. **概览**：状态、readiness 九项（通过/失败 + detail）、关键时间、参与人数/名额/候补数、待批/驳回原因；操作：提交、开赛、暂停、恢复、取消、复制。
-2. **赛程**：八个 datetime 输入；保存时校验 `applyOpen < applyClose < startAt < teamDeadline < scoreDeadline < settleDate`，并校验 `workDeadline <= scoreDeadline`、`challengeFreezeAt <= teamDeadline`；已批准赛季保存后可填写公告标题/内容（留空自动摘要）。
+2. **赛程**：八个 datetime 输入；已经过去（早于当前时间）的节点置灰、不可修改，
+   也不参与校验；保存时只提交改动的节点（`PATCH /seasons/:id/schedule` 增量提交）。
+   仍可编辑的节点校验 `applyOpen < applyClose < startAt < teamDeadline < scoreDeadline < settleDate`，
+   并校验 `workDeadline <= scoreDeadline`、`challengeFreezeAt <= teamDeadline`；已批准赛季保存后可填写公告标题/内容（留空自动摘要）。
 3. **规则**：类型化表单（命题上限 1–3、每人项目数、团队人数 1–3、单次评分上限、兑换比例、复核阈值、每日限额开关）；仅 draft/upcoming 可编辑。
 4. **规则卡**：拖拽排序；必要项固定不可删/不可隐藏；可选条目增删；保存可附公告。
-5. **主办方**：组织多选；draft 可改，提交后仅管理员可改。
-6. **命题**：列表 + 新建/编辑；五件套表单；发布前显示缺失字段；草稿/参考资料/已发布/已关闭/已归档状态；发布后编辑提示“将生成新版本”。
-7. **预算**：版本列表；追加预算对话框（新总额 + 原因）；显示当前 active。
-8. **积分池**：总量/已分配/未分配/已使用；充值对话框；评委分配列表 + 分配/回收；核验员列表 + 授权/撤销。
-9. **公告**：列表 + 新建。
-10. **审计**：分页表格，按 action/target 筛选。
+5. **协议与规则卡**：编辑协议正文（`PUT /seasons/:id/agreement`）；草稿与待批准可改，批准后只读；已发布后可跳转 `/seasons/[id]/agreement` 预览。规则卡仍在上一条区块维护。
+6. **主办方**：组织多选；draft 可改，提交后仅管理员可改。
+7. **命题**：列表 + 新建/编辑；五件套表单；发布前显示缺失字段；草稿/参考资料/已发布/已关闭/已归档状态；发布后编辑提示“将生成新版本”。
+8. **预算**：版本列表；追加预算对话框（新总额 + 原因）；显示当前 active。
+9. **积分池**：总量/已分配/未分配/已使用；充值对话框；评委分配列表 + 分配/回收；核验员列表 + 授权/撤销。
+10. **公告**：列表 + 新建。
+11. **审计**：分页表格，按 action/target 筛选。
 
 操作区按钮可见性由 `status` + `approvedAt` 决定：
 
@@ -270,6 +305,7 @@ readiness 未就绪时，“提交待批”禁用并提示缺项；管理员“�
 
 页面：
 
+- 「报名审核」tab 上有红点：当前赛季**待处理**（`submitted`）的报名条数，`0` 条不显示，超过 99 显示 `99+`。数字由 `OrganizerShell` 按选中的赛季单独取（`GET /seasons/:id/applications?status=submitted&pageSize=1` 的 `total`）—— layout 拿不到 `searchParams`，服务端不知道当前是哪一季；审核成功后派发 `organizer-applications-refresh` 事件让红点重算（`router.refresh()` 不会重跑那个 effect）。
 - 筛选：`?status=`（默认 `submitted`「待处理」，`all` 表示全部）+ 可见性、关键词（后端支持，UI 暂只暴露状态）。
 - 列表列：报名人、提交时间、技能与经历、兴趣主题、组队、拉群联系方式（掩码）、状态、操作。
 - 点击行打开详情抽屉：完整联系方式、经历、组队意向、接受单人、城市模式、协议版本、审核历史（`GET /seasons/:id/audit-logs?targetType=season_application&targetId=<id>`）。
@@ -278,7 +314,7 @@ readiness 未就绪时，“提交待批”禁用并提示缺项；管理员“�
   - 通过 → `PATCH /applications/:id/status {status:'accepted'}`；若名额已满且未到组队截止，返回 `waitlisted`，提示“名额已满，该报名已进入候补队列”；截止后返回 `409 CAPACITY_FULL`。
   - 待定/候补 → 直接提交，原因可选；不通过 → 对话框必填原因。
   - accepted / withdrawn 后没有动作，显示终态。
-- 审核后 `router.refresh()`，列表、选手数与候补数一起重算；不在此页做微信群操作（跳转「人工拉群」）。
+- 审核后 `router.refresh()`，列表、选手数与候补数一起重算，并派发 `organizer-applications-refresh` 让 tab 红点跟着减；不在此页做微信群操作（跳转「人工拉群」）。
 - 赛季已取消时整列动作禁用并给出说明（后端也会拒）。
 
 ### 4.9 `/organizer/seasons/[id]/participants` 选手与拉群
@@ -395,6 +431,8 @@ readiness 未就绪时，“提交待批”禁用并提示缺项；管理员“�
 Vitest + React Testing Library + MSW：
 
 1. `season-filters`：状态/类型/城市/主题/搜索写入 URL。
+1b. `season-registration`：报名状态三态（未开放/报名中/报名已截止）的推导、我的报名状态六态的 CTA 文案、禁用条件与紧凑文案。
+1c. `season-landing` 组件：票券卡的报名状态徽章、报名进度条只在「报名中」出现、CTA 文案随我的报名状态变化。
 2. `application-form`：必填校验、方向多选、联系方式至少一个、协议版本、成功跳转、409 错误文案。
 3. `application-review-drawer`：接受/待定/候补/拒绝；拒绝原因必填；accepted 后按钮禁用；名额已满时显示候补/`CAPACITY_FULL` 文案。
 3b. `application-withdraw`：撤回确认、重新报名入口、撤回后状态。

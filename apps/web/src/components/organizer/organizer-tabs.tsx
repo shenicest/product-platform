@@ -2,7 +2,9 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Chip } from '@/components/ui/chip'
 import { cn } from '@/lib/utils'
+import { pendingReviewBadgeLabel } from '@/lib/organizer-applications'
 
 /**
  * 主办方后台的 tab 导航。
@@ -35,9 +37,22 @@ export const ORGANIZER_TABS: readonly OrganizerTab[] = [
 
 export const DEFAULT_ORGANIZER_TAB = ORGANIZER_TABS[0]
 
-export function OrganizerTabs({ seasonId }: { seasonId: number | null }) {
+export function OrganizerTabs({
+  seasonId,
+  pendingReviewCount = 0,
+}: {
+  seasonId: number | null
+  /**
+   * 「报名审核」上的红点数字：当前赛季待处理（`submitted`）的报名条数。
+   *
+   * 由 `OrganizerShell` 取好后传进来 —— tab 导航只负责画，取数逻辑跟赛季
+   * 解析放在一起（那才拿得到客户端选中的赛季）。0 表示没有待办，不画红点。
+   */
+  pendingReviewCount?: number
+}) {
   const pathname = usePathname()
   const currentSlug = pathname.split('/').filter(Boolean)[1] ?? DEFAULT_ORGANIZER_TAB.slug
+  const badge = pendingReviewBadgeLabel(pendingReviewCount)
 
   return (
     <nav
@@ -64,6 +79,18 @@ export function OrganizerTabs({ seasonId }: { seasonId: number | null }) {
             )}
           >
             {tab.label}
+            {/* 红点用 `Chip` 而不是绝对定位的小圆点（和个人中心 tab 同一个做法）：
+                它在无障碍树里是一个带 `aria-label` 的标签，读屏能念出「几条待处理」，
+                而不是一个只有颜色的装饰。 */}
+            {tab.slug === 'applications' && badge ? (
+              <Chip
+                tone="accent"
+                data-testid="pending-review-badge"
+                aria-label={`${pendingReviewCount} 条待处理报名`}
+              >
+                {badge}
+              </Chip>
+            ) : null}
           </Link>
         )
       })}

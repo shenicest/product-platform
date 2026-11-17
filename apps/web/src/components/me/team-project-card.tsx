@@ -23,6 +23,9 @@ import {
  *
  * 有项目时展示项目名、来源、方向、命题、核心成员头像、状态。整张卡是
  * Server Component，唯一的交互是「发起项目」弹窗（Client）。
+ *
+ * 组队工作台是 3 列网格：这张卡占两列（`lg:col-span-2`），与招募卡一起把
+ * 两行填满。
  */
 export function TeamProjectCard({
   seasonId,
@@ -43,7 +46,7 @@ export function TeamProjectCard({
 }) {
   if (!project) {
     return (
-      <article className="ui-card ui-card--static">
+      <article className="ui-card ui-card--static lg:col-span-2">
         <div className="card-body">
           <h2 className="card-title">还没有项目</h2>
           <p className="card-text">
@@ -76,7 +79,7 @@ export function TeamProjectCard({
   )
 
   return (
-    <article className="ui-card ui-card--static">
+    <article className="ui-card ui-card--static lg:col-span-2">
       <div className="card-body">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="card-title">{project.name}</h2>

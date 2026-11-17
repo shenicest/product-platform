@@ -29,8 +29,9 @@ export type UpdateSeasonCoreBody = {
   participantCapacity?: number | null
 }
 
+/** `PATCH /seasons/:id/schedule` —— 只提交真正改动的节点（增量）。 */
 export type UpdateSeasonScheduleBody = {
-  schedule: SeasonSchedule
+  schedule?: Partial<SeasonSchedule>
   announcement?: AnnouncementInput
 }
 
@@ -46,6 +47,13 @@ export type UpdateSeasonRuleCardBody = {
 
 export type UpdateSeasonOrganizersBody = { organizerOrgIds: number[] }
 
+/**
+ * `PUT /seasons/:id/agreement` —— 协议正文整段替换。
+ *
+ * 只有未发布赛季（草稿 / 待批准）可写；`null` 表示清空。规则卡不在这条接口里。
+ */
+export type UpdateSeasonAgreementBody = { agreementContent: string | null }
+
 /** `PUT /seasons/:id/themes` —— 整表替换赛季主题，返回归一化后的结果。 */
 export type UpdateSeasonThemesBody = { themes: string[] }
 
@@ -54,11 +62,15 @@ export function updateSeasonCore(seasonId: number, body: UpdateSeasonCoreBody) {
 }
 
 export function updateSeasonSchedule(seasonId: number, body: UpdateSeasonScheduleBody) {
-  return request<SeasonManageDetail>('PUT', `/seasons/${seasonId}/schedule`, body)
+  return request<SeasonManageDetail>('PATCH', `/seasons/${seasonId}/schedule`, body)
 }
 
 export function updateSeasonRules(seasonId: number, body: UpdateSeasonRulesBody) {
   return request<SeasonManageDetail>('PUT', `/seasons/${seasonId}/rules`, body)
+}
+
+export function updateSeasonAgreement(seasonId: number, body: UpdateSeasonAgreementBody) {
+  return request<SeasonManageDetail>('PUT', `/seasons/${seasonId}/agreement`, body)
 }
 
 export function updateSeasonRuleCard(seasonId: number, body: UpdateSeasonRuleCardBody) {

@@ -3,8 +3,14 @@ import { HackathonShowcase } from '@/components/hackathon-showcase'
 import { PublicInteractionBoundary } from '@/components/public-interaction-boundary'
 import { Pagination } from '@/components/pagination'
 import { PAGE_SIZE, parseListParams, type SearchParams } from '@/lib/project-filters'
+import { pageMetadata } from '@/lib/site-metadata'
 
-export const metadata = { title: '黑客松专区' }
+export const metadata = pageMetadata({
+  title: '黑客松专区',
+  description:
+    '探索黑客松的参赛项目。按赛道浏览，打开项目详情，为你支持的创意留下一个赞。',
+  path: '/hackathon',
+})
 export const dynamic = 'force-dynamic'
 
 export default async function HackathonPage(props: { searchParams: Promise<SearchParams> }) {

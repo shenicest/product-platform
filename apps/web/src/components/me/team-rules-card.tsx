@@ -2,7 +2,7 @@ import type { TeamRulesDto } from '@/lib/team'
 import { teamRuleBullets } from '@/lib/team'
 
 /**
- * 「组队规则」卡 —— 组队 tab 的第 5 张卡。
+ * 「组队规则」卡 —— 组队 tab 的第 4 张卡。
  *
  * bullet 由 `teamRuleBullets()` 生成（纯函数，单测覆盖）：前三条与最后一条是
  * 赛季级固定规则，第 4、5 条取赛季 `rules` 与 `teamDeadline`。

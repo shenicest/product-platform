@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SEASON_RULE_DEFAULTS } from '@shenicest/shared'
+import { SEASON_RULE_DEFAULTS, type SeasonScheduleKey } from '@shenicest/shared'
 import {
   defaultSeasonId,
   draftFromCurrentSeason,
@@ -72,6 +72,15 @@ describe('validateSeasonDraft', () => {
     expect(validateSeasonDraft(values({ participantCapacity: '' }), options).participantCapacity).toBeUndefined()
   })
 
+  it('rejects agreement content over the shared maximum length', () => {
+    expect(
+      validateSeasonDraft(values({ agreementContent: '字'.repeat(20_001) }), options).agreementContent,
+    ).toMatch(/20000/)
+    expect(
+      validateSeasonDraft(values({ agreementContent: '字'.repeat(20_000) }), options).agreementContent,
+    ).toBeUndefined()
+  })
+
   it('accepts a complete, strictly increasing schedule', () => {
     expect(validateSeasonDraft(values({ schedule: SCHEDULE }), options)).toEqual({})
   })
@@ -89,6 +98,22 @@ describe('validateSeasonDraft', () => {
   it('rejects out-of-order milestones', () => {
     const errors = validateScheduleDraft({ ...SCHEDULE, applyClose: '2026-12-01T00:00' })
     expect(errors['schedule.applyClose']).toMatch(/必须晚于/)
+  })
+
+  it('does not demand or compare milestones that already passed', () => {
+    const locked = new Set<SeasonScheduleKey>(['applyOpen'])
+    const optionsWithLock = { ...options, lockedScheduleKeys: locked }
+
+    // 已锁定的节点不要求补全。
+    const cleared = { ...SCHEDULE, applyOpen: '' }
+    expect(validateSeasonDraft(values({ schedule: cleared }), optionsWithLock)).toEqual({})
+    expect(validateSeasonDraft(values({ schedule: cleared }), options)['schedule.applyOpen']).toBeTruthy()
+
+    // 已锁定的节点不参与顺序比较：applyClose 早于过去的 applyOpen 也不算错。
+    const outOfOrder = { ...SCHEDULE, applyClose: '2026-12-01T00:00' }
+    expect(validateSeasonDraft(values({ schedule: outOfOrder }), optionsWithLock)).toEqual({})
+    expect(validateSeasonDraft(values({ schedule: outOfOrder }), options)['schedule.applyClose'])
+      .toBeTruthy()
   })
 
   it('rejects work deadline after score deadline and freeze after team deadline', () => {
@@ -157,6 +182,13 @@ describe('toCreateSeasonPayload', () => {
 
   it('converts the capacity to a number', () => {
     expect(toCreateSeasonPayload(values({ participantCapacity: '80' })).participantCapacity).toBe(80)
+  })
+
+  it('trims agreement content and sends null when blank', () => {
+    expect(
+      toCreateSeasonPayload(values({ agreementContent: '  第一条 参赛资格  ' })).agreementContent,
+    ).toBe('第一条 参赛资格')
+    expect(toCreateSeasonPayload(values({ agreementContent: '   ' })).agreementContent).toBeNull()
   })
 })
 
@@ -240,6 +272,7 @@ describe('draftFromCurrentSeason', () => {
     approvedAt: null,
     pinned: false,
     agreementVersion: 'v1',
+    agreementContent: '第一条 参赛资格',
     awardingEntity: null,
     participantCapacity: 60,
     organizerOrgIds: [3],
@@ -263,6 +296,7 @@ describe('draftFromCurrentSeason', () => {
     expect(draft.name).toBe('2027 春季赛季')
     expect(draft.themes).toEqual(['储能'])
     expect(draft.rules).toEqual(SEASON_RULE_DEFAULTS)
+    expect(draft.agreementContent).toBe('第一条 参赛资格')
   })
 
   it('backfills the schedule so the edit form shows the current timeline', () => {

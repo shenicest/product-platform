@@ -537,6 +537,52 @@ export interface SeasonSchedule {
   settleDate: string
 }
 
+/**
+ * 赛程八个节点的固定顺序（与 `SeasonSchedule` 的声明顺序一致）。
+ *
+ * 后端校验、主办方后台表单、公开页时间线与公告文案都按这份顺序展示与比较：
+ * 顺序只写一处，就不会出现「表单里 A 在 B 前、公告里 B 在 A 前」这种错位。
+ */
+export const SEASON_SCHEDULE_KEYS = [
+  'applyOpen',
+  'applyClose',
+  'startAt',
+  'teamDeadline',
+  'challengeFreezeAt',
+  'workDeadline',
+  'scoreDeadline',
+  'settleDate',
+] as const satisfies readonly (keyof SeasonSchedule)[]
+
+export type SeasonScheduleKey = (typeof SEASON_SCHEDULE_KEYS)[number]
+
+/**
+ * 必须**严格递增**的六个主时间点（`SEASON_SCHEDULE_KEYS` 的子序列）。
+ *
+ * `challengeFreezeAt` / `workDeadline` 不在这条链里：它们只受各自的
+ * `challengeFreezeAt <= teamDeadline`、`workDeadline <= scoreDeadline` 约束。
+ */
+export const SEASON_SCHEDULE_CHAIN = [
+  'applyOpen',
+  'applyClose',
+  'startAt',
+  'teamDeadline',
+  'scoreDeadline',
+  'settleDate',
+] as const satisfies readonly SeasonScheduleKey[]
+
+/** 赛程节点的中文名（表单标签、公告摘要、错误文案共用）。 */
+export const SEASON_SCHEDULE_LABELS: Record<SeasonScheduleKey, string> = {
+  applyOpen: '报名开放',
+  applyClose: '报名截止',
+  startAt: '开赛',
+  teamDeadline: '组队截止',
+  challengeFreezeAt: '命题冻结',
+  workDeadline: '作品截止',
+  scoreDeadline: '评分截止',
+  settleDate: '结算日',
+}
+
 export interface SeasonRules {
   maxChallengesPerProject: number
   maxProjectsPerParticipant: number
@@ -572,6 +618,14 @@ export const SEASON_RULE_LIMITS = {
   exchangeRatio: { min: 0, max: 1_000_000 },
   reviewThreshold: { min: 0, max: 1_000_000 },
 } as const
+
+/**
+ * 赛季协议正文的字数上限。
+ *
+ * 正文落在 `seasons.agreement_content`（MySQL TEXT，64KB 字节），20k 个中文字符
+ * 仍在列容量内；前后端共用同一个上限，避免「后台能填、保存被拒」。
+ */
+export const SEASON_AGREEMENT_CONTENT_MAX_LENGTH = 20_000
 
 /**
  * 必要规则卡条目：由赛季配置生成，主办方不能新增、删除或隐藏，也不能改名称。
@@ -625,8 +679,17 @@ function scorelessOr(value: number | null | undefined, format: (value: number) =
   return isScorelessValue(value) ? SEASON_RULE_CARD_SCORELESS : format(value as number)
 }
 
-/** 规则卡里展示的截止时间；未排期时给「待定」。 */
-function deadlineText(value: string | null | undefined, timeZone: string): string {
+/**
+ * 赛季时间点的统一文案：`2027年2月20日 23:59`（默认北京时间）。
+ *
+ * 赛程、规则卡必要条目、赛程变更公告都用它渲染：三处说的是同一个时刻，
+ * 就不该出现三种写法。时间缺失或非法时给「待定」，不抛错 —— 未排期的赛季
+ * 是正常状态，不是异常。
+ */
+export function formatSeasonDateTime(
+  value: string | null | undefined,
+  timeZone = 'Asia/Shanghai',
+): string {
   if (!value) return '待定'
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return '待定'
@@ -682,8 +745,8 @@ export function seasonRequiredRuleCardValue(
     case 'review_threshold':
       return scorelessOr(rules.reviewThreshold, (value) => `单次评分超过 ${value} 分需大额复核`)
     case 'work_and_score_deadline': {
-      const work = deadlineText(schedule?.workDeadline, 'Asia/Shanghai')
-      const score = deadlineText(schedule?.scoreDeadline, 'Asia/Shanghai')
+      const work = formatSeasonDateTime(schedule?.workDeadline)
+      const score = formatSeasonDateTime(schedule?.scoreDeadline)
       return `作品 ${work} 截止；评分 ${score} 截止（北京时间）`
     }
     case 'point_pool_and_awards': {
@@ -1018,4 +1081,46 @@ export const CHALLENGE_DETAIL_PENDING_TABS: readonly ChallengeDetailTabKey[] = [
 export function isChallengeDetailTabPending(tab: string): boolean {
   return (CHALLENGE_DETAIL_PENDING_TABS as readonly string[]).includes(tab)
 }
+
+/**
+ * 公告类型：只影响图标、分组与文案，**不参与可见性判断**。
+ * 可见性只由 `scope` + 收件人决定，见 docs/announcement-center.md。
+ */
+export const AnnouncementType = {
+  System: 'system',
+  Season: 'season',
+  Application: 'application',
+  Team: 'team',
+  Challenge: 'challenge',
+} as const
+export type AnnouncementType = (typeof AnnouncementType)[keyof typeof AnnouncementType]
+
+export const ANNOUNCEMENT_TYPE_LABELS: Record<AnnouncementType, string> = {
+  system: '平台',
+  season: '赛季',
+  application: '报名',
+  team: '组队',
+  challenge: '命题',
+}
+
+/** 公告的视觉语气（info 普通 / success 好消息 / warning 需要留意）。 */
+export const AnnouncementLevel = {
+  Info: 'info',
+  Success: 'success',
+  Warning: 'warning',
+} as const
+export type AnnouncementLevel = (typeof AnnouncementLevel)[keyof typeof AnnouncementLevel]
+
+/**
+ * 公告受众：`global` 所有登录用户可见；`direct` 只有 announcement_recipients
+ * 里列出的用户可见。二选一，一条公告不会同时是两者。
+ */
+export const AnnouncementScope = {
+  Global: 'global',
+  Direct: 'direct',
+} as const
+export type AnnouncementScope = (typeof AnnouncementScope)[keyof typeof AnnouncementScope]
+
+/** 未读角标上限：超过这个数展示 `99+`（与个人中心 tab 角标同一口径）。 */
+export const ANNOUNCEMENT_UNREAD_CAP = 99
 

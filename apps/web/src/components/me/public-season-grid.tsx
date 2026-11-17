@@ -46,7 +46,7 @@ export function PublicSeasonGrid({ seasons }: { seasons: SeasonSummary[] }) {
               <Chip tone={card.seasonStatusTone} dot>
                 {card.seasonStatusLabel}
               </Chip>
-              <Chip tone={card.windowTone}>{card.windowLabel}</Chip>
+              <Chip tone={card.registrationTone}>{card.registrationLabel}</Chip>
               {card.pinned ? <Chip tone="warning">置顶</Chip> : null}
             </div>
 
@@ -60,7 +60,10 @@ export function PublicSeasonGrid({ seasons }: { seasons: SeasonSummary[] }) {
             </h3>
 
             <p className="card-text">{card.applyWindow}</p>
-            <p className="card-meta font-mono">{card.participants}</p>
+            {/* 名额与已通过人数只在报名中才有意义，与竞品票券卡同一口径。 */}
+            {card.registrationOpen ? (
+              <p className="card-meta font-mono">{card.participants}</p>
+            ) : null}
           </div>
 
           <footer className="card-footer">

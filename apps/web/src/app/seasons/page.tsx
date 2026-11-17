@@ -1,12 +1,19 @@
+import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { SeasonLanding } from '@/components/boomland/v26/season-landing'
 import { EmptyState } from '@/components/ui/surface'
 import { SectionHead } from '@/components/ui/typography'
-import { getSeason, getSeasons } from '@/server/boomland'
+import { getMyApplications, getSeason, getSeasons } from '@/server/boomland'
 import { toSeasonCard } from '@/lib/season-landing'
+import { pageMetadata } from '@/lib/site-metadata'
 import type { SeasonListResponse } from '@/lib/boomland'
 
-export const metadata = { title: '火热赛季' }
+export const metadata = pageMetadata({
+  title: '火热赛季',
+  description:
+    'BoomLand 火热赛季：正在报名与进行中的赛季、公开命题、赛程与报名入口。',
+  path: '/seasons',
+})
 export const dynamic = 'force-dynamic'
 
 /** 只公开「即将开始 / 进行中」的赛季；草稿与已结束的赛季不进入落地页。 */
@@ -21,8 +28,11 @@ const PUBLIC_SEASON_STATUS = 'upcoming,active'
  *   `/seasons`        推荐首屏 + 筛选 + 赛季票券墙（本文件）
  *   `/seasons/:id`    单场赛季详情（海报 / 赛程 / 命题 / 规则）
  *
- * 取数只多做一件事：列表项需要 `applicationWindow` 判「报名中 / 未开放」，
- * 所以对每个赛季再取一次详情。`getSeason` 有 `cache()`，开销可控。
+ * 取数只多做两件事：
+ *   1. 列表项需要 `applicationWindow` 判「未开放 / 报名中 / 报名已截止」，
+ *      所以对每个赛季再取一次详情（`getSeason` 有 `cache()`，开销可控）；
+ *   2. 票券 CTA 要按「我的报名状态」区分文案，登录用户额外取一次
+ *      `GET /me/applications`，按赛季 id 建索引。未登录时不发这个请求。
  * 接口与字段没有改动。
  */
 export default async function SeasonsPage(props: {
@@ -40,13 +50,28 @@ export default async function SeasonsPage(props: {
     () => ({ items: [], total: 0, page: 1, pageSize: 100 }) as SeasonListResponse,
   )
 
+  const isLoggedIn = Boolean((await cookies()).get('shenicest_token')?.value)
+  // pageSize 取接口上限 100：落地页本身就是一屏展示，不需要翻页；
+  // 拿不到报名记录时降级成「未登录视角」，不让整页报错。
+  const myApplications = isLoggedIn
+    ? await getMyApplications({ pageSize: 100 }).catch(() => ({ items: [] }))
+    : { items: [] }
+  const applicationStatusBySeason = new Map<number, string>(
+    myApplications.items.map((item) => [item.season.id, item.application.status]),
+  )
+
   const details = await Promise.all(
     list.items.map((summary) => getSeason(summary.id).catch(() => null)),
   )
 
   const cards = details
     .filter((season) => season !== null)
-    .map((season) => toSeasonCard(season))
+    .map((season) =>
+      toSeasonCard(season, {
+        isLoggedIn,
+        applicationStatus: applicationStatusBySeason.get(season.id) ?? null,
+      }),
+    )
 
   if (cards.length === 0) {
     return (

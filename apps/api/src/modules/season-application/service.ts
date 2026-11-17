@@ -1,5 +1,7 @@
 import { and, asc, count, desc, eq, inArray, like, or } from 'drizzle-orm'
 import {
+  AnnouncementLevel,
+  AnnouncementType,
   ApplicationVisibility,
   SeasonApplicationStatus,
   SeasonParticipantStatus,
@@ -9,6 +11,7 @@ import {
 import type { Database } from '../../db'
 import { seasonApplications, seasonParticipants, seasons } from '../../db/schema'
 import { decryptBoomlandContact, encryptBoomlandContact } from '../../lib/boomland-contact-encryption'
+import { announcementService } from '../announcement'
 import { UserProfileService } from '../user/service'
 import {
   BoomlandAccessService,
@@ -19,7 +22,6 @@ import {
   maskContact,
   normalizeContact,
   writeAudit,
-  type ContactInput,
 } from '../boomland-shared'
 import type { CreateApplicationBody, UpdateApplicationStatusBody } from './model'
 
@@ -41,6 +43,43 @@ function pageOf(query: { page?: number; pageSize?: number }) {
   const page = Math.max(1, query.page ?? 1)
   const pageSize = Math.max(1, Math.min(query.pageSize ?? PAGE_SIZE_DEFAULT, PAGE_SIZE_MAX))
   return { page, pageSize, offset: (page - 1) * pageSize }
+}
+
+/**
+ * 报名状态变更对应的个人公告文案。
+ *
+ * `submitted` 是用户自己提交的动作，不需要再通知；`withdrawn` 同理（本人操作）。
+ * 返回 null 表示这次状态变化不发公告。
+ */
+function applicationStatusNotice(status: string, reason: string | undefined) {
+  switch (status) {
+    case SeasonApplicationStatus.Accepted:
+      return {
+        title: '报名已通过审核',
+        content: '你报名的赛季报名已通过审核，记得在组队截止前完成组队。',
+        level: AnnouncementLevel.Success,
+      }
+    case SeasonApplicationStatus.Waitlisted:
+      return {
+        title: '你已进入候补名单',
+        content: '报名人数已达上限，你已进入候补；如有名额释放会再次通知。',
+        level: AnnouncementLevel.Info,
+      }
+    case SeasonApplicationStatus.Rejected:
+      return {
+        title: '报名未通过',
+        content: `很遗憾，你的报名未通过审核${reason ? `：${reason}` : ''}。`,
+        level: AnnouncementLevel.Warning,
+      }
+    case SeasonApplicationStatus.Pending:
+      return {
+        title: '报名进入复核',
+        content: '你的报名已进入人工复核，请耐心等待结果。',
+        level: AnnouncementLevel.Info,
+      }
+    default:
+      return null
+  }
 }
 
 function decrypt(row: ApplicationRow): { wechat?: string; phone?: string } | null {
@@ -207,7 +246,8 @@ export class SeasonApplicationService {
         field: 'themes',
       })
     }
-    const contact = normalizeContact(body.contact as ContactInput)
+    // 联系方式是主办方拉群的唯一依据，缺省、全空、纯空白都在这里被拒。
+    const contact = normalizeContact(body.contact ?? {})
     const values = {
       seasonId,
       userId,
@@ -307,7 +347,10 @@ export class SeasonApplicationService {
     const items = await Promise.all(rows.map(async (row) => {
       const summary = await getSeasonSummaryById(this.db, row.seasonId)
       const participantRows = await this.db
-        .select({ wechatStatus: seasonParticipants.wechatStatus })
+        .select({
+          wechatStatus: seasonParticipants.wechatStatus,
+          status: seasonParticipants.status,
+        })
         .from(seasonParticipants)
         .where(
           and(
@@ -323,6 +366,9 @@ export class SeasonApplicationService {
         },
         season: summary!,
         wechatStatus: participantRows[0]?.wechatStatus ?? null,
+        // 退出赛季只写选手行，报名记录仍是 accepted。前端据此区分
+        // 「已退赛」与「已撤回」，不能从报名状态猜。
+        participantStatus: participantRows[0]?.status ?? null,
       }
     }))
     return {
@@ -466,6 +512,28 @@ export class SeasonApplicationService {
             status: SeasonParticipantStatus.Active,
           })
         }
+      }
+      // 状态结果同步进报名者的收件箱：和状态变更同一个事务，不会出现
+      // 「已录取但没通知」或「通知了但状态回滚」。同一目标状态的 dedupeKey
+      // 相同，重复点同一个按钮不会产生第二条公告。
+      const notice = applicationStatusNotice(effectiveTarget, reason)
+      if (notice) {
+        await announcementService.publishDirect(
+          [row.userId],
+          {
+            type: AnnouncementType.Application,
+            level: notice.level,
+            title: notice.title,
+            content: notice.content,
+            linkPath: '/me/applications',
+            seasonId: row.seasonId,
+            createdBy: userId,
+            sourceType: 'season_application',
+            sourceId: String(applicationId),
+            dedupeKey: `application:${applicationId}:${effectiveTarget}`,
+          },
+          tx,
+        )
       }
       await writeAudit(tx, {
         seasonId: row.seasonId,

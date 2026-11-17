@@ -14,19 +14,25 @@ import {
 } from 'drizzle-orm'
 import {
   AnnouncementCategory,
+  AnnouncementLevel,
+  AnnouncementType,
   ChallengeStatus,
   EnterpriseCooperationStatus,
   EnterpriseCooperationTier,
   EnterprisePublicScope,
   ENTERPRISE_COOPERATION_AMOUNT_LIMITS,
   ENTERPRISE_COOPERATION_TIERS,
+  formatSeasonDateTime,
   SEASON_REQUIRED_RULE_CARD_KEYS,
   SEASON_RULE_CARD_SCORELESS,
+  SEASON_SCHEDULE_LABELS,
   seasonRequiredRuleCardItems,
   SeasonApplicationStatus,
+  SeasonParticipantStatus,
   SeasonStatus,
   type SeasonRules,
   type SeasonSchedule,
+  type SeasonScheduleKey,
 } from '@shenicest/shared'
 import type { Database } from '../../db'
 import {
@@ -49,11 +55,15 @@ import {
   scheduleToColumns,
 } from '../../db/schema'
 import { UserProfileService } from '../user/service'
+import { announcementService } from '../announcement'
+import type { AnnouncementWriter } from '../announcement/service'
 import {
+  applySchedulePatch,
   BoomlandAccessService,
   boomlandError,
   getSeasonSummary,
   iso,
+  isApplicationWindowOpen,
   isPublicSeason,
   isScorelessSeasonRules,
   normalizeRules,
@@ -77,6 +87,7 @@ import type {
   UpdateScheduleBody,
   UpdateSeasonBody,
   UpdateSeasonThemesBody,
+  UpdateAgreementBody,
 } from './model'
 
 type SeasonRow = typeof seasons.$inferSelect
@@ -145,6 +156,29 @@ function statusValues(raw?: string): string[] | null {
     }
   }
   return values
+}
+
+/**
+ * 协议正文的落库归一化：空串 / 纯空白 = 没填，存 null。
+ *
+ * 页面按空行分段渲染，所以只去掉首尾空白，保留正文内部的缩进与换行。
+ */
+function normalizeAgreementContent(value: string | null | undefined): string | null {
+  if (value === undefined || value === null) return null
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+/**
+ * 只有「未发布」的赛季能改协议正文。
+ *
+ * 未发布 = 草稿，或已提交但还没被批准（`upcoming` 且 `approvedAt` 为空）。
+ * 一旦批准，报名者勾选确认的就是这一份正文；再改必须升级 `agreementVersion`
+ * 并通过公告重新告知，不能静默覆盖。
+ */
+function canEditAgreementContent(row: SeasonRow): boolean {
+  if (row.status === SeasonStatus.Draft) return true
+  return row.status === SeasonStatus.Upcoming && row.approvedAt === null
 }
 
 /**
@@ -287,6 +321,26 @@ function generatedRequiredItems(rules: SeasonRules, schedule: SeasonSchedule | n
 }
 
 /**
+ * 赛程变更公告的默认正文：只列本次真正改动的节点，旧值 → 新值。
+ *
+ * 增量提交时通常只动一两个节点，把八个时间整段重述一遍反而看不出改了什么。
+ * 时间统一按北京时间渲染（与规则卡、公开页同口径）。
+ */
+function scheduleChangeSummary(
+  before: SeasonSchedule | null,
+  after: SeasonSchedule,
+  changed: SeasonScheduleKey[],
+): string {
+  const lines = changed.map((key) => {
+    const label = SEASON_SCHEDULE_LABELS[key]
+    const to = formatSeasonDateTime(after[key])
+    const from = before ? formatSeasonDateTime(before[key]) : null
+    return from ? `${label}：${from} → ${to}` : `${label}：${to}`
+  })
+  return `${lines.join('\n')}（北京时间）`
+}
+
+/**
  * 读路径：必要条目用赛季配置重建（忽略库里存的旧文案），可选条目原样返回。
  *
  * 顺序沿用库里的 `sortOrder` —— 主办方可以调整必要条目在列表中的位置，这个位置
@@ -423,7 +477,9 @@ export class SeasonService {
   }
 
   private applicationWindow(row: SeasonRow) {
-    const isOpen = isApplicationWindowOpenRow(row)
+    // 与 POST /seasons/:id/applications 的准入判断共用同一个函数：详情页说「报名中」
+    // 就必须真的能提交，两处各写一份时间判断迟早会错位。
+    const isOpen = isApplicationWindowOpen(row)
     return {
       opensAt: iso(row.applyOpen),
       closesAt: iso(row.applyClose),
@@ -446,13 +502,77 @@ export class SeasonService {
     if (!row.approvedAt) return
     const title = input?.title?.trim() || fallbackTitle
     const content = input?.content?.trim() || fallbackContent
-    await this.db.insert(seasonAnnouncements).values({
-      seasonId: row.id,
-      title,
-      content,
-      category,
-      createdBy: actorUserId,
+    // 公告页内容与参赛者收件箱在同一个事务里写：不能出现「赛季页有公告、
+    // 选手没收到」或反过来的一半状态。
+    await this.db.transaction(async (tx) => {
+      const [result] = await tx.insert(seasonAnnouncements).values({
+        seasonId: row.id,
+        title,
+        content,
+        category,
+        createdBy: actorUserId,
+      })
+      await this.fanOutSeasonAnnouncement(tx, {
+        seasonId: row.id,
+        announcementId: result.insertId,
+        actorUserId,
+        title,
+        content,
+        category,
+      })
     })
+  }
+
+  /**
+   * 把一条赛季公告同步进「该赛季 active 选手」的收件箱。
+   *
+   * 赛季公告本身仍是赛季页的公开内容；收件箱是同一内容的个人通知副本，
+   * `source_type/source_id` 指回原公告、`dedupe_key` 保证重试不重复。
+   * 只投给当前选手（不是全站）：受众规则见 docs/announcement-center.md §5。
+   * 收件人为空（还没有选手）时 `publishDirect` 直接跳过，不产生无人可见的公告。
+   */
+  private async fanOutSeasonAnnouncement(
+    tx: AnnouncementWriter,
+    input: {
+      seasonId: number
+      announcementId: number
+      actorUserId: string
+      title: string
+      content: string
+      category: string
+    },
+  ) {
+    const participants = await tx
+      .select({ userId: seasonParticipants.userId })
+      .from(seasonParticipants)
+      .where(
+        and(
+          eq(seasonParticipants.seasonId, input.seasonId),
+          eq(seasonParticipants.status, SeasonParticipantStatus.Active),
+        ),
+      )
+    if (participants.length === 0) return
+
+    await announcementService.publishDirect(
+      participants.map((participant) => participant.userId),
+      {
+        type: AnnouncementType.Season,
+        // 赛程/规则变更会影响参赛安排，用 warning 语气；一般通知用 info。
+        level:
+          input.category === AnnouncementCategory.General
+            ? AnnouncementLevel.Info
+            : AnnouncementLevel.Warning,
+        title: input.title,
+        content: input.content,
+        linkPath: `/seasons/${input.seasonId}`,
+        seasonId: input.seasonId,
+        createdBy: input.actorUserId,
+        sourceType: 'season_announcement',
+        sourceId: String(input.announcementId),
+        dedupeKey: `season_announcement:${input.announcementId}`,
+      },
+      tx,
+    )
   }
 
   private async computeReadiness(row: SeasonRow) {
@@ -727,6 +847,7 @@ export class SeasonService {
       rulesVersion: row.rulesVersion,
       awardingEntity: row.awardingEntity,
       agreementVersion: row.agreementVersion,
+      agreementContent: row.agreementContent,
       startedAt: iso(row.startedAt),
       applicationWindow: this.applicationWindow(row),
       createdAt: iso(row.createdAt),
@@ -751,6 +872,8 @@ export class SeasonService {
       awardingEntity: row.awardingEntity,
       // 协议版本是赛季表字段，管理端编辑器需要它做预填（写操作走 PATCH /seasons/:id）。
       agreementVersion: row.agreementVersion,
+      // 协议正文单独走 PUT /seasons/:id/agreement（只有未发布赛季可改）。
+      agreementContent: row.agreementContent,
       startedAt: iso(row.startedAt),
       applicationWindow: this.applicationWindow(row),
       rules: row.rules,
@@ -807,6 +930,7 @@ export class SeasonService {
         awardingEntity: body.awardingEntity?.trim() || null,
         participantCapacity: body.participantCapacity ?? null,
         agreementVersion: body.agreementVersion?.trim() || 'v1',
+        agreementContent: normalizeAgreementContent(body.agreementContent),
         rulesVersion: 1,
         rules,
         createdBy: userId,
@@ -859,14 +983,88 @@ export class SeasonService {
     return this.getManageDetail(seasonId, userId)
   }
 
+  /**
+   * 整段替换协议正文。
+   *
+   * 与 `updateCore` 分开的原因：核心字段只有草稿能改，而协议正文在
+   * 「已提交待批」时也应该允许主办方补全 —— 那是发布前的最后一道编辑窗口。
+   * 已批准（= 已发布）的赛季一律拒绝，避免报名者勾选过的正文被静默替换。
+   */
+  async updateAgreement(seasonId: number, userId: string, body: UpdateAgreementBody) {
+    const row = await this.getSeasonRow(seasonId)
+    await this.access.assertSeasonAccess(seasonId, userId)
+    if (!canEditAgreementContent(row)) {
+      throw boomlandError(
+        'SEASON_INVALID_STATUS',
+        '赛季已发布，协议正文不能再修改；如需更新请升级协议版本并发布公告',
+        409,
+      )
+    }
+    const next = normalizeAgreementContent(body.agreementContent)
+    await this.db.update(seasons).set({ agreementContent: next }).where(eq(seasons.id, seasonId))
+    await writeAudit(this.db, {
+      actorUserId: userId,
+      action: 'season.agreement_updated',
+      targetType: 'season',
+      targetId: String(seasonId),
+      seasonId,
+      detail: {
+        agreementVersion: row.agreementVersion,
+        beforeLength: row.agreementContent?.length ?? 0,
+        afterLength: next?.length ?? 0,
+      },
+    })
+    return this.getManageDetail(seasonId, userId)
+  }
+
+  /**
+   * 增量修改赛程。
+   *
+   * 与「整段替换」的区别全在 `applySchedulePatch` 里：调用方只传改动的节点，
+   * 已过去的节点被锁定（只能原样重复提交），顺序校验也只看仍然可编辑的节点。
+   *
+   * 没有实际变化时不推 `rulesVersion`、不写审计，只在调用方显式给了公告内容时
+   * 发一条赛程说明 —— 保存一次表单却凭空多出一个规则版本 + 一条公告，是主办方
+   * 最不想要的副作用。
+   */
   async updateSchedule(seasonId: number, userId: string, body: UpdateScheduleBody) {
     const row = await this.getSeasonRow(seasonId)
     await this.access.assertSeasonAccess(seasonId, userId)
     this.assertStatus(row, RULE_EDITABLE_STATUSES, '当前状态不能修改赛程')
-    const error = validateSchedule(body.schedule)
-    if (error) throw boomlandError('SCHEDULE_INVALID', error, 400, { field: 'schedule' })
+    const before = scheduleFromRow(row)
+    const outcome = applySchedulePatch({
+      current: before,
+      patch: body.schedule ?? {},
+    })
+    if ('error' in outcome) {
+      throw boomlandError(outcome.error.code, outcome.error.message, outcome.error.httpStatus, {
+        field: outcome.error.field,
+      })
+    }
+    const { schedule, changed } = outcome
+
+    if (changed.length === 0) {
+      // 时间没变：允许只发一条赛程说明公告，其余什么都不写。
+      if (body.announcement?.title?.trim() || body.announcement?.content?.trim()) {
+        await this.announce(
+          row,
+          userId,
+          AnnouncementCategory.Schedule,
+          body.announcement,
+          '赛程说明',
+          '赛程暂无时间调整，本公告为赛程相关说明。',
+        )
+      }
+      return this.getManageDetail(seasonId, userId)
+    }
+
+    // 只写真正变化的列：未提交的节点在库里本来就是这个值，没必要重写一遍。
+    const columns = scheduleToColumns(schedule)
+    const updates = Object.fromEntries(
+      changed.map((key) => [key, columns[key]]),
+    ) as Partial<typeof seasons.$inferInsert>
     await this.db.update(seasons).set({
-      ...scheduleToColumns(body.schedule),
+      ...updates,
       rulesVersion: row.rulesVersion + 1,
     }).where(eq(seasons.id, seasonId))
     await writeAudit(this.db, {
@@ -875,7 +1073,7 @@ export class SeasonService {
       targetType: 'season',
       targetId: String(seasonId),
       seasonId,
-      detail: { before: scheduleFromRow(row), after: body.schedule },
+      detail: { before, after: schedule, changed },
     })
     await this.announce(
       row,
@@ -883,7 +1081,7 @@ export class SeasonService {
       AnnouncementCategory.Schedule,
       body.announcement,
       '赛程已更新',
-      `报名 ${body.schedule.applyOpen} 至 ${body.schedule.applyClose}，开赛 ${body.schedule.startAt}。`,
+      scheduleChangeSummary(before, schedule, changed),
     )
     return this.getManageDetail(seasonId, userId)
   }
@@ -1369,6 +1567,7 @@ export class SeasonService {
         awardingEntity: source.awardingEntity,
         participantCapacity: source.participantCapacity,
         agreementVersion: source.agreementVersion,
+        agreementContent: source.agreementContent,
         rulesVersion: 1,
         rules: source.rules,
         createdBy: userId,
@@ -1428,12 +1627,26 @@ export class SeasonService {
     if (row.approvedAt === null || row.status === SeasonStatus.Cancelled) {
       throw boomlandError('ANNOUNCEMENT_NOT_ALLOWED', '未批准或已取消的赛季不能发公告', 409)
     }
-    const [result] = await this.db.insert(seasonAnnouncements).values({
-      seasonId,
-      title: body.title.trim(),
-      content: body.content.trim(),
-      category: body.category ?? AnnouncementCategory.General,
-      createdBy: userId,
+    const title = body.title.trim()
+    const content = body.content.trim()
+    const category = body.category ?? AnnouncementCategory.General
+    const announcementId = await this.db.transaction(async (tx) => {
+      const [result] = await tx.insert(seasonAnnouncements).values({
+        seasonId,
+        title,
+        content,
+        category,
+        createdBy: userId,
+      })
+      await this.fanOutSeasonAnnouncement(tx, {
+        seasonId,
+        announcementId: result.insertId,
+        actorUserId: userId,
+        title,
+        content,
+        category,
+      })
+      return result.insertId
     })
     await writeAudit(this.db, {
       actorUserId: userId,
@@ -1441,10 +1654,10 @@ export class SeasonService {
       targetType: 'season',
       targetId: String(seasonId),
       seasonId,
-      detail: { announcementId: result.insertId, title: body.title.trim() },
+      detail: { announcementId, title },
     })
     const rows = await this.db.select().from(seasonAnnouncements)
-      .where(eq(seasonAnnouncements.id, result.insertId)).limit(1)
+      .where(eq(seasonAnnouncements.id, announcementId)).limit(1)
     return mapAnnouncement(rows[0]!)
   }
 
@@ -1497,14 +1710,6 @@ export class SeasonService {
     }))
     return { items, total: totalRows[0]?.value ?? 0, page, pageSize }
   }
-}
-
-function isApplicationWindowOpenRow(row: SeasonRow): boolean {
-  if (!row.approvedAt) return false
-  if (row.status !== SeasonStatus.Upcoming && row.status !== SeasonStatus.Active) return false
-  if (!row.applyOpen || !row.applyClose) return false
-  const now = new Date()
-  return now >= row.applyOpen && now <= row.applyClose
 }
 
 function mapAnnouncement(row: typeof seasonAnnouncements.$inferSelect) {

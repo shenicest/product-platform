@@ -80,20 +80,6 @@ export function listCardApplications(cardId: number) {
   )
 }
 
-/**
- * `POST /seasons/:id/participants/:userId/withdraw` —— 退出赛季。
- *
- * 复用既有接口（契约 §4），不新增。`confirm` 必须为 true：后端用它区分
- * 「误触」与「真的要走」，缺了会 400 `VALIDATION_ERROR`。
- */
-export function withdrawSeasonParticipant(seasonId: number, userId: string) {
-  return request<unknown>(
-    'POST',
-    `/seasons/${seasonId}/participants/${encodeURIComponent(userId)}/withdraw`,
-    { confirm: true },
-  )
-}
-
 /** `GET /seasons/:id/challenges` —— 发起项目弹窗里的命题选项（只要已发布）。 */
 export function listSeasonChallenges(seasonId: number) {
   return request<{ items: TeamChallengeDto[] }>(

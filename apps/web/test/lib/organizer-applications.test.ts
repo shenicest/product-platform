@@ -7,6 +7,7 @@ import {
   isReviewable,
   isReviewStatus,
   parseApplicationReviewParams,
+  pendingReviewBadgeLabel,
   reviewFilterDescription,
   reviewOutcomeMessage,
   reviewStatusMeta,
@@ -252,5 +253,29 @@ describe('APPLICATION_REVIEW_PAGE_SIZE', () => {
   it('stays within the backend pageSize cap', () => {
     expect(APPLICATION_REVIEW_PAGE_SIZE).toBeLessThanOrEqual(100)
     expect(APPLICATION_REVIEW_PAGE_SIZE).toBeGreaterThan(0)
+  })
+})
+
+describe('pendingReviewBadgeLabel', () => {
+  it('shows the pending count as a string', () => {
+    expect(pendingReviewBadgeLabel(1)).toBe('1')
+    expect(pendingReviewBadgeLabel(7)).toBe('7')
+  })
+
+  it('hides the red dot when nothing is waiting', () => {
+    // 没有待办就不造红点：这是「当前待处理队列」的口径，不是历史报名总量。
+    expect(pendingReviewBadgeLabel(0)).toBeNull()
+  })
+
+  it('caps long queues at 99+ so the tab keeps its width', () => {
+    expect(pendingReviewBadgeLabel(99)).toBe('99')
+    expect(pendingReviewBadgeLabel(100)).toBe('99+')
+    expect(pendingReviewBadgeLabel(1234)).toBe('99+')
+  })
+
+  it('treats garbage input as “nothing waiting”', () => {
+    expect(pendingReviewBadgeLabel(-3)).toBeNull()
+    expect(pendingReviewBadgeLabel(Number.NaN)).toBeNull()
+    expect(pendingReviewBadgeLabel(Number.POSITIVE_INFINITY)).toBeNull()
   })
 })

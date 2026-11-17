@@ -895,8 +895,11 @@
    * 滚动时如果操作列跟着跑出视口，用户得先滚回去才能点「通过」。
    * 这里让最后一列 `position: sticky; right: 0`：
    *   · 单元格必须有不透明底色，否则横向滚动的内容会从它下面透出来；
-   *   · 行悬停时底色要跟着换（`tr:hover td` 那条规则在下面），不然冻结格
-   *     会像一块补丁；
+   *   · 冻结格的底色还要和它压着的表面一致：默认是面板底色
+   *     `--bg-elevated`（后台宽表都在面板里），表格直接铺在页面底色上时
+   *     （个人中心「我的报名」）加 `console-table--sticky-actions-page`
+   *     换成 `--bg`。用一个自定义属性收口，免得为两种表面各写一套规则；
+   *   · 行悬停时底色要跟着换，不然冻结格会像一块补丁；
    *   · 左侧补一道内阴影当分隔线 —— `border` 在 sticky 单元格上会随内容
    *     一起被裁切，内阴影不会。
    * 滚动容器仍是 `.overflow-x-auto`，冻结只在真的溢出时才看得出效果。 */
@@ -905,13 +908,13 @@
     position: sticky;
     right: 0;
     z-index: 1;
-    background: var(--bg-elevated);
+    background: var(--sticky-actions-bg, var(--bg-elevated));
     box-shadow: inset 1px 0 0 var(--border);
   }
 
-  .console-table--sticky-actions th:last-child {
-    /* 表头底色跟着表头走（`.console-table th` 没有底色，面板底就是它的底）。 */
-    background: var(--bg-elevated);
+  /* 表格铺在页面底座上（不是面板）：冻结列跟着用页面底色。 */
+  .console-table--sticky-actions-page {
+    --sticky-actions-bg: var(--bg);
   }
 
   .console-table--sticky-actions tbody tr:hover td:last-child {
