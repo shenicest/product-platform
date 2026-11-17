@@ -6,6 +6,7 @@ import { Role } from '@shenicest/shared'
 import { useAuth } from '@/components/auth-provider'
 import { getConnections } from '@/lib/client-api'
 import { shouldShowOrganizerEntry } from '@/lib/organizer-access'
+import { shouldShowPlatformEntry } from '@/lib/platform-console'
 import { ButtonLink } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { Card } from '@/components/ui/surface'
@@ -99,6 +100,16 @@ export function UserMenu() {
     isOperator,
     isOrganizerMember: user.isOrganizerMember ?? null,
   })
+  /**
+   * 平台后台入口：平台管理员与主办方组织成员都能看到（成员进去是只读的）。
+   * 与 `/operator/boomland` 的 layout 守卫共用 `shouldShowPlatformEntry`，
+   * 入口可见性与页面可进性不会错位。
+   */
+  const showPlatformEntry = shouldShowPlatformEntry({
+    isLoggedIn: true,
+    isOperator,
+    isOrganizerMember: user.isOrganizerMember ?? null,
+  })
   const username = user.email ?? `用户 #${user.user_id}`
 
   return (
@@ -138,6 +149,11 @@ export function UserMenu() {
         {showOrganizerEntry ? (
           <Link href="/organizer/overview" className={MENU_ITEM} onClick={closeMenu}>
             主办方后台
+          </Link>
+        ) : null}
+        {showPlatformEntry ? (
+          <Link href="/operator/boomland/seasons" className={MENU_ITEM} onClick={closeMenu}>
+            平台后台
           </Link>
         ) : null}
         {isOperator ? (

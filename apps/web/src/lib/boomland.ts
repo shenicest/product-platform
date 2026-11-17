@@ -22,6 +22,14 @@ export type SeasonSummary = {
   organizerOrgs: Array<{ id: number; name: string }>
   pinned: boolean
   approvedAt: string | null
+  /**
+   * 授奖主体；未填写时为 null。
+   *
+   * 后端 `SeasonSummaryDto` 一定会带这个字段（平台后台「全部赛季」表要显示它），
+   * 这里标可选只是为了让测试里用 `Partial<SeasonSummary>` 展开的构造器仍能通过
+   * 类型检查；页面侧 `?? '—'` 处理缺失，两种写法渲染结果一致。
+   */
+  awardingEntity?: string | null
   participantCapacity: number | null
   participantCount: number
   publishedChallengeCount: number

@@ -485,7 +485,8 @@ export function toChallengePayload(values: ChallengeDraftValues): ChallengeDraft
 }
 
 // ---------------------------------------------------------------------------
-// 命题详情：命题卡内容 / 评分与奖励 / 公开与权益（契约 §1.1、§3.3、§4.2）
+// 命题详情：命题卡内容 / 评分与奖励 / 公开与权益 / 交付物与结果证据
+// （契约 §1.1、§3.3、§4.2）
 // ---------------------------------------------------------------------------
 
 /**
@@ -503,6 +504,10 @@ export type ChallengeDetailValues = {
   scope: string
   outOfScope: string
   monthlyGoal: string
+  /** 五件套之一：最小交付物（发布门槛，但表单允许留空保存）。 */
+  minimumDeliverable: string
+  /** 五件套之一：结果证据规则（发布门槛，但表单允许留空保存）。 */
+  resultEvidenceRules: string
   /** 建议技能：逗号（中英文均可）分隔，≤ 10 条，单条 ≤ 30 字。 */
   suggestedSkills: string
   teamCapacity: string
@@ -544,6 +549,9 @@ export type ChallengeDetailPayload = {
   scope: string | null
   outOfScope: string | null
   monthlyGoal: string | null
+  /** 五件套字段：留空落 null（发布时后端会拦）。 */
+  minimumDeliverable: string | null
+  resultEvidenceRules: string | null
   suggestedSkills: string[]
   teamCapacity: number | null
   ownerName: string | null
@@ -577,6 +585,8 @@ export function emptyChallengeDetailDraft(): ChallengeDetailValues {
     scope: '',
     outOfScope: '',
     monthlyGoal: '',
+    minimumDeliverable: '',
+    resultEvidenceRules: '',
     suggestedSkills: '',
     teamCapacity: '',
     ownerName: '',
@@ -710,6 +720,8 @@ export function challengeDetailDraftFromRow(row: ChallengeDetailSource): Challen
     scope: row.scope ?? '',
     outOfScope: row.outOfScope ?? '',
     monthlyGoal: row.monthlyGoal ?? '',
+    minimumDeliverable: row.minimumDeliverable ?? '',
+    resultEvidenceRules: row.resultEvidenceRules ?? '',
     suggestedSkills: formatSuggestedSkills(row.suggestedSkills),
     teamCapacity: row.teamCapacity === null || row.teamCapacity === undefined
       ? ''
@@ -741,6 +753,8 @@ export type ChallengeDetailSource = Partial<
     | 'scope'
     | 'outOfScope'
     | 'monthlyGoal'
+    | 'minimumDeliverable'
+    | 'resultEvidenceRules'
     | 'suggestedSkills'
     | 'teamCapacity'
     | 'ownerName'
@@ -769,6 +783,8 @@ const DETAIL_TEXT_LIMITS: Array<{
   { key: 'scope', label: '范围', max: CHALLENGE_CARD_LIMITS.scope.max },
   { key: 'outOfScope', label: '不做什么', max: CHALLENGE_CARD_LIMITS.outOfScope.max },
   { key: 'monthlyGoal', label: '一个月最小成果', max: CHALLENGE_CARD_LIMITS.monthlyGoal.max },
+  { key: 'minimumDeliverable', label: '最小交付物', max: CHALLENGE_CARD_LIMITS.fivePieceText.max },
+  { key: 'resultEvidenceRules', label: '结果证据规则', max: CHALLENGE_CARD_LIMITS.fivePieceText.max },
   { key: 'ownerName', label: '负责人', max: CHALLENGE_CARD_LIMITS.ownerName.max },
   { key: 'responseSla', label: '响应时限', max: CHALLENGE_CARD_LIMITS.responseSla.max },
 ]
@@ -860,6 +876,8 @@ export function toChallengeDetailPayload(
     scope: text(values.scope),
     outOfScope: text(values.outOfScope),
     monthlyGoal: text(values.monthlyGoal),
+    minimumDeliverable: text(values.minimumDeliverable),
+    resultEvidenceRules: text(values.resultEvidenceRules),
     suggestedSkills: parseSuggestedSkills(values.suggestedSkills),
     teamCapacity: parseOptionalInt(
       values.teamCapacity,

@@ -73,12 +73,20 @@ export function SeasonDetailPage({
   announcements,
   myApplication,
   isLoggedIn,
+  breadcrumb,
 }: {
   season: SeasonDetail
   challenges: SeasonChallenge[]
   announcements: SeasonAnnouncement[]
   myApplication: MySeasonApplication | null
   isLoggedIn: boolean
+  /**
+   * 面包屑内容；缺省是公开页的「← 火热赛季 / 赛季名」。
+   *
+   * 平台后台的预览页复用这个组件渲染公开页，但那里的返回目标是赛季治理列表 ——
+   * 沿用公开页的「← 火热赛季」会把管理员带去一个跟他当前操作无关的页面。
+   */
+  breadcrumb?: React.ReactNode
 }) {
   const reason = applicationWindowReason(season)
   const registration = seasonRegistration(season)
@@ -90,9 +98,13 @@ export function SeasonDetailPage({
     <div className="v26 v26-season">
       <div className="v26-shell">
         <nav className="v26-breadcrumb" aria-label="面包屑">
-          <Link href="/seasons">← 火热赛季</Link>
-          <span aria-hidden>/</span>
-          <span>{season.name}</span>
+          {breadcrumb ?? (
+            <>
+              <Link href="/seasons">← 火热赛季</Link>
+              <span aria-hidden>/</span>
+              <span>{season.name}</span>
+            </>
+          )}
         </nav>
 
         <SeasonPoster

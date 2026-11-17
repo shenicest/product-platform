@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { AnnouncementBell } from '@/components/announcement-bell';
 import { UserMenu } from '@/components/user-menu';
-import { SheNicestLogo } from '@/components/brand-logos';
+import { BoomLandLogo } from '@/components/brand-logos';
 
 const NAV = [
   { href: '/', label: '产品共生' },
@@ -12,11 +12,10 @@ const NAV = [
 ];
 
 /**
- * 站点头部：左侧 SheNicest 品牌标、中间主导航、右侧操作区。
+ * 站点头部：左侧 BoomLand 品牌标、中间主导航、右侧操作区。
  *
- * 左侧**只保留 SheNicest 字标** —— BoomLand 是产品线的视觉语言（颜色、
- * 花朵、像素天空），不是公司品牌，所以不占导航栏的品牌位。BoomLand 的
- * 识别由首屏巨型字标承担，那里才是它的位置。
+ * 左侧品牌位放 BoomLand 字标（设计稿 assets/logo.svg），公司字标
+ * SheNicest 只出现在页脚 / 邮件等公司语境，不占导航栏的品牌位。
  *
  * 布局全部用 Tailwind 工具类，没有新增 `.site-header__*` 类 ——
  * `patterns.css` 里的 `.site-header__row` 只提供 >=900px 的三栏骨架
@@ -40,10 +39,10 @@ export function SiteHeader() {
       <div className="shell site-header__row flex flex-wrap items-center gap-x-4 gap-y-2 min-[900px]:grid">
         <Link
           href="/"
-          aria-label="SheNicest 首页"
+          aria-label="BoomLand 首页"
           className="flex min-w-0 items-center gap-2 sm:gap-3"
         >
-          <SheNicestLogo className="h-4 shrink-0 text-foreground sm:h-5" />
+          <BoomLandLogo className="h-4 shrink-0 text-foreground sm:h-5" />
         </Link>
 
         <nav

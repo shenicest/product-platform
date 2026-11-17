@@ -221,7 +221,8 @@ export function ChallengesView({
  *
  * 「编辑详情」与「编辑」是两个入口，不是重复：
  *   · `编辑`（铅笔）→ 命题草稿弹窗：标题 / 类型 / 主题 / 容量 / 五件套；
- *   · `编辑详情`（文档）→ 详情弹窗：命题卡正文 / 五维权重 / 七项权益 + 变更说明。
+ *   · `编辑详情`（文档）→ 详情弹窗：命题卡正文 / 五维权重 / 七项权益 /
+ *     最小交付物与结果证据规则 + 变更说明。
  * 详情字段没有必填项、校验口径也不同，合成一个弹窗只会让两边都变长。
  */
 function RowActions({
@@ -261,7 +262,7 @@ function RowActions({
           onClick={onDetail}
           disabled={disabled}
           aria-label={`编辑详情 ${challenge.title}`}
-          title={`编辑详情 ${challenge.title}（命题卡内容 / 评分与奖励 / 公开与权益）`}
+          title={`编辑详情 ${challenge.title}（命题卡内容 / 评分与奖励 / 公开与权益 / 交付物与结果证据）`}
         >
           <OrganizerActionIcon name="detail" />
         </button>

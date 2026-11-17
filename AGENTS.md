@@ -9,6 +9,7 @@
 - [docs/boomland/pre-start-season-frontend.md](./docs/boomland/pre-start-season-frontend.md) — BoomLand 开赛前赛季与报名前端页面契约
 - [docs/boomland/organizer-challenges-contract.md](./docs/boomland/organizer-challenges-contract.md) — 主办方后台「命题与资源」契约（命题库 / 资源承诺 / 企业合作）
 - [docs/boomland/challenge-detail-contract.md](./docs/boomland/challenge-detail-contract.md) — 命题详情页契约（命题卡 / 评分与奖励 / 公开与权益 / 版本记录 / 关注）
+- [docs/boomland/platform-console.md](./docs/boomland/platform-console.md) — 平台后台契约（`/operator/boomland`：赛季治理 / 主办方组织与成员 / 准入与写权限）
 - [docs/boomland/design-v26-conflicts.md](./docs/boomland/design-v26-conflicts.md) — BoomLand V2.6 设计稿落地：页面映射与冲突说明（火热赛季 / 赛季详情 / 命题 / 报名 / 个人中心）
 - [docs/spec-v1-backend-api.md](./docs/spec-v1-backend-api.md) — v1.0 后端 API 完整规格说明
 - [docs/auth.md](./docs/auth.md) — 鉴权体系：JWT 认证、角色/属主授权、前后端守卫

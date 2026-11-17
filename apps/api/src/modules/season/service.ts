@@ -793,6 +793,10 @@ export class SeasonService {
         ...summary,
         pendingApproval: row.status === SeasonStatus.Upcoming && row.approvedAt === null,
         readinessReady: readiness.ready,
+        // 平台后台的「发布门槛」列要显示 `9 / 9` 这种计数，而不是只有一个布尔值：
+        // 差一项和差五项对审批人的意义完全不同，计数能直接说明还差多少。
+        readinessPassed: readiness.checks.filter((check) => check.passed).length,
+        readinessTotal: readiness.checks.length,
         applicationCount: applicationRows[0]?.value ?? 0,
         acceptedCount: acceptedRows[0]?.value ?? 0,
       }
