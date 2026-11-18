@@ -43,7 +43,7 @@ Next.js App Router 前端，对接后端 API（`@shenicest/api`）。Server 端�
 **数据获取**: Server Component，通过 `server/projects.ts` 中 `cache()` 包装的 `getLiveProjects()`（eden treaty）；当前赛季入口通过 `server/boomland.ts` 的 `getCurrentSeasonSpotlight()` 读取（列表 + 详情，失败时降级为空态）
 
 **功能**:
-- Hero 区域：BoomLand 品牌首屏（像素天空插画 + 字标 + 两个入口）
+- Hero 区域：BoomLand 品牌首屏（游乐园插画 + 顶栏同款字标 SVG + 右侧竖排「产品 / 生长之地」+ tagline + 两个入口）
 - 当前赛季入口（`CurrentSeasonGate`）：首屏之后、精选项目之前，展示当前赛季的名称 / 状态 / 报名状态 / 赛程 / 规模，主 CTA 跳 `/seasons/:id`，次 CTA 跳 `/seasons`
   - 「当前赛季」选择顺序：平台置顶 → 进行中 → 即将开始；没有可展示赛季时渲染筹备态，入口仍指向 `/seasons`
   - 详情请求失败时退回列表字段，不阻塞首页；赛季接口不可用时首页照常渲染其他区块

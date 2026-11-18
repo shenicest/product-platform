@@ -1,20 +1,21 @@
 import Link from 'next/link'
 import { BloomPop } from '@/components/ui/bloom-pop'
 import { BlurText } from '@/components/ui/blur-text'
+import { BoomLandLogo } from '@/components/brand-logos'
 
 
 /**
  * 首屏。
  *
- * 结构照搬设计稿的 `cover-hero`：像素天空 + 山体花朵插画做背景，
- * 中央一根排版轴线（BoomLand 巨型字标 → 中文副标 → tagline → 操作），
- * 再挂三个浮件：绽放标签、向下探索、右下角的版本号。
+ * 结构照搬设计稿的 banner：游乐园插画铺底，中央一根排版轴线 ——
+ * 顶栏同款 BoomLand 字标 SVG + 右侧竖排「产品 / 生长之地」，
+ * tagline 从字标左缘起排；两个操作按钮沉在首屏底部、落在「向下探索」上方。
  *
  * 三件事值得留意：
  * 1. 插画通过 CSS 变量 `--cover-art` 注入，而不是写死 background-image ——
  *    换皮肤时可以在皮肤文件里换掉整张插画，组件不需要改。
- * 2. 巨型字标拆成两个 `<span>`（Boom / Land），由 CSS 横向拉宽；
- *    字体在 CSS 里钉死为 Arial Black，不用 `--font-display`（字形差异明显）。
+ * 2. 字标直接复用顶栏的 `BoomLandLogo`：同一枚 SVG、同一套 currentColor，
+ *    首屏与导航栏的字形与品牌粉点缀因此永远一致，不再维护两份字形。
  * 3. 导航栏是实心吸顶的，首屏高度在 CSS 里扣掉了导航栏高度，
  *    折叠线才和设计稿落在同一条线上。
  *
@@ -29,28 +30,34 @@ export function HeroSection() {
       <div className="cover__light" aria-hidden />
 
       <div className="cover__inner">
-        <h1 className="cover__title" aria-label="BoomLand，产品生长之地">
-          <span className="cover__word" aria-hidden>
-            <span>Boom</span>
-            <span>Land</span>
-          </span>
-          <span className="cover__chinese">产品生长之地</span>
-        </h1>
+        <div className="cover__brand">
+          <h1 className="cover__lockup" aria-label="BoomLand，产品生长之地">
+            <span className="cover__logo">
+              <BoomLandLogo className="h-auto w-full" />
+            </span>
+            <span className="cover__chinese" aria-hidden>
+              <span>产品</span>
+              <span>生长之地</span>
+            </span>
+          </h1>
 
-        <BlurText
-          text="新产品 · 新世界 · 早期 AI 产品社区"
-          effect="blur"
-          animateBy="words"
-          direction="top"
-          staggerFrom="start"
-          trigger="load"
-          delay={110}
-          stepDuration={0.5}
-          blur={8}
-          distance={24}
-          className="cover__tagline"
-        />
-        {/* <p className="cover__description">让好想法被发现，让创造自然生长。</p> */}
+          <BlurText
+            /* 文案不写空格：banner 里每个字之间是等距的，字距由 CSS 的
+             * letter-spacing 给（见 .cover__tagline），否则「·」与「AI」
+             * 两侧会比字间空得多。 */
+            text="新产品·新世界·早期AI产品社区"
+            effect="blur"
+            animateBy="letters"
+            direction="top"
+            staggerFrom="start"
+            trigger="load"
+            delay={40}
+            stepDuration={0.45}
+            blur={6}
+            distance={16}
+            className="cover__tagline"
+          />
+        </div>
 
         <div className="cover__actions">
           <Link href="#all-projects" className="ui-btn ui-btn--primary">

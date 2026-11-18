@@ -44,6 +44,24 @@ const dseg7 = localFont({
 })
 
 /**
+ * 首屏 tagline 的衬线字（设计稿用的是思源宋体 / Noto Serif SC Regular）。
+ *
+ * 这是按 tagline 实际用到的 16 个字符裁出来的子集（2.7KB），不是完整字库 ——
+ * 完整思源宋体有数 MB，而这一行是固定的营销文案。改文案时必须按新字符重新
+ * 生成子集（Google Fonts 的 `text=` 接口即可），否则新字会掉到系统宋体兜底。
+ * 兜底栈保留 Songti SC / SimSun，保证子集缺字时仍是宋体而不是无衬线。
+ */
+const coverSerif = localFont({
+  src: '../fonts/NotoSerifSC-400.woff2',
+  weight: '400',
+  variable: '--font-cover-serif',
+  display: 'swap',
+  preload: false,
+  fallback: ['unset','Songti SC', 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', 'serif'],
+  adjustFontFallback: false,
+})
+
+/**
  * 站点级元数据只负责「默认值 + 模板」：标题模板、语言、默认描述、默认分享图。
  *
  * 页面级的 `openGraph` / `twitter` 一律由 `lib/site-metadata.ts` 的 `pageMetadata()`
@@ -91,7 +109,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html
       lang="zh-CN"
-      className={`${harmony.variable} ${monocraft.variable} ${dseg7.variable} h-full`}
+      className={`${harmony.variable} ${monocraft.variable} ${dseg7.variable} ${coverSerif.variable} h-full`}
     >
       <body className="flex min-h-full flex-col bg-background font-sans text-foreground">
         <AuthProvider>

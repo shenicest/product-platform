@@ -109,12 +109,15 @@
   --cover-image: var(--cover-art);
   --cover-mask: var(--cover-veil);
 
-  /* 首屏排版轴的专用色：天空底色 / 巨型字标 / 落在插画上的小字与它的描边光。
-   * 同样由 L0 给原值（--boom-cover-*），这里只做语义别名。 */
+  /* 首屏排版轴的专用色：天空底色 / 落在插画上的小字与它的描边光。
+   * 同样由 L0 给原值（--boom-cover-*），这里只做语义别名。
+   * 字标是 SVG（颜色走 currentColor），不需要单独的 token。 */
   --cover-base: var(--boom-cover-base);
-  --cover-word: var(--boom-cover-word);
   --cover-ink: var(--boom-cover-ink);
   --cover-ink-halo: var(--boom-cover-ink-halo);
+
+  /* 首屏字/字标的投影：一条阴影同时喂 text-shadow 与 filter: drop-shadow()。 */
+  --cover-text-shadow: var(--boom-cover-text-shadow);
 
   /* ==========================================================================
    * 组件私有语义（L3 组件类消费；皮肤无需关心）

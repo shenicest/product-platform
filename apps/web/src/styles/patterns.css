@@ -30,8 +30,8 @@
    * ------------------------------------------------------------------------- */
 
   /* 设计稿的导航栏是透明悬浮的，首屏从视口顶端开始铺满 100svh。
-   * 本站导航栏是实心吸顶（用户决定），首屏只能从它下方开始 —— 所以高度
-   * 扣掉 --boom-header-h，折叠线才和设计稿落在同一条视口位置。
+   * 本站导航栏是实心吸顶、不透明，首屏只能从它下方开始 —— 高度扣掉
+   * --boom-header-h，插画贴着自己的盒子铺，不往导航栏底下塞。
    * 首屏高度不再是整屏，凡是设计稿里按整屏百分比定位的浮件（bloom 标签）
    * 都改用 svh 表达，见下方注释。 */
   .cover {
@@ -48,130 +48,113 @@
     text-align: center;
   }
 
-  /* 插画层：像素天空 + 花朵山体。
+  /* 插画层：游乐园 + 喷发云。
    *
-   * 向上多铺一个导航栏的高度：设计稿的插画是按「整屏」cover 的，而本站
-   * 首屏比视口矮一个导航栏。让插画层向上溢出到导航栏底下（导航栏不透明，
-   * 遮住的部分看不见），插画的缩放比例与裁切就和设计稿逐像素一致。
-   * 不这样写，cover 会按 927px 而不是 1000px 计算，山体会整体缩小。 */
+   * 不再向上铺到导航栏底下：导航栏是实心吸顶的，插画一旦伸进去就会被切掉
+   * 顶部一条（用户明确要求别挡图）。现在插画从首屏顶端开始，整张图完整可见，
+   * 只是两侧仍按 cover 裁切。 */
   .cover__art {
     position: absolute;
-    inset: calc(-1 * var(--boom-header-h)) 0 0;
+    inset: 0;
     z-index: -3;
     background-image: var(--cover-image);
     /* 设计稿 .cover-art 的逐值翻译。缩放/定位/平铺是结构，不随配色变化，
      * 所以不经过 L2 token —— 只有插画本身（--cover-image）属于配色。 */
     background-size: cover;
-    background-position: 50% 100%;
+    background-position: 50% 0%;
     background-repeat: no-repeat;
   }
 
   /* 柔光层：把中央文字区压亮，保证标题与副标在插画上依然可读。
-   * 具体遮罩形状由 L0 提供 --cover-veil。
-   * 与插画层同样向上溢出，椭圆光斑的圆心才落在设计稿的位置。 */
+   * 具体遮罩形状由 L0 提供 --cover-veil。 */
   .cover__light {
     position: absolute;
-    inset: calc(-1 * var(--boom-header-h)) 0 0;
+    inset: 0;
     z-index: -2;
     pointer-events: none;
     background: var(--cover-mask);
   }
 
   /* 中央排版轴：横向与设计稿同为 min(100%, 1200px)。
-   * 顶部内边距扣掉导航栏高度 —— 设计稿的 clamp(95px, 12.4svh, 150px) 是从
-   * **视口顶端**量的，本站首屏起点低了导航栏那么高。 */
+   * 内容整体撑满首屏高度（flex: 1），品牌组贴顶、按钮沉底 ——
+   * 这样按钮能落到接近「向下探索」的位置，而不是紧跟在 tagline 后面。 */
   .cover__inner {
     position: relative;
     z-index: 2;
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: center;
     width: min(100%, 1200px);
-    padding: calc(clamp(95px, 12.4svh, 150px) - var(--boom-header-h)) 24px 0;
+    /* 顶部留白按设计稿 banner 的比例：字标距插画顶端约 7.5svh。 */
+    padding: clamp(40px, 7.5svh, 88px) 24px 0;
   }
 
-  .cover__title {
+  /* 品牌锁定组：字标 + 右侧竖排中文，tagline 挂在左下。
+   *
+   * 整组用 fit-content 定宽再水平居中 —— 字标与中文作为**一个整体**居中，
+   * 而 tagline 从字标的左边缘起排（设计稿 banner 的排法），不是页面中心。 */
+  .cover__brand {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: fit-content;
+    max-width: 100%;
+    margin-inline: auto;
+  }
+
+  /* 字标与中文的基线关系：两行中文对齐字标的字高中心，与设计稿一致。 */
+  .cover__lockup {
+    display: flex;
+    align-items: center;
+    gap: clamp(10px, 1.5vw, 24px);
     margin: 0;
     font-weight: 900;
     line-height: 1;
   }
 
-  /* 巨型字标：拉丁字形必须用 Arial Black（设计稿原样）。
-   * 不用 var(--font-display)：HarmonySN-900 的字宽与字重都不一样，
-   * 在 172px 下差别一眼可见。 */
-  .cover__word {
+  /* 字标尺寸在这里给（不是 tsx），media query 才好跟着断点调。
+   * 里面包的 SVG 用 h-auto w-full 填满这个尺寸盒，宽高比由 viewBox 决定。
+   * 49.5vw 是设计稿 banner 里字标宽度占图宽的比例；clamp 的下限保证
+   * 手机（320px）上字标与右侧中文仍然并排塞得进版心。
+   * 投影用 filter: drop-shadow（不是 box-shadow）：它贴着字母轮廓走，
+   * 而且粉色三角也要有同一层阴影。 */
+  .cover__logo {
     display: block;
-    color: var(--cover-word);
-    font-family: 'Arial Black', Arial, sans-serif;
-    font-size: clamp(112px, 12vw, 194px);
-    font-weight: 900;
-    line-height: 0.77;
-    letter-spacing: -0.07em;
-  }
-
-  /* 两行各自横向拉宽 —— 那个"超宽 BoomLand"效果的来源。 */
-  .cover__word > span {
-    display: block;
-    transform: scaleX(1.62);
-    transform-origin: center;
+    flex: none;
+    width: clamp(12rem, 49.5vw, 47.5rem);
+    filter: drop-shadow(var(--cover-text-shadow));
   }
 
   .cover__chinese {
-    display: block;
-    margin-top: 21px;
-    font-size: clamp(32px, 3.6vw, 58px);
-    letter-spacing: 0.055em;
-    line-height: 1.2;
-    text-shadow: 0 1px 20px
-      color-mix(in srgb, var(--bg-elevated) 44%, transparent);
+    display: flex;
+    flex-direction: column;
+    font-size: clamp(17px, 3.15vw, 48px);
+    line-height: 1.06;
+    letter-spacing: 0.02em;
+    text-align: left;
+    white-space: nowrap;
+    text-shadow: var(--cover-text-shadow);
   }
 
+  /* tagline 落在插画上：新插画在这一带是天空/花田的浅色区，深色字直接压上去
+   * 读得清（设计稿 banner 就是这么排的），所以不再垫磨砂玻璃背板。
+   * 它的起点由 .cover__brand 的 align-items: flex-start 对齐到字标左缘。
+   *
+   * 字体是设计稿的思源宋体（见 layout.tsx 的子集），字距按设计稿拉到 0.22em
+   * —— banner 里每个字之间是等距的，所以文案本身不再写空格（tsx 里的 text
+   * 用「·」直接相连），间距全部由 letter-spacing 给。 */
   .cover__tagline {
-    margin: 13px 0 6px;
-    font-size: clamp(12px, 1.35vw, 19px);
-    font-weight: 700;
+    /* 行高收紧到 1.15：BlurText 的每个字都是 inline-flex，行高会直接撑成
+     * 盒子高度 —— 用 body 的 1.65 会在字标与 tagline 之间多垫出十几像素。 */
+    margin: clamp(10px, 0.9vw, 15px) 0 0;
+    color: var(--fg);
+    font-family: var(--font-cover-serif);
+    font-size: clamp(14px, 2.35vw, 34px);
+    font-weight: 400;
+    line-height: 1.15;
     letter-spacing: 0.22em;
-  }
-
-  /* tagline 落在插画上，而插画在这条线附近正好是花朵最密的一段 ——
-   * 深色小字压在彩色花瓣上几乎读不出来。给它垫一块白色磨砂玻璃：
-   * 底色取「抬升面 + 半透明」，模糊把花瓣糊成一片柔和的色雾，
-   * 文字就有了干净的落脚点，又不会像实心色块那样在插画上开个天窗。
-   *
-   * 背板随入场一起淡入（`data-phase` 由 BlurText 提供）：文字还在模糊的
-   * 起始帧时背板不该先亮起来，否则会出现「一块白板、上面没字」的一瞬。
-   * 出场（loop / hover / click 重播）时跟着退回透明。
-   *
-   * 用 --shadow-tag 而不是 --shadow-float：和上面的绽放标签同一个理由 ——
-   * 大模糊半径会让这行 11~19px 的小字发虚。 */
-  .cover__tagline[data-phase] {
-    /* 背板必须贴着文字，不能拉满整行 —— `.cover__tagline` 是块级 flex
-     * 容器，默认宽度等于版心，直接加底色会变成横贯首屏的一条白杠。
-     * `fit-content` 让它只包住这行字，`margin-inline: auto` 负责居中。 */
-    width: fit-content;
-    margin-inline: auto;
-    padding: 7px 20px;
-    border: 1px solid color-mix(in srgb, var(--bg-elevated) 70%, transparent);
-    border-radius: var(--boom-radius-pill);
-    background: color-mix(in srgb, var(--bg-elevated) 62%, transparent);
-    backdrop-filter: blur(10px) saturate(115%);
-    box-shadow: var(--shadow-tag);
-    transition:
-      background-color 420ms var(--boom-ease),
-      border-color 420ms var(--boom-ease),
-      box-shadow 420ms var(--boom-ease);
-  }
-
-  .cover__tagline[data-phase='from'],
-  .cover__tagline[data-phase='out'] {
-    border-color: transparent;
-    background: transparent;
-    box-shadow: none;
-  }
-
-  /* 不支持 backdrop-filter 的浏览器：磨砂退化成实心浅色底，
-   * 至少保证文字仍然可读，而不是直接透出花哨的插画。 */
-  @supports not (backdrop-filter: blur(1px)) {
-    .cover__tagline[data-phase] {
-      background: color-mix(in srgb, var(--bg-elevated) 88%, transparent);
-    }
+    text-shadow: var(--cover-text-shadow);
   }
 
   /* tagline 由 TrueFocus 渲染：它自己的字号是 3rem（组件库默认值），
@@ -183,9 +166,9 @@
    * 词间距同步收紧：TrueFocus 默认 gap 1em，对 12~19px 的小字太松，
    * 会把三段拉开得比设计稿宽不少。 */
   .cover__tagline.true-focus {
-    --tf-word-size: clamp(12px, 1.35vw, 19px);
-    --tf-word-weight: 700;
-    --tf-word-leading: 1.65;
+    --tf-word-size: clamp(14px, 2.35vw, 34px);
+    --tf-word-weight: 400;
+    --tf-word-leading: 1.15;
     --tf-gap: 0.5em;
   }
 
@@ -196,12 +179,17 @@
     letter-spacing: 0.12em;
   }
 
+  /* 操作按钮沉到首屏底部、落在「向下探索」上方一点：
+   * margin-top: auto 把它推到 .cover__inner 底部，底部间距由 margin-bottom 给。
+   * 「向下探索」占据首屏底部约 72px（bottom 20 + 文字 + 竖线），90px 起跳
+   * 就能留出 ~18px 的空隙。 */
   .cover__actions {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 14px;
-    margin-top: 20px;
+    margin-top: auto;
+    margin-bottom: clamp(88px, 10svh, 116px);
   }
 
   /* 设计稿的按钮比默认 .ui-btn 更宽、更松。 */
@@ -315,26 +303,11 @@
     }
   }
 
+  /* 矮屏：字标是单行 SVG，高度天然可控 —— 只需要把 tagline 的间距收一档。
+   * 按钮靠 margin-top: auto 沉底，这里不能覆盖它的 margin。 */
   @media (max-height: 780px) and (min-width: 761px) {
-    .cover__inner {
-      padding-top: 94px;
-    }
-
-    .cover__word {
-      font-size: clamp(112px, 10.4vw, 148px);
-    }
-
-    .cover__chinese {
-      margin-top: 18px;
-      font-size: clamp(32px, 3.2vw, 47px);
-    }
-
     .cover__tagline {
       margin-top: 11px;
-    }
-
-    .cover__actions {
-      margin-top: 16px;
     }
   }
 
@@ -355,34 +328,15 @@
     }
 
     .cover__inner {
-      padding: calc(117px - var(--boom-header-h)) 20px 0;
+      padding: clamp(36px, 6.5svh, 60px) 20px 0;
     }
 
-    .cover__word {
-      font-size: clamp(78px, 19.5vw, 136px);
-      line-height: 0.82;
-      letter-spacing: -0.075em;
-    }
-
-    .cover__word > span {
-      transform: scaleX(1.43);
-    }
-
-    .cover__chinese {
-      margin-top: 22px;
-      font-size: clamp(28px, 6.9vw, 42px);
-      letter-spacing: 0;
-    }
-
+    /* 小屏靠 clamp 的下限兜底（字标 12rem ≈ 192px）；tagline 换成宋体后
+     * 14px + 0.14em 字距在小屏上仍然塞得下，只是比桌面收一档。 */
     .cover__tagline {
-      margin: 15px 0 8px;
-      font-size: 11px;
-      letter-spacing: 0.04em;
-    }
-
-    /* 小屏上首屏本来就挤，磨砂背板的内边距与圆角跟着收一档。 */
-    .cover__tagline[data-phase] {
-      padding: 6px 14px;
+      margin-top: 12px;
+      font-size: 14px;
+      letter-spacing: 0.14em;
     }
 
     .cover__description {
@@ -390,9 +344,11 @@
       letter-spacing: 0.04em;
     }
 
+    /* 与桌面同一个思路：按钮沉底，落在「向下探索」上方（小屏的 scroll
+     * 高度更矮，底部间距同步收到 74px）。 */
     .cover__actions {
       gap: 10px;
-      margin-top: 22px;
+      margin-bottom: 74px;
     }
 
     .cover__actions .ui-btn {

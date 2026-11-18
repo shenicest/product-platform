@@ -616,9 +616,8 @@ export function BlurText({
       <p
         ref={ref}
         className={cn(className)}
-        // 把状态机暴露给 CSS：页面层可以据此给文字配一层随入场一起出现的
-        // 背板（首屏插画很花，tagline 需要一块磨砂玻璃才读得清）。
-        // 组件本身不关心背板长什么样，只负责说出「我现在到哪一步了」。
+        // 把状态机暴露给 CSS：页面层可以据此编排文字与它周围装饰（背板 / 光圈）
+        // 的入场节奏。组件本身不关心装饰长什么样，只负责说出「我现在到哪一步了」。
         data-phase={phase}
         style={{
           display: 'flex',

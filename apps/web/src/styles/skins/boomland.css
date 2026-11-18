@@ -117,13 +117,14 @@
   /* .bloom-pop 那朵小花的投影。设计稿写死 #ac3a6220（粉调的淡投影）。 */
   --boom-bloom-halo: 0 3px 3px rgba(172, 58, 98, 0.125);
 
-  /* ---- 品牌插画：像素天空 + 山体花朵 ----------------------------------- *
-   * 首屏背景（设计稿 .cover-art 用的就是这张无文字版）。
+  /* ---- 品牌插画：游乐园 + 喷发云 --------------------------------------- *
+   * 首屏背景（设计稿 banner 用的就是这张无文字版）。
    * 组件只消费 var(--cover-image)，换插画只动这里。
    *
    * 引用 public/brand 下的静态图片，不要内联 base64 —— 内联会显著放大
-   * 样式表体积，且浏览器无法单独缓存、无法按 DPR 重采样。 */
-  --cover-art: url('/brand/boomland-art.jpg');
+   * 样式表体积，且浏览器无法单独缓存、无法按 DPR 重采样。
+   * 2560px 宽足够 1920 视口按 DPR 1.5 铺满；webp 比原 jpg 还小。 */
+  --cover-art: url('/brand/boomland-art.webp');
 
   /* 首屏柔光：把中央文字区压亮，保证标题在插画上可读。
    * 它带颜色，所以放在 L0 而不是 patterns.css。
@@ -135,11 +136,16 @@
   );
 
   /* 首屏排版轴的专用色（设计稿裸值 → 皮肤层）。
-   * patterns.css 经 tokens.css 的 --cover-base / --cover-word / --cover-ink 消费。 */
+   * patterns.css 经 tokens.css 的 --cover-base / --cover-ink 消费。
+   * 字标不自带色值：顶栏与首屏共用同一枚 SVG，颜色一律走 currentColor。 */
   --boom-cover-base: #b8ddff; /* 设计稿 .cover-hero 天空底色 */
-  --boom-cover-word: #ed78ac; /* 设计稿 .cover-word 巨型字标粉（比 --pink 更淡） */
   --boom-cover-ink: #ffffff; /* 落在插画上的白字（scroll / index） */
   --boom-cover-ink-halo: #07192d; /* 白字的深色描边光 */
+
+  /* 首屏文字投影：插画很花，字标 / 中文副标 / tagline 都要从背景上"抬"起来。
+   * 设计稿的阴影是向右下的软投影（偏移 ~2px、模糊 ~5px），颜色取中性深色 ——
+   * 不能用 --fg 的蓝黑，否则压在暖色花瓣上会发紫。 */
+  --boom-cover-text-shadow: 0 2px 6px rgba(24, 24, 12, 0.48);
 
   /* ---- 暖纸：赛季详情页（报名未开始 / 拼贴首屏） ---------------------- *
    * 赛季详情不再用冷白，而是设计稿的米白纸感。只在赛季页作用域内消费，
