@@ -13,49 +13,62 @@ export function ProjectCard({
   featured?: boolean
 }) {
   return (
-    <Card className="group h-full">
+    <Card className="group relative h-full">
+      {/*
+        整卡可点：用一个绝对定位的兄弟链接盖住卡片，而不是把正文包进 <a>。
+        这样点赞按钮（以及以后可能加的任何交互）不在链接内部，不会出现
+        <a> 里嵌 <button> 的非法结构，也不会让读屏把整张卡当成一个链接。
+      */}
       <Link
         href={`/projects/${project.id}`}
-        className="flex flex-1 flex-col focus-visible:outline-none"
+        aria-label={project.name}
+        className="absolute inset-0 z-10 rounded-[inherit] focus-visible:outline-none"
+      />
+
+      <div
+        className={
+          featured ? 'card-cover card-cover--wide' : 'card-cover card-cover--tall'
+        }
       >
-        <div
-          className={
-            featured ? 'card-cover card-cover--wide' : 'card-cover card-cover--tall'
-          }
-        >
-          {project.coverUrl ? (
-            // 用户提供的封面 URL 是任意的，next/image 的 remotePatterns
-            // 无法穷举，因此用原生 img。
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={project.coverUrl} alt={project.name} loading="lazy" />
-          ) : (
-            <span className="card-cover--placeholder">NO COVER</span>
-          )}
-        </div>
+        {project.coverUrl ? (
+          // 用户提供的封面 URL 是任意的，next/image 的 remotePatterns
+          // 无法穷举，因此用原生 img。
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={project.coverUrl} alt={project.name} loading="lazy" />
+        ) : (
+          <span className="card-cover--placeholder">NO COVER</span>
+        )}
+      </div>
 
-        <div className={featured ? 'card-body card-body--roomy' : 'card-body'}>
-          <span className="card-id">{projectIdLabel(project.id)}</span>
+      {/* `pointer-events-none` 让正文的点击穿透到下面的整卡链接；
+          点赞按钮单独打开 `pointer-events-auto`，保持可点。 */}
+      <div
+        className={
+          featured
+            ? 'card-body card-body--roomy pointer-events-none relative z-20'
+            : 'card-body pointer-events-none relative z-20'
+        }
+      >
+        <span className="card-id">{projectIdLabel(project.id)}</span>
 
-          {/* 设计稿 .product-heading：标题与点赞按钮同一行，按钮贴右。
-              按钮在 <Link> 内部，所以它自己 preventDefault/stopPropagation
-              （见 like-button.tsx），点它不会跳详情页。 */}
-          <div className="card-heading">
-            <h3 className="card-title transition-colors group-hover:text-brand-text">
-              {project.name}
-            </h3>
+        <div className="card-heading">
+          <h3 className="card-title transition-colors group-hover:text-brand-text">
+            {project.name}
+          </h3>
+          <span className="pointer-events-auto">
             <LikeButton projectId={project.id} likeCount={project.likeCount} />
-          </div>
-
-          {project.tagline ? <p className="card-text line-clamp-2">{project.tagline}</p> : null}
-
-          <ProjectBadges
-            stage={project.stage}
-            categories={project.categories}
-            source={project.sourceName}
-            className="mt-auto pt-2"
-          />
+          </span>
         </div>
-      </Link>
+
+        {project.tagline ? <p className="card-text line-clamp-2">{project.tagline}</p> : null}
+
+        <ProjectBadges
+          stage={project.stage}
+          categories={project.categories}
+          source={project.sourceName}
+          className="mt-auto pt-2"
+        />
+      </div>
 
       <div className="card-footer">
         <p className="card-meta min-w-0">

@@ -779,7 +779,7 @@ export function TalentDetail({
                   </select>
                 </label>
                 <label className="ui-field">
-                  <span className="ui-label">留言（10-500 字）</span>
+                  <span className="ui-label">留言（30-500 字）</span>
                   <textarea
                     required
                     minLength={10}

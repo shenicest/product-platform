@@ -1209,10 +1209,16 @@ export class SeasonService {
    * 公开口径与 `GET /seasons/:id` 完全一致（`isPublicSeason`）：未批准或已取消的
    * 赛季对外就是不存在。主题是报名表单的选项来源，泄露草稿赛季的方向等于提前
    * 透露还没发布的内容。
+   *
+   * 例外：该赛季的主办方成员/平台管理员需要在自己的后台里编辑主题，草稿期也必须
+   * 能读回来。这个例外只按「是否本赛季管理员」判断，不能把草稿主题暴露给普通登录用户。
    */
-  async listThemes(seasonId: number) {
+  async listThemes(seasonId: number, userId: string | null = null) {
     const row = await this.getSeasonRow(seasonId)
-    if (!isPublicSeason(row)) throw boomlandError('SEASON_NOT_FOUND', '赛季不存在或暂未公开', 404)
+    if (!isPublicSeason(row)) {
+      const canManage = userId !== null && await this.access.isSeasonOrganizer(seasonId, userId)
+      if (!canManage) throw boomlandError('SEASON_NOT_FOUND', '赛季不存在或暂未公开', 404)
+    }
     return { themes: row.themes ?? [] }
   }
 

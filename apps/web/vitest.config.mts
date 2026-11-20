@@ -18,6 +18,10 @@ export default defineConfig({
       },
     },
     globals: false,
+    // 交互密集的用例（技能墙 20 次点击、完整项目表单）在 CI 的 2 核 runner
+    // 上会超过 vitest 默认的 5s。这里统一放宽到 20s；真正挂起的用例仍会失败，
+    // 只是不会被机器慢误判成超时。
+    testTimeout: 20_000,
     setupFiles: ['./test/setup.ts'],
     include: ['test/**/*.test.{ts,tsx}'],
     css: false,

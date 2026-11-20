@@ -51,11 +51,12 @@ export const seasonModule = new Elysia()
     params: SeasonIdParams,
     detail: { summary: 'List season announcements', tags: ['Season'], security: [{ bearerAuth: [] }, {}] },
   })
-  .get('/seasons/:id/themes', async ({ params }) => {
-    return seasonService.listThemes(params.id)
+  .get('/seasons/:id/themes', async ({ params, user }) => {
+    return seasonService.listThemes(params.id, user?.userId ?? null)
   }, {
+    optionalAuth: true,
     params: SeasonIdParams,
-    detail: { summary: 'List season themes', tags: ['Season'], security: [] },
+    detail: { summary: 'List season themes', tags: ['Season'], security: [{ bearerAuth: [] }, {}] },
   })
   .put('/seasons/:id/themes', async ({ user, params, body }) => {
     return seasonService.updateThemes(params.id, user.userId, body)
