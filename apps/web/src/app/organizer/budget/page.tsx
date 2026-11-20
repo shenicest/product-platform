@@ -1,14 +1,14 @@
-﻿import type { Metadata } from 'next'
-import { WorkInProgress } from '@/components/organizer/work-in-progress'
+import type { Metadata } from 'next'
+import { BudgetConsole } from '@/components/organizer/budget/budget-console'
+import { redirectToDemoSeason } from '@/server/organizer-demo'
 
 export const metadata: Metadata = { title: '预算与结算 · 主办方后台' }
 
-export default function OrganizerBudgetPage() {
-  return (
-    <WorkInProgress
-      tab="budget"
-      title="预算与结算"
-      scope="预算版本（每次追加都留痕并标明当前有效版本）与赛季结算口径、获奖主体与发放记录。"
-    />
-  )
+export const dynamic = 'force-dynamic'
+
+export default async function Page(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  await redirectToDemoSeason(props.searchParams, '/organizer/budget')
+  return <BudgetConsole />
 }

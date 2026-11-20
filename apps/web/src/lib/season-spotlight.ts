@@ -1,4 +1,4 @@
-import { SeasonStatus } from '@shenicest/shared'
+import { SeasonStatus, type SeasonSchedule } from '@shenicest/shared'
 import type { ChipTone } from '@/components/ui/chip'
 import {
   formatDate,
@@ -56,6 +56,29 @@ export type SeasonSpotlight = {
   registrationRange: string
   participantLabel: string
   challengeCount: number
+  /** 原始比赛状态；组件用它区分 LIVE / 筹备 / 报名中。 */
+  status: string
+  /** 赛季主题；首页只展示业务配置过的主题标签。 */
+  themes: string[]
+  /** 是否平台置顶；首页副标题里作为一枚状态词。 */
+  pinned: boolean
+  /** 作品截止时间（倒计时目标）；赛程缺失时为 null。 */
+  workDeadline: string | null
+  /** 交付窗口第几天（从 1 起算）；未开赛或赛程缺失时为 0。 */
+  dayIndex: number
+  /** 交付窗口总天数（开赛 → 作品截止）。 */
+  dayTotal: number
+  /** 同一时间可见的其他赛季，供首页「并行 N 个赛季」入口使用。 */
+  parallelSeasons: SeasonSpotlightParallel[]
+}
+
+export type SeasonSpotlightParallel = {
+  id: number
+  name: string
+  city: string | null
+  typeLabel: string
+  statusLabel: string
+  href: string
 }
 
 /**
@@ -103,6 +126,46 @@ function registrationRangeLabel(registration: {
   return `${formatDate(registration.opensAt)} — ${formatDate(registration.closesAt)}`
 }
 
+const DAY_MS = 86_400_000
+
+/**
+ * 赛季进行到第几天。
+ *
+ * 用「开赛 → 作品截止」作为交付窗口：报名在前、评分与结算在后，选手
+ * 感知的「赛季进行时」就是这一段。`dayIndex` 按整日向下取整（开赛当天
+ * 即第 1 天），超过作品截止后夹到总天数，首页不会出现 DAY 41 / 29 的读数。
+ */
+export function seasonDayProgress(
+  schedule: SeasonSchedule | null | undefined,
+  now = new Date(),
+): { dayIndex: number; dayTotal: number } {
+  const start = schedule?.startAt ? new Date(schedule.startAt).getTime() : NaN
+  const end = schedule?.workDeadline ? new Date(schedule.workDeadline).getTime() : NaN
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    return { dayIndex: 0, dayTotal: 0 }
+  }
+
+  const dayTotal = Math.max(1, Math.ceil((end - start) / DAY_MS))
+  if (now.getTime() < start) return { dayIndex: 0, dayTotal }
+
+  const elapsedDays = Math.floor((now.getTime() - start) / DAY_MS)
+  return {
+    dayIndex: Math.min(dayTotal, Math.max(1, elapsedDays)),
+    dayTotal,
+  }
+}
+
+function toParallelSeasonView(season: SeasonSummary): SeasonSpotlightParallel {
+  return {
+    id: season.id,
+    name: season.name,
+    city: season.city,
+    typeLabel: seasonTypeLabel(season.type),
+    statusLabel: seasonStatusView(season.status).label,
+    href: `/seasons/${season.id}`,
+  }
+}
+
 /**
  * 赛季 → 首页入口视图。
  *
@@ -112,11 +175,18 @@ function registrationRangeLabel(registration: {
 export function toSeasonSpotlight(
   season: SeasonSummary,
   detail: SeasonDetail | null = null,
+  options: {
+    /** 与当前赛季同时在线的其他赛季；由服务端列表接口直接传入。 */
+    parallelSeasons?: readonly SeasonSummary[]
+    /** 注入「现在」便于单测；页面侧留空即可。 */
+    now?: Date
+  } = {},
 ): SeasonSpotlight {
   const status = seasonStatusView(season.status)
   const registration = seasonRegistration(detail ?? season)
   const themes = season.themes ?? []
   const displayName = season.name.replace(/^boomland\s*/i, '').trim() || season.name
+  const dayProgress = seasonDayProgress(season.schedule, options.now)
 
   return {
     id: season.id,
@@ -141,5 +211,14 @@ export function toSeasonSpotlight(
     registrationRange: registrationRangeLabel(registration),
     participantLabel: participantLabel(season),
     challengeCount: season.publishedChallengeCount,
+    status: season.status,
+    themes,
+    pinned: season.pinned,
+    workDeadline: season.schedule?.workDeadline ?? null,
+    dayIndex: dayProgress.dayIndex,
+    dayTotal: dayProgress.dayTotal,
+    parallelSeasons: (options.parallelSeasons ?? [])
+      .filter((item) => item.id !== season.id)
+      .map(toParallelSeasonView),
   }
 }

@@ -1,15 +1,15 @@
 /* ============================================================================
- * L3 · HOME · 当前赛季入口
+ * L3 · HOME · 当前赛季票根
  * ----------------------------------------------------------------------------
- * 首页在首屏与精选项目之间插一块「赛季门廊」：深墨蓝底 + 粉色光晕，
- * 右侧是一张纸质票券。它只属于首页（`/`），所以单独成文件，不放进
- * patterns.css；颜色全部经 L2 语义 token 消费，不出现裸色值。
+ * 首页在首屏与精选项目之间插一张赛季票根：热粉齿孔边 + 蜜桃纸抬头 +
+ * 暖白票身。它只属于首页（`/`），所以单独成文件，不放进 patterns.css；
+ * 颜色全部经 L2 语义 token 消费，不出现裸色值。
  *
  * 结构：
  *   .season-gate                  外层留白
- *   .season-gate__panel           深色门廊（grid：文案 / 票券）
- *   .season-gate__copy            标题、简介、状态、入口
- *   .season-gate__pass            白色赛季票券（编号 / 赛程 / 规模）
+ *   .season-ticket                票根（粉边 + 齿孔 + 两侧缺口）
+ *   .season-ticket__head          抬头（票号 / 状态 / 笔刷 / 棋盘格）
+ *   .season-ticket__body          票身（标题 / 简介 / 赛程 / 倒计时 / 入口）
  * ========================================================================== */
 
 @layer components {
@@ -17,295 +17,427 @@
     padding-block: clamp(40px, 6vw, 76px) 0;
   }
 
-  .season-gate__panel {
+  .season-ticket {
+    --ticket-head: 176px;
+    --ticket-radius: 22px;
+    --ticket-frame: 7px;
     position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1.12fr) minmax(300px, 0.88fr);
-    align-items: center;
-    gap: clamp(28px, 4vw, 64px);
+    width: min(100%, 920px);
+    margin-inline: auto;
+    padding: var(--ticket-frame);
+    border-radius: var(--ticket-radius);
+    background: var(--gate-pink);
+    box-shadow: 0 24px 60px color-mix(in srgb, var(--gate-pink) 16%, transparent);
     overflow: hidden;
-    isolation: isolate;
-    padding: clamp(26px, 4.2vw, 60px);
-    border: 1px solid color-mix(in srgb, var(--fg-inverse) 10%, transparent);
-    border-radius: clamp(24px, 3vw, 40px);
-    background:
-      radial-gradient(
-        90% 120% at 100% 0%,
-        color-mix(in srgb, var(--brand) 48%, transparent) 0%,
-        transparent 58%
-      ),
-      linear-gradient(135deg, var(--fg) 0%, var(--sky-deep) 100%);
-    box-shadow: var(--shadow-float);
-    color: var(--fg-inverse);
   }
 
-  /* 空态没有真实赛程可展示，票券只作为版式配重，不抢正文。 */
-  .season-gate__panel--empty {
-    grid-template-columns: minmax(0, 1.25fr) minmax(260px, 0.75fr);
-  }
-
-  /* 星点纹理：把深色底从「一块色块」变成有纵深的夜空。
-   * 不遮文字 —— 点间距 26px、透明度很低，长文仍然清晰。 */
-  .season-gate__panel::before {
+  /* 齿孔：粉边上打一排暖白小圆点；中间被 .season-ticket__inner 盖住。 */
+  .season-ticket::before {
     content: '';
     position: absolute;
     inset: 0;
-    z-index: -1;
+    border-radius: inherit;
     background-image: radial-gradient(
-      color-mix(in srgb, var(--fg-inverse) 26%, transparent) 1px,
-      transparent 1.6px
+      circle,
+      var(--gate-surface) 2px,
+      transparent 2.6px
     );
-    background-size: 26px 26px;
-    opacity: 0.32;
+    background-size: 16px 16px;
     pointer-events: none;
   }
 
-  .season-gate__copy {
+  /* 两侧半圆缺口：贴着卡片边缘的圆，被票根的 overflow 裁掉一半。 */
+  .season-ticket__notch {
+    position: absolute;
+    top: var(--ticket-head);
+    z-index: 5;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: var(--bg);
+    border: var(--ticket-frame) solid var(--gate-pink);
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+
+  .season-ticket__notch--left {
+    left: -19px;
+  }
+
+  .season-ticket__notch--right {
+    right: -19px;
+  }
+
+  .season-ticket__inner {
     position: relative;
-    z-index: 1;
-    min-width: 0;
-    max-width: 660px;
+    overflow: hidden;
+    border-radius: calc(var(--ticket-radius) - var(--ticket-frame));
+    background: var(--gate-surface);
   }
 
-  .season-gate__eyebrow {
-    color: var(--brand-soft);
-    letter-spacing: 0.18em;
+  /* ---- 抬头 ----------------------------------------------------------- */
+
+  .season-ticket__head {
+    position: relative;
+    min-height: var(--ticket-head);
+    padding: 26px 30px 30px;
+    overflow: hidden;
+    background:
+      radial-gradient(
+        60% 80% at 18% 0%,
+        color-mix(in srgb, var(--gate-pink) 9%, transparent) 0%,
+        transparent 62%
+      ),
+      radial-gradient(
+          color-mix(in srgb, var(--gate-ink) 5%, transparent) 0.8px,
+          transparent 1.2px
+        )
+        0 0 / 14px 14px,
+      var(--gate-paper);
   }
 
-  .season-gate__title {
-    margin: 16px 0 0;
-    color: var(--fg-inverse);
-    font-size: clamp(2.2rem, 4.6vw, 4.25rem);
-    font-weight: 900;
-    line-height: 1.04;
-    letter-spacing: -0.04em;
-    text-wrap: balance;
-  }
-
-  .season-gate__title-kicker {
-    display: block;
-    margin-bottom: 0.5em;
-    color: var(--brand-soft);
+  .season-ticket__code {
+    position: relative;
+    z-index: 2;
+    display: inline-block;
+    padding: 4px 18px;
+    background: var(--gate-surface);
+    color: var(--gate-ink);
     font-family: var(--font-mono);
-    font-size: clamp(0.68rem, 1vw, 0.85rem);
-    font-weight: 400;
-    letter-spacing: 0.42em;
-    text-transform: uppercase;
+    font-size: clamp(2.2rem, 4.2vw, 3.2rem);
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -0.04em;
+    box-shadow: 0 3px 0 color-mix(in srgb, var(--gate-ink) 12%, transparent);
+    transform: rotate(-4deg);
   }
 
-  .season-gate__title-name {
-    display: block;
-    max-width: 16ch;
-    /* 中文标题优先在词边界换行：`AI4BBS 产业商业赛季` 在窄屏上应该断在
-     * 空格处，而不是把「产业」拆成两行。真正放不下时再由 anywhere 兜底。 */
-    word-break: keep-all;
-    overflow-wrap: anywhere;
-  }
-
-  .season-gate__lead {
-    margin: 18px 0 0;
-    max-width: 46ch;
-    color: color-mix(in srgb, var(--fg-inverse) 76%, transparent);
-    font-size: var(--boom-text-body);
-    line-height: 1.8;
-  }
-
-  .season-gate__meta {
+  .season-ticket__status-group {
+    position: absolute;
+    top: 24px;
+    right: 26px;
+    z-index: 3;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 10px 14px;
-    margin-top: 22px;
+    justify-content: flex-end;
+    gap: 8px 12px;
   }
 
-  /* 深底上的胶囊统一改半透明白，避免浅色 chip 抢走标题视线；
-   * 「进行中」这类实心状态仍保留粉色，作为唯一的实心强调。 */
-  .season-gate__meta .ui-chip {
-    border-color: color-mix(in srgb, var(--fg-inverse) 20%, transparent);
-    background: color-mix(in srgb, var(--fg-inverse) 8%, transparent);
-    color: var(--fg-inverse);
+  .season-ticket__day {
+    color: color-mix(in srgb, var(--gate-ink) 62%, transparent);
+    font-family: var(--font-mono);
+    font-size: var(--boom-text-meta);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
   }
 
-  .season-gate__meta .ui-chip--accent {
-    border-color: var(--brand);
-    background: var(--brand);
-    color: var(--brand-ink);
+  .season-ticket__day b {
+    color: var(--gate-pink-deep);
+    font-family: var(--font-digits);
+    font-size: 1.15em;
+    font-weight: 400;
+    letter-spacing: 0.04em;
   }
 
-  /* 报名中：半透明粉底 + 粉色描边，与「进行中」的实心粉形成主次。 */
-  .season-gate__meta .ui-chip[data-open='true'] {
-    border-color: var(--brand-line);
-    background: color-mix(in srgb, var(--brand) 18%, transparent);
-    color: var(--brand-soft);
+  .season-ticket__status.ui-chip {
+    border-color: var(--gate-pink);
+    background: var(--gate-surface);
+    color: var(--gate-pink-deep);
+    box-shadow: 0 2px 0 color-mix(in srgb, var(--gate-pink) 18%, transparent);
   }
 
-  .season-gate__organizer {
-    color: color-mix(in srgb, var(--fg-inverse) 66%, transparent);
+  /* 粉色笔刷：不规则上沿用 clip-path 切出毛边，作为票根抬头的底部装饰。 */
+  .season-ticket__brush {
+    position: absolute;
+    left: -10px;
+    bottom: -8px;
+    z-index: 1;
+    width: 92%;
+    height: 110px;
+    background: linear-gradient(
+      100deg,
+      var(--gate-pink-deep) 0%,
+      var(--gate-pink) 38%,
+      var(--gate-pink-light) 68%,
+      transparent 100%
+    );
+    clip-path: polygon(
+      0 58%,
+      7% 44%,
+      15% 52%,
+      24% 36%,
+      34% 50%,
+      44% 34%,
+      54% 50%,
+      64% 38%,
+      74% 54%,
+      84% 40%,
+      93% 52%,
+      100% 42%,
+      100% 100%,
+      0 100%
+    );
+    transform: rotate(-2deg);
+  }
+
+  /* 棋盘格旗：参考图笔刷右端的黑白格子。 */
+  .season-ticket__checker {
+    position: absolute;
+    right: 22px;
+    bottom: 0;
+    z-index: 1;
+    width: 96px;
+    height: 48px;
+    background: repeating-conic-gradient(
+        var(--gate-ink) 0% 25%,
+        var(--gate-surface) 0% 50%
+      )
+      0 0 / 16px 16px;
+    clip-path: polygon(10% 0, 100% 16%, 88% 100%, 0 74%);
+    transform: skewX(-10deg) rotate(-4deg);
+    opacity: 0.9;
+  }
+
+  /* ---- 票身 ----------------------------------------------------------- */
+
+  .season-ticket__body {
+    position: relative;
+    padding: 26px 32px 30px;
+    background: var(--gate-surface);
+  }
+
+  .season-ticket__title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px 16px;
+  }
+
+  .season-ticket__title {
+    margin: 0;
+    color: var(--gate-ink);
+    font-size: clamp(1.8rem, 3.2vw, 2.6rem);
+    font-weight: 900;
+    line-height: 1.12;
+    letter-spacing: -0.03em;
+    text-wrap: balance;
+  }
+
+  .season-ticket__organizer {
+    color: var(--gate-muted);
+    font-size: var(--boom-text-body-sm);
+    letter-spacing: 0.02em;
+  }
+
+  .season-ticket__desc {
+    margin: 14px 0 0;
+    max-width: 62ch;
+    color: var(--gate-muted);
+    font-size: var(--boom-text-body-sm);
+    line-height: 1.75;
+  }
+
+  .season-ticket__meta {
+    margin: 10px 0 0;
+    color: var(--gate-muted);
+    font-size: var(--boom-text-meta);
+  }
+
+  .season-ticket__date {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 14px 0 0;
+    color: var(--gate-ink);
+    font-size: var(--boom-text-meta);
+    letter-spacing: 0.02em;
+  }
+
+  .season-ticket__date svg {
+    flex: none;
+    color: var(--gate-pink-deep);
+  }
+
+  .season-ticket__themes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 18px;
+  }
+
+  .season-ticket__theme.ui-chip {
+    border-color: var(--gate-pink-line);
+    background: var(--gate-surface);
+    color: var(--gate-ink);
+  }
+
+  .season-ticket__countdown {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 10px 16px;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px dashed var(--gate-pink-line);
+  }
+
+  .season-ticket__countdown-label {
+    color: var(--gate-muted);
+    font-size: var(--boom-text-meta);
+    letter-spacing: 0.04em;
+  }
+
+  .season-ticket__countdown-tz {
+    color: var(--gate-subtle);
+  }
+
+  .season-ticket__countdown-digits {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    color: var(--gate-pink);
+    font-family: var(--font-digits);
+    font-size: clamp(1.5rem, 2.6vw, 2rem);
+    line-height: 1;
+    letter-spacing: 0.08em;
+  }
+
+  .season-ticket__countdown-digits b {
+    font-weight: 400;
+  }
+
+  .season-ticket__countdown-digits span {
+    font-family: var(--font-mono);
+    font-size: 0.7em;
+    letter-spacing: 0.12em;
+  }
+
+  .season-ticket__countdown-done {
+    color: var(--gate-pink-deep);
     font-family: var(--font-mono);
     font-size: var(--boom-text-meta);
     letter-spacing: 0.08em;
   }
 
-  .season-gate__actions {
+  /* 参考图的 CTA 是「暖白底 + 热粉描边 + 黑字 + 粉箭头」。 */
+  .season-ticket__actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 12px;
-    margin-top: 30px;
+    margin-top: 22px;
   }
 
-  .season-gate__actions .ui-btn--primary {
-    box-shadow: 0 12px 28px color-mix(in srgb, var(--brand) 34%, transparent);
+  .season-ticket__actions .ui-btn--primary {
+    border: 1px solid var(--gate-pink);
+    background: var(--gate-surface);
+    color: var(--gate-ink);
+    box-shadow: 0 8px 20px color-mix(in srgb, var(--gate-pink) 14%, transparent);
   }
 
-  .season-gate__actions .ui-btn--secondary {
-    border-color: color-mix(in srgb, var(--fg-inverse) 28%, transparent);
-    background: transparent;
-    color: var(--fg-inverse);
+  .season-ticket__actions .ui-btn--primary:hover:not(:disabled),
+  .season-ticket__actions .ui-btn--primary:active:not(:disabled) {
+    background: var(--gate-pink-wash);
   }
 
-  .season-gate__actions .ui-btn--secondary:hover:not(:disabled) {
-    border-color: var(--brand-soft);
-    background: color-mix(in srgb, var(--fg-inverse) 8%, transparent);
+  .season-ticket__actions .ui-btn--primary .ui-btn__arrow {
+    color: var(--gate-pink);
   }
 
-  /* ---- 赛季票券 ------------------------------------------------------- */
-
-  .season-gate__pass {
-    position: relative;
-    z-index: 1;
-    justify-self: end;
-    width: min(100%, 380px);
-    padding: 24px 26px 20px;
-    border-radius: 22px;
-    background: var(--bg-elevated);
-    color: var(--fg);
-    box-shadow: 0 30px 60px color-mix(in srgb, var(--fg) 45%, transparent);
-    transform: rotate(-1.4deg);
+  .season-ticket__actions .ui-btn--secondary {
+    border-color: var(--gate-pink-line);
+    background: var(--gate-surface);
+    color: var(--gate-ink);
   }
 
-  .season-gate__pass--empty {
-    opacity: 0.86;
+  .season-ticket__actions .ui-btn--secondary:hover:not(:disabled) {
+    border-color: var(--gate-pink);
+    background: var(--gate-pink-wash);
   }
 
-  .season-gate__pass-head {
+  .season-ticket__parallel {
     display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-  }
-
-  .season-gate__pass-label {
-    padding-top: 8px;
-    color: var(--brand-text);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.22em;
-  }
-
-  .season-gate__pass-code {
-    min-width: 0;
-    max-width: 7ch;
-    color: var(--fg);
-    font-family: var(--font-mono);
-    font-size: clamp(2.4rem, 4.4vw, 3.4rem);
-    font-weight: 400;
-    line-height: 0.95;
-    letter-spacing: -0.04em;
-    overflow-wrap: anywhere;
-    text-align: right;
-  }
-
-  .season-gate__pass-name {
-    margin: 12px 0 0;
-    color: var(--fg);
-    font-size: 1.05rem;
-    font-weight: 800;
-    line-height: 1.35;
-  }
-
-  .season-gate__pass-copy {
-    margin: 18px 0 0;
-    color: var(--fg-muted);
-    font-size: 13px;
-    line-height: 1.7;
-  }
-
-  .season-gate__facts {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px 18px;
-    margin: 20px 0 0;
-    padding-top: 18px;
-    border-top: 1px dashed var(--border-strong);
-  }
-
-  .season-gate__fact--wide {
-    grid-column: 1 / -1;
-  }
-
-  .season-gate__fact dt {
-    color: var(--fg-subtle);
-    font-family: var(--font-mono);
-    font-size: 10px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-  }
-
-  .season-gate__fact dd {
-    margin: 4px 0 0;
-    color: var(--fg);
-    font-size: 13px;
-    font-weight: 700;
-    line-height: 1.45;
-  }
-
-  .season-gate__pass-foot {
-    display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    margin-top: 18px;
+    gap: 10px 14px;
+    margin-top: 22px;
     padding-top: 16px;
-    border-top: 1px dashed var(--border-strong);
+    border-top: 1px dashed var(--gate-pink-line);
+    color: var(--gate-muted);
+    font-size: var(--boom-text-meta);
   }
 
-  .season-gate__pass-note {
-    color: var(--brand-text);
+  .season-ticket__parallel-label {
+    font-family: var(--font-mono);
+    letter-spacing: 0.08em;
+  }
+
+  .season-ticket__parallel-link {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    border: 1px solid var(--gate-pink-line);
+    border-radius: 999px;
+    background: var(--gate-surface);
+    color: var(--gate-ink);
+    line-height: 1.4;
+    transition:
+      border-color 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  .season-ticket__parallel-link:hover {
+    border-color: var(--gate-pink);
+    background: var(--gate-pink-wash);
+  }
+
+  .season-ticket__parallel-link b {
+    font-weight: 700;
+  }
+
+  .season-ticket__parallel-link span {
+    color: var(--gate-pink-deep);
     font-family: var(--font-mono);
     font-size: 11px;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.06em;
   }
 
-  .season-gate__pass-stamp {
-    display: grid;
-    width: 34px;
-    height: 34px;
-    flex: none;
-    place-items: center;
-    border-radius: 50%;
-    background: var(--brand-wash);
-    color: var(--brand);
-    font-size: 17px;
-    line-height: 1;
+  /* ---- 空态：保留票根壳，内容换成「筹备中」 --------------------------- */
+
+  .season-ticket--empty {
+    --ticket-head: 150px;
+  }
+
+  .season-ticket--empty .season-ticket__actions {
+    margin-top: 20px;
   }
 
   /* ---- 响应式 --------------------------------------------------------- */
 
-  @media (max-width: 960px) {
-    .season-gate__panel {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 32px;
+  @media (max-width: 760px) {
+    .season-ticket {
+      --ticket-head: 160px;
     }
 
-    .season-gate__pass {
-      justify-self: start;
-      width: min(100%, 440px);
-      transform: none;
+    .season-ticket__head {
+      padding: 22px 24px 26px;
     }
 
-    .season-gate__title-name {
-      max-width: none;
+    .season-ticket__status-group {
+      top: 20px;
+      right: 22px;
+    }
+
+    .season-ticket__brush {
+      width: 92%;
+      height: 96px;
+    }
+
+    .season-ticket__body {
+      padding: 24px 26px 28px;
     }
   }
 
@@ -314,22 +446,73 @@
       padding-block: 36px 0;
     }
 
-    .season-gate__panel {
-      padding: 26px 22px;
-      border-radius: 24px;
+    .season-ticket {
+      --ticket-head: 176px;
+      --ticket-radius: 18px;
+      --ticket-frame: 6px;
     }
 
-    .season-gate__title {
-      font-size: clamp(2rem, 9vw, 2.8rem);
+    .season-ticket__notch {
+      width: 30px;
+      height: 30px;
+      border-width: 6px;
     }
 
-    .season-gate__actions .ui-btn {
+    .season-ticket__notch--left {
+      left: -15px;
+    }
+
+    .season-ticket__notch--right {
+      right: -15px;
+    }
+
+    .season-ticket__head {
+      padding: 20px 20px 24px;
+    }
+
+    /* 小屏上票号和状态并排会打架，状态组改为跟在票号下面。 */
+    .season-ticket__status-group {
+      position: static;
+      justify-content: flex-start;
+      margin-top: 12px;
+    }
+
+    .season-ticket__code {
+      font-size: 2rem;
+      padding: 3px 12px;
+    }
+
+    .season-ticket__brush {
+      width: 96%;
+      height: 94px;
+    }
+
+    .season-ticket__checker {
+      right: 16px;
+      width: 64px;
+      height: 34px;
+      background-size: 13px 13px;
+    }
+
+    .season-ticket__body {
+      padding: 22px 20px 24px;
+    }
+
+    .season-ticket__title {
+      font-size: clamp(1.7rem, 8vw, 2.1rem);
+    }
+
+    .season-ticket__actions .ui-btn {
       flex: 1 1 100%;
     }
 
-    .season-gate__pass {
+    .season-ticket__countdown-digits {
+      font-size: 1.4rem;
+    }
+
+    .season-ticket__parallel-link {
       width: 100%;
-      padding: 22px 22px 18px;
+      justify-content: space-between;
     }
   }
 }

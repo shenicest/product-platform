@@ -13,7 +13,7 @@ import { challengeStatusMeta, type SeasonChallenge } from '@/lib/boomland'
  */
 export function SeasonChallengeSection({ challenges }: { challenges: SeasonChallenge[] }) {
   return (
-    <section aria-labelledby="season-challenges-title">
+    <section id="challenges" className="scroll-mt-24" aria-labelledby="season-challenges-title">
       <div className="v26-section-head">
         <div>
           <h2 id="season-challenges-title">企业命题</h2>

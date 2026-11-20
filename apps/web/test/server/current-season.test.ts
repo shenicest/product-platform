@@ -93,6 +93,14 @@ describe('getCurrentSeasonSpotlight', () => {
       href: '/seasons/502',
       statusLabel: '即将开始',
     })
+    // 并行赛季来自同一次列表请求：首页不用为「并行 N 个赛季」再打一次接口。
+    expect(view?.parallelSeasons).toEqual([
+      expect.objectContaining({
+        id: 501,
+        href: '/seasons/501',
+        statusLabel: '进行中',
+      }),
+    ])
     expect(detailPath).toBe('/seasons/502')
   })
 

@@ -4,7 +4,7 @@ import { UserMenu } from '@/components/user-menu';
 import { BoomLandLogo } from '@/components/brand-logos';
 
 const NAV = [
-  { href: '/', label: '产品共生' },
+  { href: '/products', label: '产品共生' },
   { href: '/seasons', label: '火热赛季' },
   { href: '/talents', label: '共鸣之地' },
   { href: '/hackathon', label: '黑客松' },

@@ -207,7 +207,9 @@ export type ReadinessSummary = {
 export type OrganizerTabSlug =
   | 'overview'
   | 'season-settings'
+  | 'rules'
   | 'applications'
+  | 'projects'
   | 'manual-group'
   | 'challenges'
   | 'scoring'
@@ -220,7 +222,9 @@ export type OrganizerTabSlug =
 export const ORGANIZER_TAB_SLUGS = [
   'overview',
   'season-settings',
+  'rules',
   'applications',
+  'projects',
   'manual-group',
   'challenges',
   'scoring',
@@ -234,7 +238,9 @@ export const ORGANIZER_TAB_SLUGS = [
 export const ORGANIZER_TAB_LABELS: Record<OrganizerTabSlug, string> = {
   overview: '总览',
   'season-settings': '赛季设置',
+  rules: '规则归档',
   applications: '报名审核',
+  projects: '项目与进度',
   'manual-group': '人工拉群',
   challenges: '命题与资源',
   scoring: '评委与积分池',

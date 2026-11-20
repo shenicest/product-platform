@@ -1,14 +1,14 @@
-﻿import type { Metadata } from 'next'
-import { WorkInProgress } from '@/components/organizer/work-in-progress'
+import type { Metadata } from 'next'
+import { AuditConsole } from '@/components/organizer/audit/audit-console'
+import { redirectToDemoSeason } from '@/server/organizer-demo'
 
 export const metadata: Metadata = { title: '审计 · 主办方后台' }
 
-export default function OrganizerAuditPage() {
-  return (
-    <WorkInProgress
-      tab="audit"
-      title="审计"
-      scope="按 action / target 筛选的赛季审计日志：谁在什么时候改了什么，含状态流转与关键字段的前后值。"
-    />
-  )
+export const dynamic = 'force-dynamic'
+
+export default async function Page(props: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  await redirectToDemoSeason(props.searchParams, '/organizer/audit')
+  return <AuditConsole />
 }

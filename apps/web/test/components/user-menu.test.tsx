@@ -42,13 +42,82 @@ describe('UserMenu', () => {
     render(<UserMenu />)
 
     expect(screen.getByText('name@example.com')).toBeInTheDocument()
-    // 工作台入口对所有登录用户可见，落在个人中心的第一屏（报名）。
-    expect(screen.getByRole('link', { name: '工作台' })).toHaveAttribute('href', '/me/applications')
+    // 赛季入口按赛季角色显示：这个账号没有选手 / 评委 / 企业角色，
+    // 只保留所有登录用户都能看到的「我的报名」。
+    expect(screen.queryByRole('link', { name: '参赛台' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '评委台' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '企业命题台' })).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: '我的报名' })).toHaveAttribute(
+      'href',
+      '/me/applications',
+    )
     expect(screen.getByRole('link', { name: /连接记录/ })).toHaveAttribute('href', '/connections')
     expect(screen.getByRole('link', { name: '编辑我的档案' })).toHaveAttribute('href', '/talents/me/edit')
     expect(screen.getByRole('link', { name: '创始人后台' })).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: '运营后台' })).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByText('99+')).toBeInTheDocument())
+  })
+
+  it('shows the participant entry to a season participant', () => {
+    auth = {
+      user: {
+        user_id: 101,
+        email: 'zhang.yi@example.com',
+        role: 'founder',
+        roles: [Role.Founder],
+        isOrganizerMember: true,
+      },
+      loading: false,
+    }
+    render(<UserMenu />)
+
+    expect(screen.getByRole('link', { name: '参赛台' })).toHaveAttribute(
+      'href',
+      '/me/workbench',
+    )
+    expect(screen.queryByRole('link', { name: '评委台' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '企业命题台' })).not.toBeInTheDocument()
+  })
+
+  it('shows the judge entry only to an authorized judge', () => {
+    auth = {
+      user: {
+        user_id: 108,
+        email: 'scorer.jia@example.com',
+        role: 'user',
+        roles: [],
+      },
+      loading: false,
+    }
+    render(<UserMenu />)
+
+    expect(screen.getByRole('link', { name: '评委台' })).toHaveAttribute('href', '/judge')
+    expect(screen.queryByRole('link', { name: '参赛台' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: '企业命题台' })).not.toBeInTheDocument()
+  })
+
+  it('shows the enterprise entry only to an enterprise partner', () => {
+    auth = {
+      user: {
+        user_id: 102,
+        email: 'li.er@example.com',
+        role: 'founder',
+        roles: [Role.Founder],
+      },
+      loading: false,
+    }
+    render(<UserMenu />)
+
+    expect(screen.getByRole('link', { name: '企业命题台' })).toHaveAttribute(
+      'href',
+      '/enterprise',
+    )
+    // 102 在 seed 里同时是 AI4BBS 选手，所以参赛台也应出现。
+    expect(screen.getByRole('link', { name: '参赛台' })).toHaveAttribute(
+      'href',
+      '/me/workbench',
+    )
+    expect(screen.queryByRole('link', { name: '评委台' })).not.toBeInTheDocument()
   })
 
   // 主办方后台入口只认「管理员」或「主办方组织成员」；本地要调它就在右下角

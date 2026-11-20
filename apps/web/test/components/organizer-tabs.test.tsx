@@ -18,7 +18,9 @@ describe('OrganizerTabs', () => {
     expect(links.map((link) => link.textContent)).toEqual([
       '总览',
       '赛季设置',
+      '规则归档',
       '报名审核',
+      '项目与进度',
       '人工拉群',
       '命题与资源',
       '评委与积分池',
@@ -60,7 +62,9 @@ describe('OrganizerTabs', () => {
     expect(ORGANIZER_TABS.map((tab) => tab.slug)).toEqual([
       'overview',
       'season-settings',
+      'rules',
       'applications',
+      'projects',
       'manual-group',
       'challenges',
       'scoring',

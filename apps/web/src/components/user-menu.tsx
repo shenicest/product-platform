@@ -7,6 +7,7 @@ import { useAuth } from '@/components/auth-provider'
 import { getConnections } from '@/lib/client-api'
 import { shouldShowOrganizerEntry } from '@/lib/organizer-access'
 import { shouldShowPlatformEntry } from '@/lib/platform-console'
+import { SeasonRole, getSeasonRoles } from '@/lib/season-access'
 import { ButtonLink } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { Card } from '@/components/ui/surface'
@@ -92,6 +93,16 @@ export function UserMenu() {
   const isFounder = user.roles?.includes(Role.Founder) ?? false
   const isOperator = user.roles?.includes(Role.Operator) ?? false
   /**
+   * 赛季角色与平台角色分开判断：
+   *   · 参赛台 / 评委台 / 企业命题台只对真正持有对应赛季角色的人显示；
+   *   · 平台管理员没有评委授权也不显示评委台（4.5 第 2 条）。
+   * 守卫与页面共用 `lib/season-access.ts` 的同一套规则。
+   */
+  const seasonRoles = getSeasonRoles(user.user_id)
+  const showParticipantEntry = seasonRoles.includes(SeasonRole.Participant)
+  const showJudgeEntry = seasonRoles.includes(SeasonRole.Judge)
+  const showEnterpriseEntry = seasonRoles.includes(SeasonRole.Enterprise)
+  /**
    * 主办方后台入口：只对平台管理员或主办方组织成员显示，
    * 本地要调这个入口就在右下角切换 mock 用户（见 `lib/organizer-access.ts`）。
    */
@@ -125,9 +136,27 @@ export function UserMenu() {
        * 这里不叠加 Tailwind 的 shadow-* —— 那是与皮肤无关的固定投影，
        * 会让 rock / night 皮肤下的浮层失去同一套层次语言。 */}
       <Card static className="absolute top-full right-0 z-50 mt-3 min-w-48 p-2">
+        {showParticipantEntry ? (
+          <Link href="/me/workbench" className={MENU_ITEM} onClick={closeMenu}>
+            参赛台
+          </Link>
+        ) : null}
+
         <Link href="/me/applications" className={MENU_ITEM} onClick={closeMenu}>
-          工作台
+          我的报名
         </Link>
+
+        {showJudgeEntry ? (
+          <Link href="/judge" className={MENU_ITEM} onClick={closeMenu}>
+            评委台
+          </Link>
+        ) : null}
+
+        {showEnterpriseEntry ? (
+          <Link href="/enterprise" className={MENU_ITEM} onClick={closeMenu}>
+            企业命题台
+          </Link>
+        ) : null}
 
         <Link href="/connections" className={MENU_ITEM} onClick={closeMenu}>
           <span>连接记录</span>

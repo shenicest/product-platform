@@ -19,12 +19,13 @@ export type WorkbenchTab = {
 }
 
 export const WORKBENCH_TABS: readonly WorkbenchTab[] = [
-  { slug: 'workbench', label: '工作台', ready: false },
+  { slug: 'workbench', label: '工作台', ready: true },
   { slug: 'announcements', label: '公告', ready: false },
   { slug: 'applications', label: '报名', ready: true },
   { slug: 'team', label: '组队', ready: true },
-  { slug: 'projects', label: '项目', ready: false },
-  { slug: 'works', label: '作品', ready: false },
+  { slug: 'projects', label: '项目', ready: true },
+  { slug: 'works', label: '作品', ready: true },
+  { slug: 'long-term', label: '长期作品', ready: true },
   { slug: 'following', label: '关注', ready: false },
   { slug: 'growth', label: '成长', ready: false },
   { slug: 'rewards', label: '奖励', ready: false },

@@ -25,7 +25,9 @@ export type OrganizerTab = {
 export const ORGANIZER_TABS: readonly OrganizerTab[] = [
   { slug: 'overview', label: '总览' },
   { slug: 'season-settings', label: '赛季设置' },
+  { slug: 'rules', label: '规则归档' },
   { slug: 'applications', label: '报名审核' },
+  { slug: 'projects', label: '项目与进度' },
   { slug: 'manual-group', label: '人工拉群' },
   { slug: 'challenges', label: '命题与资源' },
   { slug: 'scoring', label: '评委与积分池' },

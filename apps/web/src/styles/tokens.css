@@ -74,6 +74,20 @@
   --season-surface: var(--boom-cloud-0);
   --season-hero-image: var(--boom-season-hero-art);
 
+  /* ---- 首页「当前赛季」门廊：热粉票券 --------------------------------- *
+   * 与全站品牌粉分开，只在 .season-gate 作用域消费。 */
+  --gate-pink: var(--boom-gate-pink);
+  --gate-pink-deep: var(--boom-gate-pink-deep);
+  --gate-pink-light: var(--boom-gate-pink-light);
+  --gate-pink-line: var(--boom-gate-pink-line);
+  --gate-pink-wash: var(--boom-gate-pink-wash);
+  --gate-paper: var(--boom-gate-paper);
+  --gate-paper-soft: var(--boom-gate-paper-soft);
+  --gate-surface: var(--boom-gate-surface);
+  --gate-ink: var(--boom-gate-ink);
+  --gate-muted: var(--boom-gate-muted);
+  --gate-subtle: var(--boom-gate-subtle);
+
   /* ---- 焦点 ---------------------------------------------------------- */
   --focus-ring: var(--boom-focus);
 

@@ -108,6 +108,65 @@ describe('toSeasonSpotlight', () => {
     })
   })
 
+  it('exposes the live-season content: themes, day counter and parallel seasons', () => {
+    const view = toSeasonSpotlight(
+      summary({
+        themes: ['新型储能基建', '全球 AI 基建'],
+        pinned: true,
+      }),
+      detail(),
+      {
+        now: new Date('2026-11-11T01:00:00.000Z'),
+        parallelSeasons: [
+          summary({
+            id: 600,
+            name: 'H03 上海站 · 黑客松',
+            type: SeasonType.Hackathon,
+            status: SeasonStatus.Active,
+          }),
+          // 当前这一季即使被误传进列表也会被过滤掉。
+          summary({ id: 502 }),
+        ],
+      },
+    )
+
+    expect(view).toMatchObject({
+      status: SeasonStatus.Active,
+      themes: ['新型储能基建', '全球 AI 基建'],
+      pinned: true,
+      workDeadline: '2026-12-01T15:59:00.000Z',
+      dayIndex: 10,
+      dayTotal: 31,
+    })
+    expect(view.parallelSeasons).toEqual([
+      {
+        id: 600,
+        name: 'H03 上海站 · 黑客松',
+        city: '上海',
+        typeLabel: '黑客松',
+        statusLabel: '进行中',
+        href: '/seasons/600',
+      },
+    ])
+  })
+
+  it('leaves the day counter empty when the schedule has not started', () => {
+    const view = toSeasonSpotlight(
+      summary({
+        status: SeasonStatus.Upcoming,
+        schedule: schedule({
+          startAt: '2027-01-01T01:00:00.000Z',
+          workDeadline: '2027-02-01T01:00:00.000Z',
+        }),
+      }),
+      detail({ status: SeasonStatus.Upcoming }),
+      { now: new Date('2026-11-11T00:00:00.000Z') },
+    )
+
+    expect(view.dayIndex).toBe(0)
+    expect(view.dayTotal).toBe(31)
+  })
+
   it('falls back to themes when the detail intro is missing', () => {
     const view = toSeasonSpotlight(
       summary({ themes: ['AI 应用', '创作者经济'] }),

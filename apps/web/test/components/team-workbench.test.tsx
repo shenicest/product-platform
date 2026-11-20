@@ -332,7 +332,7 @@ describe('TeamRecruitmentDialog · 发布招募卡', () => {
       within(dialog).getByLabelText(/说明/),
       '做一个冷库电费看板，每周投入 6 小时',
     )
-    await user.type(within(dialog).getByLabelText(/截止日期/), '2026-11-19')
+    await user.type(within(dialog).getByLabelText(/截止日期/), '2030-12-31')
     await user.click(within(dialog).getByRole('button', { name: '发布' }))
 
     await waitFor(() => expect(body).toBeDefined())
@@ -341,7 +341,7 @@ describe('TeamRecruitmentDialog · 发布招募卡', () => {
       roles: ['前端', '数据分析'],
       skills: ['小程序', 'Python'],
       description: '做一个冷库电费看板，每周投入 6 小时',
-      deadline: '2026-11-19T15:59:59.000Z',
+      deadline: '2030-12-31T15:59:59.000Z',
     })
     await waitFor(() => expect(refresh).toHaveBeenCalled())
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

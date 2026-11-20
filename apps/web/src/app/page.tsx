@@ -7,6 +7,9 @@ import { Pagination } from '@/components/pagination'
 import { HeroSection } from '@/components/hero-section'
 import { FeaturedSection } from '@/components/featured-section'
 import { CurrentSeasonGate } from '@/components/current-season-gate'
+import { SeasonActivityTicker } from '@/components/season-activity-ticker'
+import { HomeDiscovery } from '@/components/home-discovery'
+import { SeasonLeaderboard } from '@/components/season-leaderboard'
 import { EmptyState } from '@/components/ui/surface'
 import { ButtonLink } from '@/components/ui/button'
 import { SectionHead } from '@/components/ui/typography'
@@ -54,8 +57,19 @@ export default async function HomePage(props: PageProps<'/'>) {
     <PublicInteractionBoundary>
       <HeroSection />
 
+      {/* 赛季动态长条：放在票根上方，先给「正在发生什么」，再进入当前赛季。 */}
+      <div className="shell pt-6">
+        <SeasonActivityTicker />
+      </div>
+
       {/* 当前赛季有时效性，排在精选项目之前；没有赛季时也保留入口。 */}
       <CurrentSeasonGate season={currentSeason} />
+
+      {/* 赛季贡献积分榜 + 最近评分/进化/活跃。 */}
+      <SeasonLeaderboard />
+
+      {/* 赛季之外的三块长期展示：孵化产品 / 培养人 / 线下作品。 */}
+      <HomeDiscovery />
 
       <FeaturedSection projects={featuredProjects} />
 

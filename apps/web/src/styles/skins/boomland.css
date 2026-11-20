@@ -154,6 +154,22 @@
   --boom-paper-2: #f1ece2;
   --boom-paper-3: #e5ded1;
 
+  /* ---- 首页「当前赛季」门廊：热粉票券 --------------------------------- *
+   * 取自首页当前赛季票券设计稿：高饱和洋红 + 蜜桃纸 + 暖黑墨。
+   * 与全站品牌粉（--boom-pink-6 #ff3d8d）分开：设计稿的粉更偏紫、更饱和，
+   * 纸色也更暖，直接复用品牌色会显得发橙、发灰。 */
+  --boom-gate-pink: #f52e89;
+  --boom-gate-pink-deep: #d73983;
+  --boom-gate-pink-light: #ff8aba;
+  --boom-gate-pink-line: #ffcaed;
+  --boom-gate-pink-wash: #fff0f5;
+  --boom-gate-paper: #fbebde;
+  --boom-gate-paper-soft: #fceee3;
+  --boom-gate-surface: #fffcfb;
+  --boom-gate-ink: #161419;
+  --boom-gate-muted: #878684;
+  --boom-gate-subtle: #a5a4a2;
+
   /* 赛季详情拼贴首屏：由运营提供的整张 banner（含雕像 / 星芒 / 棋盘格）。
    * 放在 L0 是因为它是设计素材；上层只消费 --season-hero-image。 */
   --boom-season-hero-art: url('https://shenicest-projects-1422809617.cos.ap-shanghai.myqcloud.com/assets/product-platform/boomland/banner.png');

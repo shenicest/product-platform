@@ -84,7 +84,12 @@ export const getCurrentSeasonSpotlight = cache(
     if (!summary) return null
 
     const detail = await getSeason(summary.id).catch(() => null)
-    return toSeasonSpotlight(summary, detail)
+    return toSeasonSpotlight(summary, detail, {
+      // 列表接口已经过滤掉草稿 / 取消，这里只排除当前这一季，
+      // 首页就能直接给出「并行 N 个赛季」的入口。
+      parallelSeasons: (list?.items ?? []).filter((item) => item.id !== summary.id),
+      now: new Date(),
+    })
   },
 )
 
