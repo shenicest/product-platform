@@ -51,6 +51,7 @@ export function ProjectCard({
           <ProjectBadges
             stage={project.stage}
             categories={project.categories}
+            source={project.sourceName}
             className="mt-auto pt-2"
           />
         </div>

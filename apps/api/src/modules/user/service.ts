@@ -42,6 +42,44 @@ export class UserProfileService {
     }
   }
 
+  // Resolves an email to a shared-user integer id, creating the row when the
+  // email is not yet known. Used by the external project import endpoint to
+  // assign imported projects to a real owner. Returns null when the email is
+  // not addressable or the shared table is unreachable (callers treat null as
+  // "cannot resolve owner").
+  async resolveUserIdByEmail(email: string, nickname?: string): Promise<string | null> {
+    const normalized = email.trim().toLowerCase()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return null
+    try {
+      const [existing] = (await this.db.execute(
+        sql`SELECT id FROM ${sql.raw(SHARED_USERS_TABLE)} WHERE email = ${normalized} LIMIT 1`,
+      )) as unknown as [Array<{ id: number }>]
+      const found = existing[0]?.id
+      if (found) return String(found)
+
+      try {
+        const [result] = (await this.db.execute(
+          sql`INSERT INTO ${sql.raw(SHARED_USERS_TABLE)} (email, nickname) VALUES (${normalized}, ${nickname ?? null})`,
+        )) as unknown as [{ insertId: number }]
+        if (result.insertId) return String(result.insertId)
+      } catch (error) {
+        // Concurrent import for the same new email raced the unique constraint;
+        // re-select the row the other writer created.
+        if (typeof error === 'object' && error !== null && 'code' in error && (error as { code: string }).code === 'ER_DUP_ENTRY') {
+          const [rows] = (await this.db.execute(
+            sql`SELECT id FROM ${sql.raw(SHARED_USERS_TABLE)} WHERE email = ${normalized} LIMIT 1`,
+          )) as unknown as [Array<{ id: number }>]
+          const raced = rows[0]?.id
+          if (raced) return String(raced)
+        }
+        throw error
+      }
+      return null
+    } catch {
+      return null
+    }
+  }
+
   // Whether a user exists in the shared external-auth table. Used before
   // granting season-scoped roles (organizer member, scorer, verifier) so a
   // typo cannot create a dangling grant. Degrades to false on lookup failure.

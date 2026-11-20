@@ -1,4 +1,4 @@
-import { boolean, index, int, json, mysqlTable, text, timestamp, tinyint, varchar } from 'drizzle-orm/mysql-core'
+import { boolean, index, int, json, mysqlTable, text, timestamp, tinyint, uniqueIndex, varchar } from 'drizzle-orm/mysql-core'
 import { createInsertSchema, createSelectSchema } from 'drizzle-typebox'
 import { t } from 'elysia'
 
@@ -31,12 +31,19 @@ export const projects = mysqlTable('projects', {
   contactEmail: varchar('contact_email', { length: 255 }),
   contactWechat: varchar('contact_wechat', { length: 255 }),
   teamName: varchar('team_name', { length: 255 }),
+  // External-import provenance. Both are null for founder-created projects.
+  // `source_name` is the importer's own name (displayed in the UI); `external_id`
+  // is the importer's id for the project, unique within a source so repeated
+  // imports upsert instead of duplicating.
+  sourceName: varchar('source_name', { length: 255 }),
+  externalId: varchar('external_id', { length: 255 }),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow().onUpdateNow(),
 }, (table) => [
   index('idx_projects_user_id').on(table.userId),
   index('idx_projects_status').on(table.status),
   index('idx_projects_stage').on(table.stage),
+  uniqueIndex('uq_projects_source_external').on(table.sourceName, table.externalId),
 ])
 
 export const InsertProject = createInsertSchema(projects, {
@@ -67,6 +74,8 @@ export const InsertProject = createInsertSchema(projects, {
   contactEmail: (s) => { s.description = 'Contact email address (private)'; return s },
   contactWechat: (s) => { s.description = 'Contact WeChat ID (private)'; return s },
   teamName: (s) => { s.description = 'Team or company name'; return s },
+  sourceName: (s) => { s.description = 'Import source name (null for founder-created projects)'; return s },
+  externalId: (s) => { s.description = "Importer's own id for this project (unique per source)"; return s },
 })
 export type InsertProject = typeof InsertProject.static
 
@@ -99,6 +108,8 @@ export const SelectProject = createSelectSchema(projects, {
   contactEmail: (s) => { s.description = 'Contact email address (private)'; return s },
   contactWechat: (s) => { s.description = 'Contact WeChat ID (private)'; return s },
   teamName: (s) => { s.description = 'Team or company name'; return s },
+  sourceName: (s) => { s.description = 'Import source name (null for founder-created projects)'; return s },
+  externalId: (s) => { s.description = "Importer's own id for this project (unique per source)"; return s },
   createdAt: (s) => { s.description = 'Creation timestamp'; return s },
   updatedAt: (s) => { s.description = 'Last update timestamp'; return s },
 })

@@ -213,11 +213,12 @@ export function ProjectDetail({ project, backHref = '/', showLike = true, connec
                 <FounderCard founder={project.founder} projectName={project.name} />
               ) : null}
 
-              {project.stage !== null || project.categories?.length || teamName ? (
+              {project.stage !== null || project.categories?.length || teamName || project.sourceName ? (
                 <div className="detail-badges mt-5">
                   <ProjectBadges
                     stage={project.stage}
                     categories={project.categories}
+                    source={project.sourceName}
                     className="contents"
                   />
                   {teamName ? <Chip>{teamName}</Chip> : null}
