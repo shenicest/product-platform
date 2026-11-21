@@ -3,6 +3,7 @@ import type { Project } from '@/server/projects'
 import { ProjectBadges } from '@/components/project-badges'
 import { projectIdLabel } from '@/lib/utils'
 import { LikeButton } from '@/components/like-button'
+import { ProjectCover } from '@/components/project-cover'
 import { Card } from '@/components/ui/surface'
 
 export function ProjectCard({
@@ -30,14 +31,7 @@ export function ProjectCard({
           featured ? 'card-cover card-cover--wide' : 'card-cover card-cover--tall'
         }
       >
-        {project.coverUrl ? (
-          // 用户提供的封面 URL 是任意的，next/image 的 remotePatterns
-          // 无法穷举，因此用原生 img。
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={project.coverUrl} alt={project.name} loading="lazy" />
-        ) : (
-          <span className="card-cover--placeholder">NO COVER</span>
-        )}
+        <ProjectCover src={project.coverUrl} alt={project.name} />
       </div>
 
       {/* `pointer-events-none` 让正文的点击穿透到下面的整卡链接；

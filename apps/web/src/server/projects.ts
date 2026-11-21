@@ -2,6 +2,7 @@ import { cache } from 'react'
 import { cookies } from 'next/headers'
 import { api } from '@/lib/api'
 import type { ProjectFilters } from '@/lib/project-filters'
+import { DEMO_MODE } from '@/lib/demo-mode'
 
 export interface ProjectListQuery extends ProjectFilters {
   offset?: number
@@ -25,6 +26,15 @@ export const getFeaturedProjects = cache(async () => {
 })
 
 export const getFollowingProjects = cache(async (query: ProjectListQuery = {}) => {
+  if (DEMO_MODE) {
+    return {
+      data: [],
+      total: 0,
+      page: 1,
+      pageSize: query.limit ?? 20,
+    }
+  }
+
   const token = (await cookies()).get('shenicest_token')?.value
   if (!token) throw new Error('Failed to load following projects')
 

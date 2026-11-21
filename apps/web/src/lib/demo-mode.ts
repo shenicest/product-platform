@@ -1,5 +1,5 @@
 import { Role, SeasonStatus } from '@shenicest/shared'
-import type { SeasonSummary } from './boomland'
+import type { RuleCardItem, SeasonDetail, SeasonSummary } from './boomland'
 
 /**
  * 临时演示开关。
@@ -154,6 +154,7 @@ export const DEMO_SEASONS: readonly SeasonSummary[] = [
     id: 2,
     code: 'H03-SH',
     name: 'H03 上海站 · 黑客松',
+    type: 'hackathon',
     status: SeasonStatus.Active,
     pinned: false,
   },
@@ -183,3 +184,37 @@ export const DEMO_ORGANIZER_ORGS = [
   { id: 2, name: '曜石储能', memberCount: 2, isMember: true, createdAt: '2026-01-01T00:00:00.000Z' },
   { id: 3, name: '青禾物流', memberCount: 2, isMember: true, createdAt: '2026-01-01T00:00:00.000Z' },
 ] as const
+
+const DEMO_RULE_CARD: RuleCardItem[] = [
+  { id: 1, key: 'exchange', label: '积分兑换', value: '1 积分 = ¥1', required: true, visible: true, sortOrder: 1 },
+  { id: 2, key: 'max_challenges', label: '每个项目命题上限', value: '3 个平行命题', required: true, visible: true, sortOrder: 2 },
+  { id: 3, key: 'single_work_cap', label: '单次评分上限', value: '300 分', required: true, visible: true, sortOrder: 3 },
+  { id: 4, key: 'review_threshold', label: '大额复核阈值', value: '30 分', required: true, visible: true, sortOrder: 4 },
+]
+
+/** 演示用赛季详情：列表页与详情页共用同一份数据。 */
+export function demoSeasonDetail(id: number): SeasonDetail | null {
+  const summary = DEMO_SEASONS.find((season) => season.id === id)
+  if (!summary) return null
+  return {
+    ...summary,
+    intro:
+      summary.id === 1
+        ? '用一个月时间，围绕真实产业问题做出能被客户使用的 AI 产品。'
+        : null,
+    ruleCard: DEMO_RULE_CARD,
+    rulesVersion: 3,
+    awardingEntity: 'BoomLand 组委会',
+    agreementVersion: 'v1',
+    agreementContent: null,
+    startedAt: summary.status === SeasonStatus.Active ? '2026-11-10T00:00:00.000Z' : null,
+    applicationWindow: {
+      opensAt: '2026-10-20T00:00:00.000Z',
+      closesAt: '2026-11-20T00:00:00.000Z',
+      isOpen: false,
+    },
+    createdAt: '2026-10-01T00:00:00.000Z',
+    updatedAt: '2026-11-20T00:00:00.000Z',
+  }
+}
+

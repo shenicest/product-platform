@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { ProjectStage } from '@shenicest/shared'
 import { ProjectCard } from '@/components/project-card'
@@ -78,6 +78,12 @@ describe('ProjectCard', () => {
     render(<ProjectCard project={makeProject({ coverUrl: null })} />)
     expect(screen.queryByRole('img', { name: 'Nova' })).not.toBeInTheDocument()
     expect(screen.getByText('NO COVER')).toBeInTheDocument()
+  })
+
+  it('falls back to NO COVER when the cover image fails to load', async () => {
+    render(<ProjectCard project={makeProject()} />)
+    fireEvent.error(screen.getByRole('img', { name: 'Nova' }))
+    expect(await screen.findByText('NO COVER')).toBeInTheDocument()
   })
 
   it('renders badges for stage and categories', () => {

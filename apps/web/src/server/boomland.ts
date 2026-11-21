@@ -1,7 +1,7 @@
 import { cache } from 'react'
 import { cookies } from 'next/headers'
 import { api } from '@/lib/api'
-import { DEMO_MODE } from '@/lib/demo-mode'
+import { DEMO_MODE, DEMO_SEASONS, demoSeasonDetail } from '@/lib/demo-mode'
 import type {
   MySeasonApplication,
   SeasonAnnouncement,
@@ -32,6 +32,21 @@ export type ListSeasonsQuery = {
 }
 
 export const getSeasons = cache(async (query: ListSeasonsQuery = {}): Promise<SeasonListResponse> => {
+  if (DEMO_MODE) {
+    const statuses = query.status?.split(',') ?? []
+    const items = DEMO_SEASONS.filter((season) => {
+      if (query.type && season.type !== query.type) return false
+      if (statuses.length > 0 && !statuses.includes(String(season.status))) return false
+      return true
+    })
+    return {
+      items: [...items],
+      total: items.length,
+      page: query.page ?? 1,
+      pageSize: query.pageSize ?? 20,
+    }
+  }
+
   const { data, error } = await api.seasons.get({
     query,
     headers: await authHeaders(),
@@ -41,6 +56,8 @@ export const getSeasons = cache(async (query: ListSeasonsQuery = {}): Promise<Se
 })
 
 export const getSeason = cache(async (id: number): Promise<SeasonDetail | null> => {
+  if (DEMO_MODE) return demoSeasonDetail(id)
+
   const { data, error } = await api.seasons({ id }).get({
     headers: await authHeaders(),
   })
@@ -51,6 +68,8 @@ export const getSeason = cache(async (id: number): Promise<SeasonDetail | null> 
 
 export const getSeasonAnnouncements = cache(
   async (id: number): Promise<SeasonAnnouncement[]> => {
+    if (DEMO_MODE) return []
+
     const { data, error } = await api.seasons({ id }).announcements.get({
       headers: await authHeaders(),
     })
@@ -61,6 +80,8 @@ export const getSeasonAnnouncements = cache(
 
 export const getSeasonChallenges = cache(
   async (id: number): Promise<SeasonChallenge[]> => {
+    if (DEMO_MODE) return []
+
     const { data, error } = await api.seasons({ id }).challenges.get({
       headers: await authHeaders(),
     })
@@ -95,6 +116,8 @@ export const getCurrentSeasonSpotlight = cache(
 )
 
 export const getHackathonSeasons = cache(async (): Promise<SeasonSummary[]> => {
+  if (DEMO_MODE) return DEMO_SEASONS.filter((season) => season.type === 'hackathon')
+
   const { data, error } = await api.seasons.get({
     query: { type: 'hackathon', pageSize: 6 },
     headers: await authHeaders(),
@@ -105,6 +128,8 @@ export const getHackathonSeasons = cache(async (): Promise<SeasonSummary[]> => {
 
 export const getMySeasonApplication = cache(
   async (seasonId: number): Promise<MySeasonApplication | null> => {
+    if (DEMO_MODE) return null
+
     const headers = await authHeaders()
     if (!headers) return null
     const { data, error } = await api.me.applications.get({
