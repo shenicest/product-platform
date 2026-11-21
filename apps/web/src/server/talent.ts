@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { ProjectStatus } from "@shenicest/shared";
 import { api } from "@/lib/api";
 import { API_URL } from "@/lib/api-url";
+import { DEMO_MODE, DEMO_TALENT_PROFILE } from "@/lib/demo-mode";
 import type {
   ConnectionParty,
   TalentConnection,
@@ -11,6 +12,11 @@ import type {
   TalentProject,
 } from "@/lib/talent";
 
+function normalizeTalentProfile(profile: TalentProfile): TalentProfile {
+  // 线上旧版 API 还没有 seasonBadges 字段；补成空数组，避免前端读 .length 崩。
+  return { ...profile, seasonBadges: profile.seasonBadges ?? [] };
+}
+
 function publicConnectionParty(party: ConnectionParty): ConnectionParty {
   return {
     userId: party.userId,
@@ -18,7 +24,7 @@ function publicConnectionParty(party: ConnectionParty): ConnectionParty {
     hasPublishedTalentProfile: party.hasPublishedTalentProfile,
     talentProfile:
       party.hasPublishedTalentProfile && party.talentProfile
-        ? party.talentProfile
+        ? normalizeTalentProfile(party.talentProfile)
         : null,
   };
 }
@@ -36,14 +42,35 @@ async function serverRequest<T>(
     status: response.status,
   };
 }
-export const getTalents = cache((query: string) =>
-  serverRequest<{ data: TalentProfile[]; total: number }>(
+export const getTalents = cache(async (query: string) => {
+  const result = await serverRequest<{ data: TalentProfile[]; total: number }>(
     `/talents${query ? `?${query}` : ""}`,
-  ),
-);
-export const getTalent = cache((userId: string) =>
-  serverRequest<TalentProfile>(`/talents/${encodeURIComponent(userId)}`),
-);
+  );
+  if (!result.data) {
+    return DEMO_MODE
+      ? { data: { data: [DEMO_TALENT_PROFILE], total: 1 }, status: 200 }
+      : result;
+  }
+  const data = result.data.data
+    .filter((profile) => profile.userId !== DEMO_TALENT_PROFILE.userId)
+    .map(normalizeTalentProfile);
+  const merged = DEMO_MODE ? [DEMO_TALENT_PROFILE, ...data] : data;
+  return {
+    ...result,
+    data: {
+      ...result.data,
+      data: merged,
+      total: DEMO_MODE ? result.data.total + 1 : result.data.total,
+    },
+  };
+});
+export const getTalent = cache(async (userId: string) => {
+  if (DEMO_MODE && userId === DEMO_TALENT_PROFILE.userId) {
+    return { data: DEMO_TALENT_PROFILE, status: 200 };
+  }
+  const result = await serverRequest<TalentProfile>(`/talents/${encodeURIComponent(userId)}`);
+  return result.data ? { ...result, data: normalizeTalentProfile(result.data) } : result;
+});
 export const getMyTalent = cache(() =>
   serverRequest<TalentManagement>("/talents/me"),
 );

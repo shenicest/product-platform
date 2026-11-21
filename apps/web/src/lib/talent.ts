@@ -70,7 +70,7 @@ export type TalentProfile = TalentBody & {
   updatedAt: string;
   founder: TalentIdentity;
   projects: TalentProject[];
-  seasonBadges: TalentSeasonBadge[];
+  seasonBadges?: TalentSeasonBadge[];
   match?: { score: number; reasons: string[] };
 };
 export type TalentManagement = TalentBody & {

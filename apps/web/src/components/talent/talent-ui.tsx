@@ -361,7 +361,7 @@ function ProfileCard({ profile }: { profile: TalentProfile }) {
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <AvailabilityBadge availability={profile.availability} />
           </div>
-          {profile.seasonBadges.length > 0 ? (
+          {profile.seasonBadges && profile.seasonBadges.length > 0 ? (
             <div className="mt-2">
               <SeasonBadges badges={profile.seasonBadges} />
             </div>
@@ -642,7 +642,7 @@ export function TalentDetail({
             <div className="mt-4">
               <AvailabilityBadge availability={profile.availability} />
             </div>
-            {profile.seasonBadges.length > 0 ? (
+            {profile.seasonBadges && profile.seasonBadges.length > 0 ? (
               <div className="mt-4">
                 <p className="font-mono text-meta tracking-[0.12em] text-muted-foreground">
                   SEASONS / 赛季经历

@@ -1,5 +1,6 @@
 import { Role, SeasonStatus } from '@shenicest/shared'
 import type { RuleCardItem, SeasonDetail, SeasonSummary } from './boomland'
+import type { TalentProfile } from './talent'
 
 /**
  * 临时演示开关。
@@ -138,7 +139,16 @@ export const DEMO_SEASON: SeasonSummary = {
   city: null,
   status: SeasonStatus.Active,
   themes: ['新型储能基建', '全球 AI 基建', '新生产关系的人本基建'],
-  schedule: null,
+  schedule: {
+    applyOpen: '2026-10-20T00:00:00.000Z',
+    applyClose: '2026-11-20T00:00:00.000Z',
+    startAt: '2026-11-10T00:00:00.000Z',
+    teamDeadline: '2026-11-18T00:00:00.000Z',
+    challengeFreezeAt: '2026-11-17T00:00:00.000Z',
+    workDeadline: '2026-12-10T00:00:00.000Z',
+    scoreDeadline: '2026-12-15T00:00:00.000Z',
+    settleDate: '2026-12-22T00:00:00.000Z',
+  },
   organizerOrgs: [{ id: 1, name: 'BoomLand 组委会' }],
   pinned: true,
   approvedAt: '2026-11-01T00:00:00.000Z',
@@ -216,5 +226,42 @@ export function demoSeasonDetail(id: number): SeasonDetail | null {
     createdAt: '2026-10-01T00:00:00.000Z',
     updatedAt: '2026-11-20T00:00:00.000Z',
   }
+}
+
+/**
+ * 演示用人才档案（张一 101）。
+ *
+ * 线上 API 的人才表是真实用户数据，没有 101；演示模式把这张卡合并到列表
+ * 和详情里，保证本地看到的「张一 + AI4BBS 赛季标签」在线上也有。
+ */
+export const DEMO_TALENT_PROFILE: TalentProfile = {
+  id: 999101,
+  userId: '101',
+  status: 0,
+  headline: '储能产品经理，正在做工商业站点运维',
+  bio: '在 AI4BBS 赛季里负责储能站点的产品与客户对接，做过 3 个 B 端产品从 0 到 1。希望找懂电力数据的工程师一起把站点运维服务化。',
+  city: '上海',
+  links: [],
+  availability: 0,
+  skills: ['productStrategy', 'needsAnalysis', 'projectManagement'],
+  seekingSkills: ['frontend', 'ai'],
+  domains: ['效率工具', '开发者工具'],
+  durations: ['长期合作', '短期项目'],
+  publishedAt: '2026-11-01T00:00:00.000Z',
+  createdAt: '2026-11-01T00:00:00.000Z',
+  updatedAt: '2026-11-21T00:00:00.000Z',
+  founder: { nickname: '张一', avatar_url: null },
+  projects: [],
+  seasonBadges: [
+    {
+      id: DEMO_SEASON.id,
+      code: DEMO_SEASON.code,
+      name: DEMO_SEASON.name,
+      status: DEMO_SEASON.status,
+      participantStatus: 'active',
+      startedAt: '2026-11-10T00:00:00.000Z',
+      settleDate: '2026-12-22T00:00:00.000Z',
+    },
+  ],
 }
 

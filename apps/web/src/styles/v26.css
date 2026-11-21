@@ -832,13 +832,17 @@
   height: 22.5%;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   border-radius: 3px;
   background: var(--boom-v26-ticket-code-bg);
   color: var(--v26-ink-soft);
-  font-size: 8.1cqw;
+  padding: 0 0.6cqw;
+  font-size: clamp(0.6rem, 5cqw, 1.45rem);
   font-weight: 900;
-  letter-spacing: -1px;
+  letter-spacing: -0.04em;
   line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
   transform: rotate(-7deg);
 }
 
