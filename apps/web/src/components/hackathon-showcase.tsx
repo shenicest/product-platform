@@ -9,7 +9,6 @@ import { HackathonCover } from '@/components/hackathon-cover'
 import { HackathonLikeButton } from '@/components/hackathon-like-button'
 import { Chip, ChipButton, type ChipTone } from '@/components/ui/chip'
 import { Eyebrow } from '@/components/ui/typography'
-import { BloomPop } from '@/components/ui/bloom-pop'
 type Project = Awaited<ReturnType<typeof getHackathonProjects>>['data'][number]
 
 const tracks = [
@@ -68,14 +67,6 @@ export function HackathonShowcase({ projects, total, selectedTrack, query }: { p
           <p className="mt-5 max-w-[52ch] text-body-lg leading-relaxed text-muted-foreground">
             探索黑客松的参赛项目。按赛道浏览，打开项目详情，为你支持的创意留下一个赞。
           </p>
-          <Link
-            href="/hackathon/statement"
-            className="bloom-label mt-5 inline-flex items-baseline gap-2.5 border-b border-brand-line pb-1 text-body-sm text-brand-text transition-colors hover:border-brand hover:text-foreground"
-          >
-            <span>She Nicest 团队关于「烈变千人黑客松」活动的致歉与声明</span>
-            <span aria-hidden="true" className="text-body">&gt;</span>
-            <BloomPop />
-          </Link>
         </div>
         <div className="border-brand-line lg:border-l lg:pl-7">
           <strong className="block font-digits text-[3rem] font-normal leading-none text-brand-text">

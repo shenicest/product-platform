@@ -13,7 +13,6 @@ export function SiteFooter() {
         <span className="site-footer__links">
           <Link href="/privacy">隐私</Link>
           <Link href="/terms">条款</Link>
-          <Link href="/hackathon/statement">活动声明</Link>
           <a href="#main-content">回到顶部 ↑</a>
         </span>
       </div>
