@@ -1,6 +1,8 @@
 'use client'
 
 import { Suspense, useState, useCallback } from 'react'
+import { redirect } from 'next/navigation'
+import { DEMO_MODE } from '@/lib/demo-mode'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '@/components/auth-provider'
 import { followFounder, likeProject, sendLoginCode, verifyLoginCode } from '@/lib/client-api'
@@ -8,6 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Eyebrow } from '@/components/ui/typography'
 
 export default function LoginPage() {
+  // 演示模式不需要登录；直接回参赛台，避免用户以为登录坏了。
+  if (DEMO_MODE) redirect('/me/workbench')
   return <Suspense><LoginForm /></Suspense>
 }
 

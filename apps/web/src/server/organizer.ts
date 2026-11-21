@@ -10,6 +10,13 @@ import type {
   SeasonReadiness,
 } from '@/lib/organizer'
 import { resolveSeasonId } from '@/lib/organizer'
+import {
+  DEMO_COOKIE,
+  DEMO_MODE,
+  DEMO_ORGANIZER_ORGS,
+  DEMO_SEASONS,
+  resolveDemoIdentity,
+} from '@/lib/demo-mode'
 import type {
   ChallengeDto,
   EnterpriseCooperationDto,
@@ -60,6 +67,11 @@ function statusOf(error: unknown): number {
  * 只取一页上限内的数据：赛季选择器是下拉框，不是分页表格。
  */
 export const getManagedSeasons = cache(async (pageSize = 100): Promise<SeasonListPage<ManagedSeason | AdminSeasonListItem>> => {
+  if (DEMO_MODE) {
+    const items = DEMO_SEASONS as unknown as (ManagedSeason | AdminSeasonListItem)[]
+    return { items, total: items.length, page: 1, pageSize }
+  }
+
   const headers = await authHeaders()
   if (!headers) return { items: [], total: 0, page: 1, pageSize }
 
@@ -83,6 +95,12 @@ export const getManagedSeasons = cache(async (pageSize = 100): Promise<SeasonLis
  */
 export const getOrganizerOrgOptions = cache(
   async (options: { isOperator: boolean }): Promise<OrganizerOrg[]> => {
+    if (DEMO_MODE) {
+      const identity = resolveDemoIdentity((await cookies()).get(DEMO_COOKIE)?.value)
+      if (!identity.isOrganizerMember) return []
+      return DEMO_ORGANIZER_ORGS.filter((org) => options.isOperator || org.isMember) as OrganizerOrg[]
+    }
+
     const headers = await authHeaders()
     if (!headers) return []
     const { data, error } = await api['organizer-orgs'].get({ headers })

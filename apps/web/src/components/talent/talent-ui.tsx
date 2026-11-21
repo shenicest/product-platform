@@ -36,6 +36,7 @@ import {
   type TalentManagement,
   type TalentProfile,
   type TalentProject,
+  type TalentSeasonBadge,
 } from '@/lib/talent';
 import { Button, ButtonLink } from '@/components/ui/button';
 import {
@@ -120,6 +121,46 @@ export function AvailabilityBadge({ availability }: { availability: number }) {
     >
       {label}
     </Chip>
+  );
+}
+
+
+/**
+ * 用户获得的赛季标签。
+ *
+ * 一个赛季一个标签；报名通过、成为选手就算获得，赛季结束后保留。
+ * 进行中的赛季用 success 色并带圆点，已结束/已退赛用中性色。
+ */
+function seasonBadgeMeta(badge: TalentSeasonBadge) {
+  if (badge.participantStatus === 'withdrawn') return { label: '已退赛', tone: 'neutral' as const };
+  if (badge.status === 'active') return { label: '进行中', tone: 'success' as const };
+  if (badge.status === 'upcoming') return { label: '已报名', tone: 'sky' as const };
+  if (badge.status === 'suspended') return { label: '已暂停', tone: 'warning' as const };
+  if (badge.status === 'cancelled') return { label: '已取消', tone: 'danger' as const };
+  return { label: '已参加', tone: 'neutral' as const };
+}
+
+export function SeasonBadges({ badges }: { badges: readonly TalentSeasonBadge[] }) {
+  if (badges.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2" role="group" aria-label="参加过的赛季">
+      {badges.map((badge) => {
+        const meta = seasonBadgeMeta(badge);
+        const active = badge.status === 'active' && badge.participantStatus !== 'withdrawn';
+        return (
+          <Chip
+            key={badge.id}
+            tone={meta.tone}
+            dot={active}
+            title={`${badge.name} · ${meta.label}`}
+            aria-label={`赛季：${badge.name}，${meta.label}`}
+          >
+            {badge.name}
+            <span className="ml-1.5 text-meta opacity-70">{meta.label}</span>
+          </Chip>
+        );
+      })}
+    </div>
   );
 }
 
@@ -320,6 +361,11 @@ function ProfileCard({ profile }: { profile: TalentProfile }) {
           <div className="flex flex-wrap items-center gap-2 mt-2">
             <AvailabilityBadge availability={profile.availability} />
           </div>
+          {profile.seasonBadges.length > 0 ? (
+            <div className="mt-2">
+              <SeasonBadges badges={profile.seasonBadges} />
+            </div>
+          ) : null}
           <p className="mt-4 line-clamp-3 text-body-sm text-muted-foreground">
             {profile.bio}
           </p>
@@ -596,6 +642,16 @@ export function TalentDetail({
             <div className="mt-4">
               <AvailabilityBadge availability={profile.availability} />
             </div>
+            {profile.seasonBadges.length > 0 ? (
+              <div className="mt-4">
+                <p className="font-mono text-meta tracking-[0.12em] text-muted-foreground">
+                  SEASONS / 赛季经历
+                </p>
+                <div className="mt-2">
+                  <SeasonBadges badges={profile.seasonBadges} />
+                </div>
+              </div>
+            ) : null}
             <p className="detail-copy">{profile.bio}</p>
             {profile.links?.length ? (
               <ul className="mt-6 space-y-2">

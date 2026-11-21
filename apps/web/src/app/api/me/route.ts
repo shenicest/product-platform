@@ -1,6 +1,13 @@
+import { cookies } from 'next/headers'
 import { apiUrl } from '@/lib/api-url'
+import { DEMO_COOKIE, DEMO_MODE, demoAuthUser, resolveDemoIdentity } from '@/lib/demo-mode'
 
 export async function GET(request: Request) {
+  if (DEMO_MODE) {
+    const identity = resolveDemoIdentity((await cookies()).get(DEMO_COOKIE)?.value)
+    return Response.json({ user: demoAuthUser(identity) })
+  }
+
   const meUrl = apiUrl('/me')
   const meProxy = new Request(meUrl, request)
   const meRes = await fetch(meProxy)

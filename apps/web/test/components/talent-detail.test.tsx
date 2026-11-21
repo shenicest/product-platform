@@ -37,6 +37,7 @@ const profile: TalentProfile = {
   updatedAt: "",
   founder: { nickname: "候选人" },
   projects: [],
+  seasonBadges: [],
 };
 
 describe("TalentDetail connection dialog", () => {

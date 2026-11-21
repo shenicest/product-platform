@@ -1,9 +1,9 @@
 import { afterAll, describe, expect, it } from 'bun:test'
 import { Elysia } from 'elysia'
 import { and, eq, inArray, sql } from 'drizzle-orm'
-import { ConnectionRequestStatus, ProjectStatus, Role, TalentProfileStatus } from '@shenicest/shared'
+import { ConnectionRequestStatus, ProjectStatus, Role, SEASON_RULE_DEFAULTS, TalentProfileStatus } from '@shenicest/shared'
 import { db } from '../../../src/db'
-import { connectionDailyLimits, connectionRequests, projects, talentModerationRecords, talentProfiles, userIdentities } from '../../../src/db/schema'
+import { connectionDailyLimits, connectionRequests, projects, seasonParticipants, seasons, talentModerationRecords, talentProfiles, userIdentities } from '../../../src/db/schema'
 import { talentModule, talentOperatorModule } from '../../../src/modules/talent'
 import { SHARED_USERS_TABLE } from '../../../src/modules/user/service'
 import { authHeaders, jsonHeaders, signToken } from '../../fixtures/auth'
@@ -13,6 +13,7 @@ const base = Math.floor(700000000 + Math.random() * 10000000)
 let nextUser = base
 const users: string[] = []
 const projectIds: number[] = []
+const seasonIds: number[] = []
 
 function user() {
   const id = String(nextUser++)
@@ -76,6 +77,10 @@ describe('Talent Plaza API', () => {
       await db.execute(sql`DELETE FROM ${sql.raw(SHARED_USERS_TABLE)} WHERE id IN (${sql.join(users.map((id) => sql`${Number(id)}`), sql`, `)})`)
     }
     if (projectIds.length) await db.delete(projects).where(inArray(projects.id, projectIds))
+    if (seasonIds.length) {
+      await db.delete(seasonParticipants).where(inArray(seasonParticipants.seasonId, seasonIds))
+      await db.delete(seasons).where(inArray(seasons.id, seasonIds))
+    }
   })
 
   it('publishes, pauses, resumes without changing first publication time, and exposes management state', async () => {
@@ -275,6 +280,40 @@ describe('Talent Plaza API', () => {
     expect(JSON.stringify(await audit.json())).not.toContain('accepted-peer')
     expect((await request(`/operator/talents/${target}/suspension-audit`, { userId: sender })).status).toBe(403)
   })
+  it('returns one season badge per participated season', async () => {
+    const owner = user()
+    await publish(owner)
+    const [season] = await db.insert(seasons).values({
+      code: `BADGE${Date.now().toString(36)}`.slice(0, 32).toUpperCase(),
+      name: '徽章测试赛季',
+      themes: [],
+      rules: SEASON_RULE_DEFAULTS,
+      status: 'active',
+      startAt: new Date(),
+      settleDate: new Date(Date.now() + 86_400_000),
+      createdBy: 'test',
+    })
+    const seasonId = Number(season.insertId)
+    seasonIds.push(seasonId)
+    await db.insert(seasonParticipants).values({
+      seasonId,
+      userId: owner,
+      applicationId: Math.floor(Math.random() * 1_000_000_000),
+      status: 'active',
+    })
+
+    const res = await request(`/talents/${owner}`)
+    expect(res.status).toBe(200)
+    const body = await res.json() as { seasonBadges: Array<{ id: number; name: string; status: string; participantStatus: string }> }
+    expect(body.seasonBadges).toHaveLength(1)
+    expect(body.seasonBadges[0]).toMatchObject({
+      id: seasonId,
+      name: '徽章测试赛季',
+      status: 'active',
+      participantStatus: 'active',
+    })
+  })
+
 })
 
 function orUsers(values: string[]) {

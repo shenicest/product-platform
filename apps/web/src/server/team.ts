@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { API_URL } from '@/lib/api-url'
 import { getWorkbenchHeader } from '@/server/me'
 import type { SeasonSummary } from '@/lib/boomland'
+import { DEMO_MODE } from '@/lib/demo-mode'
 import type {
   ProjectOption,
   TeamChallengeDto,
@@ -77,8 +78,12 @@ export const getMyTeamSeasons = cache(async (): Promise<SeasonSummary[]> => {
 
 /** `GET /seasons/:id/team/me` —— 组队 tab 首屏聚合。 */
 export const getTeamWorkbench = cache(
-  async (seasonId: number): Promise<TeamLoadResult<TeamWorkbenchDto>> =>
-    serverGet<TeamWorkbenchDto>(`/seasons/${seasonId}/team/me`),
+  async (seasonId: number): Promise<TeamLoadResult<TeamWorkbenchDto>> => {
+    // 演示模式没有真实登录态，组队聚合接口会 401；直接给空态，
+    // 页面显示「没有组队数据」，其余测试数据页面不受影响。
+    if (DEMO_MODE) return { kind: 'empty' }
+    return serverGet<TeamWorkbenchDto>(`/seasons/${seasonId}/team/me`)
+  },
 )
 
 /**
@@ -89,6 +94,7 @@ export const getTeamWorkbench = cache(
  */
 export const getTeamChallenges = cache(
   async (seasonId: number): Promise<TeamChallengeDto[]> => {
+    if (DEMO_MODE) return []
     const result = await serverGet<{ items?: TeamChallengeDto[] }>(
       `/seasons/${seasonId}/challenges`,
     )
@@ -103,6 +109,7 @@ export const getTeamChallenges = cache(
  * 「没有可带入项目」处理，弹窗里仍可以新建。
  */
 export const getMyProjectOptions = cache(async (): Promise<ProjectOption[]> => {
+  if (DEMO_MODE) return []
   const result = await serverGet<{ data?: ProjectOption[] }>('/founder/projects?limit=100')
   return result.kind === 'ok' ? (result.data.data ?? []) : []
 })

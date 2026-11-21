@@ -33,6 +33,7 @@ const base: TalentProfile = {
   updatedAt: "",
   founder: { nickname: "候选人" },
   projects: [],
+  seasonBadges: [],
 };
 
 const params = { sort: "new" as const, page: 1 };
@@ -66,5 +67,37 @@ describe("TalentList (plaza surfaces)", () => {
     );
     const links = screen.getAllByRole("link", { name: "下一页 →" });
     expect(links[0]).toHaveAttribute("href", "/talents?sort=new&page=2");
+  });
+
+  it("renders one season badge per participated season", () => {
+    const withBadges: TalentProfile = {
+      ...base,
+      seasonBadges: [
+        {
+          id: 1,
+          code: "AI4BBS",
+          name: "AI4BBS 产业商业赛季",
+          status: "active",
+          participantStatus: "active",
+          startedAt: null,
+          settleDate: null,
+        },
+        {
+          id: 2,
+          code: "H03-SH",
+          name: "H03 上海站 · 黑客松",
+          status: "upcoming",
+          participantStatus: "active",
+          startedAt: null,
+          settleDate: null,
+        },
+      ],
+    };
+    render(<TalentList profiles={[withBadges]} total={1} params={{ ...params }} />);
+
+    expect(screen.getByText("AI4BBS 产业商业赛季")).toBeInTheDocument();
+    expect(screen.getByText("进行中")).toBeInTheDocument();
+    expect(screen.getByText("H03 上海站 · 黑客松")).toBeInTheDocument();
+    expect(screen.getByText("已报名")).toBeInTheDocument();
   });
 });

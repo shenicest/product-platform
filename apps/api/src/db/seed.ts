@@ -25,7 +25,7 @@ const skillKeys = (...values: TalentSkill[]) => values
 // resolves to a shared users row (nickname/avatar) for the public founder card.
 // TalentProfile is independent of the Founder role (CONTEXT.md), so these
 // users are not granted founder — they only get a shared users profile row.
-const TALENT_USER_IDS = ['11', '12', '13', '14', '15']
+const TALENT_USER_IDS = ['11', '12', '13', '14', '15', '101']
 const service = new UserIdentityService(db)
 
 const demoProjects: typeof projects.$inferInsert[] = [
@@ -205,6 +205,9 @@ async function seedSharedUserProfiles() {
     { id: '13', nickname: '王三', avatar: cover('talent-13') },
     { id: '14', nickname: '赵四', avatar: cover('talent-14') },
     { id: '15', nickname: '孙五', avatar: cover('talent-15') },
+    // 101 是 AI4BBS 选手（seed-season），同时给他一份公开人才档案，
+    // 让「参加过赛季」的标签在人才广场 / 公开主页上可见。
+    { id: '101', nickname: '张一', avatar: cover('zhang-yi') },
   ])
   if (skipped > 0) console.warn(`Skipped ${skipped} non-numeric demo user id(s)`)
   return seeded
@@ -280,6 +283,19 @@ const demoTalentProfiles: typeof talentProfiles.$inferInsert[] = [
     seekingSkills: skillKeys('backend', 'ai'),
     domains: domains('开发者工具'),
     durations: durations('一次咨询', '短期项目'),
+  },
+  {
+    userId: '101',
+    status: TalentProfileStatus.Published,
+    headline: '储能产品经理，正在做工商业站点运维',
+    bio: '在 AI4BBS 赛季里负责储能站点的产品与客户对接，做过 3 个 B 端产品从 0 到 1。希望找懂电力数据的工程师一起把站点运维服务化。',
+    links: [],
+    city: '上海',
+    availability: TalentAvailability.ActivelySeeking,
+    skills: skillKeys('productStrategy', 'needsAnalysis', 'projectManagement'),
+    seekingSkills: skillKeys('frontend', 'ai'),
+    domains: domains('效率工具', '开发者工具'),
+    durations: durations('长期合作', '短期项目'),
   },
 ]
 

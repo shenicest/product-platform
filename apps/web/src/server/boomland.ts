@@ -1,6 +1,7 @@
 import { cache } from 'react'
 import { cookies } from 'next/headers'
 import { api } from '@/lib/api'
+import { DEMO_MODE } from '@/lib/demo-mode'
 import type {
   MySeasonApplication,
   SeasonAnnouncement,
@@ -123,6 +124,9 @@ export const getMyApplications = cache(
     page: number
     pageSize: number
   }> => {
+    if (DEMO_MODE) {
+      return { items: [], total: 0, page: query.page ?? 1, pageSize: query.pageSize ?? 20 }
+    }
     const headers = await authHeaders()
     if (!headers) return { items: [], total: 0, page: 1, pageSize: 20 }
     const { data, error } = await api.me.applications.get({ query, headers })

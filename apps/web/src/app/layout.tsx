@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import './globals.css'
 import { AuthProvider } from '@/components/auth-provider'
+import { DemoUserSwitcher } from '@/components/dev/demo-user-switcher'
 import { MockUserSwitcher } from '@/components/dev/mock-user-switcher'
 import { LayoutChrome } from '@/components/layout-chrome'
 import {
@@ -13,6 +14,7 @@ import {
   resolveSiteUrl,
 } from '@/lib/site-metadata'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import { DEMO_MODE } from '@/lib/demo-mode'
 
 const harmony = localFont({
   src: [
@@ -109,13 +111,14 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
     <html
       lang="zh-CN"
+      data-scroll-behavior="smooth"
       className={`${harmony.variable} ${monocraft.variable} ${dseg7.variable} ${coverSerif.variable} h-full`}
     >
       <body className="flex min-h-full flex-col bg-background font-sans text-foreground">
         <AuthProvider>
           <LayoutChrome>{children}</LayoutChrome>
-          {/* 仅本地开发：生产构建下不渲染任何 DOM，详见 lib/mock-auth.ts。 */}
-          <MockUserSwitcher />
+          {/* 演示模式用不依赖 API /mock/* 的身份切换器；否则仍用本地 mock 切换器。 */}
+          {DEMO_MODE ? <DemoUserSwitcher /> : <MockUserSwitcher />}
         </AuthProvider>
         <SpeedInsights />
       </body>

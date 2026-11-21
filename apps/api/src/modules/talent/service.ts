@@ -1,6 +1,15 @@
-import { and, desc, eq, or, sql } from 'drizzle-orm'
+import { and, desc, eq, ne, or, sql } from 'drizzle-orm'
 import type { Database } from '../../db'
-import { ConnectionDailyLimitScope, connectionDailyLimits, connectionRequests, projects, talentModerationRecords, talentProfiles } from '../../db/schema'
+import {
+  ConnectionDailyLimitScope,
+  connectionDailyLimits,
+  connectionRequests,
+  projects,
+  seasonParticipants,
+  seasons,
+  talentModerationRecords,
+  talentProfiles,
+} from '../../db/schema'
 import { decryptContact, encryptContact } from '../../lib/contact-encryption'
 import { beijingDate } from '../../lib/beijing-date'
 import { UserProfileService } from '../user/service'
@@ -201,12 +210,42 @@ export class TalentService {
     return this.publish(userId, body)
   }
 
+  /**
+   * 用户获得过的赛季标签。
+   *
+   * 口径是「选手行存在」：报名通过、成为本赛季选手就算获得，赛季结束后仍保留；
+   * 中途退赛（participant status=withdrawn）也算参加过，前端会标成「已退赛」。
+   * 草稿赛季不可能有选手行，这里仍然排除，避免异常数据把未发布赛季泄露出去。
+   *
+   * 一个赛季最多一行（unique season+user），所以不需要去重。
+   */
+  private async seasonBadges(userId: string) {
+    return this.db
+      .select({
+        id: seasons.id,
+        code: seasons.code,
+        name: seasons.name,
+        status: seasons.status,
+        participantStatus: seasonParticipants.status,
+        startedAt: seasons.startAt,
+        settleDate: seasons.settleDate,
+      })
+      .from(seasonParticipants)
+      .innerJoin(seasons, eq(seasonParticipants.seasonId, seasons.id))
+      .where(and(
+        eq(seasonParticipants.userId, userId),
+        ne(seasons.status, 'draft'),
+      ))
+      .orderBy(desc(seasons.startAt), desc(seasons.id))
+  }
+
   private async publicProfile(profile: ProfileRow, viewerId?: string, includeMatch = false) {
-    const [liveProjects, founder] = await Promise.all([
+    const [liveProjects, founder, seasonBadges] = await Promise.all([
       this.db.select({ id: projects.id, name: projects.name, tagline: projects.tagline }).from(projects)
         .where(and(eq(projects.userId, profile.userId), eq(projects.status, ProjectStatus.Live)))
         .orderBy(desc(projects.updatedAt)),
       this.users.getPublicProfile(profile.userId),
+      this.seasonBadges(profile.userId),
     ])
     let match: ReturnType<typeof calculateTalentMatch> | undefined
     if (includeMatch && viewerId && viewerId !== profile.userId) {
@@ -219,6 +258,11 @@ export class TalentService {
       ...this.profileFields(profile),
       founder,
       projects: liveProjects,
+      seasonBadges: seasonBadges.map((badge) => ({
+        ...badge,
+        startedAt: iso(badge.startedAt),
+        settleDate: iso(badge.settleDate),
+      })),
       ...(includeMatch ? { match } : {}),
     }
   }

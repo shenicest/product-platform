@@ -50,6 +50,17 @@ export type TalentProject = {
   name: string;
   tagline: string | null;
 };
+export type TalentSeasonBadge = {
+  id: number;
+  code: string;
+  name: string;
+  /** 赛季状态：active / upcoming / suspended / cancelled 等 */
+  status: string;
+  /** 选手行状态：active / withdrawn */
+  participantStatus: string;
+  startedAt: string | null;
+  settleDate: string | null;
+};
 export type TalentProfile = TalentBody & {
   id: number;
   userId: string;
@@ -59,6 +70,7 @@ export type TalentProfile = TalentBody & {
   updatedAt: string;
   founder: TalentIdentity;
   projects: TalentProject[];
+  seasonBadges: TalentSeasonBadge[];
   match?: { score: number; reasons: string[] };
 };
 export type TalentManagement = TalentBody & {

@@ -8,6 +8,7 @@ import { getConnections } from '@/lib/client-api'
 import { shouldShowOrganizerEntry } from '@/lib/organizer-access'
 import { shouldShowPlatformEntry } from '@/lib/platform-console'
 import { SeasonRole, getSeasonRoles } from '@/lib/season-access'
+import { DEMO_MODE } from '@/lib/demo-mode'
 import { ButtonLink } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { Card } from '@/components/ui/surface'
@@ -191,11 +192,15 @@ export function UserMenu() {
           </Link>
         ) : null}
 
-        <hr className="ui-rule my-1" />
+        {DEMO_MODE ? null : (
+          <>
+            <hr className="ui-rule my-1" />
 
-        <button type="button" onClick={logout} className={MENU_ITEM}>
-          退出登录
-        </button>
+            <button type="button" onClick={logout} className={MENU_ITEM}>
+              退出登录
+            </button>
+          </>
+        )}
       </Card>
     </details>
   )

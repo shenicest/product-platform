@@ -46,11 +46,20 @@ export function WorkbenchHeader({ data }: { data: WorkbenchHeaderData }) {
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Chip>{userGroupLabel(data.roles)}</Chip>
-            {data.activeSeasons.map((season) => {
-              const meta = seasonStatusMeta(season.status)
+            {data.seasonBadges.map((badge) => {
+              const meta = seasonStatusMeta(badge.status)
+              const withdrawn = badge.participantStatus === 'withdrawn'
+              const label = withdrawn ? '已退赛' : meta.label
               return (
-                <Chip key={season.id} tone={meta.tone} dot>
-                  {season.code} · {meta.label}
+                <Chip
+                  key={badge.id}
+                  tone={withdrawn ? 'neutral' : meta.tone}
+                  dot={badge.status === 'active' && !withdrawn}
+                  title={`${badge.name} · ${label}`}
+                  aria-label={`赛季标签：${badge.name}，${label}`}
+                >
+                  {badge.name}
+                  <span className="ml-1.5 text-meta opacity-70">{label}</span>
                 </Chip>
               )
             })}

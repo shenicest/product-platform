@@ -14,6 +14,7 @@ import {
   parseApplicationsPage,
 } from '@/lib/me-applications'
 import type { SearchParams } from '@/lib/project-filters'
+import { DEMO_MODE } from '@/lib/demo-mode'
 
 export const metadata = { title: '报名 · 个人中心' }
 export const dynamic = 'force-dynamic'
@@ -44,7 +45,7 @@ export default async function MeApplicationsPage(props: {
   searchParams: Promise<SearchParams>
 }) {
   const token = (await cookies()).get('shenicest_token')?.value
-  if (!token) redirect(`/login?returnTo=${encodeURIComponent('/me/applications')}`)
+  if (!token && !DEMO_MODE) redirect(`/login?returnTo=${encodeURIComponent('/me/applications')}`)
 
   const searchParams = await props.searchParams
   const page = parseApplicationsPage(searchParams)

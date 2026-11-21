@@ -5,6 +5,7 @@ import { getSessionUser } from '@/server/auth'
 import { getManagedSeasons, getOrganizerOrgOptions } from '@/server/organizer'
 import { OrganizerShell } from '@/components/organizer/organizer-shell'
 import { canAccessOrganizerConsole } from '@/lib/organizer-access'
+import { DEMO_MODE } from '@/lib/demo-mode'
 import type { PickableSeason } from '@/lib/organizer'
 import { NO_INDEX_ROBOTS } from '@/lib/site-metadata'
 import { ButtonLink } from '@/components/ui/button'
@@ -71,6 +72,11 @@ export default async function OrganizerLayout({
         <p className="page-lead">
           管理你在 BoomLand 上主办的赛季：先建草稿，逐步补齐赛程、命题、评委与预算，再提交待批。
         </p>
+        {DEMO_MODE ? (
+          <p className="ui-note ui-note--warning mt-4" role="note">
+            演示模式：总览、规则归档、项目与进度、评委与积分池、预算与结算、核验与异议、审计使用本地测试数据；赛季设置、报名审核、命题与资源等页面仍依赖真实后端，可能显示读取失败。
+          </p>
+        ) : null}
       </header>
 
       <OrganizerShell seasons={seasons} organizerOrgs={orgOptions}>
